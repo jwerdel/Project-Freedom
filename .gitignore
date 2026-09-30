@@ -1,0 +1,38 @@
+# Godot generated caches and imports (rebuilt on first run / by the launcher)
+.godot/
+.import/
+export_presets.cfg
+/android/
+mono_crash.*.json
+
+# Portable engine and local runtime data (engine comes from scripts/get_godot.ps1)
+runtime/
+.local/
+
+# Executables and build output
+*.exe
+*.dll
+*.pck
+*.zip
+build/
+export/
+
+# Screenshots from F12 / capture runs
+captures/
+
+# Logs and temp files
+*.log
+*.tmp
+*.bak
+*~
+
+# OS and editor junk
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+._*
+.vscode/
+.idea/
+*.swp
