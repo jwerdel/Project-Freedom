@@ -21,6 +21,12 @@ License: CC0 1.0, https://polyhaven.com/license . Artist credits are on each ass
 
 Architecture, ships, wagons, the commander, the terrain heightfield, layout, UI, and shaders were built procedurally for this prototype (`main.gd`, `visuals/`, `*.gdshader`). No Total War, Warhammer, Lord of the Rings, or Game of Thrones assets are included. Greyhaven, Crownwatch, Willowmere, and the Greywater March are working names, not final worldbuilding.
 
+## Development tools (committed)
+
+| Path | Tool | Source | License |
+|---|---|---|---|
+| `addons/gut/` | GUT 9.7.1 (Godot Unit Test) | https://github.com/bitwes/Gut/releases/tag/v9.7.1 (source zip SHA-256 `14969AA46ADC84AA08CDD21B9F6D1A64ADDD92AE60B36F02D0521ED305AA4086`); only `addons/gut/` copied, unmodified | MIT, copyright Tom "Butch" Wesley; see `addons/gut/LICENSE.md` |
+
 ## Engine (not committed)
 
 Godot 4.7.2 standard Windows build, MIT license: https://github.com/godotengine/godot/releases/tag/4.7.2-stable . Downloaded by `scripts/get_godot.ps1` into `runtime/` together with `GODOT-LICENSE.txt` and `GODOT-COPYRIGHT.txt`. More information: https://godotengine.org/license/ .

@@ -55,10 +55,12 @@ Portraits are auto-rendered from the unit's visual scene (SubViewport render, ca
 ## Tests
 
 - Non-trivial logic needs tests.
-- Framework: GUT (Godot Unit Test, MIT, pure GDScript, runs from the command line with the portable engine). Not installed yet; it will live in `addons/gut/` with tests in `tests/` (files named `test_*.gd`).
-- Run (once installed):
+- Framework: GUT 9.7.1 (Godot Unit Test, MIT) in `addons/gut/`, verified on the portable Godot 4.7.2. Tests live in `tests/`, files named `test_*.gd`, extending `GutTest`.
+- Run (after a headless import, so GUT's classes are registered):
+  `runtime\Godot.exe --headless --path . --import`
   `runtime\Godot.exe --headless --path . -s addons/gut/gut_cmdln.gd -gdir=res://tests -gexit`
-- Until GUT is added, the prototype's `--self-test` covers the existing visual prototype.
+  Exit code 0 means all tests passed.
+- The prototype's `--self-test` still covers the visual prototype's runtime behavior.
 
 ## Code style
 
