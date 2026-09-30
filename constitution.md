@@ -15,7 +15,7 @@ A fantasy strategy game combining Total War's accessible campaign interface, arm
 - Final art target: detailed, realistically proportioned fantasy figures with minimal animation; avoid a blocky Roblox-like appearance. Development reaches this through a later art pass (see Art direction and development order).
 - Campaign army movement matters. No watchable battles or live tactical control in V1.
 - Do not impose the previously proposed arbitrary cap of 6–10 units per army. Actual performance budgets and representation remain to be established; the early performance test below is the first measurement.
-- Development PC (detected on this machine): AMD Ryzen 7 5700X3D (8 cores / 16 threads), NVIDIA GeForce RTX 4060 8 GB, 16 GB RAM (single stick, speed to be confirmed), 256 GB NVMe SSD. The planned 1 TB NVMe upgrade is not installed.
+- Development PC (detected on this machine): AMD Ryzen 7 5700X3D (8 cores / 16 threads), NVIDIA GeForce RTX 4060 8 GB, 32 GB DDR4 (2 × 16 GB Corsair CMK32GX4M2E3200C16, dual channel, 3200 MT/s detected, so XMP is active), 256 GB NVMe SSD. The memory sits in slots the BIOS reports as non-optimal (channel A DIMM 1 + channel B DIMM 0); the boot warning is expected and accepted. A 1 TB NVMe SSD is arriving but not yet installed.
 
 ## Art direction and development order
 
