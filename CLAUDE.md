@@ -2,6 +2,12 @@
 
 Godot 4.7.2 fantasy strategy game. Personal project; free and local only.
 
+## Project location (check first, every session)
+
+- The canonical project path is `C:\Users\Owner\dev\project-freedom`. It does not live on the OneDrive Desktop.
+- At the start of every session, confirm the working directory is this repo root: `CLAUDE.md` is present and `git remote get-url origin` is `https://github.com/jwerdel/Project-Freedom.git`. If not, stop and tell the user before doing anything else.
+- Never create or keep project files inside OneDrive.
+
 ## Source of truth
 
 - `constitution.md` is the design source of truth. Read it before design or gameplay work.

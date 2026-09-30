@@ -2,6 +2,10 @@
 
 A local, native 3D campaign-map visual prototype. This is the first visual checkpoint, not a complete strategy game or a claim of matching Total War's finished art quality.
 
+## Location
+
+The project lives at `C:\Users\Owner\dev\project-freedom` (repository: https://github.com/jwerdel/Project-Freedom), not on the OneDrive Desktop. Never create or keep project files inside OneDrive; syncing corrupts Git repositories and uploads the engine and caches.
+
 ## Play
 
 Double-click **Play Project Freedom.cmd** in this folder. No account, network connection, or audio is required at runtime. Allow several seconds for the first scene to build.
