@@ -51,6 +51,7 @@ Portraits are auto-rendered from the unit's visual scene (SubViewport render, ca
 - Prototype self-test and screenshot capture (quits when done, writes `captures/overview.png`):
   `runtime\Godot.exe --path . -- --capture --self-test` (add `--developed`, `--closeup`, or `--hero` for other views). Set `APPDATA`/`LOCALAPPDATA` to `.local\...` as the launcher does to keep runtime data in the project.
 - When a change must not alter visuals, compare before/after captures.
+- Export preset "Windows Desktop" (`export_presets.cfg`) includes `*.json` so the manifest ships, and excludes `addons/gut/*` and `tests/*`. Keep non-resource data files covered by its include filter. A full `.exe` export needs Godot 4.7.2 export templates (not installed); `--export-pack "Windows Desktop" build/x.pck` works without them.
 
 ## Tests
 
