@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "visuals": {
+    "settlement.city.stage_1": "res://visuals/settlements/city_stage_1.tscn",
+    "settlement.city.stage_2": "res://visuals/settlements/city_stage_2.tscn",
+    "settlement.city.stage_3": "res://visuals/settlements/city_stage_3.tscn",
+    "road.dirt": "res://visuals/roads/road_dirt.tscn",
+    "road.gravel": "res://visuals/roads/road_gravel.tscn",
+    "road.stone": "res://visuals/roads/road_stone.tscn",
+    "unit.commander": "res://visuals/units/commander.tscn",
+    "commerce.wagon": "res://visuals/commerce/wagon.tscn",
+    "commerce.ship": "res://visuals/commerce/ship.tscn"
+  }
+}

@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://visuals/roads/road_visual.gd" id="1"]
+
+[node name="RoadStone" type="Node3D"]
+script = ExtResource("1")
+surface_texture = "medieval_blocks_03"
+surface_color = Color(0.66666666666666663, 0.65490196078431373, 0.60392156862745094, 1)
+width = 1.6
+edge_markers = true

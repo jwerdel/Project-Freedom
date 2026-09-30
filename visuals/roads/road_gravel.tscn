@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://visuals/roads/road_visual.gd" id="1"]
+
+[node name="RoadGravel" type="Node3D"]
+script = ExtResource("1")
+surface_texture = "coast_sand_01"
+surface_color = Color(0.5725490196078431, 0.56862745098039214, 0.4823529411764706, 1)
+width = 1.3
+edge_markers = false
