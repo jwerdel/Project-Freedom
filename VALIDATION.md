@@ -19,7 +19,30 @@ On the development PC (Ryzen 7 5700X3D, RTX 4060 8 GB, driver 591.86), measured 
 | 16 GB, 1 stick, 2133 MT/s | 2 (before and after the manifest refactor) | 50, 51 | 690 |
 | 32 GB, 2 × 16 GB dual channel, 3200 MT/s (XMP), non-optimal-slot BIOS warning accepted | 5 | 49, 51, 50, 51, 50 | 690 |
 
-The RAM upgrade made no measurable difference. GPU utilization sampled with nvidia-smi during a run was 98–100%, so this scene is GPU-bound and memory bandwidth does not limit it. Frame-60 readings vary widely (17–49 FPS) because of shader warm-up and are not comparable. These are spot readings, not a benchmark.
+The RAM upgrade made no measurable difference. GPU utilization sampled with nvidia-smi during a run was 98–100%, so this scene is GPU-bound and memory bandwidth does not limit it. Frame-60 readings vary widely (17–49 FPS) because of shader warm-up and are not comparable. These are spot readings, not a benchmark. A 60-second run with normal settings held 50–51 FPS and 19.3–19.9 ms GPU throughout, so the frame-180 reading is representative of steady state.
+
+## GPU profile (overview, not yet optimized)
+
+Method: a fresh game process per configuration at the overview camera, 1440×900, vsync off. Each disables one feature right after the scene loads, settles for 10 s, then averages Godot's measured viewport GPU time over 5 s. Two rounds; the rounds agreed within 0.2 ms. Godot's per-pass visual-profiler data is not exposed to scripts, so costs are attributed by removal. Costs overlap (tree shadows are part of both "trees" and "sun shadows"), so the savings do not add up to the total.
+
+| Configuration | GPU ms | Saved vs baseline | FPS (vsync off) |
+|---|---|---|---|
+| Baseline (as shipped: 4 shadow splits to 250 m, MSAA 4x, SSAO, fog) | 19.5 | — | 50 |
+| Trees hidden | 2.2 | **17.3** | ~400 |
+| Sun shadows off | 13.7 | **5.8** | 72 |
+| MSAA off (project setting `msaa_3d=2` is 4x) | 13.9 | **5.6** | 70 |
+| Tree shadow casting off only | 14.1 | 5.4 | 70 |
+| SSAO off | 16.7 | 2.8 | 59 |
+| Terrain hidden | 18.4 | 1.0 | 54 |
+| Sea (water shader), batched buildings, fog | 19.5–19.7 | ~0 | 50 |
+
+Top three GPU costs:
+
+1. **Trees (~89% of the frame).** 856 fir instances of the Poly Haven fir model at about 14,300 triangles each, or 12.2 million triangles, with no LOD. They are drawn in the main pass and again in each of the four shadow cascades.
+2. **Directional shadows (5.8 ms).** Almost all of it (5.4 ms) is the trees casting into four cascades out to 250 m.
+3. **MSAA 4x (5.6 ms).** It multiplies the cost of the dense foliage geometry.
+
+Water, fog, and the batched buildings are negligible. Likely fixes for later (not applied): low-poly placeholder trees or LODs/impostors, fewer shadow splits or a shorter shadow distance, and MSAA 2x or TAA/FXAA.
 
 ## Remaining limitations
 
