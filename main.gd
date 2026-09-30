@@ -240,60 +240,25 @@ func make_city():
  city_root.build({"height":height_at,"plaza_material":road_material})
 
 func make_fortress(p: Vector2):
- var n = Node3D.new()
+ var n = AssetManifest.instantiate("settlement.fortress")
  add_child(n)
  n.position = ground(p)
- kit.cylinder(n,Vector3(0,0.15,0),4.8,4.3,0.5,kit.stone,32)
- for i in range(6):
-  var a = i*TAU/6
-  var b = (i+1)*TAU/6
-  var from = Vector3(cos(a)*3.6,0.2,sin(a)*3.6)
-  var to = Vector3(cos(b)*3.6,0.2,sin(b)*3.6)
-  if i!=1: kit.wall(n,from,to,2.0)
-  kit.tower(n,from,0.72,3.7)
- kit.box(n,Vector3(0,2.0,-0.5),Vector3(2.6,3.8,2.6),kit.stone)
- kit.roof(n,Vector3(0,3.9,-0.5),2.9,2.9,1.6,kit.slate)
- kit.banner(n,Vector3(0,5.6,-0.5),2.0)
 
 func make_village():
- for i in range(12):
-  var a = i*2.399
-  var p = VILLAGE+Vector2(cos(a),sin(a))*(2.2+sqrt(i)*0.7)
-  kit.house(self,ground(p),rng.randf_range(0.9,1.3),1.7,1.05,-a,rng)
- var windmill = Node3D.new()
- add_child(windmill)
- windmill.position = ground(VILLAGE+Vector2(-7,2))
- kit.cylinder(windmill,Vector3(0,1.7,0),0.8,0.5,3.4,kit.plaster)
- kit.cylinder(windmill,Vector3(0,3.8,0),0.8,0,1.1,kit.slate)
- var rotor = Node3D.new()
- windmill.add_child(rotor)
- rotor.position = Vector3(0,2.9,0.65)
- for i in range(4):
-  var arm = Node3D.new()
-  rotor.add_child(arm)
-  arm.rotation.z = i*PI/2
-  kit.box(arm,Vector3(0,1.1,0),Vector3(0.12,2.2,0.1),kit.wood)
-  kit.box(arm,Vector3(0.25,1.35,0.02),Vector3(0.45,1.4,0.06),kit.sail)
- flags.append(rotor)
+ var village = AssetManifest.instantiate("settlement.village")
+ add_child(village)
+ village.build({"center":VILLAGE,"ground":ground,"rng":rng})
+ flags.append_array(village.rotors)
 
 func make_farms():
  for i in range(12):
   var p = Vector2(-49+(i%4)*6,-2-floori(i/4.0)*6)
-  var material = kit.mat(Color("837b44") if i%3==0 else Color("666b37"))
-  var st = SurfaceTool.new()
-  st.begin(Mesh.PRIMITIVE_TRIANGLES)
-  for z in range(6):
-   for x in range(6):
-    for off in [Vector2(0,0),Vector2(1,0),Vector2(0,1),Vector2(1,0),Vector2(1,1),Vector2(0,1)]:
-     st.add_vertex(ground(p+Vector2(x,z)*0.8+off*0.8,0.055))
-  st.generate_normals()
-  kit.add_mesh(self,st.commit(),material)
-  for row in range(9):
-   var curve = curve_from([p+Vector2(0,row*0.54),p+Vector2(4.8,row*0.54)])
-   kit.ribbon(curve,0.085,kit.mat(Color("9a8a53")),self,height_at)
+  var field = AssetManifest.instantiate("terrain.farm_field")
+  add_child(field)
+  field.build({"origin":p,"ripe":i%3==0,"ground":ground,"height":height_at,"curve_from":curve_from})
 
 func make_forest():
- var source = load("res://assets/fir_optimized.glb").instantiate()
+ var source = AssetManifest.instantiate("nature.fir")
  var meshes: Array = []
  for child in source.find_children("*", "MeshInstance3D", true, false):
   meshes.append(child.mesh)
@@ -343,18 +308,9 @@ func make_coastal_rocks():
   rock.rotation = Vector3(rng.randf(),rng.randf(),rng.randf())
 
 func make_harbor():
- var z = coast(-18)
- for x in [-21.0,-16.0]:
-  kit.box(self,Vector3(x,0.85,z+2),Vector3(1.4,0.35,9.0),kit.wood)
-  for j in range(5):
-   for side in [-0.55,0.55]:
-    kit.cylinder(self,Vector3(x+side,0.15,z-1+j*1.6),0.12,0.12,2.1,kit.wood,8)
- kit.box(self,Vector3(-18.5,0.9,z-1.8),Vector3(8,0.4,2),kit.wood)
- for i in range(5):
-  kit.box(self,Vector3(-21+rng.randf()*6,1.35,z-2+rng.randf()),Vector3(0.5,0.6,0.5),kit.wood)
- kit.house(self,ground(Vector2(-24,z-4)),2,3,1.6,0,rng)
- var lighthouse_pos = Vector2(-5,coast(-5)-3)
- kit.tower(self,ground(lighthouse_pos),0.7,3.7,true)
+ var harbor = AssetManifest.instantiate("settlement.harbor")
+ add_child(harbor)
+ harbor.build({"coast":coast,"ground":ground,"rng":rng})
 
 func make_traffic():
  for i in range(6):

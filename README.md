@@ -53,8 +53,8 @@ Built with Godot 4.7.2, using Forward+ rendering. Open project.godot in Godot to
 
 | Path | Contents |
 |---|---|
-| `main.gd`, `Main.tscn` | Prototype map: terrain, sea, fortress, village, farms, forest, harbor, camera, UI |
-| `data/asset_manifest.json` | Maps visual IDs (city stages, road stages, commander, wagon, ship) to scenes |
+| `main.gd`, `Main.tscn` | Prototype map: terrain, sea, coastal rocks, world layout and tree placement, traffic routes, camera, UI |
+| `data/asset_manifest.json` | Maps visual IDs (city stages, fortress, village, harbor, farm field, fir tree, road stages, commander, wagon, ship) to scenes |
 | `core/asset_manifest.gd` | Loads the manifest and instantiates visuals by ID |
 | `visuals/` | One scene per visual; `visuals/common/proto_kit.gd` holds the shared prototype palette and builders |
 | `*.gdshader` | Terrain, sea, and cloth shaders |
