@@ -21,6 +21,19 @@ License: CC0 1.0, https://polyhaven.com/license . Artist credits are on each ass
 
 Architecture, ships, wagons, the commander, the terrain heightfield, layout, UI, and shaders were built procedurally for this prototype (`main.gd`, `visuals/`, `*.gdshader`). No Total War, Warhammer, Lord of the Rings, or Game of Thrones assets are included. Greyhaven, Crownwatch, Willowmere, and the Greywater March are working names, not final worldbuilding.
 
+## Approved placeholder packs (license confirmed, not yet imported)
+
+Approved by the user on 2026-09-30. CC0 was confirmed on each official page that day (the "License CC0" label in the pack's sidebar links to https://creativecommons.org/publicdomain/zero/1.0/). Import only the files we use, into `assets/quaternius/<pack>/`, with that pack's `License.txt`. When a pack is imported, move its row to a table of imported files. Do not swap these into the prototype until that is approved.
+
+| Pack | Official page | Download | Planned use |
+|---|---|---|---|
+| Ultimate Fantasy RTS | https://quaternius.com/packs/ultimatefantasyrts.html | Google Drive, full pack free | FirstAge town center, houses, watchtower, walls, farm, windmill, port and dock at levels 1–3; trees; rocks |
+| Pirate Kit | https://quaternius.com/packs/piratekit.html | Google Drive, full pack free | `Ship_Small` and `Ship_Large` only |
+| Universal Base Characters | https://quaternius.com/packs/universalbasecharacters.html | itch.io, free Standard tier (2 base models, 5 hairstyles) | Shared soldier and commander body (humanoid rig) |
+| Modular Character Outfits – Fantasy | https://quaternius.com/packs/modularcharacteroutfitsfantasy.html | itch.io, free Standard tier (Ranger and Peasant outfits) | Placeholder soldier and commander outfits |
+| Universal Animation Library | https://quaternius.com/packs/universalanimationlibrary.html | itch.io, free Standard tier (45 animations) | Idle, walk and run for placeholder units |
+| Ultimate Animated Animal Pack | https://quaternius.com/packs/ultimateanimatedanimals.html | Google Drive, full pack free | `Horse` only |
+
 ## Development tools (committed)
 
 | Path | Tool | Source | License |
