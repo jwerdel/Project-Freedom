@@ -15,5 +15,6 @@
     "unit.commander": "res://visuals/units/commander.tscn",
     "commerce.wagon": "res://visuals/commerce/wagon.tscn",
     "commerce.ship": "res://visuals/commerce/ship.tscn"
-  }
+  },
+  "landmarks": {}
 }

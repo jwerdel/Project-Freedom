@@ -4,6 +4,7 @@ const ProtoKit = preload("res://visuals/common/proto_kit.gd")
 const AssetManifest = preload("res://core/asset_manifest.gd")
 const ROAD_VISUALS = ["road.dirt","road.gravel","road.stone"]
 
+const CITY_ID = "greyhaven"
 const CITY = Vector2(-12, 6)
 const KEEP = Vector2(48, -35)
 const VILLAGE = Vector2(-56, -24)
@@ -234,7 +235,7 @@ func make_city():
  if city_root:
   remove_child(city_root)
   city_root.queue_free()
- city_root = AssetManifest.instantiate("settlement.city.stage_%d" % city_level)
+ city_root = AssetManifest.instantiate_settlement(CITY_ID,city_level)
  add_child(city_root)
  city_root.position = ground(CITY)
  city_root.build({"height":height_at,"plaza_material":road_material})
