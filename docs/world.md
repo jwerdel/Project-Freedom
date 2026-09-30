@@ -145,7 +145,7 @@ Unreachable early. Requires high-seas ships.
 
 ---
 
-## 6. Landmark settlements (20)
+## 6. Landmark settlements (21)
 
 Each landmark has a unique campaign-map model with three growth stages. Stage 1 must already be recognizable by silhouette.
 
