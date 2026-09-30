@@ -44,6 +44,23 @@ Top three GPU costs:
 
 Water, fog, and the batched buildings are negligible. Likely fixes for later (not applied): low-poly placeholder trees or LODs/impostors, fewer shadow splits or a shorter shadow distance, and MSAA 2x or TAA/FXAA.
 
+## Low-poly trees and MSAA 2x (2026-09-30)
+
+Changes: the forest uses three Quaternius Ultimate Fantasy RTS trees (345–552 triangles each, flat colors) via the manifest ID `nature.tree`, instead of the Poly Haven fir (~14,300 triangles). Coastal rocks use three pack rocks via `nature.rock`, drawn as three multimeshes instead of 100 separate sphere meshes; placement and random draws are unchanged, so the rest of the layout is identical. `msaa_3d` changed from 2 (4x) to 1 (true 2x). Shadows are unchanged (4 splits to 250 m): with the new trees, 150 m saved only 0.08 ms, so it was not needed.
+
+Same method and machine as the GPU profile above (RTX 4060, driver 591.86; fresh process per configuration, overview camera, 1440×900, vsync off, 10 s settle, 5 s average of Godot's measured viewport GPU time, 2 rounds). Both "before" rows were re-measured in this session on the old code.
+
+| Configuration | GPU ms (r1 / r2) | FPS (vsync off) | Draw calls |
+|---|---|---|---|
+| Before, as shipped (fir, MSAA 4x) | 19.39 / 19.45 | 51 | 690 |
+| Before, MSAA 2x only | 16.57 / 16.57 | 59 | 690 |
+| Before, MSAA 2x + shadows to 150 m | 13.86 / 13.94 | 70–71 | 489 |
+| **After, as shipped (pack trees and rocks, MSAA 2x)** | **2.13 / 2.13** | **414** | 696 |
+| After + shadows to 150 m (not applied) | 2.06 / 2.05 | 427 | 493 |
+| After, trees hidden | 1.99 / 1.96 | 439–445 | 669 |
+
+With vsync on (normal play), the `--capture --self-test` overview reads 60 FPS at frame 180, the display's refresh cap. Trees now cost about 0.15 ms. Self-test and GUT tests pass.
+
 ## Remaining limitations
 
 - Artwork is a prototype and has not been approved against the desired 2016 Total War campaign-map benchmark.

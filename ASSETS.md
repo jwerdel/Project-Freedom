@@ -15,7 +15,7 @@ License: CC0 1.0, https://polyhaven.com/license . Artist credits are on each ass
 | `coast_sand_01_Diffuse.jpg`, `coast_sand_01_nor_gl.jpg` | https://polyhaven.com/a/coast_sand_01 | CC0 |
 | `roof_slates_02_Diffuse.jpg`, `roof_slates_02_nor_gl.jpg` | https://polyhaven.com/a/roof_slates_02 | CC0 |
 | `plastered_stone_wall_Diffuse.jpg`, `plastered_stone_wall_nor_gl.jpg` | https://polyhaven.com/a/plastered_stone_wall | CC0 |
-| `fir_optimized.glb`, `fir_optimized_fir_sapling_*.jpg` | https://polyhaven.com/a/fir_sapling | CC0. Simplified for real-time use with glTF Transform / meshoptimizer; textures are also embedded in the .glb. |
+| `fir_optimized.glb`, `fir_optimized_fir_sapling_*.jpg` | https://polyhaven.com/a/fir_sapling | CC0. Simplified for real-time use with glTF Transform / meshoptimizer; textures are also embedded in the .glb. **Kept in the repo but unused since 2026-09-30**: replaced in the forest by the Quaternius low-poly trees (about 14,300 triangles per fir made trees ~89% of GPU time). `visuals/nature/fir.tscn` still wraps it but is not in the manifest; to bring it back, point `nature.tree` at that scene. |
 
 ## Original to this project
 

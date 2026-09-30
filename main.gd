@@ -259,7 +259,7 @@ func make_farms():
   field.build({"origin":p,"ripe":i%3==0,"ground":ground,"height":height_at,"curve_from":curve_from})
 
 func make_forest():
- var source = AssetManifest.instantiate("nature.fir")
+ var source = AssetManifest.instantiate("nature.tree")
  var meshes: Array = []
  for child in source.find_children("*", "MeshInstance3D", true, false):
   meshes.append(child.mesh)
@@ -299,14 +299,28 @@ func make_multimesh(mesh: Mesh, material: Material, transforms: Array, colors: b
  add_child(n)
 
 func make_coastal_rocks():
- var material = kit.textured("rocky_terrain",Color("8b938a"),1.2)
+ var source = AssetManifest.instantiate("nature.rock")
+ var meshes: Array = []
+ for child in source.find_children("*", "MeshInstance3D", true, false):
+  meshes.append(child.mesh)
+ var groups: Array = []
+ for m in meshes: groups.append([])
  for i in range(100):
   var x = rng.randf_range(-120,120)
   var p = Vector2(x,coast(x)+rng.randf_range(-3,4))
   if abs(x+18)<7: continue
   var s = rng.randf_range(0.3,1.4)
-  var rock = kit.sphere(self,ground(p,0.05),Vector3(s,s*0.7,s*0.85),material)
-  rock.rotation = Vector3(rng.randf(),rng.randf(),rng.randf())
+  # Same three rng draws as the old sphere rocks' rotation, so later layout (harbor, traffic) is unchanged.
+  var yaw = rng.randf()*TAU
+  var tilt = Vector3(rng.randf()-0.5,0,rng.randf()-0.5)*0.3
+  var idx = i%meshes.size()
+  var size = meshes[idx].get_aabb().size
+  var scale_v = 2.0*s/max(size.x,size.z)
+  var basis = Basis.from_euler(tilt)*Basis(Vector3.UP,yaw).scaled(Vector3(1,0.8,1)*scale_v)
+  groups[idx].append(Transform3D(basis,ground(p,-0.1*s)))
+ for i in range(meshes.size()):
+  make_multimesh(meshes[i],null,groups[i],false)
+ source.free()
 
 func make_harbor():
  var harbor = AssetManifest.instantiate("settlement.harbor")
