@@ -40,6 +40,7 @@ Portraits are auto-rendered from the unit's visual scene (SubViewport render, ca
 - Never commit secrets, executables (`runtime/Godot.exe`, `*.exe`), generated caches (`.godot/`, `.local/`), captures, or work-related material.
 - Commits use the repo-local personal identity; confirm it before the first commit of a session if it looks unset.
 - Small, focused commits with clear messages.
+- Never add Co-Authored-By or any Claude attribution to commits.
 - Commit the `.uid` files Godot generates next to scripts and shaders.
 
 ## Engine and running
