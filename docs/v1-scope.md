@@ -1,8 +1,8 @@
-# V1 scope proposal
+# V1 scope
 
-**STATUS: PROPOSED, not approved. Do not treat as confirmed until the owner approves.**
+**STATUS: APPROVED (2026-10-01).** This is the confirmed V1 content scope.
 
-This is a proposal for what the first playable version (V1) contains. It does not change `constitution.md`, which remains the design source of truth. Names refer to `docs/world.md`.
+This is what the first playable version (V1) contains. `constitution.md` remains the design source of truth for mechanics; this file sets which content and systems ship in V1. Names refer to `docs/world.md`.
 
 ## Map
 

@@ -13,6 +13,7 @@ Godot 4.7.2 fantasy strategy game. Personal project; free and local only.
 - `constitution.md` is the design source of truth. Read it before design or gameplay work.
 - Never implement a mechanic the constitution lists as open, unresolved, or undecided without the user's approval. Ask instead.
 - Keep confirmed decisions separate from open questions when editing the constitution.
+- `docs/v1-scope.md` is the approved V1 content scope (map, races, factions, systems, and what is deferred past V1). Don't build deferred systems for V1 without the user's approval.
 - `docs/world.md` is the lore and landmark reference (geography, factions, faiths, landmark settlements). `constitution.md` still governs mechanics. Don't invent lore that contradicts `world.md`; ask instead.
 
 ## Art / data separation (critical)

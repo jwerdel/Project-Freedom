@@ -90,6 +90,9 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 - Refugees default toward nearby fortresses. Players can admit refugees, gaining population at the cost of public order and income needed to feed them. Precise destination and capacity rules remain open.
 - During invasions, displaced people prefer the safety of fortresses over cities. How settlement populations aggregate into the regional recruiting pool remains open.
 - Materials affect income and should not directly block buildings or recruitment. Research unlocks buildings, including naval progression. Siege endurance is also intended to depend on settlement resources; how this works without manual inventories remains open.
+- Confirmed (2026-10-01): income scales with population through taxes. A settlement's income is a base amount by settlement type and level plus a per-capita tax on its population, both modified by resource endowments, buildings, and the settlement type's income factor and ceiling.
+- Confirmed (2026-10-01): buildings have real effects: income, growth, recruitment unlocks, and defense.
+- Confirmed (2026-10-01): the research tree is deferred past V1 (see docs/v1-scope.md). In V1, building availability is gated only by settlement level.
 
 ## Characters, dynasties, and governing
 
@@ -154,4 +157,4 @@ The visual feasibility gate is replaced by the gameplay-first direction above. N
 
 ## Scope discipline
 
-The world vision above is not yet a promise that every race and system ships in V1. The playable first-release content scope, development milestones, and acceptance criteria remain to be agreed. Keep confirmed requirements separate from suggestions and unresolved mechanics as the constitution evolves.
+The world vision above is not yet a promise that every race and system ships in V1. The V1 content scope is approved and recorded in docs/v1-scope.md (map, races, factions, settlements, systems, and what is deferred past V1). Development milestones and acceptance criteria remain to be agreed. Keep confirmed requirements separate from suggestions and unresolved mechanics as the constitution evolves.
