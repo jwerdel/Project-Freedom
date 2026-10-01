@@ -6,25 +6,31 @@ extends GutTest
 const GameState = preload("res://core/game_state.gd")
 const Economy = preload("res://core/economy.gd")
 const TurnLoop = preload("res://core/turn_loop.gd")
+const Buildings = preload("res://core/buildings.gd")
 const NO_RESOURCES = {"wood":0,"stone":0,"food":0,"minerals":0}
 
 func after_each():
  Economy.reset()
 
-# A fresh state with one settlement rewritten to the given type, level, resources and population.
-func state_with(type: String,level: int,resources: Dictionary,population := 5000.0,id := "greyhaven"):
+# A fresh state with one settlement rewritten to the given type, level, resources and population,
+# holding only its main building (so only those inputs and the listed buildings count).
+func state_with(type: String,level: int,resources: Dictionary,population := 5000.0,id := "greyhaven",buildings := []):
  var s = GameState.from_data()
  s.settlements[id].type = type
  s.settlements[id].level = level
  s.settlements[id].resources = resources.duplicate()
  s.settlements[id].population = population
+ s.settlements[id].buildings = GameState.starting_slots(id,type,level,buildings)
+ Buildings.refresh(s,id)
  return s
 
-func expected_income(type: String,level: int,resources: Dictionary) -> int:
+# Independent restatement of the income formula (data/economy.json _income), without buildings.
+func expected_income(type: String,level: int,resources: Dictionary,population := 5000.0) -> int:
  var t = Economy.data().settlement_types[type]
  var bonus = 0.0
  for r in resources: bonus += resources[r]*Economy.data().resources[r].income_bonus
- return int(round(minf(t.base_income[level-1]*t.economic_factor*(1.0+bonus),t.income_ceiling[level-1])))
+ var tax = population*Economy.data().taxes.tax_per_capita
+ return int(round(minf((t.base_income[level-1]+tax)*t.economic_factor*(1.0+bonus),t.income_ceiling[level-1])))
 
 func test_income_matches_data_for_every_settlement_type_and_level():
  var res = {"wood":1,"stone":2,"food":3,"minerals":1}

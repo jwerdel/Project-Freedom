@@ -11,6 +11,7 @@ const WorldMap = preload("res://core/world_map.gd")
 const UnitTypes = preload("res://core/unit_types.gd")
 const GameState = preload("res://core/game_state.gd")
 const Economy = preload("res://core/economy.gd")
+const Buildings = preload("res://core/buildings.gd")
 const TurnLoop = preload("res://core/turn_loop.gd")
 const Chronicle = preload("res://core/chronicle.gd")
 const MOCK = "res://data/mock_ui.json"
@@ -131,9 +132,26 @@ func province_stats(province_id: String) -> Dictionary:
  if ids.size()>0: out.public_order = int(out.public_order/ids.size())
  return out
 
-# Building slots of a settlement: {name, type, visual, level} cards, {empty}, or {locked, requires}.
+# Building slots of a settlement as card views: {slot, chain, name, visual, level, max_level, main,
+# effects}, {slot, empty}, or {locked, requires} for slots a higher settlement level would open.
 func building_slots(settlement_id: String) -> Array:
- return state.settlements[settlement_id].buildings
+ var s = state.settlements[settlement_id]
+ var out = []
+ for i in s.buildings.size():
+  var b = s.buildings[i]
+  if b.has("chain"):
+   var c = Buildings.chain(b.chain)
+   out.append({"slot":i,"chain":b.chain,"name":b.get("name",Buildings.building_name(settlement_id,b.chain,int(b.level))),"visual":c.visual,
+    "level":int(b.level),"max_level":Buildings.max_level(b.chain),"main":c.get("main",false),"effects":Buildings.effect_lines(b.chain,int(b.level))})
+  else: out.append({"slot":i,"empty":true})
+ var main = Buildings.main_chain_id(s.type)
+ for level in range(int(s.level)+1,Buildings.max_level(main)+1):
+  for i in Buildings.slot_count(s.type,level)-Buildings.slot_count(s.type,level-1):
+   out.append({"locked":true,"requires":"%s (settlement level %d)" % [Buildings.building_name(settlement_id,main,level),level]})
+ return out
+
+func settlement_defense(settlement_id: String) -> int:
+ return int(state.settlements[settlement_id].defense)
 
 # --- Armies and units --------------------------------------------------------
 

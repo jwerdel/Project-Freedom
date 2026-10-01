@@ -1,0 +1,117 @@
+{
+  "_note": "PLACEHOLDER building data. Every cost, time, upkeep and effect here is a tunable placeholder, not approved balance. Rules: constitution.md (Economy and settlements). In V1 building availability is gated only by settlement level (research is deferred past V1). A building's level can never exceed its settlement's level, which is the level of the settlement's main building. core/buildings.gd applies effects; core/construction.gd builds, upgrades and cancels.",
+  "_effects": "income: flat gold per turn (times the settlement type's economic factor; not multiplied by endowments). income_per_endowment: flat gold per endowment point of that resource. income_pct: added to the settlement's income multiplier. tax_pct: raises the per-capita tax take by this fraction. growth: added to the yearly growth rate. capacity: added to the population cap. defense: settlement defense value (stored on the settlement for battles later). unlocks: unit type IDs this level allows recruiting (stored only; recruitment is a later block). public_order: NOT SIMULATED (public order is still mock); recorded for later.",
+  "slots": {
+    "_note": "Building slots per settlement level 1..3, including the main building's slot. Cities have the most, fortresses fewer, villages and castles the fewest.",
+    "city": [4, 6, 8],
+    "town": [3, 5, 6],
+    "fortress": [3, 4, 5],
+    "castle": [2, 3, 4],
+    "village": [2, 3, 4]
+  },
+  "construction": {
+    "_note": "One construction at a time per settlement. Cancelling refunds cancel_refund_same_turn of the cost in the turn it was started, cancel_refund_later afterwards (PLACEHOLDER rule).",
+    "max_per_settlement": 1,
+    "cancel_refund_same_turn": 1.0,
+    "cancel_refund_later": 0.5
+  },
+  "ai": {
+    "_note": "PLACEHOLDER AI: AI factions spend surplus gold (treasury above reserve_gold) on the cheapest economic building or main-building upgrade they can afford, at most max_builds_per_turn per faction.",
+    "reserve_gold": 1500,
+    "max_builds_per_turn": 1
+  },
+  "main_chains": {
+    "_note": "The main building chain of each settlement type.",
+    "city": "main_city",
+    "town": "main_town",
+    "village": "main_village",
+    "castle": "main_castle",
+    "fortress": "main_fortress"
+  },
+  "landmark_names": {
+    "_note": "Main-building names for landmark settlements (docs/world.md), per level.",
+    "goldspire_rock": ["Goldspire Hold", "Carved Halls of Goldspire", "Terraced Citadel"]
+  },
+  "chains": {
+    "main_city": {"name": "City Centre", "category": "main", "main": true, "visual": "building.keep", "visual_generic": "settlement.city",
+      "levels": [
+        {"name": "Town Hall", "cost": 0, "turns": 0, "upkeep": 40, "effects": {"defense": 5}},
+        {"name": "City Hall", "cost": 1600, "turns": 2, "upkeep": 70, "effects": {"defense": 10}},
+        {"name": "Chartered City", "cost": 3600, "turns": 2, "upkeep": 110, "effects": {"defense": 15}}]},
+    "main_town": {"name": "Town Centre", "category": "main", "main": true, "visual": "building.keep", "visual_generic": "settlement.city",
+      "levels": [
+        {"name": "Moot Hall", "cost": 0, "turns": 0, "upkeep": 25, "effects": {"defense": 3}},
+        {"name": "Town Hall", "cost": 1000, "turns": 2, "upkeep": 45, "effects": {"defense": 6}},
+        {"name": "Borough Hall", "cost": 2200, "turns": 2, "upkeep": 70, "effects": {"defense": 9}}]},
+    "main_village": {"name": "Village Centre", "category": "main", "main": true, "visual": "building.houses", "visual_generic": "settlement.village",
+      "levels": [
+        {"name": "Village Green", "cost": 0, "turns": 0, "upkeep": 10, "effects": {}},
+        {"name": "Market Village", "cost": 600, "turns": 1, "upkeep": 20, "effects": {"defense": 1}},
+        {"name": "Market Town", "cost": 1400, "turns": 2, "upkeep": 35, "effects": {"defense": 2}}]},
+    "main_castle": {"name": "Castle Keep", "category": "main", "main": true, "visual": "building.keep", "visual_generic": "settlement.fortress",
+      "levels": [
+        {"name": "Motte and Bailey", "cost": 0, "turns": 0, "upkeep": 30, "effects": {"defense": 10}},
+        {"name": "Stone Castle", "cost": 900, "turns": 2, "upkeep": 50, "effects": {"defense": 18}},
+        {"name": "Great Castle", "cost": 2000, "turns": 2, "upkeep": 75, "effects": {"defense": 26}}]},
+    "main_fortress": {"name": "Fortress Keep", "category": "main", "main": true, "visual": "building.keep", "visual_generic": "settlement.fortress",
+      "levels": [
+        {"name": "Hill Fort", "cost": 0, "turns": 0, "upkeep": 40, "effects": {"defense": 15}},
+        {"name": "Stone Keep", "cost": 1300, "turns": 2, "upkeep": 70, "effects": {"defense": 25}},
+        {"name": "Great Fortress", "cost": 3000, "turns": 2, "upkeep": 100, "effects": {"defense": 35}}]},
+
+    "market": {"name": "Market", "category": "economic", "visual": "building.market", "settlement_types": ["city", "town", "village"],
+      "levels": [
+        {"name": "Market Square", "cost": 500, "turns": 1, "upkeep": 20, "effects": {"income": 60, "tax_pct": 0.10}},
+        {"name": "Merchant Quarter", "cost": 1100, "turns": 2, "upkeep": 35, "effects": {"income": 140, "tax_pct": 0.20}},
+        {"name": "Grand Exchange", "cost": 2200, "turns": 2, "upkeep": 55, "effects": {"income": 260, "tax_pct": 0.30}}]},
+    "farm": {"name": "Farms", "category": "economic", "visual": "building.farm", "settlement_types": ["village", "town", "castle"],
+      "levels": [
+        {"name": "Wheat Fields", "cost": 300, "turns": 1, "upkeep": 10, "effects": {"income": 10, "income_per_endowment": {"food": 5}, "growth": 0.004}},
+        {"name": "Granaries", "cost": 700, "turns": 1, "upkeep": 15, "effects": {"income": 20, "income_per_endowment": {"food": 8}, "growth": 0.007}},
+        {"name": "Estates", "cost": 1400, "turns": 2, "upkeep": 25, "effects": {"income": 35, "income_per_endowment": {"food": 12}, "growth": 0.010}}]},
+    "mine": {"name": "Mines", "category": "economic", "visual": "building.mine", "settlement_types": ["city", "town", "village", "castle", "fortress"],
+      "levels": [
+        {"name": "Quarry and Pits", "cost": 450, "turns": 1, "upkeep": 25, "effects": {"income": 40, "income_per_endowment": {"minerals": 15, "stone": 5}}},
+        {"name": "Deep Mines", "cost": 1000, "turns": 2, "upkeep": 40, "effects": {"income": 80, "income_per_endowment": {"minerals": 25, "stone": 8}}},
+        {"name": "Great Mine Works", "cost": 2000, "turns": 2, "upkeep": 60, "effects": {"income": 130, "income_per_endowment": {"minerals": 40, "stone": 12}}}]},
+    "port": {"name": "Port", "category": "economic", "visual": "building.port", "settlement_types": ["city", "town", "village"],
+      "levels": [
+        {"name": "Fishing Wharf", "cost": 600, "turns": 1, "upkeep": 20, "effects": {"income": 60, "growth": 0.002}},
+        {"name": "Harbour", "cost": 1300, "turns": 2, "upkeep": 30, "effects": {"income": 120, "growth": 0.003}},
+        {"name": "Merchant Harbour", "cost": 2500, "turns": 2, "upkeep": 45, "effects": {"income": 220, "growth": 0.004}}]},
+    "houses": {"name": "Housing", "category": "economic", "visual": "building.houses", "settlement_types": ["city", "town", "village"],
+      "levels": [
+        {"name": "Houses", "cost": 350, "turns": 1, "upkeep": 10, "effects": {"capacity": 1000, "growth": 0.002}},
+        {"name": "Tenements", "cost": 800, "turns": 1, "upkeep": 15, "effects": {"capacity": 2500, "growth": 0.003}},
+        {"name": "Wards", "cost": 1600, "turns": 2, "upkeep": 25, "effects": {"capacity": 4000, "growth": 0.004}}]},
+    "temple": {"name": "Temple", "category": "civic", "visual": "building.temple", "settlement_types": ["city", "town", "village", "castle", "fortress"],
+      "levels": [
+        {"name": "Shrine", "cost": 400, "turns": 1, "upkeep": 25, "effects": {"growth": 0.002, "public_order": 5}},
+        {"name": "Great Temple", "cost": 1000, "turns": 2, "upkeep": 40, "effects": {"growth": 0.003, "public_order": 10}}]},
+
+    "barracks": {"name": "Barracks", "category": "military", "visual": "building.barracks", "settlement_types": ["city", "town", "castle", "fortress"],
+      "levels": [
+        {"name": "Garrison", "cost": 500, "turns": 1, "upkeep": 45, "effects": {"unlocks": ["peasant_levy", "spearmen"], "defense": 3}},
+        {"name": "Barracks", "cost": 1100, "turns": 2, "upkeep": 60, "effects": {"unlocks": ["swordsmen"], "defense": 5}},
+        {"name": "Armoury", "cost": 2200, "turns": 2, "upkeep": 80, "effects": {"unlocks": ["heavy_infantry"], "defense": 7}}]},
+    "archery_range": {"name": "Archery Range", "category": "military", "visual": "building.archery_range", "settlement_types": ["city", "town", "castle", "fortress"],
+      "levels": [
+        {"name": "Butts", "cost": 450, "turns": 1, "upkeep": 35, "effects": {"unlocks": ["archers"], "defense": 2}},
+        {"name": "Archery Range", "cost": 1000, "turns": 2, "upkeep": 50, "effects": {"defense": 4}}]},
+    "stables": {"name": "Stables", "category": "military", "visual": "building.stables", "settlement_types": ["city", "castle", "fortress"],
+      "levels": [
+        {"name": "Stables", "cost": 700, "turns": 1, "upkeep": 50, "effects": {"unlocks": ["cavalry"]}},
+        {"name": "Horse Lines", "cost": 1400, "turns": 2, "upkeep": 70, "effects": {"defense": 3}}]},
+
+    "walls": {"name": "Walls", "category": "defense", "visual": "building.walls", "settlement_types": ["city", "town", "village", "castle", "fortress"],
+      "levels": [
+        {"name": "Palisade", "cost": 400, "turns": 1, "upkeep": 20, "effects": {"defense": 10}},
+        {"name": "Curtain Walls", "cost": 1000, "turns": 2, "upkeep": 35, "effects": {"defense": 20}},
+        {"name": "Great Walls", "cost": 2000, "turns": 2, "upkeep": 50, "effects": {"defense": 30}}]},
+    "watchtower": {"name": "Towers", "category": "defense", "visual": "building.watchtower", "settlement_types": ["city", "town", "village", "castle", "fortress"],
+      "levels": [
+        {"name": "Watchtowers", "cost": 350, "turns": 1, "upkeep": 15, "effects": {"defense": 6}},
+        {"name": "Arrow Towers", "cost": 800, "turns": 1, "upkeep": 25, "effects": {"defense": 12}},
+        {"name": "Bastions", "cost": 1600, "turns": 2, "upkeep": 40, "effects": {"defense": 18}}]}
+  }
+}

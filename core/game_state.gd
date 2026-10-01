@@ -5,6 +5,7 @@ extends RefCounted
 
 const WorldMap = preload("res://core/world_map.gd")
 const UnitTypes = preload("res://core/unit_types.gd")
+const Buildings = preload("res://core/buildings.gd")
 const START = "res://data/campaign_start.json"
 
 var seed := 0
@@ -12,7 +13,7 @@ var year := 1
 var turn := 1
 var player_faction := ""
 var treasury = {}     # faction id -> int gold
-var settlements = {}  # settlement id -> {owner, type, level, population (float), buildings, resources}
+var settlements = {}  # settlement id -> {owner, type, level, population (float), buildings (slots), construction, resources, defense, unlocks}
 var armies = []       # army ids (data/armies/)
 var chronicle = []    # {year, category, title, text}
 var last_ledgers = {} # faction id -> ledger of the last processed turn
@@ -31,8 +32,9 @@ static func from_data(path := START) -> RefCounted:
   var start = data.settlements.get(id,{})
   s.settlements[id] = {
    "owner":r.owner,"type":r.settlement.type,"level":int(r.settlement.level),
-   "population":float(start.get("population",0)),"buildings":start.get("buildings",[]).duplicate(true),
-   "resources":r.get("resources",{}).duplicate()}
+   "population":float(start.get("population",0)),"buildings":starting_slots(id,r.settlement.type,int(r.settlement.level),start.get("buildings",[])),
+   "construction":{},"resources":r.get("resources",{}).duplicate()}
+  Buildings.refresh(s,id)
  s.armies = data.get("armies",[]).duplicate()
  s.chronicle = load("res://core/chronicle.gd").opening_entries()
  return s
@@ -63,3 +65,16 @@ func armies_of(faction: String) -> Array:
 # Everything that defines the state, for determinism checks and later save/load.
 func to_dict() -> Dictionary:
  return {"seed":seed,"year":year,"turn":turn,"player_faction":player_faction,"treasury":treasury.duplicate(true),"settlements":settlements.duplicate(true),"armies":armies.duplicate(),"chronicle":chronicle.duplicate(true)}
+
+# Slot list of a starting settlement: the main building (at the settlement's level) in slot 0, the
+# start file's other buildings ({chain, level[, name]}), then empty slots up to the slot count.
+static func starting_slots(id: String,type: String,level: int,listed: Array) -> Array:
+ var slots = [{"chain":Buildings.main_chain_id(type),"level":level}]
+ for b in listed:
+  assert(not Buildings.is_main(b.chain),"%s: the main building is implied, do not list %s" % [id,b.chain])
+  assert(int(b.level)>=1 and int(b.level)<=mini(level,Buildings.max_level(b.chain)),"%s: %s level %d exceeds settlement level %d" % [id,b.chain,int(b.level),level])
+  slots.append(b.duplicate())
+ var count = Buildings.slot_count(type,level)
+ assert(slots.size()<=count,"%s: %d buildings but only %d slots" % [id,slots.size(),count])
+ while slots.size()<count: slots.append({})
+ return slots

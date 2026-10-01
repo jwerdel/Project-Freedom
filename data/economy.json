@@ -1,22 +1,27 @@
 {
   "_note": "PLACEHOLDER economy tuning. Every number here is a tunable placeholder, not approved balance. Rules follow constitution.md (Economy and settlements); see core/economy.gd for how each value is used.",
+  "_income": "Settlement income = ((base_income[level] + population * tax_per_capita * (1 + building tax_pct)) * (1 + resource bonus + building income_pct) + building flat income) * economic_factor, capped at income_ceiling[level]. Building effects live in data/buildings.json.",
+  "taxes": {
+    "_note": "Per-capita tax: gold per person per year (confirmed 2026-10-01: income scales with population). Placeholder rate.",
+    "tax_per_capita": 0.02
+  },
   "settlement_types": {
-    "_note": "role: economic / mixed / defensive (constitution: villages economic, castles defensive, towns mixed; cities prioritize economy, fortresses defence). Arrays are per level 1..3.",
-    "city":     {"role": "economic",  "base_income": [500, 800, 1150], "economic_factor": 1.0,  "income_ceiling": [2000, 3500, 6000], "growth_base": 0.020, "capacity": [10000, 20000, 32000]},
-    "town":     {"role": "mixed",     "base_income": [300, 480, 700],  "economic_factor": 0.85, "income_ceiling": [900, 1500, 2500],  "growth_base": 0.015, "capacity": [4000, 8000, 14000]},
-    "village":  {"role": "economic",  "base_income": [150, 240, 340],  "economic_factor": 1.0,  "income_ceiling": [400, 650, 900],   "growth_base": 0.025, "capacity": [2500, 4000, 6000]},
-    "castle":   {"role": "defensive", "base_income": [80, 130, 180],   "economic_factor": 0.6,  "income_ceiling": [150, 220, 300],   "growth_base": 0.008, "capacity": [800, 1500, 2500]},
-    "fortress": {"role": "defensive", "base_income": [200, 300, 400],  "economic_factor": 0.6,  "income_ceiling": [300, 450, 600],   "growth_base": 0.006, "capacity": [3000, 5000, 8000]}
+    "_note": "role: economic / mixed / defensive (constitution: villages economic, castles defensive, towns mixed; cities prioritize economy, fortresses defence). Arrays are per level 1..3. capacity is the population cap of the main building's level (Housing adds to it).",
+    "city":     {"role": "economic",  "base_income": [200, 300, 450], "economic_factor": 1.0,  "income_ceiling": [2000, 3500, 6000], "growth_base": 0.020, "capacity": [10000, 20000, 32000]},
+    "town":     {"role": "mixed",     "base_income": [130, 200, 300], "economic_factor": 0.85, "income_ceiling": [900, 1500, 2500],  "growth_base": 0.015, "capacity": [4000, 8000, 14000]},
+    "village":  {"role": "economic",  "base_income": [100, 150, 220], "economic_factor": 1.0,  "income_ceiling": [400, 650, 900],   "growth_base": 0.025, "capacity": [2500, 4000, 6000]},
+    "castle":   {"role": "defensive", "base_income": [60, 90, 120],   "economic_factor": 0.6,  "income_ceiling": [150, 220, 300],   "growth_base": 0.008, "capacity": [800, 1500, 2500]},
+    "fortress": {"role": "defensive", "base_income": [150, 220, 300], "economic_factor": 0.6,  "income_ceiling": [300, 450, 600],   "growth_base": 0.006, "capacity": [3000, 5000, 8000]}
   },
   "resources": {
-    "_note": "Regional endowments (0-5 per region, data/provinces.json) raise economic potential and growth; they are never spent. income_bonus is the fractional income increase per endowment point.",
+    "_note": "Regional endowments (0-5 per region, data/provinces.json) raise economic potential and growth; they are never spent. income_bonus is the fractional increase of base and tax income per endowment point.",
     "wood":     {"income_bonus": 0.05, "growth_bonus": 0.0008},
     "stone":    {"income_bonus": 0.05, "growth_bonus": 0.0004},
     "food":     {"income_bonus": 0.06, "growth_bonus": 0.0040},
     "minerals": {"income_bonus": 0.15, "growth_bonus": 0.0004}
   },
   "growth": {
-    "_note": "Yearly growth rate = growth_base(type) + resource growth bonuses + wealth term + popularity term, applied logistically toward the settlement's capacity.",
+    "_note": "Yearly growth rate = growth_base(type) + resource growth bonuses + building growth + wealth term + popularity term, applied logistically toward the settlement's capacity (type capacity + building capacity).",
     "wealth_per_gold_per_1000_people": 0.0001,
     "wealth_cap": 0.010,
     "ruler_popularity_default": 0.0,
@@ -24,8 +29,7 @@
     "_popularity_note": "STUB: ruler popularity is open in the constitution; it stays neutral (0) and has no effect until designed."
   },
   "upkeep": {
-    "_note": "Army upkeep uses each unit type's placeholder_stats.upkeep times this multiplier. Building upkeep is per building level.",
-    "army_upkeep_multiplier": 0.6,
-    "building_upkeep_per_level": {"keep": 40, "port": 30, "market": 20, "walls": 35, "houses": 10, "temple": 25, "barracks": 45, "watchtower": 20, "mine": 30, "farm": 10}
+    "_note": "Army upkeep uses each unit type's placeholder_stats.upkeep times this multiplier. Building upkeep is per building level in data/buildings.json.",
+    "army_upkeep_multiplier": 0.6
   }
 }
