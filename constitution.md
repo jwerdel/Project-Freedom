@@ -25,6 +25,8 @@ Confirmed:
 - A small early performance test will validate that large armies are feasible: one soldier model duplicated into a large army, measured on the development PC.
 - All soldiers may share one placeholder model for now. Unit cards must still visually resemble their unit.
 - Art and gameplay data are separate: gameplay values live in data files, each visual is its own scene, and one asset manifest maps IDs to visual scenes, so the art pass swaps visuals without touching gameplay. CLAUDE.md holds the working rules.
+- Campaign UI direction: the campaign UI should heavily resemble Total War: Warhammer III's campaign UI: round menu buttons top-left, a resource bar top-center, minimap top-right, event messages on the right, province stats on the left, a bottom-center province panel with settlement tabs and building-slot cards (or the army panel with unit cards when an army is selected), and a large round End Turn button bottom-right. Dark panels with ornate gold-trimmed frames, tinted per faction. Placeholder UI art comes from Kenney's CC0 UI packs.
+- Placeholder packs: the Quaternius and Kenney packs listed in ASSETS.md are approved (2026-09-30).
 - Two scales:
   - Campaign map scale: stylized miniature scale. Generals and heroes are deliberately oversized relative to settlements for readability. The current prototype's proportions are the reference: the commander figure stands about 4.4 m to the helmet top (banner pole about 5.1 m) on a 1.1 m radius base; houses are about 1.3–2.5 m to the roof ridge; Greyhaven's wall ring has a radius of about 8.7 m with 1.6 m walls; towers are 2.35–5.2 m; roads are 1.0 / 1.3 / 1.6 m wide (dirt / gravel / stone); wagons are about 3.3 m long including the draft animal; ships are about 4 m long with a 3.4 m mast; fir trees are 3.5–6.8 m.
   - World/battle scale: 1 Godot unit = 1 meter, humans about 1.8 m. Applies to deployment and battle scenes and to the source proportions of all character models; campaign-map figures are scaled up from these sources.
@@ -32,7 +34,6 @@ Confirmed:
 Open:
 
 - Target army size and frame-rate threshold for the performance test.
-- Which placeholder packs to use (proposal pending approval).
 
 ## Campaign and world
 

@@ -34,7 +34,8 @@ Portraits are auto-rendered from the unit's visual scene (SubViewport render, ca
 ## Free and local only
 
 - No paid tools, services, or assets. No required servers or network at runtime.
-- Only CC0 or clearly free-for-commercial-use assets. Record source URL, author, and license for every third-party asset in `ASSETS.md` in the same commit that adds it.
+- Allowed licenses: CC0; SIL Open Font License (fonts only); CC BY, only with the required attribution recorded in `ASSETS.md`. Anything else (including "free" custom licenses such as the Quaternius Asset License) needs the user's approval first.
+- Record source URL, author, and license for every third-party asset in `ASSETS.md` in the same commit that adds it.
 - Ask before downloading asset packs or adding dependencies.
 
 ## Repository hygiene

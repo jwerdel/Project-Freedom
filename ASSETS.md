@@ -52,6 +52,67 @@ Source: https://quaternius.com/packs/ultimatefantasyrts.html (full pack, free Go
 | `Dock_FirstAge.gltf` | `glTF/Dock_FirstAge.gltf` | 388 | Goldspire Rock: piers (stage 2+) |
 | `License.txt` | `License.txt` | — | Pack license |
 
+### Modular Weapons Pack — `assets/quaternius/weapons/`
+
+Source: https://quaternius.com/packs/medievalweapons.html ("Modular Weapons Pack", 24 models, CC0 on the official page, checked 2026-09-30). Downloaded as FBX only. License file: `License.txt`, copied from the download; it says "Medieval Weapons by @Quaternius" and "CC0 1.0 Universal (CC0 1.0) Public Domain Dedication". The FBX files import with Godot 4.7.2's built-in FBX importer (ufbx); they come in about 5× real size, so each weapon's campaign scale is set in `data/units/weapons.json`. Files copied unmodified.
+
+| File | Used by |
+|---|---|
+| `Spear.fbx` | Peasant Levy, Spearmen, Cavalry (as a lance) |
+| `Shield_Round.fbx` | Spearmen |
+| `Bow_Wooden.fbx` | Archers |
+| `Sword.fbx` | Swordsmen |
+| `Shield_Heater.fbx` | Swordsmen; Heavy Infantry (scaled up as a large shield) |
+| `Hammer_Double.fbx` | Heavy Infantry |
+| `License.txt` | Pack license |
+
+## Kenney (CC0) — imported
+
+Author: Kenney (https://www.kenney.nl). License: CC0 1.0 Universal; credit is appreciated but not required. Files copied unmodified; the white Fantasy UI Borders are tinted in code.
+
+### Fantasy UI Borders — `assets/kenney/fantasy-ui-borders/`
+
+Source: https://kenney.nl/assets/fantasy-ui-borders (version 1.0). `License.txt` copied from the download states CC0.
+
+| File | Pack path | Used as |
+|---|---|---|
+| `panel-border-010.png` | `PNG/Default/Border/panel-border-010.png` | Main panel frame (9-slice, gold tint) |
+| `panel-border-001.png` | `PNG/Default/Border/panel-border-001.png` | Card and button frame (9-slice) |
+| `panel-border-015.png` | `PNG/Default/Border/panel-border-015.png` | Thin frame for slots and small widgets (9-slice) |
+| `divider-fade-000.png` | `PNG/Default/Divider Fade/divider-fade-000.png` | Section divider |
+| `License.txt` | `License.txt` | Pack license |
+
+### UI Pack: RPG Expansion — `assets/kenney/rpg-expansion/`
+
+Source: https://kenney.nl/assets/ui-pack-rpg-expansion . `License.txt` is the download's `license.txt`, which states CC0.
+
+| File (same name in the pack's `PNG/`) | Used as |
+|---|---|
+| `buttonRound_brown.png`, `buttonRound_beige.png` | Round menu and minimap buttons |
+| `buttonLong_brown.png`, `buttonLong_brown_pressed.png`, `buttonLong_beige.png` | Tabs and text buttons (normal, pressed, selected) |
+| `panel_beige.png` | Parchment tooltips |
+| `panelInset_brown.png` | Building slot background |
+| `barBack_horizontal{Left,Mid,Right}.png` | Public order bar track |
+| `barGreen_horizontal{Left,Mid,Right}.png`, `barRed_horizontal{Left,Mid,Right}.png` | Public order bar fill (positive / negative) |
+| `iconCross_grey.png` | Locked building slot |
+| `License.txt` | Pack license |
+
+## Fonts (SIL Open Font License 1.1) — `assets/fonts/`
+
+Downloaded 2026-09-30 from the Google Fonts repository (https://github.com/google/fonts). Each font's OFL text is kept next to it.
+
+| File | Font | Source | Copyright | SHA-256 |
+|---|---|---|---|---|
+| `Cinzel-Variable.ttf` | Cinzel (variable weight), headers | `ofl/cinzel/Cinzel[wght].ttf`; project https://github.com/NDISCOVER/Cinzel | 2020 The Cinzel Project Authors | `f4d83d34d1f6c741193e4acf4b3dff9531e5a67b6aa65228d00a7db72a4e0f34` |
+| `AlegreyaSans-Regular.ttf`, `AlegreyaSans-Bold.ttf` | Alegreya Sans, body text | `ofl/alegreyasans/`; project https://github.com/huertatipografica/Alegreya-Sans | 2013 The Alegreya Sans Project Authors | `8fab6341…ea10` (Regular), `a3055a18…fb8e` (Bold) |
+| `Cinzel-OFL.txt`, `AlegreyaSans-OFL.txt` | License texts | `OFL.txt` in each font folder | — | — |
+
+## Reviewed and rejected
+
+| Pack | Reason | Decision |
+|---|---|---|
+| Bestiary – Dungeon Monsters Kit (Quaternius, free Standard tier: Imp, Puglin) | Quaternius Asset License v1.0 (https://quaternius.com/license.html), not CC0: free commercial use but no redistribution of the assets themselves. Textured, sculpted PBR style that does not match the flat-color low-poly map. | Rejected by the user, 2026-09-30. Not imported. |
+
 ## Approved placeholder packs (license confirmed)
 
 Approved by the user on 2026-09-30. CC0 was confirmed on each official page that day (the "License CC0" label in the pack's sidebar links to https://creativecommons.org/publicdomain/zero/1.0/). Import only the files we use, into `assets/quaternius/<pack>/`, with that pack's `License.txt`. When files are imported, list them in the imported section above. Do not swap the remaining planned uses into the prototype until that is approved.
@@ -77,6 +138,6 @@ The downloaded copies were checked on 2026-09-30: each pack's own license file s
 
 Godot 4.7.2 standard Windows build, MIT license: https://github.com/godotengine/godot/releases/tag/4.7.2-stable . Downloaded by `scripts/get_godot.ps1` into `runtime/` together with `GODOT-LICENSE.txt` and `GODOT-COPYRIGHT.txt`. More information: https://godotengine.org/license/ .
 
-## Fonts
+## System fonts
 
-Uses installed Windows system fonts (Georgia, Segoe UI) through Godot's SystemFont. No font files are redistributed.
+The legacy prototype labels still use installed Windows system fonts (Georgia, Segoe UI) through Godot's SystemFont. These are not redistributed.
