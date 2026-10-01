@@ -1027,6 +1027,17 @@ func run_checks():
   update_walk(1000.0)
  assert(ui_data.army_movement(COMMANDER_ARMY).garrison == "crownwatch")
  assert(not ui_data.settlement("crownwatch").garrison.is_empty())
+ # Recruitment at Crownwatch: open the panel, queue a levy, cancel it with a full refund.
+ select_army()
+ ui.open_recruitment(COMMANDER_ARMY)
+ assert(ui.recruitment_visible())
+ var gold0 = ui_data.resources().treasury
+ var pop0 = ui_data.settlement("crownwatch").population
+ ui.recruit_box.find_child("Recruit_peasant_levy",true,false).pressed.emit()
+ assert(ui_data.army(COMMANDER_ARMY).queue.size()==1 and ui_data.settlement("crownwatch").population<pop0)
+ ui_data.cancel_recruit(COMMANDER_ARMY,0)
+ assert(ui_data.resources().treasury==gold0 and ui_data.settlement("crownwatch").population==pop0)
+ ui.close_recruitment()
  ui_data.state.army_state[COMMANDER_ARMY] = saved_army
  place_commander()
  refresh_army_overlays()
@@ -1048,7 +1059,7 @@ func run_checks():
   assert(goldspire_level==level_now)
  ui.clear_selection()
  reset_camera()
- print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn; construction upgrades goldspire's stage; army movement preview, orders, blocking and garrison")
+ print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn; construction upgrades goldspire's stage; army movement preview, orders, blocking and garrison; recruitment queue and refund")
 
 # --- Movement grid bake ------------------------------------------------------------
 # Writes data/movement_grid.json, the terrain grid army movement reads (core/movement.gd), by

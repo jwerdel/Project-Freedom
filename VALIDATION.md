@@ -178,6 +178,42 @@ Movement grid: 140×102 cells of 2 m (open 5,695, forest 1,391, hills 1,299, pas
 
 Screenshots (generated, in `captures/`): `move_preview.png` (3-turn path with turn markers 1-2-3, routed around foreign Willowmere), `move_reachable.png` (reachable area of the selected army; the hole is foreign Greyhaven), `move_garrison.png` (the host garrisoned in Crownwatch).
 
+## Recruitment, new armies and rival armies (2026-10-01)
+
+Tests: 94/94 GUT tests pass headless and with the real renderer. Self-test passes, now also opening the recruitment panel at Crownwatch, queueing a levy (gold and men taken) and cancelling it (both refunded).
+
+GPU time, same method as above (RTX 4060, 1440×900, vsync off, 10 s settle, 5 s average, 2 rounds): overview with all three armies visible 2.05 / 2.06 ms (unchanged; two more commander figures).
+
+End Turn: 2.5 ms in the self-test; 2.38 ms average, 3.22 ms worst over the 20-turn run below (3 armies, AI construction and recruitment, replenishment).
+
+20-turn sample run (seed 1201, placeholder numbers; treasury gold / population / armies / units at the start of each year; units exclude generals). House Aurek is the player and gives no orders; Lannet and Verrin are driven by the placeholder AI, which recruited peasant levies (the only unit their settlements unlock) into their capital garrisons: Lannet up to its 6-unit target by year 4, Verrin to 4 by year 4 and a 5th in year 17, held back by its net-income guard. Aurek's host replenishes at a gold cost while it stands in Lannet's land.
+
+| Year | House Aurek | House Lannet | House Verrin |
+|---|---|---|---|
+| 1 | 8450 / 19700 / 1 / 8 | 6000 / 12400 / 1 / 4 | 3000 / 2100 / 1 / 2 |
+| 2 | 9064 / 19854 / 1 / 8 | 5694 / 12475 / 1 / 4 | 2188 / 1959 / 1 / 2 |
+| 3 | 9704 / 20005 / 1 / 8 | 4840 / 12552 / 1 / 5 | 1623 / 1856 / 1 / 3 |
+| 4 | 10362 / 20152 / 1 / 8 | 5222 / 12789 / 1 / 6 | 1676 / 1924 / 1 / 4 |
+| 5 | 11043 / 20296 / 1 / 8 | 4474 / 13025 / 1 / 6 | 1685 / 1993 / 1 / 4 |
+| 6 | 11738 / 20435 / 1 / 8 | 4861 / 13260 / 1 / 6 | 1695 / 2064 / 1 / 4 |
+| 7 | 12438 / 20572 / 1 / 8 | 1654 / 13497 / 1 / 6 | 1707 / 2135 / 1 / 4 |
+| 8 | 13158 / 20704 / 1 / 8 | 2151 / 13731 / 1 / 6 | 1721 / 2206 / 1 / 4 |
+| 9 | 13883 / 20833 / 1 / 8 | 2655 / 14100 / 1 / 6 | 1737 / 2279 / 1 / 4 |
+| 10 | 14636 / 20959 / 1 / 8 | 1713 / 14471 / 1 / 6 | 1755 / 2351 / 1 / 4 |
+| 11 | 15394 / 21081 / 1 / 8 | 2382 / 14844 / 1 / 6 | 1775 / 2424 / 1 / 4 |
+| 12 | 16156 / 21200 / 1 / 8 | 3062 / 15238 / 1 / 6 | 1797 / 2497 / 1 / 4 |
+| 13 | 16922 / 21316 / 1 / 8 | 1743 / 15633 / 1 / 6 | 1821 / 2571 / 1 / 4 |
+| 14 | 17692 / 21429 / 1 / 8 | 2436 / 16030 / 1 / 6 | 1847 / 2644 / 1 / 4 |
+| 15 | 18467 / 21538 / 1 / 8 | 3140 / 16431 / 1 / 6 | 1875 / 2717 / 1 / 4 |
+| 16 | 19245 / 21644 / 1 / 8 | 1690 / 16832 / 1 / 6 | 1905 / 2790 / 1 / 4 |
+| 17 | 20027 / 21747 / 1 / 8 | 2452 / 17233 / 1 / 6 | 1937 / 2862 / 1 / 4 |
+| 18 | 20812 / 21847 / 1 / 8 | 3226 / 17643 / 1 / 6 | 1721 / 2774 / 1 / 4 |
+| 19 | 21602 / 21944 / 1 / 8 | 1655 / 18052 / 1 / 6 | 1752 / 2846 / 1 / 5 |
+| 20 | 22395 / 22039 / 1 / 8 | 2597 / 18459 / 1 / 6 | 1749 / 2918 / 1 / 5 |
+| 21 | 23191 / 22130 / 1 / 8 | 3552 / 18880 / 1 / 6 | 1748 / 2989 / 1 / 5 |
+
+Screenshots (generated, in `captures/`): `recruit_panel.png` (recruitment at Goldspire, locked units with their building), `recruit_queue.png` (two queued recruits on the army panel), `rival_army.png` (the Highbloom Levy garrisoned in Willowmere, green banner).
+
 ## Remaining limitations
 
 - Artwork is a prototype and has not been approved against the desired 2016 Total War campaign-map benchmark.

@@ -12,6 +12,7 @@ const Economy = preload("res://core/economy.gd")
 const TurnLoop = preload("res://core/turn_loop.gd")
 const UnitTypes = preload("res://core/unit_types.gd")
 const WorldMap = preload("res://core/world_map.gd")
+const Buildings = preload("res://core/buildings.gd")
 const ARMY = "aurek_host"
 const GS = "goldspire_rock"
 
@@ -192,3 +193,87 @@ func test_upkeep_follows_the_real_army():
  assert_almost_eq(Economy.army_upkeep(s,ARMY),before+per_unit,1)
  Armies.disband(s,ARMY,s.army_state[ARMY].units.size()-1)
  assert_almost_eq(Economy.army_upkeep(s,ARMY),before,1)
+
+func test_rival_factions_start_with_garrisoned_armies():
+ var s = GameState.from_data()
+ assert_eq(s.armies_of("house_lannet"),["silverfall_guard"])
+ assert_eq(s.armies_of("house_verrin"),["highbloom_levy"])
+ assert_eq(s.army_state.silverfall_guard.garrison,"greyhaven")
+ assert_eq(s.army_state.highbloom_levy.garrison,"willowmere")
+ for id in s.army_state:
+  for u in s.army_state[id].units: assert_between(int(u.men),1,int(u.max_men),id)
+
+func test_hiring_a_general_raises_a_new_garrisoned_army():
+ var s = home_state()
+ # Goldspire already holds the host: hire at Crownwatch.
+ assert_false(Armies.can_raise(s,"house_aurek",GS).ok,"one army per garrison")
+ var gold = s.treasury.house_aurek
+ var r = Armies.raise_army(s,"house_aurek","crownwatch")
+ assert_true(r.ok,", ".join(r.reasons))
+ var a = s.army_state[r.army]
+ assert_eq(s.treasury.house_aurek,gold-int(Armies.data().armies.general_cost))
+ assert_eq(a.faction,"house_aurek")
+ assert_eq(a.garrison,"crownwatch")
+ assert_true(a.units.is_empty())
+ assert_string_contains(a.commander.name,"Aurek")
+ assert_ne(a.commander.name,s.army_state[ARMY].commander.name)
+ assert_has(s.armies,r.army)
+ assert_has(s.armies_of("house_aurek"),r.army)
+ assert_eq(Movement.position(s,r.army),WorldMap.settlement_position("crownwatch"))
+ assert_true(Armies.can_recruit(s,r.army,"peasant_levy").ok,"the new army recruits where it was raised")
+ assert_gt(Economy.army_upkeep(s,r.army),0,"a general costs upkeep")
+ # Foreign settlements, the army limit and an empty treasury are refused.
+ assert_false(Armies.can_raise(s,"house_aurek","greyhaven").ok)
+ s.army_state[r.army].garrison = ""
+ s.army_state[r.army].position = [60.0,-10.0]
+ while Armies.armies_of(s,"house_aurek").size()<int(Armies.data().armies.max_per_faction):
+  var n = Armies.raise_army(s,"house_aurek","crownwatch")
+  assert_true(n.ok)
+  s.army_state[n.army].garrison = ""
+  s.army_state[n.army].position = [60.0,-12.0]
+ var over = Armies.can_raise(s,"house_aurek","crownwatch")
+ assert_false(over.ok)
+ assert_string_contains(", ".join(over.reasons),"Army limit")
+
+func test_ai_recruits_a_garrison_at_its_capital():
+ var s = GameState.from_data()
+ s.treasury.house_lannet = 50000
+ var a = s.army_state.silverfall_guard
+ var before = a.units.size()
+ var actions = Armies.ai_turn(s,"house_lannet")
+ assert_eq(actions.size(),1)
+ assert_eq(actions[0].action,"recruit")
+ assert_eq(a.queue.size(),1)
+ # Cheapest unit Greyhaven's buildings allow (levies; no barracks there).
+ assert_eq(a.queue[0].unit,"peasant_levy")
+ for i in 10: TurnLoop.end_turn(s)
+ assert_eq(a.units.size(),int(Armies.data().ai.garrison_units),"fills up to the garrison target and stops")
+ assert_gt(a.units.size(),before)
+
+func test_ai_raises_an_army_when_its_capital_has_none_and_respects_its_reserve():
+ var s = GameState.from_data()
+ s.army_state.erase("highbloom_levy")
+ s.armies.erase("highbloom_levy")
+ s.treasury.house_verrin = int(Armies.data().ai.reserve_gold)+int(Armies.data().armies.general_cost)-1
+ assert_true(Armies.ai_turn(s,"house_verrin").is_empty(),"cannot afford a general above its reserve")
+ s.treasury.house_verrin = 20000
+ var actions = Armies.ai_turn(s,"house_verrin")
+ assert_eq(actions[0].action,"raise")
+ var id = actions[0].army
+ assert_eq(s.army_state[id].garrison,"willowmere")
+ assert_string_contains(s.army_state[id].commander.name,"Verrin")
+
+func test_ai_never_recruits_into_negative_income():
+ var s = GameState.from_data()
+ s.treasury.house_verrin = 50000
+ # Shrink Willowmere until its income cannot carry another unit's upkeep.
+ s.settlements.willowmere.population = 600.0
+ var net = Economy.faction_ledger(s,"house_verrin").net
+ var levy = int(round(UnitTypes.get_type("peasant_levy").placeholder_stats.upkeep*Economy.data().upkeep.army_upkeep_multiplier))
+ assert_lt(net-levy,0,"precondition: one more levy would make income negative")
+ assert_true(Armies.ai_turn(s,"house_verrin").is_empty())
+ # With healthy income it recruits.
+ s.settlements.willowmere.population = 2400.0
+ s.settlements.willowmere.buildings[1] = {"chain":"farm","level":1}
+ Buildings.refresh(s,"willowmere")
+ if Economy.faction_ledger(s,"house_verrin").net-levy>=0: assert_false(Armies.ai_turn(s,"house_verrin").is_empty())
