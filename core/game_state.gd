@@ -33,7 +33,7 @@ static func from_data(path := START) -> RefCounted:
   s.settlements[id] = {
    "owner":r.owner,"type":r.settlement.type,"level":int(r.settlement.level),
    "population":float(start.get("population",0)),"buildings":starting_slots(id,r.settlement.type,int(r.settlement.level),start.get("buildings",[])),
-   "construction":{},"resources":r.get("resources",{}).duplicate()}
+   "construction":{},"coastal":bool(r.settlement.get("coastal",false)),"resources":r.get("resources",{}).duplicate()}
   Buildings.refresh(s,id)
  s.armies = data.get("armies",[]).duplicate()
  s.chronicle = load("res://core/chronicle.gd").opening_entries()

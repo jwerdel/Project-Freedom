@@ -4,7 +4,8 @@ extends RefCounted
 #    level of every other building. Upgrading it raises the settlement level, its population cap
 #    and slot count, and moves the settlement visual to the next growth stage.
 #  - Other slots hold one building chain each (no duplicates per settlement), built from level 1
-#    and upgraded one level at a time. In V1 availability is gated only by settlement level.
+#    and upgraded one level at a time. In V1 availability is gated by settlement level, plus
+#    geography where a chain requires it (ports need a coastal settlement).
 #  - Gold is paid when construction starts; it completes after the level's turns (1 turn = 1 year)
 #    during End Turn. One construction at a time per settlement (data). Cancelling refunds in full
 #    in the turn it started, partially afterwards (PLACEHOLDER rule in data).
@@ -64,6 +65,7 @@ static func can_build(state,id: String,slot: int,chain_id: String) -> Dictionary
    if other.get("chain","") == chain_id: reasons.append("Already built in this settlement")
   var pending = in_progress(state,id)
   if pending.get("chain","") == chain_id: reasons.append("Already under construction here")
+ if Buildings.chain(chain_id).get("requires",{}).get("coastal",false) and not s.get("coastal",false): reasons.append("Requires coast")
  if not Buildings.is_main(chain_id) and level>int(s.level):
   reasons.append("Requires %s (settlement level %d)" % [Buildings.building_name(id,main,level),level])
  if not in_progress(state,id).is_empty() and not "Already under construction here" in reasons:

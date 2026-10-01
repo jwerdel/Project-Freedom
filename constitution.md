@@ -93,7 +93,7 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 - Materials affect income and should not directly block buildings or recruitment. Research unlocks buildings, including naval progression. Siege endurance is also intended to depend on settlement resources; how this works without manual inventories remains open.
 - Confirmed (2026-10-01): income scales with population through taxes. A settlement's income is a base amount by settlement type and level plus a per-capita tax on its population, both modified by resource endowments, buildings, and the settlement type's income factor and ceiling.
 - Confirmed (2026-10-01): buildings have real effects: income, growth, recruitment unlocks, and defense.
-- Confirmed (2026-10-01): the research tree is deferred past V1 (see docs/v1-scope.md). In V1, building availability is gated only by settlement level.
+- Confirmed (2026-10-01): the research tree is deferred past V1 (see docs/v1-scope.md). In V1, building availability is gated by settlement level, plus geography where a building needs it: confirmed 2026-10-01, ports require a coastal settlement.
 
 ## Characters, dynasties, and governing
 

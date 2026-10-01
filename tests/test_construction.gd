@@ -202,3 +202,30 @@ func test_ui_browser_builds_upgrades_and_cancels():
  assert_eq(data.resources().treasury,before+int(Buildings.level_data("market",1).cost))
  # Other factions' settlements cannot be built in from the player's UI.
  for o in data.building_options("greyhaven",5): assert_false(o.available)
+
+func test_ports_require_a_coastal_settlement():
+ var s = GameState.from_data()
+ s.treasury.house_verrin = 100000
+ s.treasury.house_aurek = 100000
+ assert_false(s.settlements.willowmere.coastal)
+ assert_true(s.settlements.greyhaven.coastal and s.settlements[GS].coastal)
+ # Willowmere (level 1) may have no empty slot; give it one at level 2 to test the coast rule alone.
+ Construction.set_level(s,"willowmere",2)
+ var check = Construction.can_build(s,"willowmere",empty_slot(s,"willowmere"),"port")
+ assert_false(check.ok)
+ assert_has(check.reasons,"Requires coast")
+ var option = {}
+ for o in Construction.options(s,"willowmere",empty_slot(s,"willowmere")):
+  if o.chain == "port": option = o
+ assert_false(option.available)
+ assert_has(option.reasons,"Requires coast")
+ # Coastal settlements are not affected; every starting port stands on the coast.
+ assert_false("Requires coast" in Construction.can_build(s,GS,2,"port").reasons)
+ for id in s.settlements:
+  for b in s.settlements[id].buildings:
+   if b.get("chain","") == "port": assert_true(s.settlements[id].coastal,id+" has a port inland")
+ # The AI never starts an inland port.
+ for i in 15:
+  TurnLoop.end_turn(s)
+  for id in s.settlements:
+   if not s.settlements[id].coastal: assert_ne(Construction.in_progress(s,id).get("chain",""),"port",id)
