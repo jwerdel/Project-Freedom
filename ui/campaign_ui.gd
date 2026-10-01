@@ -11,6 +11,7 @@ signal overlay_toggled(overlay: String,on: bool)
 const UiKit = preload("res://ui/ui_kit.gd")
 const Widgets = preload("res://ui/widgets.gd")
 const Cards = preload("res://ui/cards.gd")
+const Minimap = preload("res://ui/minimap.gd")
 
 const MENU = [["faction","Faction overview"],["diplomacy","Diplomacy"],["tech","Technology"],["lords","Lords and heroes"],["finance","Finance"],["objectives","Objectives"]]
 const OVERLAYS = [["borders","Territory borders"],["settlements","Settlement banners"],["armies","Armies"]]
@@ -32,6 +33,7 @@ var hover_label: Label
 var toast_label: Label
 var fps_label: Label
 var minimap_slot: Control
+var minimap
 var overlay_buttons = {}
 var selected_settlement := ""
 var selected_army := ""
@@ -398,3 +400,14 @@ func refresh():
 # Grow the bottom panel upward to fit its content (building cards are shorter than unit cards).
 func _fit_bottom():
  bottom_panel.offset_top = bottom_panel.offset_bottom-bottom_panel.get_combined_minimum_size().y
+
+# Replace the minimap placeholder with the live minimap (see ui/minimap.gd).
+func setup_minimap(world: World3D,world_rect: Rect2,camera_footprint: Callable) -> Control:
+ var placeholder = minimap_slot.get_node_or_null("Placeholder")
+ if placeholder: placeholder.queue_free()
+ minimap = Minimap.new()
+ minimap.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+ minimap_slot.add_child(minimap)
+ minimap.setup(data,world,world_rect,camera_footprint)
+ minimap.tooltip_text = "Minimap: click or drag to move the camera"
+ return minimap

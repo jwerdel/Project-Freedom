@@ -48,6 +48,8 @@ The campaign UI is modeled on Total War: Warhammer III (see constitution.md). Cl
 - Textured coastal terrain, mountain backdrop, forest, farms, rocks, and sea.
 - Greyhaven, Crownwatch fortress, and Willowmere farming village with a hedgerowed farmland patchwork.
 - Goldspire Rock, the first landmark settlement (docs/world.md #2): a sea cliff fortress with three stages (mine tunnels and summit tower; carved halls, harbor and walls; terraced rock face).
+- Campaign map overlays: faction banners on settlements (emblem, name, level pips), glowing territory borders with a faction tint, and a clickable minimap. Provinces, regions and faction ownership come from `data/provinces.json` and `data/factions.json`.
+- Seven placeholder unit types with auto-rendered card portraits, and an eight-unit army led by the map commander.
 - Three settlement stages and three road stages.
 - Six moving caravans, four sailing vessels, docks, a lighthouse, and an animated mill.
 - A procedurally constructed armored commander with moving banner and cape.

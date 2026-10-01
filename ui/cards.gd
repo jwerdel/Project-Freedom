@@ -99,9 +99,10 @@ class BuildingCard extends Control:
    thumb.position = Vector2(5,5)
    thumb.size = Vector2(BUILDING_CARD.x-10,82)
    add_child(thumb)
-   var name_label = UiKit.label(slot.name,13,UiKit.TEXT,UiKit.FONT_BOLD)
-   name_label.position = Vector2(6,88)
-   name_label.size = Vector2(BUILDING_CARD.x-12,28)
+   var name_label = UiKit.label(slot.name,12,UiKit.TEXT,UiKit.FONT_BOLD)
+   name_label.position = Vector2(6,86)
+   name_label.custom_minimum_size = Vector2(BUILDING_CARD.x-12,30)
+   name_label.size = name_label.custom_minimum_size
    name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
    name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
    name_label.add_theme_constant_override("line_spacing",-4)

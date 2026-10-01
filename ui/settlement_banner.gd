@@ -1,0 +1,69 @@
+extends Button
+# Map banner for a settlement: a pennant in the owner's colors with its emblem, a name plate and
+# level pips. Fixed screen size so it reads at every zoom level; the owner positions it each frame.
+
+const UiKit = preload("res://ui/ui_kit.gd")
+const Icons = preload("res://ui/icons.gd")
+
+const PENNANT = Vector2(34,44)
+const PLATE_H = 26.0
+const MAX_LEVEL = 3
+
+var settlement_id := ""
+var settlement := {}
+var selected := false
+
+func _init(s: Dictionary):
+ settlement_id = s.id
+ flat = true
+ focus_mode = Control.FOCUS_NONE
+ mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+ texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+ mouse_entered.connect(queue_redraw)
+ mouse_exited.connect(queue_redraw)
+ update_settlement(s)
+
+func update_settlement(s: Dictionary):
+ settlement = s
+ tooltip_text = "%s\n%s\n%s\n%s · level %d" % [s.name,s.faction.name,s.province_name,s.type.capitalize(),s.level]
+ var w = maxf(PENNANT.x+12,UiKit.head_font().get_string_size(s.name.to_upper(),HORIZONTAL_ALIGNMENT_LEFT,-1,15).x+28)
+ custom_minimum_size = Vector2(w,PENNANT.y+PLATE_H+12)
+ size = custom_minimum_size
+ queue_redraw()
+
+func set_selected(on: bool):
+ if on == selected: return
+ selected = on
+ queue_redraw()
+
+# Screen point the banner's foot should sit on (the bottom of the pole tip).
+func anchor_offset() -> Vector2:
+ return Vector2(size.x*0.5,size.y)
+
+func _draw():
+ var c = UiKit.colors(settlement.faction)
+ var hover = get_global_rect().has_point(get_global_mouse_position())
+ var cx = size.x*0.5
+ var trim = Color("f6d77c") if (selected or hover) else c.secondary
+ # Pennant with a swallowtail, hanging above the plate.
+ var top = 0.0
+ var pts = PackedVector2Array([Vector2(cx-PENNANT.x*0.5,top),Vector2(cx+PENNANT.x*0.5,top),Vector2(cx+PENNANT.x*0.5,top+PENNANT.y),Vector2(cx,top+PENNANT.y-9),Vector2(cx-PENNANT.x*0.5,top+PENNANT.y)])
+ draw_colored_polygon(pts,c.primary)
+ var outline = pts.duplicate()
+ outline.append(pts[0])
+ draw_polyline(outline,trim,2.0 if not selected else 3.0)
+ draw_line(Vector2(cx-PENNANT.x*0.5-4,top),Vector2(cx+PENNANT.x*0.5+4,top),Color("3a2a1a"),4)
+ Icons.draw(self,settlement.faction.get("emblem",""),Rect2(cx-11,top+7,22,24),c.secondary)
+ # Name plate.
+ var plate = Rect2(Vector2(2,PENNANT.y+2),Vector2(size.x-4,PLATE_H))
+ draw_rect(plate,Color(0.07,0.05,0.04,0.9))
+ draw_style_box(UiKit.frame_box("thin",trim),plate.grow(2))
+ var name = settlement.name.to_upper()
+ var f = UiKit.head_font()
+ var tw = f.get_string_size(name,HORIZONTAL_ALIGNMENT_LEFT,-1,15).x
+ draw_string(f,Vector2(cx-tw*0.5,plate.position.y+18),name,HORIZONTAL_ALIGNMENT_LEFT,-1,15,Color("f3e3bd"))
+ # Level pips under the plate.
+ for i in MAX_LEVEL:
+  var p = Vector2(cx+(i-1)*12,plate.end.y+6)
+  draw_circle(p,4.2,Color(0,0,0,0.75))
+  draw_circle(p,3.0,Color("f2cf6a") if i<int(settlement.level) else Color(0.35,0.3,0.25))

@@ -9,6 +9,8 @@ const UiData = preload("res://core/ui_data.gd")
 const PortraitStudio = preload("res://core/portrait_studio.gd")
 const CampaignUI = preload("res://ui/campaign_ui.gd")
 const UiKit = preload("res://ui/ui_kit.gd")
+const SettlementBanner = preload("res://ui/settlement_banner.gd")
+const TerritoryOverlay = preload("res://visuals/terrain/territory_overlay.gd")
 # Overview camera (Home). Framed so the coast and Goldspire's sea face sit above the bottom panel.
 const OVERVIEW_TARGET = Vector3(10,3,21)
 const OVERVIEW_YAW = 0.08
@@ -64,6 +66,8 @@ var pins_root: Control
 var settlement_anchors = {}
 var overlays = {"borders":true,"settlements":true,"armies":true}
 var press_pos = Vector2.ZERO
+var terrain_material: ShaderMaterial
+var minimap
 
 func _ready():
  rng.seed = 87231
@@ -208,6 +212,12 @@ func make_terrain():
  material.set_shader_parameter("rock",load("res://assets/rocky_terrain_Diffuse.jpg"))
  material.set_shader_parameter("sand",load("res://assets/coast_sand_01_Diffuse.jpg"))
  material.set_shader_parameter("grass_normal",load("res://assets/aerial_grass_rock_nor_gl.jpg"))
+ # Faction tint and glowing territory borders, rasterized from data/provinces.json.
+ material.set_shader_parameter("territory_tint",TerritoryOverlay.tint_texture())
+ material.set_shader_parameter("territory_border",TerritoryOverlay.border_texture())
+ material.set_shader_parameter("territory_rect",TerritoryOverlay.rect_uniform())
+ material.set_shader_parameter("territory_on",1.0)
+ terrain_material = material
  kit.add_mesh(self,st.commit(),material)
 
 func make_sea():
@@ -370,6 +380,7 @@ func cycle_goldspire():
  goldspire_level = goldspire_level%3+1
  make_goldspire()
  if ui_data: ui_data.set_settlement_level(GOLDSPIRE_ID,goldspire_level)
+ if minimap: minimap.refresh()
  if ui: ui.toast(["Goldspire Rock: mine tunnels glow beneath a lone summit tower.","Goldspire Rock: carved halls, a walled summit and a harbor at its foot.","Goldspire Rock: the whole sea face is terraced with halls and gold-roofed towers."][goldspire_level-1])
 
 # Camera bookmark (G): Goldspire's sea face from the southwest.
@@ -427,14 +438,14 @@ func make_ui():
  ui.overlay_toggled.connect(set_overlay)
  settlement_anchors = {CITY_ID:ground(CITY,6),"crownwatch":ground(KEEP,6),"willowmere":ground(VILLAGE,5),GOLDSPIRE_ID:Vector3(GOLDSPIRE.x,27,GOLDSPIRE.y)}
  for id in settlement_anchors:
-  var b = Button.new()
-  b.text = ui_data.settlement(id).name.to_upper()
-  b.add_theme_font_override("font",UiKit.head_font())
-  b.add_theme_font_size_override("font_size",15)
-  b.focus_mode = Control.FOCUS_NONE
+  var b = SettlementBanner.new(ui_data.settlement(id))
   b.pressed.connect(select_settlement.bind(id))
   pins_root.add_child(b)
   pins.append({"button":b,"world":settlement_anchors[id],"id":id})
+ ui_data.changed.connect(func():
+  for p in pins: p.button.update_settlement(ui_data.settlement(p.id)))
+ minimap = ui.setup_minimap(get_viewport().world_3d,TerritoryOverlay.RECT,camera_footprint)
+ minimap.minimap_clicked.connect(func(p: Vector2): target = Vector3(clampf(p.x,-105,105),height_at(p.x,p.y),clampf(p.y,-90,65)))
 
 func select_settlement(id: String):
  ui.show_settlement(id)
@@ -462,16 +473,33 @@ func end_turn():
 func set_overlay(overlay: String,on: bool):
  overlays[overlay] = on
  if overlay == "armies": commander.visible = on
+ if overlay == "borders": terrain_material.set_shader_parameter("territory_on",1.0 if on else 0.0)
+ if overlay == "settlements": minimap.show_settlements = on
+ minimap.refresh()
+
+# Where the camera's view meets the ground (world x/z), for the minimap's view outline.
+func camera_footprint() -> PackedVector2Array:
+ var out = PackedVector2Array()
+ var vp = get_viewport().get_visible_rect().size
+ for corner in [Vector2(0,0),Vector2(vp.x,0),vp,Vector2(0,vp.y)]:
+  var origin = camera.project_ray_origin(corner)
+  var dir = camera.project_ray_normal(corner)
+  var t = (3.0-origin.y)/dir.y if dir.y<-0.02 else 600.0
+  var p = origin+dir*minf(t,600.0)
+  out.append(Vector2(p.x,p.z))
+ return out
 
 func upgrade_city():
  city_level = city_level%3+1
  make_city()
  if ui_data: ui_data.set_settlement_level(CITY_ID,city_level)
+ if minimap: minimap.refresh()
  if ui: ui.toast(["Greyhaven returns to its original fishing town.","Greyhaven's ramparts rise around its growing streets.","New wards and a high tower transform Greyhaven's skyline."][city_level-1])
 
 func upgrade_roads():
  road_level = (road_level+1)%3
  make_roads()
+ if minimap: minimap.refresh()
  if ui: ui.toast(["The coast is linked by dirt tracks.","Gravel roads now connect the coast's settlements.","Stone paving and roadside markers trace the trade network."][road_level])
 
 func toggle_pause():
@@ -595,8 +623,9 @@ func _process(delta):
  camera_update(delta)
  for p in pins:
   var b = p.button
-  b.visible = overlays.settlements and not camera.is_position_behind(p.world) and distance>25
-  if b.visible: b.position = camera.unproject_position(p.world)-b.size*Vector2(0.5,1.0)
+  b.visible = overlays.settlements and not camera.is_position_behind(p.world) and distance>18
+  if b.visible: b.position = camera.unproject_position(p.world)-b.anchor_offset()
+  b.set_selected(ui.selected_settlement == p.id)
  var mouse = get_viewport().get_mouse_position()
  var hit = "" if get_viewport().gui_get_hovered_control() != null else pick(mouse)
  if hit != "" and ui.visible: ui.show_hover(hover_text(hit),mouse)
