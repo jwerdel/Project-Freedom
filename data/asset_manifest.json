@@ -17,5 +17,11 @@
     "commerce.wagon": "res://visuals/commerce/wagon.tscn",
     "commerce.ship": "res://visuals/commerce/ship.tscn"
   },
-  "landmarks": {}
+  "landmarks": {
+    "goldspire_rock": {
+      "stage_1": "res://visuals/landmarks/goldspire_rock_stage_1.tscn",
+      "stage_2": "res://visuals/landmarks/goldspire_rock_stage_2.tscn",
+      "stage_3": "res://visuals/landmarks/goldspire_rock_stage_3.tscn"
+    }
+  }
 }

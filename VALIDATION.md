@@ -61,6 +61,28 @@ Same method and machine as the GPU profile above (RTX 4060, driver 591.86; fresh
 
 With vsync on (normal play), the `--capture --self-test` overview reads 60 FPS at frame 180, the display's refresh cap. Trees now cost about 0.15 ms. Self-test and GUT tests pass.
 
+## Farmland and Goldspire Rock (2026-09-30)
+
+Farmland near Willowmere is now one terrain-draped patchwork (`terrain.farmland`) instead of twelve flat squares; before/after from the same camera: `captures/farmland_before.png`, `captures/farmland_after.png` (local captures, not committed).
+
+Goldspire Rock (`goldspire_rock`, docs/world.md landmark #2) is the first landmark in the manifest's landmark slot. It stands in the sea at world (44, 36.5) on the map's coastline, about 28 × 21 m and 21 m to the summit plateau, with the summit tower at about 5 m (the top of the campaign tower range). The coastal ship loop was narrowed so ships stay west of it. Keys: **G** jumps the camera to it, **F6** cycles its stage (debug). Captures: `--capture --goldspire-stage=N` (overview) and `--capture --goldspire --goldspire-stage=N` (close), saved as `captures/overview_goldspire_stage_N.png` and `captures/goldspire_stage_N.png`.
+
+GPU time, same method as the profiles above (RTX 4060, 1440×900, vsync off, fresh process per configuration, 10 s settle then 5 s average, 2 rounds). Goldspire starts at stage 2. "Zoomed" is the G bookmark view.
+
+| Configuration | GPU ms (r1 / r2) | FPS (vsync off) | Draw calls |
+|---|---|---|---|
+| Previous checkpoint overview (no farmland or Goldspire) | 2.13 / 2.13 | 414 | 696 |
+| Overview, Goldspire stage 1 | 2.17 / 2.17 | 405 | 501 |
+| **Overview, as shipped (stage 2)** | **2.21 / 2.22** | **398** | 594 |
+| Overview, Goldspire stage 3 | 2.30 / 2.30 | 384 | 631 |
+| Zoomed on Goldspire, stage 1 | 2.01 / 2.02 | 432 | 559 |
+| Zoomed on Goldspire, stage 2 | 2.06 / 2.08 | 422 | 640 |
+| Zoomed on Goldspire, stage 3 | 2.18 / 2.19 | 403 | 718 |
+
+The landmark's static pieces are batched by material inside the visual. The `--capture` runs (vsync on) all read 60 FPS at frame 180. Self-test and GUT (12 tests) pass.
+
+Known limits: at the default overview the bottom of Goldspire's sea face sits behind the bottom bar; the summit, labels and upper cliff stay visible. The map's coast stands in for the world bible's "west coast"; there is no road to Goldspire yet.
+
 ## Remaining limitations
 
 - Artwork is a prototype and has not been approved against the desired 2016 Total War campaign-map benchmark.

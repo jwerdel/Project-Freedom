@@ -8,6 +8,10 @@ const CITY_ID = "greyhaven"
 const CITY = Vector2(-12, 6)
 const KEEP = Vector2(48, -35)
 const VILLAGE = Vector2(-56, -24)
+# Goldspire Rock stands in the sea at the coast; its sheer sea face looks toward the overview camera.
+const GOLDSPIRE_ID = "goldspire_rock"
+const GOLDSPIRE = Vector2(44, 36.5)
+const GOLDSPIRE_CLEAR = 20.0
 var rng = RandomNumberGenerator.new()
 var noise = FastNoiseLite.new()
 var detail = FastNoiseLite.new()
@@ -23,6 +27,8 @@ var city_level = 2
 var road_level = 1
 var city_root: Node3D
 var roads_root: Node3D
+var goldspire_level = 2
+var goldspire_root: Node3D
 var traffic: Array = []
 var road_curves: Array = []
 var flags: Array = []
@@ -71,6 +77,9 @@ func _ready():
  make_coastal_rocks()
  make_harbor()
  kit.batch(self,[city_root,roads_root])
+ for arg in OS.get_cmdline_user_args():
+  if arg.begins_with("--goldspire-stage="): goldspire_level = clampi(int(arg.get_slice("=",1)),1,3)
+ make_goldspire()
  make_traffic()
  make_commander()
  make_ui()
@@ -92,6 +101,9 @@ func _ready():
   desired_distance = 15
   yaw = 0.35
   pitch = 0.23
+ if "--goldspire" in OS.get_cmdline_user_args():
+  focus_goldspire()
+  distance = desired_distance
  if "--self-test" in OS.get_cmdline_user_args():
   run_checks()
  print("FREEDOM_READY | city=%s road=%s traffic=%s" % [city_level,road_level,traffic.size()])
@@ -286,6 +298,8 @@ func make_forest():
   var base_height = meshes[idx].get_aabb().size.y
   var scale_v = rng.randf_range(3.5,6.8)/base_height
   var basis = Basis(Vector3.UP,rng.randf()*TAU).scaled(Vector3.ONE*scale_v)
+  # Checked after the rng draws so the rest of the layout is unchanged.
+  if p.distance_to(GOLDSPIRE)<GOLDSPIRE_CLEAR: continue
   groups[idx].append(Transform3D(basis,Vector3(p.x,h,p.y)))
  for i in range(meshes.size()):
   make_multimesh(meshes[i],null,groups[i],false)
@@ -324,10 +338,33 @@ func make_coastal_rocks():
   var size = meshes[idx].get_aabb().size
   var scale_v = 2.0*s/max(size.x,size.z)
   var basis = Basis.from_euler(tilt)*Basis(Vector3.UP,yaw).scaled(Vector3(1,0.8,1)*scale_v)
+  if p.distance_to(GOLDSPIRE)<GOLDSPIRE_CLEAR: continue
   groups[idx].append(Transform3D(basis,ground(p,-0.1*s)))
  for i in range(meshes.size()):
   make_multimesh(meshes[i],null,groups[i],false)
  source.free()
+
+func make_goldspire():
+ if goldspire_root:
+  remove_child(goldspire_root)
+  goldspire_root.queue_free()
+ goldspire_root = AssetManifest.instantiate_settlement(GOLDSPIRE_ID,goldspire_level)
+ add_child(goldspire_root)
+ goldspire_root.position = Vector3(GOLDSPIRE.x,0,GOLDSPIRE.y)
+ goldspire_root.build({"height":func(x,z): return height_at(GOLDSPIRE.x+x,GOLDSPIRE.y+z)})
+
+func cycle_goldspire():
+ goldspire_level = goldspire_level%3+1
+ make_goldspire()
+ refresh_ui()
+ if toast_label: toast_label.text = ["Goldspire Rock: mine tunnels glow beneath a lone summit tower.","Goldspire Rock: carved halls, a walled summit and a harbor at its foot.","Goldspire Rock: the whole sea face is terraced with halls and gold-roofed towers."][goldspire_level-1]
+
+# Camera bookmark (G): Goldspire's sea face from the southwest.
+func focus_goldspire():
+ target = Vector3(GOLDSPIRE.x,9,GOLDSPIRE.y)
+ desired_distance = 64
+ yaw = 0.42
+ pitch = 0.36
 
 func make_harbor():
  var harbor = AssetManifest.instantiate("settlement.harbor")
@@ -466,7 +503,7 @@ func make_ui():
  toast_label.add_theme_color_override("font_shadow_color",Color.BLACK)
  toast_label.add_theme_constant_override("shadow_offset_x",1)
  toast_label.add_theme_constant_override("shadow_offset_y",2)
- for data in [["GREYHAVEN",ground(CITY,6),"city"],["CROWNWATCH",ground(KEEP,6),"fortress"],["WILLOWMERE",ground(VILLAGE,5),"village"]]:
+ for data in [["GREYHAVEN",ground(CITY,6),"city"],["CROWNWATCH",ground(KEEP,6),"fortress"],["WILLOWMERE",ground(VILLAGE,5),"village"],["GOLDSPIRE ROCK",Vector3(GOLDSPIRE.x,27,GOLDSPIRE.y),"goldspire"]]:
   var b = Button.new()
   b.text = data[0]
   b.add_theme_font_override("font",serif)
@@ -487,6 +524,9 @@ func refresh_ui():
  elif selected=="fortress":
   title_label.text = "Crownwatch"
   info_label.text = "Hill fortress · the eastern pass\nSix towers guard the road inland."
+ elif selected=="goldspire":
+  title_label.text = "Goldspire Rock"
+  info_label.text = ["Mining hold · House Aurek\nTunnels glow beneath a lone summit tower.","Carved fortress · gold port\nHalls cut into the cliff above a walled harbor.","Terraced citadel · seat of House Aurek\nHalls and gold-roofed towers climb the rock."][goldspire_level-1]
  else:
   title_label.text = "Willowmere"
   info_label.text = "Farming village · fertile lowlands\nFields and a mill supply the coast."
@@ -496,6 +536,9 @@ func refresh_ui():
 func select_place(id: String):
  selected = id
  refresh_ui()
+ if id=="goldspire":
+  focus_goldspire()
+  return
  var p = CITY if id=="city" else KEEP if id=="fortress" else VILLAGE
  focus_at(ground(p),48)
 
@@ -551,6 +594,8 @@ func _unhandled_input(event):
   if event.keycode == KEY_F12: request_capture()
   if event.keycode == KEY_TAB: ui.visible = not ui.visible
   if event.keycode == KEY_ESCAPE: ui.visible = true
+  if event.keycode == KEY_G: select_place("goldspire")
+  if event.keycode == KEY_F6: cycle_goldspire()
 
 func camera_update(delta: float):
  var dir = Vector3.ZERO
@@ -575,8 +620,9 @@ func _process(delta):
    var n = t.node
    if t.sea:
     var a = time*0.023+t.offset*TAU
-    n.position = Vector3(-10+sin(a)*62,0.08+sin(time*1.4+t.offset)*0.035,48+cos(a)*8)
-    n.rotation.y = atan2(-cos(a)*62,sin(a)*8)
+    # Loop stays west of Goldspire Rock.
+    n.position = Vector3(-18+sin(a)*44,0.08+sin(time*1.4+t.offset)*0.035,48+cos(a)*8)
+    n.rotation.y = atan2(-cos(a)*44,sin(a)*8)
     n.rotation.z = sin(time*0.7+t.offset)*0.025
    else:
     var curve = road_curves[t.curve]
@@ -610,7 +656,10 @@ func save_capture():
  var name_v = "overview"
  if "--closeup" in OS.get_cmdline_user_args(): name_v="city"
  if "--hero" in OS.get_cmdline_user_args(): name_v="commander"
+ if "--goldspire" in OS.get_cmdline_user_args(): name_v="goldspire"
  if "--developed" in OS.get_cmdline_user_args(): name_v+="_developed"
+ for arg in OS.get_cmdline_user_args():
+  if arg.begins_with("--goldspire-stage="): name_v+="_goldspire_stage_%d" % goldspire_level if name_v!="goldspire" else "_stage_%d" % goldspire_level
  if not capture_mode: name_v="view_"+Time.get_datetime_string_from_system().replace(":","-")
  var path = folder+"/"+name_v+".png"
  var result = get_viewport().get_texture().get_image().save_png(path)
@@ -647,7 +696,21 @@ func run_checks():
  assert(paused==paused_before)
  select_place("fortress")
  assert(title_label.text=="Crownwatch")
+ # Goldspire Rock: a registered landmark standing in the sea, its stages cycle, G jumps to it.
+ assert(AssetManifest.is_landmark(GOLDSPIRE_ID))
+ assert(height_at(GOLDSPIRE.x,GOLDSPIRE.y+8)<0)
+ var goldspire_before = goldspire_level
+ for i in range(3):
+  cycle_goldspire()
+  assert(goldspire_root.get_meta("stage")==goldspire_level)
+ assert(goldspire_level==goldspire_before)
+ var key = InputEventKey.new()
+ key.keycode = KEY_G
+ key.pressed = true
+ _unhandled_input(key)
+ assert(title_label.text=="Goldspire Rock")
+ assert(Vector2(target.x,target.z).distance_to(GOLDSPIRE)<1)
  selected="city"
  refresh_ui()
  reset_camera()
- print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged")
+ print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle")

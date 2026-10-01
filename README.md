@@ -31,13 +31,16 @@ The launcher imports project assets automatically on the first run.
 | Escape | Show the interface |
 | Space | Pause/resume trade traffic and mill |
 | F12 | Save a real in-engine screenshot in captures |
+| G | Jump the camera to Goldspire Rock (bookmark) |
+| F6 | Debug: cycle Goldspire Rock through its three stages |
 
 Click settlement labels to inspect them. The left panel lets you cycle Greyhaven through three stages (town, walled city, expanded city) and roads through dirt, gravel, and stone. Both changes alter the actual 3D geometry/materials. The light button switches between daylight and late afternoon. Pause affects traffic and the windmill; ambient water and cloth continue moving.
 
 ## Included
 
 - Textured coastal terrain, mountain backdrop, forest, farms, rocks, and sea.
-- Greyhaven, Crownwatch fortress, and Willowmere farming village.
+- Greyhaven, Crownwatch fortress, and Willowmere farming village with a hedgerowed farmland patchwork.
+- Goldspire Rock, the first landmark settlement (docs/world.md #2): a sea cliff fortress with three stages (mine tunnels and summit tower; carved halls, harbor and walls; terraced rock face).
 - Three settlement stages and three road stages.
 - Six moving caravans, four sailing vessels, docks, a lighthouse, and an animated mill.
 - A procedurally constructed armored commander with moving banner and cape.
@@ -54,7 +57,7 @@ Built with Godot 4.7.2, using Forward+ rendering. Open project.godot in Godot to
 | Path | Contents |
 |---|---|
 | `main.gd`, `Main.tscn` | Prototype map: terrain, sea, coastal rocks, world layout and tree placement, traffic routes, camera, UI |
-| `data/asset_manifest.json` | Maps visual IDs (city stages, fortress, village, harbor, farmland, forest trees, coastal rocks, road stages, commander, wagon, ship) to scenes |
+| `data/asset_manifest.json` | Maps visual IDs (city stages, fortress, village, harbor, farmland, forest trees, coastal rocks, road stages, commander, wagon, ship) to scenes, and landmark settlements (Goldspire Rock) to their own stage scenes |
 | `core/asset_manifest.gd` | Loads the manifest and instantiates visuals by ID |
 | `visuals/` | One scene per visual; `visuals/common/proto_kit.gd` holds the shared prototype palette and builders |
 | `*.gdshader` | Terrain, sea, and cloth shaders |

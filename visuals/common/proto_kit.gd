@@ -184,7 +184,7 @@ func batch(root: Node3D, exclude: Array = []):
   if node.material_override is ShaderMaterial: continue
   var relative = root.global_transform.affine_inverse()*node.global_transform
   for s in range(node.mesh.get_surface_count()):
-   var material = node.material_override if node.material_override else node.mesh.surface_get_material(s)
+   var material = node.get_active_material(s)
    if material == null: continue
    var key = material.get_instance_id()
    if not groups.has(key):
