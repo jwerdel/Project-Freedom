@@ -7,6 +7,8 @@
   "outfit": "outfit.ranger",
   "loadout": ["weapon.bow"],
   "visual_config": {"pose": "bow"},
+  "size": 100,
+  "recruitment": {"cost": 500, "turns": 1},
   "card_portrait": {"framing": "full_body"},
-  "placeholder_stats": {"_note": "PLACEHOLDER values; not balanced. upkeep is used by the economy (data/economy.json army_upkeep_multiplier); the rest is shown in the UI only", "entities": 100, "upkeep": 120, "melee_attack": 16, "melee_defence": 12, "armour": 15, "missile_range": 150}
+  "placeholder_stats": {"_note": "PLACEHOLDER values; not balanced. upkeep is used by the economy (data/economy.json army_upkeep_multiplier); the rest is shown in the UI only. size (men at full strength) and recruitment (gold cost, turns; null = not recruitable) are PLACEHOLDER values too", "upkeep": 120, "melee_attack": 16, "melee_defence": 12, "armour": 15, "missile_range": 150}
 }

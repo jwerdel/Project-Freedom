@@ -15,6 +15,7 @@ const Economy = preload("res://core/economy.gd")
 const Buildings = preload("res://core/buildings.gd")
 const Construction = preload("res://core/construction.gd")
 const Movement = preload("res://core/movement.gd")
+const Armies = preload("res://core/armies.gd")
 const TurnLoop = preload("res://core/turn_loop.gd")
 const Chronicle = preload("res://core/chronicle.gd")
 const MOCK = "res://data/mock_ui.json"
@@ -56,7 +57,7 @@ func income_breakdown(faction_id := "") -> Dictionary:
  var out = {"income":[],"expenses":[],"income_total":ledger.income_total,"expense_total":ledger.expense_total,"net":ledger.net,"treasury":int(state.treasury[f])}
  for e in ledger.income: out.income.append({"label":"%s (%s)" % [WorldMap.region(e.label).settlement.name,state.settlements[e.label].type],"amount":e.amount})
  for e in ledger.expenses:
-  var label = "Building upkeep: %s" % WorldMap.region(e.label).settlement.name if e.kind == "buildings" else "Army upkeep: %s" % UnitTypes.army(e.label).display_name
+  var label = "Building upkeep: %s" % WorldMap.region(e.label).settlement.name if e.kind == "buildings" else "Army upkeep: %s" % state.army_state[e.label].display_name
   out.expenses.append({"label":label,"amount":e.amount})
  return out
 
@@ -113,7 +114,7 @@ func settlement(id: String) -> Dictionary:
  s.province_name = WorldMap.province(s.province).name
  s.defense = int(live.defense)
  s.garrison = []
- for a in Movement.garrison_of(state,id): s.garrison.append(UnitTypes.army(a).display_name)
+ for a in Movement.garrison_of(state,id): s.garrison.append(state.army_state[a].display_name)
  s.player_owned = live.owner == state.player_faction
  return s
 
@@ -209,11 +210,49 @@ func cancel_construction(settlement_id: String) -> int:
 
 # --- Armies and units --------------------------------------------------------
 
+# An army as the panel shows it: {id, display_name, faction, faction_data, commander (a card entry
+# for the general), units ({unit, men, max_men} card entries), queue, upkeep, max_units}.
 func army(id: String) -> Dictionary:
- var a = UnitTypes.army(id)
- a.faction_data = faction(a.faction)
- a.upkeep = Economy.army_upkeep(id)
- return a
+ var a = state.army_state[id]
+ var queue = []
+ for q in a.queue: queue.append(q.duplicate())
+ return {"id":id,"display_name":a.display_name,"faction":a.faction,"faction_data":faction(a.faction),
+  "commander":{"unit":"commander","name":a.commander.name,"rank":int(a.commander.rank),"men":1,"max_men":1},
+  "units":a.units.duplicate(true),"queue":queue,"upkeep":Economy.army_upkeep(state,id),"max_units":Armies.max_units(),
+  "player_owned":a.faction == state.player_faction}
+
+func army_ids() -> Array:
+ var out = state.army_state.keys()
+ out.sort()
+ return out
+
+# --- Recruitment ---------------------------------------------------------------------
+
+# Recruitment panel data: {settlement ("" if the army is not in or next to its own settlement),
+# settlement_name, population, min_population, options (see Armies.options)}.
+func recruitment(army_id: String) -> Dictionary:
+ var sid = Armies.recruit_settlement(state,army_id)
+ return {"settlement":sid,"settlement_name":WorldMap.region(sid).settlement.name if sid != "" else "",
+  "population":int(state.settlements[sid].population) if sid != "" else 0,"min_population":int(Armies.data().recruitment.min_population),
+  "options":Armies.options(state,army_id)}
+
+func recruit(army_id: String,unit_id: String) -> Dictionary:
+ if state.army_state[army_id].faction != state.player_faction: return {"ok":false,"reasons":["Not your army"]}
+ var r = Armies.recruit(state,army_id,unit_id)
+ if r.ok: changed.emit()
+ return r
+
+func cancel_recruit(army_id: String,index: int) -> Dictionary:
+ if state.army_state[army_id].faction != state.player_faction: return {"gold":0,"men":0}
+ var r = Armies.cancel_recruit(state,army_id,index)
+ changed.emit()
+ return r
+
+func disband_unit(army_id: String,index: int) -> Dictionary:
+ if state.army_state[army_id].faction != state.player_faction: return {"men":0,"settlement":""}
+ var r = Armies.disband(state,army_id,index)
+ changed.emit()
+ return r
 
 func unit_type(id: String) -> Dictionary:
  return UnitTypes.get_type(id)
@@ -263,3 +302,7 @@ func order_path(army_id: String) -> Dictionary:
  if m.order.is_empty(): return {"points":[],"turns":[]}
  var pts = [m.position]+m.order
  return {"points":pts,"turns":Movement.simulate(pts,m.points,m.max_points,state.road_level).turns}
+
+# Upkeep per turn of one unit of this type.
+func unit_upkeep(unit_id: String) -> int:
+ return int(round(float(UnitTypes.get_type(unit_id).placeholder_stats.upkeep)*float(Economy.data().upkeep.army_upkeep_multiplier)))

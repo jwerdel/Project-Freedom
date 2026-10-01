@@ -53,10 +53,11 @@ static func settlement_income(state,id: String) -> Dictionary:
 static func building_upkeep(state,id: String) -> int:
  return Buildings.upkeep(state,id)
 
-static func army_upkeep(army_id: String) -> int:
- var a = UnitTypes.army(army_id)
- var total = 0.0
- for entry in [a.commander]+a.units: total += float(UnitTypes.get_type(entry.unit).placeholder_stats.upkeep)
+# Upkeep of an army's general and units (queued units cost nothing until they arrive).
+static func army_upkeep(state,army_id: String) -> int:
+ var a = state.army_state[army_id]
+ var total = float(UnitTypes.get_type("commander").placeholder_stats.upkeep)
+ for u in a.units: total += float(UnitTypes.get_type(u.unit).placeholder_stats.upkeep)
  return int(round(total*float(data().upkeep.army_upkeep_multiplier)))
 
 # Per-turn income sources and expenses of a faction (the treasury tooltip's breakdown).
@@ -67,7 +68,7 @@ static func faction_ledger(state,faction: String) -> Dictionary:
   income.append({"label":id,"amount":settlement_income(state,id).total,"kind":"settlement"})
   var up = building_upkeep(state,id)
   if up>0: expenses.append({"label":id,"amount":up,"kind":"buildings"})
- for army_id in state.armies_of(faction): expenses.append({"label":army_id,"amount":army_upkeep(army_id),"kind":"army"})
+ for army_id in state.armies_of(faction): expenses.append({"label":army_id,"amount":army_upkeep(state,army_id),"kind":"army"})
  var inc = 0
  var exp = 0
  for e in income: inc += e.amount

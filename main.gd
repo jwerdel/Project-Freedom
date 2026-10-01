@@ -61,7 +61,6 @@ var road_material: StandardMaterial3D
 
 
 var commander: Node3D
-var army: Dictionary
 var pins: Array = []
 var ui
 var ui_data
@@ -152,6 +151,13 @@ func _ready():
   if arg.begins_with("--preview="):
    select_army()
    forced_preview = Vector2(float(xz[0]),float(xz[1]))
+ for arg in OS.get_cmdline_user_args():
+  if arg.begins_with("--recruit-queue="):
+   for u in arg.get_slice("=",1).split(","): ui_data.recruit(COMMANDER_ARMY,u)
+   select_army()
+  if arg == "--recruit-panel":
+   select_army()
+   ui.open_recruitment(COMMANDER_ARMY)
  for arg in OS.get_cmdline_user_args():
   if arg.begins_with("--view="):
    var v = arg.get_slice("=",1).split(",")
@@ -459,7 +465,6 @@ func make_commander():
  commander.position = ground(Vector2(2,0),0.18)
  commander.rotation.y = 0.5
  # The army this commander leads (data/armies/); shown in the army panel.
- army = UnitTypes.army(COMMANDER_ARMY)
  commander.set_meta("army_id",COMMANDER_ARMY)
 
 # --- Campaign UI ---------------------------------------------------------------
@@ -739,8 +744,8 @@ func _screen_radius(world: Vector3,meters: float,minimum: float) -> float:
 
 func hover_text(hit: String) -> String:
  if hit == "army":
-  var f = WorldMap.faction(army.faction)
-  return "%s\n%s · %s\n%s" % [army.commander.name,f.name,army.display_name,army_location()]
+  var a = ui_data.army(COMMANDER_ARMY)
+  return "%s\n%s · %s\n%s" % [a.commander.name,a.faction_data.name,a.display_name,army_location()]
  var s = ui_data.settlement(hit)
  return "%s\n%s\n%s" % [s.name,s.faction.name,s.province_name]
 
@@ -879,7 +884,7 @@ func run_checks():
  assert(city_level>=1 and city_level<=3)
  assert(road_curves.size()==3)
  assert(traffic.size()==10)
- assert(army.units.size()>=7 and army.commander.unit=="commander")
+ assert(ui_data.army(COMMANDER_ARMY).units.size()>=7 and ui_data.army(COMMANDER_ARMY).commander.unit=="commander")
  var level_before = city_level
  for i in range(3): upgrade_city()
  assert(city_level==level_before)

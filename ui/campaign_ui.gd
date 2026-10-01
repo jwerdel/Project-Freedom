@@ -44,6 +44,10 @@ var selected_settlement := ""
 var selected_army := ""
 var army_location := ""
 var province_title := ""
+var selected_unit := -1 # index of the selected unit card in the army panel
+var recruit_panel: Control
+var recruit_box: VBoxContainer
+var recruit_army := ""
 var follow_on := false
 var follow_button: Button
 var movement_bar: Control
@@ -261,6 +265,7 @@ func _build_bottom():
  _anchor(bottom_panel,0.5,1,0.5,1,Rect2(-480,-262,480,-10))
 
 func show_settlement(id: String):
+ close_recruitment()
  var s = data.settlement(id)
  if s.is_empty(): return
  selected_settlement = id
@@ -324,19 +329,64 @@ func show_army(army_id: String,location: String):
  spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  head.add_child(spacer)
  head.add_child(_movement_box(army_id))
- head.add_child(UiKit.label("Units %d / 20" % (a.units.size()+1),15,UiKit.TEXT_DIM))
+ if selected_unit>=a.units.size(): selected_unit = -1
+ var side = VBoxContainer.new()
+ side.add_theme_constant_override("separation",2)
+ var count = UiKit.label("Units %d / %d" % [1+a.units.size()+a.queue.size(),a.max_units],15,UiKit.TEXT_DIM)
+ count.name = "UnitCount"
+ count.tooltip_text = "General, units and queued recruits. The %d-unit cap is a placeholder (data/recruitment.json)." % a.max_units
+ count.mouse_filter = Control.MOUSE_FILTER_PASS
+ side.add_child(count)
+ if a.player_owned:
+  var buttons = HBoxContainer.new()
+  var recruit = Button.new()
+  recruit.name = "Recruit"
+  recruit.text = "Recruit"
+  recruit.focus_mode = Control.FOCUS_NONE
+  var where = data.recruitment(army_id)
+  recruit.disabled = where.settlement == ""
+  recruit.tooltip_text = "Recruit at %s" % where.settlement_name if where.settlement != "" else "Move into or next to one of your settlements to recruit."
+  recruit.pressed.connect(open_recruitment.bind(army_id))
+  buttons.add_child(recruit)
+  var disband = Button.new()
+  disband.name = "Disband"
+  disband.text = "Disband"
+  disband.focus_mode = Control.FOCUS_NONE
+  disband.disabled = selected_unit<0
+  disband.tooltip_text = "Disband the selected unit; its men return to the population of this region." if selected_unit>=0 else "Click a unit card to select it."
+  disband.pressed.connect(func():
+   var r = data.disband_unit(army_id,selected_unit)
+   selected_unit = -1
+   show_army(army_id,army_location)
+   toast("Unit disbanded: %d men return to %s." % [r.men,data.settlement(r.settlement).name] if r.settlement != "" else "Unit disbanded: %d men scatter (no settlement in this region)." % r.men))
+  buttons.add_child(disband)
+  side.add_child(buttons)
+ head.add_child(side)
  bottom_box.add_child(head)
  bottom_box.add_child(UiKit.divider(colors.trim))
  var row = HBoxContainer.new()
  row.alignment = BoxContainer.ALIGNMENT_BEGIN
  row.add_theme_constant_override("separation",6)
- for entry in [a.commander]+a.units:
+ var lord = data.unit_type("commander")
+ row.add_child(Cards.unit_card(lord,a.commander,a.faction_data,studio,"%s\n%s · %s\nGeneral of %s" % [a.commander.name,a.faction_data.name,location,a.display_name]))
+ for i in a.units.size():
+  var entry = a.units[i]
   var u = data.unit_type(entry.unit)
-  var name = entry.get("name",u.display_name)
-  var men = int(round(u.placeholder_stats.entities*float(entry.get("strength",1.0))))
-  var tip = "%s\n%s · %s\n%s\nStrength %d%% · %d of %d (placeholder)" % [name,a.faction_data.name,location,u.description,int(float(entry.get("strength",1.0))*100),men,u.placeholder_stats.entities]
-  if u.get("single_entity",false): tip = "%s\n%s · %s\n%s" % [name,a.faction_data.name,location,u.display_name]
-  row.add_child(Cards.unit_card(u,entry,a.faction_data,studio,tip))
+  var tip = "%s\n%s · %s\n%s\nStrength %d of %d men (%d%%)\nUpkeep %d per turn%s" % [u.display_name,a.faction_data.name,location,u.description,entry.men,entry.max_men,int(round(100.0*entry.men/maxf(1,entry.max_men))),
+   data.unit_upkeep(entry.unit),"\nClick to select (Disband)" if a.player_owned else ""]
+  var card = Cards.unit_card(u,entry,a.faction_data,studio,tip,(func():
+   selected_unit = -1 if selected_unit == i else i
+   show_army(army_id,army_location)) if a.player_owned else Callable())
+  card.selected = i == selected_unit
+  row.add_child(card)
+ for i in a.queue.size():
+  var q = a.queue[i]
+  var u = data.unit_type(q.unit)
+  var entry = {"unit":q.unit,"men":q.men,"max_men":q.men,"queued_turns":q.turns_left}
+  var tip = "%s (recruiting)\n%d turn%s left · from %s\nClick to cancel (full refund: %d gold, %d men)" % [u.display_name,q.turns_left,"" if q.turns_left == 1 else "s",data.settlement(q.settlement).name,q.cost,q.men]
+  row.add_child(Cards.unit_card(u,entry,a.faction_data,studio,tip,(func():
+   var r = data.cancel_recruit(army_id,i)
+   toast("Recruitment cancelled: %d gold and %d men returned." % [r.gold,r.men])) if a.player_owned else Callable()))
  bottom_box.add_child(_scroller(row))
  bottom_panel.visible = true
  _fit_bottom.call_deferred()
@@ -410,6 +460,7 @@ func _scroller(content: Control) -> ScrollContainer:
 
 func clear_selection():
  close_building_browser()
+ close_recruitment()
  selected_settlement = ""
  selected_army = ""
  stats_panel.visible = false
@@ -528,6 +579,96 @@ func _option_tile(sid: String,o: Dictionary) -> Control:
  v.add_child(build)
  return tile
 
+# --- Recruitment panel (TW-style): opens above the army panel --------------------------------
+# Recruitable unit cards with cost, turns, upkeep and the men drawn from the settlement; locked
+# units show why. Recruiting queues the unit on the army (see the army panel).
+
+func open_recruitment(army_id: String):
+ close_building_browser()
+ recruit_army = army_id
+ if recruit_panel == null:
+  recruit_panel = _framed()
+  recruit_box = VBoxContainer.new()
+  recruit_box.add_theme_constant_override("separation",6)
+  recruit_panel.add_child(recruit_box)
+  _anchor(recruit_panel,0.5,1,0.5,1,Rect2(-480,-690,480,-286))
+ recruit_panel.visible = true
+ _fill_recruitment()
+
+func close_recruitment():
+ recruit_army = ""
+ if recruit_panel: recruit_panel.visible = false
+
+func recruitment_visible() -> bool:
+ return recruit_panel != null and recruit_panel.visible and recruit_army != ""
+
+func _fill_recruitment():
+ _clear(recruit_box)
+ var r = data.recruitment(recruit_army)
+ var a = data.army(recruit_army)
+ var head = HBoxContainer.new()
+ var title = UiKit.header("Recruit at %s" % r.settlement_name if r.settlement != "" else "Recruitment unavailable",18)
+ title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ head.add_child(title)
+ if r.settlement != "":
+  var pop = UiKit.label("Population %s (keeps at least %s) · Treasury %s gold" % [UiKit.format_int(r.population),UiKit.format_int(r.min_population),UiKit.format_int(data.resources().treasury)],14,UiKit.TEXT_DIM)
+  head.add_child(pop)
+ var close = Button.new()
+ close.text = "Close"
+ close.focus_mode = Control.FOCUS_NONE
+ close.pressed.connect(close_recruitment)
+ head.add_child(close)
+ recruit_box.add_child(head)
+ recruit_box.add_child(UiKit.divider(colors.trim))
+ if r.settlement == "":
+  recruit_box.add_child(UiKit.label("Move the army into or next to one of your settlements to recruit there.",15))
+  return
+ var grid = GridContainer.new()
+ grid.columns = 3
+ grid.add_theme_constant_override("h_separation",8)
+ grid.add_theme_constant_override("v_separation",8)
+ for o in r.options: grid.add_child(_recruit_tile(o,a.faction_data))
+ var scroll = ScrollContainer.new()
+ scroll.custom_minimum_size = Vector2(0,330)
+ scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+ scroll.add_child(grid)
+ recruit_box.add_child(scroll)
+
+func _recruit_tile(o: Dictionary,faction_data: Dictionary) -> Control:
+ var tile = PanelContainer.new()
+ tile.custom_minimum_size = Vector2(300,0)
+ tile.add_theme_stylebox_override("panel",UiKit.textured(UiKit.SLOT,10,8,Color(0.55,0.5,0.45) if o.available else Color(0.35,0.32,0.3)))
+ var h = HBoxContainer.new()
+ h.add_theme_constant_override("separation",8)
+ tile.add_child(h)
+ var u = data.unit_type(o.unit)
+ var card = Cards.unit_card(u,{"unit":o.unit,"men":o.men,"max_men":o.men},faction_data,studio,"%s\n%s" % [u.display_name,u.description])
+ if not o.available: card.modulate = Color(0.6,0.6,0.6)
+ h.add_child(card)
+ var v = VBoxContainer.new()
+ v.add_theme_constant_override("separation",1)
+ v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ h.add_child(v)
+ v.add_child(UiKit.label(o.name,15,Color("f1d79a") if o.available else UiKit.TEXT_DIM,UiKit.FONT_BOLD))
+ v.add_child(UiKit.label("%s gold · %d turn%s" % [UiKit.format_int(o.cost),o.turns,"" if o.turns == 1 else "s"],13,UiKit.TEXT))
+ v.add_child(UiKit.label("Upkeep %d per turn" % o.upkeep,13,UiKit.TEXT))
+ v.add_child(UiKit.label("Draws %d men from the population" % o.men,13,UiKit.TEXT))
+ for reason in o.reasons:
+  var l = UiKit.label(reason,12,Color("ef8a6a"))
+  l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+  l.custom_minimum_size = Vector2(190,0)
+  v.add_child(l)
+ var b = Button.new()
+ b.name = "Recruit_"+o.unit
+ b.text = "Recruit"
+ b.focus_mode = Control.FOCUS_NONE
+ b.disabled = not o.available
+ b.pressed.connect(func():
+  var res = data.recruit(recruit_army,o.unit)
+  toast("Recruiting %s (%d turn%s)." % [o.name,o.turns,"" if o.turns == 1 else "s"] if res.ok else ", ".join(res.reasons)))
+ v.add_child(b)
+ return tile
+
 # --- End turn (bottom-right), hover tooltip, toast, FPS --------------------------------
 
 func _build_end_turn():
@@ -592,6 +733,7 @@ func refresh():
  end_turn_year.text = "Year %d" % r.year
  if selected_settlement != "": show_settlement(selected_settlement)
  if selected_army != "": show_army(selected_army,army_location)
+ if recruitment_visible(): _fill_recruitment()
  if browser_visible() and not browser_target.is_empty(): _fill_browser()
 
 # Grow the bottom panel upward to fit its content (building cards are shorter than unit cards).

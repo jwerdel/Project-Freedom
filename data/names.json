@@ -1,0 +1,12 @@
+{
+  "_note": "STUB: generated names for newly hired generals until the character and family system exists (constitution: generals are drawn from the court). Given-name pools are placeholders in the style of the existing names (Ser Alaric Aurek); docs/world.md does not define naming conventions yet. pattern placeholders: {given}, {house}.",
+  "cultures": {
+    "westerlands": {"pattern": "Ser {given} {house}", "given": ["Aldric", "Cerwyn", "Doran", "Edric", "Garran", "Harlan", "Jory", "Lucan", "Merrit", "Osric", "Roderic", "Tybalt", "Varric", "Wendel"]},
+    "reach": {"pattern": "Ser {given} {house}", "given": ["Alyn", "Bramwell", "Corin", "Daven", "Elric", "Florian", "Garth", "Hollis", "Lorent", "Mace", "Perrin", "Rowan", "Tamsin", "Willem"]}
+  },
+  "factions": {
+    "house_aurek": {"culture": "westerlands", "house": "Aurek"},
+    "house_lannet": {"culture": "westerlands", "house": "Lannet"},
+    "house_verrin": {"culture": "reach", "house": "Verrin"}
+  }
+}

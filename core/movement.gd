@@ -153,9 +153,9 @@ static func _astar_for(road_level: int) -> AStarGrid2D:
 static func max_points() -> float:
  return float(data().army.movement_points)
 
-# Initial movement state of an army (GameState.from_data).
-static func new_army_state(army_id: String,position: Vector2) -> Dictionary:
- return {"faction":UnitTypes.army(army_id).faction,"position":[position.x,position.y],"points":max_points(),"max_points":max_points(),
+# Initial movement state of an army (composition is added by core/armies.gd).
+static func new_army_state(faction: String,position: Vector2) -> Dictionary:
+ return {"faction":faction,"position":[position.x,position.y],"points":max_points(),"max_points":max_points(),
   "order":[],"order_settlement":"","garrison":""}
 
 static func army(state,army_id: String) -> Dictionary:

@@ -19,7 +19,7 @@ func before_each():
 func after_each():
  if FileAccess.file_exists(ART): DirAccess.remove_absolute(ProjectSettings.globalize_path(ART))
 
-func card_for(unit: Dictionary,entry := {"strength":0.5}) -> Control:
+func card_for(unit: Dictionary,entry := {"men":60,"max_men":120}) -> Control:
  var card = Cards.unit_card(unit,entry,WorldMap.faction("house_aurek"),studio,"tip")
  add_child_autofree(card)
  return card
@@ -46,13 +46,14 @@ func test_card_art_replaces_the_portrait_with_overlays_on_top():
  var art = UnitTypes.card_art(unit)
  assert_not_null(art)
  assert_eq(art.get_size(),Vector2(40,60))
- var card = card_for(unit,{"strength":0.75,"rank":2})
+ var card = card_for(unit,{"men":90,"max_men":120,"rank":2})
  assert_true(card.uses_card_art())
  assert_eq(card.portrait.texture,card.art)
  assert_eq(card.art.get_size(),Vector2(40,60))
  assert_gt(card.overlay.get_index(),card.portrait.get_index(),"overlays draw above the art")
  assert_eq(card.rank,2)
- assert_eq(card.men,int(round(unit.placeholder_stats.entities*0.75)))
+ assert_eq(card.men,90)
+ assert_almost_eq(card.strength,0.75,0.0001)
  # A missing card_art file falls back instead of failing.
  unit.card_art = "user://does_not_exist.png"
  assert_eq(UnitTypes.card_art_path(unit),"")

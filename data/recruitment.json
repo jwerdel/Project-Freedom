@@ -1,0 +1,31 @@
+{
+  "_note": "PLACEHOLDER recruitment and army tuning. Every number here is a tunable placeholder, not approved balance. Rules (constitution, Economy and settlements; Battles and armies): recruitment draws directly from the settlement's population; disbanded survivors return to population; replenishment is automatic in friendly regions without population cost and faster in populous regions, and costs gold in enemy territory. core/armies.gd applies these values. Unit size, cost and recruitment time are in data/units/*.json.",
+  "recruitment": {
+    "_note": "An army can recruit at its own settlement when garrisoned there or within adjacent_radius meters of it. Units come from that settlement's buildings (unlocks) and population, which may not fall below min_population. Gold and men are taken when a unit is queued; cancelling refunds both in full.",
+    "min_population": 500,
+    "adjacent_radius": 12.0
+  },
+  "army_cap": {
+    "_note": "PLACEHOLDER, TW-style: at most max_units cards per army, the general included, queued units counted. The constitution rejects the earlier 6-10 cap; 20 stands until the army performance test sets a real budget.",
+    "max_units": 20
+  },
+  "replenishment": {
+    "_note": "Per End Turn, each unit regains a fraction of its max strength. Friendly region (owned by the army's faction): friendly_rate plus up to populous_bonus scaled by the region settlement's population over populous_reference; no population cost. Any other region (no diplomacy yet, so every foreign or unowned region counts as enemy territory): enemy_rate, paid at enemy_gold_per_man; skipped if the treasury cannot pay.",
+    "friendly_rate": 0.08,
+    "populous_bonus": 0.08,
+    "populous_reference": 10000,
+    "enemy_rate": 0.05,
+    "enemy_gold_per_man": 3
+  },
+  "armies": {
+    "_note": "Raising a new army hires a general for general_cost gold at one of the faction's settlements. The maximum number of armies per faction is OPEN in the constitution; max_per_faction is a placeholder. Generals' names are generated from data/names.json (STUB until the character and family system exists).",
+    "general_cost": 800,
+    "max_per_faction": 3
+  },
+  "ai": {
+    "_note": "PLACEHOLDER AI: each AI faction keeps one defensive garrison army at its capital (its most populous settlement): it raises one there if it has none, then recruits the cheapest available unit until the army has garrison_units units, at most max_recruits_per_turn per turn, only while gold stays above reserve_gold and net income stays non-negative after the new upkeep. AI armies do not move.",
+    "garrison_units": 6,
+    "max_recruits_per_turn": 1,
+    "reserve_gold": 1000
+  }
+}

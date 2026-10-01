@@ -7,6 +7,8 @@
   "outfit": "outfit.peasant",
   "loadout": ["weapon.spear_raised"],
   "visual_config": {"pose": "spear", "hair": ["hair.buzzed", "hair.beard"]},
+  "size": 160,
+  "recruitment": {"cost": 250, "turns": 1},
   "card_portrait": {"framing": "full_body"},
-  "placeholder_stats": {"_note": "PLACEHOLDER values; not balanced. upkeep is used by the economy (data/economy.json army_upkeep_multiplier); the rest is shown in the UI only", "entities": 160, "upkeep": 60, "melee_attack": 18, "melee_defence": 14, "armour": 10, "missile_range": 0}
+  "placeholder_stats": {"_note": "PLACEHOLDER values; not balanced. upkeep is used by the economy (data/economy.json army_upkeep_multiplier); the rest is shown in the UI only. size (men at full strength) and recruitment (gold cost, turns; null = not recruitable) are PLACEHOLDER values too", "upkeep": 60, "melee_attack": 18, "melee_defence": 14, "armour": 10, "missile_range": 0}
 }

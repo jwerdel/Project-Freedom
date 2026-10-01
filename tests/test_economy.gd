@@ -109,13 +109,16 @@ func test_turn_applies_income_then_expenses_for_every_faction():
   var spent = 0
   for a in report.ai_started:
    if a.faction == f: spent += int(Construction.in_progress(s,a.settlement).cost)
+  # Replenishing in foreign land also costs gold.
+  for id in report.replenished:
+   if s.army_state[id].faction == f: spent += int(report.replenished[id].gold)
   assert_eq(s.treasury[f],before[f]+ledgers[f].income_total-ledgers[f].expense_total-spent,f)
  assert_eq(report.year,1)
  assert_eq(s.year,2)
  var aurek = ledgers.house_aurek
  var army = 0
  for e in aurek.expenses: if e.kind == "army": army += e.amount
- assert_eq(army,Economy.army_upkeep("aurek_host"))
+ assert_eq(army,Economy.army_upkeep(s,"aurek_host"))
  assert_gt(army,0)
 
 func test_end_turn_is_deterministic_with_the_same_seed():

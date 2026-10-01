@@ -12,6 +12,12 @@ const UNIT_CARD = Vector2(80,150)
 const BUILDING_CARD = Vector2(112,132)
 
 class UnitCard extends Control:
+ signal pressed
+ var queued_turns := 0 # > 0: a queued recruit, drawn veiled with its turns left
+ var selected := false:
+  set(v):
+   selected = v
+   if overlay: overlay.queue_redraw()
  var unit_id := ""
  var faction := {}
  var strength := 1.0
@@ -25,10 +31,13 @@ class UnitCard extends Control:
  func _init(unit_type: Dictionary,entry: Dictionary,faction_data: Dictionary,portraits,tip: String):
   unit_id = unit_type.id
   faction = faction_data
-  strength = float(entry.get("strength",1.0))
+  # Real strength: current men over the unit's full size (entry {men, max_men}).
+  var max_men = float(entry.get("max_men",unit_type.size))
+  strength = float(entry.get("men",max_men))/maxf(1.0,max_men)
   is_lord = unit_type.get("single_entity",false)
   rank = int(entry.get("rank",0))
-  men = 0 if is_lord else int(round(float(unit_type.placeholder_stats.entities)*strength))
+  men = 0 if is_lord else int(entry.get("men",max_men))
+  queued_turns = int(entry.get("queued_turns",0))
   art = UnitTypes.card_art(unit_type)
   studio = portraits
   custom_minimum_size = UNIT_CARD*(Vector2(1.12,1.12) if is_lord else Vector2.ONE)
@@ -47,6 +56,8 @@ class UnitCard extends Control:
   mouse_entered.connect(queue_redraw)
   mouse_exited.connect(queue_redraw)
   resized.connect(_layout)
+  gui_input.connect(func(e):
+   if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT: pressed.emit())
  func _ready():
   if art:
    portrait.texture = art
@@ -95,6 +106,15 @@ class CardOverlay extends Control:
    var y = 10.0+i*6.0
    draw_polyline(PackedVector2Array([Vector2(7,y+4),Vector2(12,y),Vector2(17,y+4)]),Color(0,0,0,0.8),4.0)
    draw_polyline(PackedVector2Array([Vector2(7,y+4),Vector2(12,y),Vector2(17,y+4)]),Color("f2cf6a"),2.0)
+  # Queued recruit: veiled, with the turns left instead of a count.
+  if card.queued_turns>0:
+   draw_rect(Rect2(Vector2(3,3),size-Vector2(6,6)),Color(0,0,0,0.55))
+   var qf = UiKit.FONT_BOLD
+   var qt = "%d turn%s" % [card.queued_turns,"" if card.queued_turns == 1 else "s"]
+   var qw = qf.get_string_size(qt,HORIZONTAL_ALIGNMENT_LEFT,-1,14).x
+   draw_string(qf,Vector2((size.x-qw)*0.5,size.y*0.5),qt,HORIZONTAL_ALIGNMENT_LEFT,-1,14,Color("f1d79a"))
+   return
+  if card.selected: draw_rect(Rect2(Vector2(1,1),size-Vector2(2,2)),Color("ffe08a"),false,3.0)
   # Unit count.
   if card.men>0:
    var f = UiKit.FONT_BOLD
@@ -115,8 +135,9 @@ class CardFrame extends Control:
  func _draw():
   draw_style_box(UiKit.frame_box("card",trim),Rect2(Vector2.ZERO,size))
 
-static func unit_card(unit_type: Dictionary,entry: Dictionary,faction: Dictionary,studio,tip: String) -> Control:
+static func unit_card(unit_type: Dictionary,entry: Dictionary,faction: Dictionary,studio,tip: String,on_press := Callable()) -> Control:
  var card = UnitCard.new(unit_type,entry,faction,studio,tip)
+ if on_press.is_valid(): card.pressed.connect(on_press)
  var trim = Color("f2cf6a") if card.is_lord else UiKit.colors(faction).trim.darkened(0.15)
  card.add_child(CardFrame.new(trim))
  return card

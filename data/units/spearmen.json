@@ -7,6 +7,8 @@
   "outfit": "outfit.ranger_hoodless",
   "loadout": ["weapon.spear", "weapon.shield_round"],
   "visual_config": {"pose": "idle", "hair": ["hair.parted"]},
+  "size": 120,
+  "recruitment": {"cost": 450, "turns": 1},
   "card_portrait": {"framing": "full_body"},
-  "placeholder_stats": {"_note": "PLACEHOLDER values; not balanced. upkeep is used by the economy (data/economy.json army_upkeep_multiplier); the rest is shown in the UI only", "entities": 120, "upkeep": 110, "melee_attack": 26, "melee_defence": 34, "armour": 35, "missile_range": 0}
+  "placeholder_stats": {"_note": "PLACEHOLDER values; not balanced. upkeep is used by the economy (data/economy.json army_upkeep_multiplier); the rest is shown in the UI only. size (men at full strength) and recruitment (gold cost, turns; null = not recruitable) are PLACEHOLDER values too", "upkeep": 110, "melee_attack": 26, "melee_defence": 34, "armour": 35, "missile_range": 0}
 }

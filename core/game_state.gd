@@ -7,6 +7,7 @@ const WorldMap = preload("res://core/world_map.gd")
 const UnitTypes = preload("res://core/unit_types.gd")
 const Buildings = preload("res://core/buildings.gd")
 const Movement = preload("res://core/movement.gd")
+const Armies = preload("res://core/armies.gd")
 const START = "res://data/campaign_start.json"
 
 var seed := 0
@@ -16,7 +17,7 @@ var player_faction := ""
 var treasury = {}     # faction id -> int gold
 var settlements = {}  # settlement id -> {owner, type, level, population (float), buildings (slots), construction, resources, defense, unlocks}
 var armies = []       # army ids (data/armies/)
-var army_state = {}   # army id -> movement state (core/movement.gd: position, points, order, garrison)
+var army_state = {}   # army id -> army: composition and queue (core/armies.gd) plus movement (core/movement.gd)
 var road_level := 0   # road network level: 0 dirt, 1 gravel, 2 stone
 var chronicle = []    # {year, category, title, text}
 var last_ledgers = {} # faction id -> ledger of the last processed turn
@@ -42,7 +43,13 @@ static func from_data(path := START) -> RefCounted:
  s.road_level = int(data.get("road_level",0))
  for id in s.armies:
   var p = data.get("army_positions",{}).get(id,[0,0])
-  s.army_state[id] = Movement.new_army_state(id,Vector2(p[0],p[1]))
+  var a = Armies.from_data(id)
+  var pos = Vector2(p[0],p[1])
+  a.merge(Movement.new_army_state(a.faction,pos))
+  # An army starting on its own settlement starts garrisoned there.
+  var at = Movement.settlement_at(pos)
+  if at != "" and s.settlements[at].owner == a.faction: a.garrison = at
+  s.army_state[id] = a
  s.chronicle = load("res://core/chronicle.gd").opening_entries()
  return s
 
@@ -66,7 +73,7 @@ func population_of(faction: String) -> int:
 func armies_of(faction: String) -> Array:
  var out = []
  for id in armies:
-  if UnitTypes.army(id).faction == faction: out.append(id)
+  if army_state[id].faction == faction: out.append(id)
  return out
 
 # Everything that defines the state, for determinism checks and later save/load.

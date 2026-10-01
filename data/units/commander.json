@@ -8,6 +8,8 @@
   "outfit": "",
   "loadout": [],
   "visual_config": {},
+  "size": 1,
+  "recruitment": null,
   "card_portrait": {"framing": "full_body"},
-  "placeholder_stats": {"_note": "PLACEHOLDER values; not balanced. upkeep is used by the economy (data/economy.json army_upkeep_multiplier); the rest is shown in the UI only", "entities": 1, "upkeep": 300, "melee_attack": 50, "melee_defence": 45, "armour": 80, "missile_range": 0}
+  "placeholder_stats": {"_note": "PLACEHOLDER values; not balanced. upkeep is used by the economy (data/economy.json army_upkeep_multiplier); the rest is shown in the UI only. size (men at full strength) and recruitment (gold cost, turns; null = not recruitable) are PLACEHOLDER values too", "upkeep": 150, "melee_attack": 50, "melee_defence": 45, "armour": 80, "missile_range": 0}
 }

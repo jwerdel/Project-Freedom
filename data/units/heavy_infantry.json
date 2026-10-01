@@ -7,6 +7,8 @@
   "outfit": "outfit.ranger_hoodless",
   "loadout": ["weapon.hammer", "weapon.shield_large"],
   "visual_config": {"pose": "sword", "hair": ["hair.buzzed", "hair.beard"], "tint": "#8f949c", "scale": 1.06},
+  "size": 90,
+  "recruitment": {"cost": 800, "turns": 2},
   "card_portrait": {"framing": "full_body"},
-  "placeholder_stats": {"_note": "PLACEHOLDER values; not balanced. upkeep is used by the economy (data/economy.json army_upkeep_multiplier); the rest is shown in the UI only", "entities": 90, "upkeep": 190, "melee_attack": 40, "melee_defence": 36, "armour": 75, "missile_range": 0}
+  "placeholder_stats": {"_note": "PLACEHOLDER values; not balanced. upkeep is used by the economy (data/economy.json army_upkeep_multiplier); the rest is shown in the UI only. size (men at full strength) and recruitment (gold cost, turns; null = not recruitable) are PLACEHOLDER values too", "upkeep": 190, "melee_attack": 40, "melee_defence": 36, "armour": 75, "missile_range": 0}
 }

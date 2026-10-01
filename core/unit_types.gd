@@ -6,7 +6,7 @@ extends RefCounted
 const AssetManifest = preload("res://core/asset_manifest.gd")
 const UNIT_DIR = "res://data/units/"
 const ARMY_DIR = "res://data/armies/"
-const REQUIRED = ["id","display_name","category","visual","outfit","loadout","card_portrait","placeholder_stats"]
+const REQUIRED = ["id","display_name","category","visual","outfit","loadout","card_portrait","placeholder_stats","size","recruitment"]
 
 static var _types = null
 

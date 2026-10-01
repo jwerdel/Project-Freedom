@@ -64,7 +64,7 @@ func test_portrait_cache_key_changes_with_the_visual():
  assert_ne(studio.cache_key(unit),before,"changing the loadout must invalidate the cached portrait")
 
 func test_commander_army_has_about_eight_known_units():
- var army = UnitTypes.army("aurek_host")
+ var army = UnitTypes.army("aurek_host") # the starting composition file
  assert_eq(army.commander.unit,"commander")
  assert_between(army.units.size(),7,10)
  for entry in army.units: assert_true(UnitTypes.all().has(entry.unit))

@@ -75,6 +75,8 @@ func test_panels_follow_the_data_interface():
 func test_end_turn_runs_the_turn_loop_and_updates_the_ui():
  var data = fixture_data()
  var ui = build_ui(data)
+ # Full-strength units, so no paid replenishment changes the treasury this turn.
+ for u in data.state.army_state.aurek_host.units: u.men = u.max_men
  var net = Economy.faction_ledger(data.state,"house_aurek").net
  ui.end_turn_requested.connect(data.end_turn)
  ui.end_turn_button.pressed.emit()
