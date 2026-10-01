@@ -2,6 +2,8 @@ extends Node3D
 
 const ProtoKit = preload("res://visuals/common/proto_kit.gd")
 const AssetManifest = preload("res://core/asset_manifest.gd")
+const UnitTypes = preload("res://core/unit_types.gd")
+const COMMANDER_ARMY = "aurek_host"
 const ROAD_VISUALS = ["road.dirt","road.gravel","road.stone"]
 
 const CITY_ID = "greyhaven"
@@ -54,6 +56,7 @@ var road_material: StandardMaterial3D
 var serif: SystemFont
 var sans: SystemFont
 var commander: Node3D
+var army: Dictionary
 
 func _ready():
  rng.seed = 87231
@@ -386,6 +389,9 @@ func make_commander():
  add_child(commander)
  commander.position = ground(Vector2(2,0),0.18)
  commander.rotation.y = 0.5
+ # The army this commander leads (data/armies/); shown in the army panel.
+ army = UnitTypes.army(COMMANDER_ARMY)
+ commander.set_meta("army_id",COMMANDER_ARMY)
 
 func style(bg: Color, border: Color, width = 1) -> StyleBoxFlat:
  var s = StyleBoxFlat.new()
@@ -671,6 +677,7 @@ func run_checks():
  assert(city_level>=1 and city_level<=3)
  assert(road_curves.size()==3)
  assert(traffic.size()==10)
+ assert(army.units.size()>=7 and army.commander.unit=="commander")
  var level_before = city_level
  for i in range(3): upgrade_city()
  assert(city_level==level_before)

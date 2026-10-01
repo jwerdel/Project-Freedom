@@ -66,6 +66,22 @@ Source: https://quaternius.com/packs/medievalweapons.html ("Modular Weapons Pack
 | `Hammer_Double.fbx` | Heavy Infantry |
 | `License.txt` | Pack license |
 
+### Units: base character, outfits, hair, horse and poses
+
+All CC0 (license files checked 2026-09-30: `License_Standard.txt` in Universal Base Characters and Modular Character Outfits – Fantasy, `License.txt` in Animals and Universal Animation Library). Copied and derived by `scripts/prepare_character_assets.gd` (run with the download folder as its argument):
+
+- **Textures are downscaled** from 2K/4K to at most 1024 px (Lanczos) for campaign/card scale; models (`.gltf`/`.bin`) are copied unmodified.
+- Two textures are **renamed copies**: the base character's glTF references `T_Hair_1_Normal_png.png` and `T_Eye_Normal_png.png`, which are missing from the download; they are the pack's `T_Hair_1_Normal.png` and `T_Eye_Normal.png` under the referenced names.
+- **Poses are extracted**: six animations from `UAL1_Standard.glb` saved as standalone Godot `Animation` resources (`.res`); the 7.6 MB library itself is not committed.
+
+| Path | Source pack and file | Used as |
+|---|---|---|
+| `assets/quaternius/characters/Superhero_Male_FullBody.gltf` + `.bin`, `T_Superhero_Male_{Dark,Normal,Roughness}.png`, `T_Eye_Brown.png`, `T_Eye_Normal_png.png`, `T_Hair_1_BaseColor.png`, `T_Hair_1_Normal_png.png` | Universal Base Characters (Standard), `Base Characters/Godot - UE/` — https://quaternius.com/packs/universalbasecharacters.html | Shared soldier body; only the head, eyes and eyebrows are shown (outfits supply the rest) |
+| `assets/quaternius/characters/Hair_{Buzzed,Beard,SimpleParted}.gltf` + `.bin`, `T_Hair_1_Normal.png` | Universal Base Characters, `Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/` | Hair and beards (tinted brown) |
+| `assets/quaternius/outfits/Male_Peasant.gltf` + `.bin`, `Male_Ranger.gltf` + `.bin`, `T_Peasant_{BaseColor,Normal,ORM}.png`, `T_Ranger_{BaseColor,Normal,ORM}.png`, `T_Regular_Male_{Dark_BaseColor,Normal,Roughness}.png` | Modular Character Outfits – Fantasy (Standard), `Exports/glTF (Godot-Unreal)/Outfits/` — https://quaternius.com/packs/modularcharacteroutfitsfantasy.html | Peasant and Ranger outfits (Ranger also used without its hood) |
+| `assets/quaternius/animals/Horse.gltf` | Ultimate Animated Animal Pack, `glTF/Horse.gltf` — https://quaternius.com/packs/ultimateanimatedanimals.html | Cavalry horse (static Idle pose) |
+| `assets/quaternius/animations/{Idle_Loop,Sword_Idle,Idle_Torch_Loop,Sitting_Idle_Loop,Pistol_Idle_Loop,Spell_Simple_Idle_Loop}.res` | Universal Animation Library (Standard), `Unreal-Godot/UAL1_Standard.glb` — https://quaternius.com/packs/universalanimationlibrary.html | Static unit poses (sampled once, no animation playback) |
+
 ## Kenney (CC0) — imported
 
 Author: Kenney (https://www.kenney.nl). License: CC0 1.0 Universal; credit is appreciated but not required. Files copied unmodified; the white Fantasy UI Borders are tinted in code.
@@ -122,11 +138,11 @@ The downloaded copies were checked on 2026-09-30: each pack's own license file s
 | Pack | Official page | Download | Planned use |
 |---|---|---|---|
 | Ultimate Fantasy RTS | https://quaternius.com/packs/ultimatefantasyrts.html | Google Drive, full pack free | Trees, rocks and the Goldspire Rock pieces: imported (above). Not yet imported: FirstAge town center, houses, watchtower, walls, farm, windmill, port and dock at levels 1–3 for the generic settlements |
-| Pirate Kit | https://quaternius.com/packs/piratekit.html | Google Drive, full pack free | `Ship_Small` and `Ship_Large` only |
-| Universal Base Characters | https://quaternius.com/packs/universalbasecharacters.html | itch.io, free Standard tier (2 base models, 5 hairstyles) | Shared soldier and commander body (humanoid rig) |
-| Modular Character Outfits – Fantasy | https://quaternius.com/packs/modularcharacteroutfitsfantasy.html | itch.io, free Standard tier (Ranger and Peasant outfits) | Placeholder soldier and commander outfits |
-| Universal Animation Library | https://quaternius.com/packs/universalanimationlibrary.html | itch.io, free Standard tier (45 animations) | Idle, walk and run for placeholder units |
-| Ultimate Animated Animal Pack | https://quaternius.com/packs/ultimateanimatedanimals.html | Google Drive, full pack free | `Horse` only |
+| Pirate Kit | https://quaternius.com/packs/piratekit.html | Google Drive, full pack free | `Ship_Small` and `Ship_Large` only (not yet imported) |
+| Universal Base Characters | https://quaternius.com/packs/universalbasecharacters.html | itch.io, free Standard tier (2 base models, 5 hairstyles) | Shared soldier body: imported (above) |
+| Modular Character Outfits – Fantasy | https://quaternius.com/packs/modularcharacteroutfitsfantasy.html | itch.io, free Standard tier (Ranger and Peasant outfits) | Placeholder soldier outfits: imported (above) |
+| Universal Animation Library | https://quaternius.com/packs/universalanimationlibrary.html | itch.io, free Standard tier (45 animations) | Six static poses: imported (above); walk and run not yet |
+| Ultimate Animated Animal Pack | https://quaternius.com/packs/ultimateanimatedanimals.html | Google Drive, full pack free | `Horse` only: imported (above) |
 
 ## Development tools (committed)
 

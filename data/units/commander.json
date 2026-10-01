@@ -1,0 +1,13 @@
+{
+  "id": "commander",
+  "display_name": "Commander",
+  "category": "lord",
+  "single_entity": true,
+  "description": "The army's general, shown on the campaign map.",
+  "visual": "unit.commander",
+  "outfit": "",
+  "loadout": [],
+  "visual_config": {},
+  "card_portrait": {"framing": "full_body"},
+  "placeholder_stats": {"_note": "PLACEHOLDER values for UI layout only; not balanced, not used by any system", "entities": 1, "upkeep": 300, "melee_attack": 50, "melee_defence": 45, "armour": 80, "missile_range": 0}
+}

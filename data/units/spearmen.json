@@ -1,0 +1,12 @@
+{
+  "id": "spearmen",
+  "display_name": "Spearmen",
+  "category": "infantry",
+  "description": "Trained spear and shield line, steady against horse.",
+  "visual": "unit.soldier",
+  "outfit": "outfit.ranger_hoodless",
+  "loadout": ["weapon.spear", "weapon.shield_round"],
+  "visual_config": {"pose": "idle", "hair": ["hair.parted"]},
+  "card_portrait": {"framing": "full_body"},
+  "placeholder_stats": {"_note": "PLACEHOLDER values for UI layout only; not balanced, not used by any system", "entities": 120, "upkeep": 110, "melee_attack": 26, "melee_defence": 34, "armour": 35, "missile_range": 0}
+}

@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://visuals/weapons/weapon_visual.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/quaternius/weapons/Sword.fbx" id="2"]
+
+[node name="Sword" type="Node3D"]
+script = ExtResource("1")
+bone = "hand_r"
+
+[node name="Model" parent="." instance=ExtResource("2")]
+transform = Transform3D(0.18096521, -0.05004202, -0.06890158, -0.08465988, -0.12317538, -0.13289313, -0.009183694, 0.1494111, -0.1326349, -0.02001679, -0.049270183, 0.059764445)

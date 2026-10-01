@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://visuals/weapons/weapon_visual.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/quaternius/weapons/Shield_Heater.fbx" id="2"]
+
+[node name="ShieldHeater" type="Node3D"]
+script = ExtResource("1")
+bone = "lowerarm_l"
+
+[node name="Model" parent="." instance=ExtResource("2")]
+transform = Transform3D(-0.07211446, -0.19102934, -0.19159162, -0.09685608, -0.16691153, 0.202878, -0.25262314, 0.11852594, -0.023091644, -0.06735599, 0.04919085, -0.039286554)

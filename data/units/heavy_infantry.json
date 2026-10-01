@@ -1,0 +1,12 @@
+{
+  "id": "heavy_infantry",
+  "display_name": "Heavy Infantry",
+  "category": "infantry",
+  "description": "Armoured hammer-bearers behind tower shields.",
+  "visual": "unit.soldier",
+  "outfit": "outfit.ranger_hoodless",
+  "loadout": ["weapon.hammer", "weapon.shield_large"],
+  "visual_config": {"pose": "sword", "hair": ["hair.buzzed", "hair.beard"], "tint": "#8f949c", "scale": 1.06},
+  "card_portrait": {"framing": "full_body"},
+  "placeholder_stats": {"_note": "PLACEHOLDER values for UI layout only; not balanced, not used by any system", "entities": 90, "upkeep": 190, "melee_attack": 40, "melee_defence": 36, "armour": 75, "missile_range": 0}
+}

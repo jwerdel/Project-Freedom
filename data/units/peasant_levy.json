@@ -1,0 +1,12 @@
+{
+  "id": "peasant_levy",
+  "display_name": "Peasant Levy",
+  "category": "infantry",
+  "description": "Farmhands handed a spear. Cheap and numerous.",
+  "visual": "unit.soldier",
+  "outfit": "outfit.peasant",
+  "loadout": ["weapon.spear_raised"],
+  "visual_config": {"pose": "spear", "hair": ["hair.buzzed", "hair.beard"]},
+  "card_portrait": {"framing": "full_body"},
+  "placeholder_stats": {"_note": "PLACEHOLDER values for UI layout only; not balanced, not used by any system", "entities": 160, "upkeep": 60, "melee_attack": 18, "melee_defence": 14, "armour": 10, "missile_range": 0}
+}

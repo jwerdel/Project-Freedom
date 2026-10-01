@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://visuals/weapons/weapon_visual.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/quaternius/weapons/Hammer_Double.fbx" id="2"]
+
+[node name="Hammer" type="Node3D"]
+script = ExtResource("1")
+bone = "hand_r"
+
+[node name="Model" parent="." instance=ExtResource("2")]
+transform = Transform3D(-0.04641801, 0.088623516, -0.23998186, -0.20126788, -0.16320504, -0.021340545, -0.15791336, 0.18196169, 0.09774123, 0.07976121, -0.14688459, 0.16376555)

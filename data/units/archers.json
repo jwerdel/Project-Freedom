@@ -1,0 +1,12 @@
+{
+  "id": "archers",
+  "display_name": "Archers",
+  "category": "missile",
+  "description": "Hooded bowmen who thin the enemy before the lines meet.",
+  "visual": "unit.soldier",
+  "outfit": "outfit.ranger",
+  "loadout": ["weapon.bow"],
+  "visual_config": {"pose": "bow"},
+  "card_portrait": {"framing": "full_body"},
+  "placeholder_stats": {"_note": "PLACEHOLDER values for UI layout only; not balanced, not used by any system", "entities": 100, "upkeep": 120, "melee_attack": 16, "melee_defence": 12, "armour": 15, "missile_range": 150}
+}

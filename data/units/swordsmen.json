@@ -1,0 +1,12 @@
+{
+  "id": "swordsmen",
+  "display_name": "Swordsmen",
+  "category": "infantry",
+  "description": "Sword and heater shield; the core of the battle line.",
+  "visual": "unit.soldier",
+  "outfit": "outfit.ranger_hoodless",
+  "loadout": ["weapon.sword", "weapon.shield_heater"],
+  "visual_config": {"pose": "sword", "hair": ["hair.buzzed"], "tint": "#c9c2b0"},
+  "card_portrait": {"framing": "full_body"},
+  "placeholder_stats": {"_note": "PLACEHOLDER values for UI layout only; not balanced, not used by any system", "entities": 120, "upkeep": 130, "melee_attack": 34, "melee_defence": 28, "armour": 40, "missile_range": 0}
+}

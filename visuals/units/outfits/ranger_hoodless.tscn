@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://visuals/units/outfit_visual.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/quaternius/outfits/Male_Ranger.gltf" id="2"]
+
+[node name="Outfit" type="Node3D"]
+script = ExtResource("1")
+hidden_parts = PackedStringArray("Male_Ranger_Head_Hood")
+
+[node name="Model" parent="." instance=ExtResource("2")]
