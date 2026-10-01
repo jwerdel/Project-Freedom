@@ -27,7 +27,7 @@ Author: Quaternius (https://quaternius.com). License: CC0 1.0 Universal, https:/
 
 ### Ultimate Fantasy RTS — `assets/quaternius/ultimate-fantasy-rts/`
 
-Source: https://quaternius.com/packs/ultimatefantasyrts.html (full pack, free Google Drive download). License file: `License.txt`, copied from the pack; it says "CC0 1.0 Universal (CC0 1.0) Public Domain Dedication" (its header line says "Ultimate Platformer Pack", a copy-paste slip in the pack itself; the official page for this pack also says CC0).
+Source: https://quaternius.com/packs/ultimatefantasyrts.html (full pack, free Google Drive download). License file: `License.txt`, copied from the pack; it says "CC0 1.0 Universal (CC0 1.0) Public Domain Dedication" (its header line says "Ultimate Platformer Pack", a copy-paste slip in the pack itself; the official page for this pack also says CC0). The Goldspire pieces' red "Main" team-color material is swapped for gold at runtime by `visuals/landmarks/goldspire_rock_visual.gd`; the files themselves are unmodified. Triangle counts are as shipped, before the campaign-scale transform.
 
 | File | Pack path | Triangles | Used as |
 |---|---|---|---|
@@ -37,6 +37,19 @@ Source: https://quaternius.com/packs/ultimatefantasyrts.html (full pack, free Go
 | `Resource_Rock_1.gltf` | `glTF/Resource_Rock_1.gltf` | 632 | Coastal rock (`nature.rock`) |
 | `Resource_Rock_2.gltf` | `glTF/Resource_Rock_2.gltf` | 588 | Coastal rock (`nature.rock`) |
 | `Rock.gltf` | `glTF/Rock.gltf` | 162 | Coastal rock (`nature.rock`) |
+| `WatchTower_SecondAge_Level1.gltf` | `glTF/WatchTower_SecondAge_Level1.gltf` | 3,564 | Goldspire Rock: gold-roofed summit and terrace towers |
+| `WatchTower_SecondAge_Level2.gltf` | `glTF/WatchTower_SecondAge_Level2.gltf` | 3,216 | Goldspire Rock: crenellated summit towers (stage 2+) |
+| `TowerHouse_SecondAge.gltf` | `glTF/TowerHouse_SecondAge.gltf` | 3,824 | Goldspire Rock: summit keep (stage 2+) |
+| `Temple_SecondAge_Level1.gltf` | `glTF/Temple_SecondAge_Level1.gltf` | 443 | Goldspire Rock: the gold spire (stage 3) |
+| `WallTowers_SecondAge.gltf` | `glTF/WallTowers_SecondAge.gltf` | 1,792 | Goldspire Rock: summit curtain wall (stage 2+) |
+| `WallTowers_Door_SecondAge.gltf` | `glTF/WallTowers_Door_SecondAge.gltf` | 1,920 | Goldspire Rock: summit and land gates (stage 2+) |
+| `Wall_SecondAge.gltf` | `glTF/Wall_SecondAge.gltf` | 216 | Goldspire Rock: land wall (stage 2+) |
+| `Houses_SecondAge_1_Level1.gltf` | `glTF/Houses_SecondAge_1_Level1.gltf` | 2,336 | Goldspire Rock: terrace houses (stage 3) |
+| `Houses_SecondAge_3_Level1.gltf` | `glTF/Houses_SecondAge_3_Level1.gltf` | 964 | Goldspire Rock: terrace and summit houses (stage 3) |
+| `Storage_SecondAge_Level1.gltf` | `glTF/Storage_SecondAge_Level1.gltf` | 8,160 | Goldspire Rock: terrace halls (stage 3) |
+| `Port_SecondAge_Level1.gltf` | `glTF/Port_SecondAge_Level1.gltf` | 6,672 | Goldspire Rock: harbor (stage 2) |
+| `Port_SecondAge_Level2.gltf` | `glTF/Port_SecondAge_Level2.gltf` | 7,438 | Goldspire Rock: harbor (stage 3) |
+| `Dock_FirstAge.gltf` | `glTF/Dock_FirstAge.gltf` | 388 | Goldspire Rock: piers (stage 2+) |
 | `License.txt` | `License.txt` | — | Pack license |
 
 ## Approved placeholder packs (license confirmed)
@@ -47,7 +60,7 @@ The downloaded copies were checked on 2026-09-30: each pack's own license file s
 
 | Pack | Official page | Download | Planned use |
 |---|---|---|---|
-| Ultimate Fantasy RTS | https://quaternius.com/packs/ultimatefantasyrts.html | Google Drive, full pack free | Trees and rocks: imported (above). Not yet imported: FirstAge town center, houses, watchtower, walls, farm, windmill, port and dock at levels 1–3 |
+| Ultimate Fantasy RTS | https://quaternius.com/packs/ultimatefantasyrts.html | Google Drive, full pack free | Trees, rocks and the Goldspire Rock pieces: imported (above). Not yet imported: FirstAge town center, houses, watchtower, walls, farm, windmill, port and dock at levels 1–3 for the generic settlements |
 | Pirate Kit | https://quaternius.com/packs/piratekit.html | Google Drive, full pack free | `Ship_Small` and `Ship_Large` only |
 | Universal Base Characters | https://quaternius.com/packs/universalbasecharacters.html | itch.io, free Standard tier (2 base models, 5 hairstyles) | Shared soldier and commander body (humanoid rig) |
 | Modular Character Outfits – Fantasy | https://quaternius.com/packs/modularcharacteroutfitsfantasy.html | itch.io, free Standard tier (Ranger and Peasant outfits) | Placeholder soldier and commander outfits |
