@@ -104,6 +104,30 @@ UI cost: about 0.02–0.04 ms GPU and about 200 2D draw calls. Portraits, buildi
 
 1440p: this display is 1920×1080, so a 2560×1440 window cannot be opened here. The game was rendered into an offscreen 2560×1440 viewport with the project's stretch rule (base 1600×1000, `canvas_items`, `expand`); the layout is identical to 1080p and sharper (`captures/ui_overview_1440p.png`).
 
+## Turn loop and economy (2026-09-30)
+
+GUT: 42 tests pass headless and windowed. `tests/test_economy.gd` covers income math against `data/economy.json` for every settlement type and level, cities out-earning fortresses and the fortress income ceiling, Goldspire out-earning a generic city of the same level (by more than 1.5× at every level), resources raising income but never changing, economic settlements growing faster than defensive ones (city/fortress, village/castle, town/castle), capacity limiting growth, income-then-expenses for every faction, a deterministic 10-turn run for a fixed seed, and the yearly chronicle. `tests/test_campaign_ui.gd` checks the UI shows real state (fixture start), the treasury breakdown, real province stats and End Turn. `--self-test` passes.
+
+End Turn processing: 1.2–1.5 ms per turn (4 settlements, 3 factions; self-test and a 10-turn run). GPU time, same method as above: overview 2.06 / 2.06 ms, zoomed on Goldspire 2.08 / 2.09 ms, army panel 1.87–1.88 ms (one transient 2.30 ms reading in one round; two repeat rounds read 1.88 ms). Unchanged from before the economy (it runs only on End Turn).
+
+10-turn sample run (seed 1201, placeholder numbers; treasury gold / population at the start of each year):
+
+| Year | House Aurek | House Lannet of Silverfall | House Verrin of Highbloom |
+|---|---|---|---|
+| 1 | 8,450 / 19,700 | 6,000 / 12,400 | 3,000 / 2,100 |
+| 2 | 8,895 / 19,838 | 6,761 / 12,575 | 3,171 / 2,118 |
+| 3 | 9,340 / 19,973 | 7,522 / 12,747 | 3,342 / 2,134 |
+| 4 | 9,785 / 20,105 | 8,283 / 12,918 | 3,513 / 2,151 |
+| 5 | 10,230 / 20,234 | 9,044 / 13,086 | 3,684 / 2,166 |
+| 6 | 10,675 / 20,360 | 9,805 / 13,252 | 3,855 / 2,181 |
+| 7 | 11,120 / 20,484 | 10,566 / 13,415 | 4,026 / 2,196 |
+| 8 | 11,565 / 20,604 | 11,327 / 13,576 | 4,197 / 2,209 |
+| 9 | 12,010 / 20,722 | 12,088 / 13,735 | 4,368 / 2,223 |
+| 10 | 12,455 / 20,836 | 12,849 / 13,891 | 4,539 / 2,236 |
+| 11 | 12,900 / 20,948 | 13,610 / 14,045 | 4,710 / 2,248 |
+
+Per-turn ledgers (year 1): Aurek income 1,791 (Goldspire 1,528, Crownwatch 263) − expenses 1,346 (army 816, buildings 530) = +445; Lannet 976 − 215 = +761; Verrin 201 − 30 = +171. Income is flat over time because nothing in the confirmed rules ties income to population, and levels do not change without construction.
+
 ## Remaining limitations
 
 - Artwork is a prototype and has not been approved against the desired 2016 Total War campaign-map benchmark.
