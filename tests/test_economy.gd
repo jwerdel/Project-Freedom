@@ -8,6 +8,8 @@ const Economy = preload("res://core/economy.gd")
 const TurnLoop = preload("res://core/turn_loop.gd")
 const Buildings = preload("res://core/buildings.gd")
 const Construction = preload("res://core/construction.gd")
+const Armies = preload("res://core/armies.gd")
+const UnitTypes = preload("res://core/unit_types.gd")
 const NO_RESOURCES = {"wood":0,"stone":0,"food":0,"minerals":0}
 
 func after_each():
@@ -112,6 +114,11 @@ func test_turn_applies_income_then_expenses_for_every_faction():
   # Replenishing in foreign land also costs gold.
   for id in report.replenished:
    if s.army_state[id].faction == f: spent += int(report.replenished[id].gold)
+  # The placeholder AI may also hire generals and recruit.
+  for a in report.ai_armies:
+   if a.faction != f: continue
+   if a.action == "raise": spent += int(Armies.data().armies.general_cost)
+   else: spent += int(UnitTypes.get_type(a.unit).recruitment.cost)
   assert_eq(s.treasury[f],before[f]+ledgers[f].income_total-ledgers[f].expense_total-spent,f)
  assert_eq(report.year,1)
  assert_eq(s.year,2)

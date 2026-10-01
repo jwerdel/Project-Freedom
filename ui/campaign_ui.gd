@@ -9,6 +9,7 @@ signal settlement_selected(id: String)
 signal overlay_toggled(overlay: String,on: bool)
 signal follow_toggled(on: bool)
 signal cancel_order_requested(army_id: String)
+signal army_raised(army_id: String)
 
 const UiKit = preload("res://ui/ui_kit.gd")
 const Widgets = preload("res://ui/widgets.gd")
@@ -281,6 +282,21 @@ func show_settlement(id: String):
  title.add_child(UiKit.header(s.province_name,18))
  title.add_child(UiKit.label("%s · %s · level %d · defense %d · %s" % [s.name,s.type.capitalize(),s.level,s.defense,s.faction.name],14,UiKit.TEXT_DIM))
  if not s.garrison.is_empty(): title.add_child(UiKit.label("Garrison: %s" % ", ".join(s.garrison),14,Color("f1d79a"),UiKit.FONT_BOLD))
+ if s.player_owned:
+  var check = data.raise_army_check(id)
+  var hire = Button.new()
+  hire.name = "HireGeneral"
+  hire.text = "Hire general (%s gold)" % UiKit.format_int(check.cost)
+  hire.focus_mode = Control.FOCUS_NONE
+  hire.disabled = not check.ok
+  hire.tooltip_text = "Raise a new army here, led by a newly hired general (placeholder: name generated, no family system yet; at most %d armies)." % check.max_armies if check.ok else ", ".join(check.reasons)
+  hire.pressed.connect(func():
+   var r = data.raise_army(id)
+   if r.ok:
+    toast("%s takes command of a new army at %s." % [r.name,s.name])
+    army_raised.emit(r.army)
+   else: toast(", ".join(r.reasons)))
+  title.add_child(hire)
  head.add_child(title)
  var spacer = Control.new()
  spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL

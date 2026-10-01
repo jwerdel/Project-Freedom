@@ -53,3 +53,9 @@ func _ready():
  cloth.shader = load("res://banner.gdshader")
  kit.add_mesh(n,st.commit(),cloth)
  kit.banner(n,Vector3(1.3,0,-0.4),3.4)
+
+# Faction colors on the cape and banner (banner.gdshader tint). Called after _ready by the map.
+func set_banner_color(c: Color):
+ for m in find_children("*","MeshInstance3D",true,false):
+  var mat = m.material_override
+  if mat is ShaderMaterial and mat.shader != null and mat.shader.resource_path == "res://banner.gdshader": mat.set_shader_parameter("tint",c)

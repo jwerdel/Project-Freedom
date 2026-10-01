@@ -72,7 +72,8 @@ var press_pos = Vector2.ZERO
 var terrain_material: ShaderMaterial
 var minimap
 var movement_overlay
-var walk = {}            # the commander walking a path: {points, dist, total}
+var walks = {}           # army id -> figure walking a path: {points, dist, total}
+var army_figures = {}    # army id -> map figure (the commander visual, banner in faction colors)
 var follow_army = false   # camera follows the selected army
 var right_press_pos = Vector2.ZERO
 var preview_key = Vector2i(1<<20,0)
@@ -155,6 +156,7 @@ func _ready():
   if arg.begins_with("--recruit-queue="):
    for u in arg.get_slice("=",1).split(","): ui_data.recruit(COMMANDER_ARMY,u)
    select_army()
+  if arg.begins_with("--select-army="): select_army(arg.get_slice("=",1))
   if arg == "--recruit-panel":
    select_army()
    ui.open_recruitment(COMMANDER_ARMY)
@@ -507,7 +509,9 @@ func make_ui():
  ui_data.changed.connect(refresh_army_overlays)
  ui.follow_toggled.connect(func(on): follow_army = on)
  ui.cancel_order_requested.connect(func(id): ui_data.cancel_army_order(id))
- place_commander()
+ ui.army_raised.connect(func(id):
+  refresh_army_overlays()
+  select_army(id))
  refresh_army_overlays()
 
 # Settlement visuals follow the campaign data: a finished main-building upgrade raises the level,
@@ -534,37 +538,76 @@ func focus_settlement(id: String):
  var a = settlement_anchors[id]
  focus_at(ground(Vector2(a.x,a.z)),48)
 
-func select_army():
- ui.show_army(COMMANDER_ARMY,army_location())
- focus_at(commander.position+Vector3(0,2.2,0),26.0)
+func select_army(id := COMMANDER_ARMY):
+ if not army_figures.has(id): return
+ ui.show_army(id,army_location(id))
+ focus_at(army_figures[id].position+Vector3(0,2.2,0),26.0)
  refresh_army_overlays()
 
-func army_location() -> String:
- var region = WorldMap.region_at(Vector2(commander.position.x,commander.position.z))
+# C: select the next of the player's armies.
+func cycle_player_army():
+ var own = []
+ for id in ui_data.army_ids():
+  if ui_data.army(id).player_owned: own.append(id)
+ if own.is_empty(): return
+ var i = own.find(selected_army_id())
+ select_army(own[(i+1)%own.size()])
+
+func army_location(id := "") -> String:
+ if id == "": id = selected_army_id() if selected_army_id() != "" else COMMANDER_ARMY
+ var p = army_figures[id].position if army_figures.has(id) else Vector3.ZERO
+ var region = WorldMap.region_at(Vector2(p.x,p.z))
  return WorldMap.province(WorldMap.province_of(region)).get("name","")
 
 # --- Army movement (rules: core/movement.gd via UiData; drawing: ui/movement_overlay.gd) ------
-# Select with left click or C; hovering the map previews the path; right click (without dragging)
+# Every army has a map figure (faction-colored banner). Select with left click or C (cycles your
+# armies); hovering the map previews the selected army's path; right click (without dragging)
 # gives the order; Backspace or the army panel cancels a standing order; F toggles camera follow.
+# Other factions' armies can be selected to inspect, not ordered.
 
+func selected_army_id() -> String:
+ return ui.selected_army if ui != null and army_figures.has(ui.selected_army) else ""
+
+# True when the selected army is the player's (it can be previewed and ordered).
 func army_selected() -> bool:
- return ui != null and ui.selected_army == COMMANDER_ARMY
+ var id = selected_army_id()
+ return id != "" and ui_data.army(id).player_owned
 
 func army_ground(p: Vector2,lift := 0.18) -> Vector3:
  return Vector3(p.x,maxf(height_at(p.x,p.y),0.0)+lift,p.y)
 
-# Put the figure where the campaign state says the army is (garrisoned armies stand in the town).
+# One figure per army in the campaign state; new armies get one, disbanded ones lose theirs.
+func sync_army_figures():
+ for id in ui_data.army_ids():
+  if army_figures.has(id): continue
+  var f = commander if id == COMMANDER_ARMY and commander != null else AssetManifest.instantiate("unit.commander")
+  if f.get_parent() == null: add_child(f)
+  f.set_meta("army_id",id)
+  f.set_banner_color(Color(ui_data.army(id).faction_data.primary))
+  f.visible = overlays.armies
+  army_figures[id] = f
+ for id in army_figures.keys():
+  if not id in ui_data.army_ids():
+   army_figures[id].queue_free()
+   army_figures.erase(id)
+ place_commander()
+
+# Put each figure where the campaign state says its army is (garrisoned armies stand in the town).
 func place_commander():
- if not walk.is_empty(): return
- commander.position = army_ground(ui_data.army_movement(COMMANDER_ARMY).position)
+ for id in army_figures:
+  if walks.has(id): continue
+  army_figures[id].position = army_ground(ui_data.army_movement(id).position)
 
 func refresh_army_overlays():
  if movement_overlay == null: return
- var path = ui_data.order_path(COMMANDER_ARMY)
- if walk.is_empty() and path.points.size()>1: movement_overlay.show_path("order",path.points,path.turns,true)
- else: movement_overlay.clear("order")
- if army_selected() and walk.is_empty():
-  var area = ui_data.reachable_area(COMMANDER_ARMY)
+ sync_army_figures()
+ # Standing orders of the player's armies stay visible on the map.
+ for id in army_figures:
+  var path = ui_data.order_path(id)
+  if not walks.has(id) and path.points.size()>1 and ui_data.army(id).player_owned: movement_overlay.show_path("order:"+id,path.points,path.turns,true)
+  else: movement_overlay.clear("order:"+id)
+ if army_selected() and not walks.has(selected_army_id()):
+  var area = ui_data.reachable_area(selected_army_id())
   movement_overlay.show_reachable(area.centers,area.cell)
  else:
   movement_overlay.clear("reach")
@@ -595,10 +638,13 @@ func ground_point(screen: Vector2) -> Vector2:
  var far = origin+dir*700.0
  return Vector2(far.x,far.z)
 
-# Move target under the mouse: a settlement's position if one is hovered, else the ground.
+# Move target under the mouse: a settlement's or army's position if one is hovered, else the ground.
 func move_target(screen: Vector2) -> Vector2:
  var hit = pick(screen)
- if hit != "" and hit != "army": return WorldMap.settlement_position(hit)
+ if hit.begins_with("army:"):
+  var p = army_figures[hit.get_slice(":",1)].position
+  return Vector2(p.x,p.z)
+ if hit != "": return WorldMap.settlement_position(hit)
  return ground_point(screen)
 
 # Preview the path to `p` (Total War style: this turn green, later turns in warmer colors, turn
@@ -607,7 +653,7 @@ func preview_move(p: Vector2) -> String:
  var key = Vector2i(floori(p.x),floori(p.y))
  if key == preview_key: return preview_text
  preview_key = key
- var plan = ui_data.plan_move(COMMANDER_ARMY,p)
+ var plan = ui_data.plan_move(selected_army_id(),p)
  if not plan.ok:
   movement_overlay.show_blocked(p,plan.reason)
   preview_text = plan.reason
@@ -618,7 +664,7 @@ func preview_move(p: Vector2) -> String:
  return preview_text
 
 func order_army(p: Vector2):
- var r = ui_data.order_move(COMMANDER_ARMY,p)
+ var r = ui_data.order_move(selected_army_id(),p)
  movement_overlay.clear("preview")
  if not r.ok:
   ui.toast(r.reason)
@@ -632,37 +678,42 @@ func toggle_follow():
  ui.toast("Camera follow %s." % ("on" if follow_army else "off"))
 
 func _on_army_moved(id: String,walked: Array):
- if id != COMMANDER_ARMY or walked.size()<2: return
+ if walked.size()<2: return
+ sync_army_figures()
+ if not army_figures.has(id): return
  var total = 0.0
  for i in range(1,walked.size()): total += walked[i-1].distance_to(walked[i])
- walk = {"points":walked,"dist":0.0,"total":total}
- movement_overlay.clear("reach")
- movement_overlay.clear("preview")
- movement_overlay.clear("order")
+ walks[id] = {"points":walked,"dist":0.0,"total":total}
+ movement_overlay.clear("order:"+id)
+ if id == selected_army_id():
+  movement_overlay.clear("reach")
+  movement_overlay.clear("preview")
 
-# The figure slides along the walked path with a subtle step bob (the commander is a procedural
-# figure without a skeleton, so there is no walk cycle to play).
+# Figures slide along their walked paths with a subtle step bob (the commander is a procedural
+# figure without a skeleton; it will be replaced by a rigged model).
 func update_walk(delta: float):
- if walk.is_empty(): return
- walk.dist = minf(walk.total,walk.dist+delta*WALK_SPEED)
- var left = walk.dist
- var pts = walk.points
- var at = pts[-1]
- var dir = Vector2.ZERO
- for i in range(1,pts.size()):
-  var seg = pts[i-1].distance_to(pts[i])
-  if left<=seg or i == pts.size()-1:
-   at = pts[i-1].lerp(pts[i],clampf(left/maxf(seg,0.0001),0,1))
-   dir = pts[i]-pts[i-1]
-   break
-  left -= seg
- commander.position = army_ground(at,0.18+absf(sin(walk.dist*1.9))*0.14)
- if dir.length()>0.001: commander.rotation.y = lerp_angle(commander.rotation.y,atan2(dir.x,dir.y),minf(1,delta*10))
- if walk.dist>=walk.total:
-  walk = {}
-  place_commander()
-  refresh_army_overlays()
-  if army_selected(): ui.show_army(COMMANDER_ARMY,army_location())
+ for id in walks.keys():
+  var w = walks[id]
+  var fig = army_figures[id]
+  w.dist = minf(w.total,w.dist+delta*WALK_SPEED)
+  var left = w.dist
+  var pts = w.points
+  var at = pts[-1]
+  var dir = Vector2.ZERO
+  for i in range(1,pts.size()):
+   var seg = pts[i-1].distance_to(pts[i])
+   if left<=seg or i == pts.size()-1:
+    at = pts[i-1].lerp(pts[i],clampf(left/maxf(seg,0.0001),0,1))
+    dir = pts[i]-pts[i-1]
+    break
+   left -= seg
+  fig.position = army_ground(at,0.18+absf(sin(w.dist*1.9))*0.14)
+  if dir.length()>0.001: fig.rotation.y = lerp_angle(fig.rotation.y,atan2(dir.x,dir.y),minf(1,delta*10))
+  if w.dist>=w.total:
+   walks.erase(id)
+   place_commander()
+   refresh_army_overlays()
+   if id == selected_army_id(): ui.show_army(id,army_location(id))
 
 func end_turn():
  ui_data.end_turn()
@@ -671,7 +722,8 @@ func end_turn():
 
 func set_overlay(overlay: String,on: bool):
  overlays[overlay] = on
- if overlay == "armies": commander.visible = on
+ if overlay == "armies":
+  for id in army_figures: army_figures[id].visible = on
  if overlay == "borders": terrain_material.set_shader_parameter("territory_on",1.0 if on else 0.0)
  if overlay == "settlements": minimap.show_settlements = on
  minimap.refresh()
@@ -725,11 +777,13 @@ func focus_at(p: Vector3,d: float):
 func request_capture():
  screenshot_requested = true
 
-# What is under the mouse on the map: "army", a settlement ID, or "".
+# What is under the mouse on the map: "army:<id>", a settlement ID, or "".
 func pick(screen: Vector2) -> String:
- if commander.visible and not camera.is_position_behind(commander.position):
-  var c = camera.unproject_position(commander.position+Vector3(0,2.2,0))
-  if c.distance_to(screen)<_screen_radius(commander.position,2.6,26): return "army"
+ for id in army_figures:
+  var f = army_figures[id]
+  if not f.visible or camera.is_position_behind(f.position): continue
+  var c = camera.unproject_position(f.position+Vector3(0,2.2,0))
+  if c.distance_to(screen)<_screen_radius(f.position,2.6,26): return "army:"+id
  for id in settlement_anchors:
   var a = settlement_anchors[id]
   var center = ground(Vector2(a.x,a.z),2.0) if id != GOLDSPIRE_ID else Vector3(a.x,12,a.z)
@@ -743,9 +797,11 @@ func _screen_radius(world: Vector3,meters: float,minimum: float) -> float:
  return maxf(a.distance_to(b),minimum)
 
 func hover_text(hit: String) -> String:
- if hit == "army":
-  var a = ui_data.army(COMMANDER_ARMY)
-  return "%s\n%s · %s\n%s" % [a.commander.name,a.faction_data.name,a.display_name,army_location()]
+ if hit.begins_with("army:"):
+  var id = hit.get_slice(":",1)
+  var a = ui_data.army(id)
+  var m = ui_data.army_movement(id)
+  return "%s\n%s · %s\n%d units%s · %s" % [a.commander.name,a.faction_data.name,a.display_name,a.units.size(),(" · garrison of "+m.garrison_name) if m.garrison != "" else "",army_location(id)]
  var s = ui_data.settlement(hit)
  return "%s\n%s\n%s" % [s.name,s.faction.name,s.province_name]
 
@@ -758,7 +814,7 @@ func _unhandled_input(event):
    if event.button_index == MOUSE_BUTTON_RIGHT: right_press_pos = event.position
   elif event.button_index == MOUSE_BUTTON_LEFT and event.position.distance_to(press_pos)<6:
    var hit = pick(event.position)
-   if hit == "army": select_army()
+   if hit.begins_with("army:"): select_army(hit.get_slice(":",1))
    elif hit != "": select_settlement(hit)
   elif event.button_index == MOUSE_BUTTON_RIGHT and event.position.distance_to(right_press_pos)<6 and army_selected():
    order_army(move_target(event.position))
@@ -781,7 +837,7 @@ func _unhandled_input(event):
    ui.visible = true
    pins_root.visible = true
   if event.keycode == KEY_G: select_settlement(GOLDSPIRE_ID)
-  if event.keycode == KEY_C: select_army()
+  if event.keycode == KEY_C: cycle_player_army()
   if event.keycode == KEY_F: toggle_follow()
   if event.keycode == KEY_BACKSPACE and army_selected(): ui_data.cancel_army_order(COMMANDER_ARMY)
   if event.keycode == KEY_F5: upgrade_city()
@@ -826,8 +882,9 @@ func _process(delta):
     n.position = Vector3(p.x,height_at(p.x,p.z)+0.14,p.z)
     if p.distance_to(q)>0.01: n.rotation.y = atan2(-(q-p).x,-(q-p).z)
  update_walk(delta)
- if follow_army and (not walk.is_empty() or army_selected()):
-  var c = commander.position
+ var follow_id = selected_army_id()
+ if follow_army and follow_id != "":
+  var c = army_figures[follow_id].position
   target = target.lerp(Vector3(c.x,c.y+2.2,c.z),minf(1,delta*4))
  camera_update(delta)
  for p in pins:
@@ -838,15 +895,15 @@ func _process(delta):
  var mouse = get_viewport().get_mouse_position()
  var hit = "" if get_viewport().gui_get_hovered_control() != null else pick(mouse)
  if "--ledger" in OS.get_cmdline_user_args(): ui.show_hover(ui._ledger_text(),Vector2(560,70))
- elif forced_preview != null and army_selected() and walk.is_empty():
+ elif forced_preview != null and army_selected() and not walks.has(selected_army_id()):
   ui.show_hover(preview_move(forced_preview),camera.unproject_position(army_ground(forced_preview,1.0)))
- elif army_selected() and ui.visible and walk.is_empty() and not capture_mode and get_viewport().gui_get_hovered_control() == null and hit != "army":
+ elif army_selected() and ui.visible and not walks.has(selected_army_id()) and not capture_mode and get_viewport().gui_get_hovered_control() == null and not hit.begins_with("army:"):
   var text = preview_move(move_target(mouse))
   ui.show_hover(hover_text(hit)+"
 "+text if hit != "" else text,mouse)
  elif hit != "" and ui.visible: ui.show_hover(hover_text(hit),mouse)
  else: ui.hide_hover()
- if movement_overlay and forced_preview == null and movement_overlay.has_content("preview") and not (army_selected() and walk.is_empty() and get_viewport().gui_get_hovered_control() == null and hit != "army"):
+ if movement_overlay and forced_preview == null and movement_overlay.has_content("preview") and not (army_selected() and not walks.has(selected_army_id()) and get_viewport().gui_get_hovered_control() == null and not hit.begins_with("army:")):
   movement_overlay.clear("preview")
   preview_key = Vector2i(1<<20,0)
  ui.set_fps("%d FPS" % Engine.get_frames_per_second())
@@ -952,7 +1009,7 @@ func run_checks():
  update_walk(1000.0)
  var m = ui_data.army_movement(COMMANDER_ARMY)
  assert(not m.order.is_empty() and m.points<points_before)
- assert(movement_overlay.has_content("order"))
+ assert(movement_overlay.has_content("order:"+COMMANDER_ARMY))
  assert(commander.position.distance_to(army_ground(m.position))<0.01)
  var mid = m.position
  end_turn()

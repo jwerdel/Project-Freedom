@@ -1,0 +1,13 @@
+{
+  "_note": "PLACEHOLDER starting army of House Lannet (Westerlands minor house, docs/world.md), garrisoned at Greyhaven. Composition and strengths are placeholders.",
+  "id": "silverfall_guard",
+  "display_name": "The Silverfall Guard",
+  "faction": "house_lannet",
+  "commander": {"unit": "commander", "name": "Ser Merrit Lannet", "rank": 1},
+  "units": [
+    {"unit": "spearmen", "strength": 1.0},
+    {"unit": "spearmen", "strength": 0.9},
+    {"unit": "archers", "strength": 1.0},
+    {"unit": "peasant_levy", "strength": 1.0}
+  ]
+}

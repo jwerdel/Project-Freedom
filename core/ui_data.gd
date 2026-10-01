@@ -306,3 +306,18 @@ func order_path(army_id: String) -> Dictionary:
 # Upkeep per turn of one unit of this type.
 func unit_upkeep(unit_id: String) -> int:
  return int(round(float(UnitTypes.get_type(unit_id).placeholder_stats.upkeep)*float(Economy.data().upkeep.army_upkeep_multiplier)))
+
+# --- New armies ----------------------------------------------------------------------
+
+# Whether the player can hire a general (a new army) at this settlement, and the cost.
+func raise_army_check(settlement_id: String) -> Dictionary:
+ var r = Armies.can_raise(state,state.player_faction,settlement_id)
+ r.cost = int(Armies.data().armies.general_cost)
+ r.max_armies = int(Armies.data().armies.max_per_faction)
+ return r
+
+# Hire a general at one of the player's settlements: a new army garrisoned there.
+func raise_army(settlement_id: String) -> Dictionary:
+ var r = Armies.raise_army(state,state.player_faction,settlement_id)
+ if r.ok: changed.emit()
+ return r
