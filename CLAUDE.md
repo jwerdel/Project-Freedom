@@ -46,7 +46,8 @@ Godot 4.7.2 fantasy strategy game. Personal project; free and local only.
 ## Repository hygiene
 
 - Never commit secrets, executables (`runtime/Godot.exe`, `*.exe`), generated caches (`.godot/`, `.local/`), captures, or work-related material.
-- Commits use the repo-local personal identity; confirm it before the first commit of a session if it looks unset.
+- Commits use the repo-local identity `jwerdel` / `121633115+jwerdel@users.noreply.github.com` (GitHub noreply) for both author and committer. Confirm `git config --local user.email` is that address before the first commit of a session.
+- Never put personal email addresses, real names, employer names, or other identifying information in files, commit messages, or asset metadata. Strip metadata from images before committing them.
 - Small, focused commits with clear messages.
 - Never add Co-Authored-By or any Claude attribution to commits.
 - Commit the `.uid` files Godot generates next to scripts and shaders.
