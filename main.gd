@@ -4,6 +4,16 @@ const ProtoKit = preload("res://visuals/common/proto_kit.gd")
 const AssetManifest = preload("res://core/asset_manifest.gd")
 const UnitTypes = preload("res://core/unit_types.gd")
 const COMMANDER_ARMY = "aurek_host"
+const WorldMap = preload("res://core/world_map.gd")
+const UiData = preload("res://core/ui_data.gd")
+const PortraitStudio = preload("res://core/portrait_studio.gd")
+const CampaignUI = preload("res://ui/campaign_ui.gd")
+const UiKit = preload("res://ui/ui_kit.gd")
+# Overview camera (Home). Framed so the coast and Goldspire's sea face sit above the bottom panel.
+const OVERVIEW_TARGET = Vector3(10,3,21)
+const OVERVIEW_YAW = 0.08
+const OVERVIEW_PITCH = 0.85
+const OVERVIEW_DISTANCE = 155.0
 const ROAD_VISUALS = ["road.dirt","road.gravel","road.stone"]
 
 const CITY_ID = "greyhaven"
@@ -18,11 +28,11 @@ var rng = RandomNumberGenerator.new()
 var noise = FastNoiseLite.new()
 var detail = FastNoiseLite.new()
 var camera: Camera3D
-var target = Vector3(-3, 3, -9)
-var yaw = 0.24
-var pitch = 0.56
-var distance = 151.0
-var desired_distance = 151.0
+var target = OVERVIEW_TARGET
+var yaw = OVERVIEW_YAW
+var pitch = OVERVIEW_PITCH
+var distance = OVERVIEW_DISTANCE
+var desired_distance = OVERVIEW_DISTANCE
 var time = 0.0
 var paused = false
 var city_level = 2
@@ -34,17 +44,6 @@ var goldspire_root: Node3D
 var traffic: Array = []
 var road_curves: Array = []
 var flags: Array = []
-var pins: Array = []
-var ui: Control
-var title_label: Label
-var info_label: Label
-var toast_label: Label
-var status_label: Label
-var city_button: Button
-var road_button: Button
-var pause_button: Button
-var detail_panel: PanelContainer
-var selected = "city"
 var sun: DirectionalLight3D
 var environment: Environment
 var dusk = false
@@ -53,10 +52,18 @@ var capture_frames = 0
 var capture_mode = false
 var kit
 var road_material: StandardMaterial3D
-var serif: SystemFont
-var sans: SystemFont
+
+
 var commander: Node3D
 var army: Dictionary
+var pins: Array = []
+var ui
+var ui_data
+var studio
+var pins_root: Control
+var settlement_anchors = {}
+var overlays = {"borders":true,"settlements":true,"armies":true}
+var press_pos = Vector2.ZERO
 
 func _ready():
  rng.seed = 87231
@@ -92,7 +99,7 @@ func _ready():
   road_level = 2
   make_city()
   make_roads()
-  refresh_ui()
+  ui_data.set_settlement_level(CITY_ID,city_level)
  if "--closeup" in OS.get_cmdline_user_args():
   target = Vector3(CITY.x, height_at(CITY.x,CITY.y), CITY.y)
   distance = 42
@@ -107,6 +114,9 @@ func _ready():
  if "--goldspire" in OS.get_cmdline_user_args():
   focus_goldspire()
   distance = desired_distance
+ for arg in OS.get_cmdline_user_args():
+  if arg.begins_with("--select="): select_settlement(arg.get_slice("=",1))
+ if "--army" in OS.get_cmdline_user_args(): select_army()
  if "--self-test" in OS.get_cmdline_user_args():
   run_checks()
  print("FREEDOM_READY | city=%s road=%s traffic=%s" % [city_level,road_level,traffic.size()])
@@ -359,8 +369,8 @@ func make_goldspire():
 func cycle_goldspire():
  goldspire_level = goldspire_level%3+1
  make_goldspire()
- refresh_ui()
- if toast_label: toast_label.text = ["Goldspire Rock: mine tunnels glow beneath a lone summit tower.","Goldspire Rock: carved halls, a walled summit and a harbor at its foot.","Goldspire Rock: the whole sea face is terraced with halls and gold-roofed towers."][goldspire_level-1]
+ if ui_data: ui_data.set_settlement_level(GOLDSPIRE_ID,goldspire_level)
+ if ui: ui.toast(["Goldspire Rock: mine tunnels glow beneath a lone summit tower.","Goldspire Rock: carved halls, a walled summit and a harbor at its foot.","Goldspire Rock: the whole sea face is terraced with halls and gold-roofed towers."][goldspire_level-1])
 
 # Camera bookmark (G): Goldspire's sea face from the southwest.
 func focus_goldspire():
@@ -393,176 +403,80 @@ func make_commander():
  army = UnitTypes.army(COMMANDER_ARMY)
  commander.set_meta("army_id",COMMANDER_ARMY)
 
-func style(bg: Color, border: Color, width = 1) -> StyleBoxFlat:
- var s = StyleBoxFlat.new()
- s.bg_color = bg
- s.border_color = border
- s.set_border_width_all(width)
- s.content_margin_left = 20
- s.content_margin_right = 20
- s.content_margin_top = 14
- s.content_margin_bottom = 14
- return s
-
-func label(text_v: String,size_v: int,color = Color("e4ddc9"),font: Font = null) -> Label:
- var l = Label.new()
- l.text = text_v
- l.add_theme_font_size_override("font_size",size_v)
- l.add_theme_color_override("font_color",color)
- l.add_theme_font_override("font",font if font else sans)
- return l
-
-func button(text_v: String,callback: Callable) -> Button:
- var b = Button.new()
- b.text = text_v
- b.custom_minimum_size.y = 40
- b.add_theme_font_override("font",sans)
- b.add_theme_font_size_override("font_size",14)
- b.add_theme_color_override("font_color",Color("e1d8bd"))
- b.add_theme_stylebox_override("normal",style(Color("233538"),Color("64716a")))
- b.add_theme_stylebox_override("hover",style(Color("354b4b"),Color("c6ab70")))
- b.add_theme_stylebox_override("pressed",style(Color("182a2c"),Color("d0b477")))
- b.pressed.connect(callback)
- b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
- return b
+# --- Campaign UI ---------------------------------------------------------------
+# The TW:WH3-style shell lives in ui/campaign_ui.gd and reads only from UiData (core/ui_data.gd).
 
 func make_ui():
- serif = SystemFont.new()
- serif.font_names = PackedStringArray(["Georgia"])
- sans = SystemFont.new()
- sans.font_names = PackedStringArray(["Segoe UI"])
  var layer = CanvasLayer.new()
  add_child(layer)
- ui = Control.new()
- ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
- ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ studio = PortraitStudio.new()
+ add_child(studio)
+ ui_data = UiData.new()
+ ui_data.set_settlement_level(CITY_ID,city_level)
+ ui_data.set_settlement_level(GOLDSPIRE_ID,goldspire_level)
+ pins_root = Control.new()
+ pins_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+ pins_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ layer.add_child(pins_root)
+ ui = CampaignUI.new()
  layer.add_child(ui)
- var top = PanelContainer.new()
- ui.add_child(top)
- top.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
- top.offset_bottom = 88
- top.add_theme_stylebox_override("panel",style(Color(0.055,0.095,0.105,0.96),Color("7d816e")))
- var h = HBoxContainer.new()
- h.add_theme_constant_override("separation",25)
- top.add_child(h)
- var names = VBoxContainer.new()
- h.add_child(names)
- names.add_child(label("PROJECT  FREEDOM",12,Color("b7aa83")))
- names.add_child(label("The Greywater March",29,Color("eee4c9"),serif))
- var space = Control.new()
- space.size_flags_horizontal = Control.SIZE_EXPAND_FILL
- h.add_child(space)
- var build = VBoxContainer.new()
- h.add_child(build)
- build.add_child(label("A LIVING WORLD  /  VISUAL PROTOTYPE",12,Color("b8c6bd")))
- build.add_child(label("Coast of the western kingdoms",15,Color("e6deca"),serif))
- detail_panel = PanelContainer.new()
- ui.add_child(detail_panel)
- detail_panel.position = Vector2(25,115)
- detail_panel.custom_minimum_size = Vector2(285,0)
- detail_panel.add_theme_stylebox_override("panel",style(Color(0.055,0.10,0.11,0.93),Color("677568")))
- var v = VBoxContainer.new()
- v.add_theme_constant_override("separation",12)
- detail_panel.add_child(v)
- v.add_child(label("THE GREYWATER COAST",11,Color("bca978")))
- title_label = label("Greyhaven",29,Color("efe4c9"),serif)
- v.add_child(title_label)
- info_label = label("",14,Color("c2cbc1"))
- v.add_child(info_label)
- v.add_child(HSeparator.new())
- city_button = button("Develop settlement  ·  1 / 3",upgrade_city)
- v.add_child(city_button)
- road_button = button("Improve roads  ·  dirt",upgrade_roads)
- v.add_child(road_button)
- v.add_child(button("Inspect Greyhaven",func(): focus_at(ground(CITY),39.0)))
- v.add_child(button("Inspect the commander",func():
-  focus_at(commander.position+Vector3(0,2.2,0),15.0)
-  pitch=0.30))
- v.add_child(button("Return to the coast  ·  Home",reset_camera))
- var bottom = PanelContainer.new()
- ui.add_child(bottom)
- bottom.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
- bottom.offset_top = -77
- bottom.add_theme_stylebox_override("panel",style(Color(0.055,0.095,0.105,0.95),Color("677568")))
- var bar = HBoxContainer.new()
- bar.add_theme_constant_override("separation",12)
- bottom.add_child(bar)
- pause_button = button("Pause activity",toggle_pause)
- bar.add_child(pause_button)
- bar.add_child(button("Change light",toggle_light))
- bar.add_child(button("Save view  ·  F12",request_capture))
- var spacer = Control.new()
- spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
- bar.add_child(spacer)
- var tips = VBoxContainer.new()
- bar.add_child(tips)
- tips.add_child(label("WASD  pan     •     Drag right mouse  orbit     •     Wheel  zoom",13))
- status_label = label("",12,Color("9eafa6"))
- tips.add_child(status_label)
- toast_label = label("Choose a settlement, or explore the coast.",14)
- ui.add_child(toast_label)
- toast_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
- toast_label.offset_top = -117
- toast_label.offset_bottom = -88
- toast_label.offset_left = -330
- toast_label.offset_right = 440
- toast_label.add_theme_color_override("font_shadow_color",Color.BLACK)
- toast_label.add_theme_constant_override("shadow_offset_x",1)
- toast_label.add_theme_constant_override("shadow_offset_y",2)
- for data in [["GREYHAVEN",ground(CITY,6),"city"],["CROWNWATCH",ground(KEEP,6),"fortress"],["WILLOWMERE",ground(VILLAGE,5),"village"],["GOLDSPIRE ROCK",Vector3(GOLDSPIRE.x,27,GOLDSPIRE.y),"goldspire"]]:
+ ui.setup(ui_data,studio)
+ pins_root.theme = ui.theme
+ ui.end_turn_requested.connect(end_turn)
+ ui.settlement_selected.connect(focus_settlement)
+ ui.overlay_toggled.connect(set_overlay)
+ settlement_anchors = {CITY_ID:ground(CITY,6),"crownwatch":ground(KEEP,6),"willowmere":ground(VILLAGE,5),GOLDSPIRE_ID:Vector3(GOLDSPIRE.x,27,GOLDSPIRE.y)}
+ for id in settlement_anchors:
   var b = Button.new()
-  b.text = data[0]
-  b.add_theme_font_override("font",serif)
-  b.add_theme_font_size_override("font_size",16)
-  b.add_theme_color_override("font_color",Color("f0e3bf"))
-  b.add_theme_stylebox_override("normal",style(Color(0.06,0.12,0.13,0.84),Color("7d8971")))
-  b.add_theme_stylebox_override("hover",style(Color("334541"),Color("d7b97d")))
-  b.pressed.connect(select_place.bind(data[2]))
-  ui.add_child(b)
-  pins.append({"button":b,"world":data[1]})
- refresh_ui()
+  b.text = ui_data.settlement(id).name.to_upper()
+  b.add_theme_font_override("font",UiKit.head_font())
+  b.add_theme_font_size_override("font_size",15)
+  b.focus_mode = Control.FOCUS_NONE
+  b.pressed.connect(select_settlement.bind(id))
+  pins_root.add_child(b)
+  pins.append({"button":b,"world":settlement_anchors[id],"id":id})
 
-func refresh_ui():
- if not info_label: return
- if selected=="city":
-  title_label.text = "Greyhaven"
-  info_label.text = ["Fishing town · sheltered harbor\nTimber-framed streets and open markets.","Walled city · coastal stronghold\nStone ramparts shelter a growing town.","Chartered city · thriving port\nNew wards spread beyond the old walls."][city_level-1]
- elif selected=="fortress":
-  title_label.text = "Crownwatch"
-  info_label.text = "Hill fortress · the eastern pass\nSix towers guard the road inland."
- elif selected=="goldspire":
-  title_label.text = "Goldspire Rock"
-  info_label.text = ["Mining hold · House Aurek\nTunnels glow beneath a lone summit tower.","Carved fortress · gold port\nHalls cut into the cliff above a walled harbor.","Terraced citadel · seat of House Aurek\nHalls and gold-roofed towers climb the rock."][goldspire_level-1]
- else:
-  title_label.text = "Willowmere"
-  info_label.text = "Farming village · fertile lowlands\nFields and a mill supply the coast."
- city_button.text = "Develop Greyhaven  ·  %s / 3" % city_level if city_level<3 else "Reset Greyhaven to a town"
- road_button.text = "Improve roads  ·  "+["dirt","gravel","stone → reset"][road_level]
+func select_settlement(id: String):
+ ui.show_settlement(id)
+ focus_settlement(id)
 
-func select_place(id: String):
- selected = id
- refresh_ui()
- if id=="goldspire":
+func focus_settlement(id: String):
+ if id == GOLDSPIRE_ID:
   focus_goldspire()
   return
- var p = CITY if id=="city" else KEEP if id=="fortress" else VILLAGE
- focus_at(ground(p),48)
+ var a = settlement_anchors[id]
+ focus_at(ground(Vector2(a.x,a.z)),48)
+
+func select_army():
+ ui.show_army(COMMANDER_ARMY,army_location())
+ focus_at(commander.position+Vector3(0,2.2,0),26.0)
+
+func army_location() -> String:
+ var region = WorldMap.region_at(Vector2(commander.position.x,commander.position.z))
+ return WorldMap.province(WorldMap.province_of(region)).get("name","")
+
+func end_turn():
+ ui_data.end_turn()
+ ui.toast("Year %d begins." % ui_data.resources().year)
+
+func set_overlay(overlay: String,on: bool):
+ overlays[overlay] = on
+ if overlay == "armies": commander.visible = on
 
 func upgrade_city():
  city_level = city_level%3+1
  make_city()
- refresh_ui()
- if toast_label: toast_label.text = ["Greyhaven returns to its original fishing town.","Greyhaven's ramparts rise around its growing streets.","New wards and a high tower transform Greyhaven's skyline."][city_level-1]
+ if ui_data: ui_data.set_settlement_level(CITY_ID,city_level)
+ if ui: ui.toast(["Greyhaven returns to its original fishing town.","Greyhaven's ramparts rise around its growing streets.","New wards and a high tower transform Greyhaven's skyline."][city_level-1])
 
 func upgrade_roads():
  road_level = (road_level+1)%3
  make_roads()
- refresh_ui()
- if toast_label: toast_label.text = ["The coast is linked by dirt tracks.","Gravel roads now connect the coast's settlements.","Stone paving and roadside markers trace the trade network."][road_level]
+ if ui: ui.toast(["The coast is linked by dirt tracks.","Gravel roads now connect the coast's settlements.","Stone paving and roadside markers trace the trade network."][road_level])
 
 func toggle_pause():
  paused = not paused
- pause_button.text = "Resume activity" if paused else "Pause activity"
+ if ui: ui.toast("Trade traffic paused." if paused else "Trade traffic resumed.")
 
 func toggle_light():
  dusk = not dusk
@@ -572,10 +486,10 @@ func toggle_light():
  environment.ambient_light_energy = 0.42 if dusk else 0.60
 
 func reset_camera():
- target = Vector3(-3,3,-9)
- yaw = 0.24
- pitch = 0.56
- desired_distance = 151
+ target = OVERVIEW_TARGET
+ yaw = OVERVIEW_YAW
+ pitch = OVERVIEW_PITCH
+ desired_distance = OVERVIEW_DISTANCE
 
 func focus_at(p: Vector3,d: float):
  target = p
@@ -584,10 +498,40 @@ func focus_at(p: Vector3,d: float):
 func request_capture():
  screenshot_requested = true
 
+# What is under the mouse on the map: "army", a settlement ID, or "".
+func pick(screen: Vector2) -> String:
+ if commander.visible and not camera.is_position_behind(commander.position):
+  var c = camera.unproject_position(commander.position+Vector3(0,2.2,0))
+  if c.distance_to(screen)<_screen_radius(commander.position,2.6,26): return "army"
+ for id in settlement_anchors:
+  var a = settlement_anchors[id]
+  var center = ground(Vector2(a.x,a.z),2.0) if id != GOLDSPIRE_ID else Vector3(a.x,12,a.z)
+  if camera.is_position_behind(center): continue
+  if camera.unproject_position(center).distance_to(screen)<_screen_radius(center,13.0 if id==GOLDSPIRE_ID else 9.0,30): return id
+ return ""
+
+func _screen_radius(world: Vector3,meters: float,minimum: float) -> float:
+ var a = camera.unproject_position(world)
+ var b = camera.unproject_position(world+camera.global_basis.x*meters)
+ return maxf(a.distance_to(b),minimum)
+
+func hover_text(hit: String) -> String:
+ if hit == "army":
+  var f = WorldMap.faction(army.faction)
+  return "%s\n%s · %s\n%s" % [army.commander.name,f.name,army.display_name,army_location()]
+ var s = ui_data.settlement(hit)
+ return "%s\n%s\n%s" % [s.name,s.faction.name,s.province_name]
+
 func _unhandled_input(event):
- if event is InputEventMouseButton and event.pressed:
-  if event.button_index == MOUSE_BUTTON_WHEEL_UP: desired_distance = clampf(desired_distance*0.88,10,210)
-  if event.button_index == MOUSE_BUTTON_WHEEL_DOWN: desired_distance = clampf(desired_distance*1.13,10,210)
+ if event is InputEventMouseButton:
+  if event.pressed:
+   if event.button_index == MOUSE_BUTTON_WHEEL_UP: desired_distance = clampf(desired_distance*0.88,10,210)
+   if event.button_index == MOUSE_BUTTON_WHEEL_DOWN: desired_distance = clampf(desired_distance*1.13,10,210)
+   if event.button_index == MOUSE_BUTTON_LEFT: press_pos = event.position
+  elif event.button_index == MOUSE_BUTTON_LEFT and event.position.distance_to(press_pos)<6:
+   var hit = pick(event.position)
+   if hit == "army": select_army()
+   elif hit != "": select_settlement(hit)
  if event is InputEventMouseMotion:
   if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
    yaw -= event.relative.x*0.005
@@ -598,10 +542,19 @@ func _unhandled_input(event):
   if event.keycode == KEY_HOME: reset_camera()
   if event.keycode == KEY_SPACE: toggle_pause()
   if event.keycode == KEY_F12: request_capture()
-  if event.keycode == KEY_TAB: ui.visible = not ui.visible
-  if event.keycode == KEY_ESCAPE: ui.visible = true
-  if event.keycode == KEY_G: select_place("goldspire")
+  if event.keycode == KEY_TAB:
+   ui.visible = not ui.visible
+   pins_root.visible = ui.visible
+  if event.keycode == KEY_ESCAPE:
+   ui.clear_selection()
+   ui.visible = true
+   pins_root.visible = true
+  if event.keycode == KEY_G: select_settlement(GOLDSPIRE_ID)
+  if event.keycode == KEY_C: select_army()
+  if event.keycode == KEY_F5: upgrade_city()
   if event.keycode == KEY_F6: cycle_goldspire()
+  if event.keycode == KEY_F7: upgrade_roads()
+  if event.keycode == KEY_L: toggle_light()
 
 func camera_update(delta: float):
  var dir = Vector3.ZERO
@@ -642,11 +595,13 @@ func _process(delta):
  camera_update(delta)
  for p in pins:
   var b = p.button
-  b.visible = not camera.is_position_behind(p.world) and distance>25
-  if b.visible:
-   b.position = camera.unproject_position(p.world)-b.size*Vector2(0.5,1.0)
-   b.visible = b.position.x>320 and b.position.y>100 and b.position.y<get_viewport().get_visible_rect().size.y-135
- status_label.text = "%s FPS  ·  Local 3D scene  ·  No campaign simulation yet  ·  Tab hides interface" % Engine.get_frames_per_second()
+  b.visible = overlays.settlements and not camera.is_position_behind(p.world) and distance>25
+  if b.visible: b.position = camera.unproject_position(p.world)-b.size*Vector2(0.5,1.0)
+ var mouse = get_viewport().get_mouse_position()
+ var hit = "" if get_viewport().gui_get_hovered_control() != null else pick(mouse)
+ if hit != "" and ui.visible: ui.show_hover(hover_text(hit),mouse)
+ else: ui.hide_hover()
+ ui.set_fps("%d FPS" % Engine.get_frames_per_second())
  if capture_mode:
   capture_frames += 1
   if capture_frames==180: screenshot_requested = true
@@ -659,18 +614,22 @@ func save_capture():
  await RenderingServer.frame_post_draw
  var folder = ProjectSettings.globalize_path("res://captures")
  DirAccess.make_dir_recursive_absolute(folder)
+ var args = OS.get_cmdline_user_args()
  var name_v = "overview"
- if "--closeup" in OS.get_cmdline_user_args(): name_v="city"
- if "--hero" in OS.get_cmdline_user_args(): name_v="commander"
- if "--goldspire" in OS.get_cmdline_user_args(): name_v="goldspire"
- if "--developed" in OS.get_cmdline_user_args(): name_v+="_developed"
- for arg in OS.get_cmdline_user_args():
+ if "--closeup" in args: name_v="city"
+ if "--hero" in args: name_v="commander"
+ if "--goldspire" in args: name_v="goldspire"
+ if "--developed" in args: name_v+="_developed"
+ for arg in args:
   if arg.begins_with("--goldspire-stage="): name_v+="_goldspire_stage_%d" % goldspire_level if name_v!="goldspire" else "_stage_%d" % goldspire_level
+  if arg.begins_with("--select="): name_v = "selected_"+arg.get_slice("=",1)
+  if arg.begins_with("--name="): name_v = arg.get_slice("=",1)
+ if "--army" in args: name_v = "army"
  if not capture_mode: name_v="view_"+Time.get_datetime_string_from_system().replace(":","-")
  var path = folder+"/"+name_v+".png"
  var result = get_viewport().get_texture().get_image().save_png(path)
- print("CAPTURE ",path," result=",result)
- toast_label.text = "Saved view to ProjectFreedom / captures."
+ print("CAPTURE ",path," result=",result," window=",DisplayServer.window_get_size()," ui=",get_viewport().get_visible_rect().size)
+ if ui: ui.toast("Saved view to ProjectFreedom / captures.")
  if capture_mode: get_tree().quit(0 if result==OK else 1)
 
 func run_checks():
@@ -697,12 +656,17 @@ func run_checks():
  assert(desired_distance<zoom_before)
  desired_distance=zoom_before
  var paused_before = paused
- pause_button.pressed.emit()
+ toggle_pause()
  assert(paused!=paused_before)
- pause_button.pressed.emit()
+ toggle_pause()
  assert(paused==paused_before)
- select_place("fortress")
- assert(title_label.text=="Crownwatch")
+ # Map settlements match the province data the UI reads.
+ for id in settlement_anchors:
+  var a = settlement_anchors[id]
+  assert(WorldMap.settlement_position(id).distance_to(Vector2(a.x,a.z))<0.5,"Settlement position mismatch: "+id)
+  assert(WorldMap.region_at(Vector2(a.x,a.z))==id,"Settlement outside its region: "+id)
+ select_settlement("crownwatch")
+ assert(ui.selected_settlement=="crownwatch" and ui.province_title=="Crownwatch Pass")
  # Goldspire Rock: a registered landmark standing in the sea, its stages cycle, G jumps to it.
  assert(AssetManifest.is_landmark(GOLDSPIRE_ID))
  assert(height_at(GOLDSPIRE.x,GOLDSPIRE.y+8)<0)
@@ -715,9 +679,15 @@ func run_checks():
  key.keycode = KEY_G
  key.pressed = true
  _unhandled_input(key)
- assert(title_label.text=="Goldspire Rock")
+ assert(ui.selected_settlement==GOLDSPIRE_ID)
  assert(Vector2(target.x,target.z).distance_to(GOLDSPIRE)<1)
- selected="city"
- refresh_ui()
+ select_army()
+ assert(ui.selected_army==COMMANDER_ARMY and army_location()=="The Greywater March")
+ # End Turn advances the year by one and posts the new year to Event Messages.
+ var year = ui_data.resources().year
+ end_turn()
+ assert(ui_data.resources().year==year+1)
+ assert(ui_data.events("turn")[0].title=="Year %d begins" % (year+1))
+ ui.clear_selection()
  reset_camera()
- print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle")
+ print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn")

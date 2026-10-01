@@ -50,6 +50,8 @@ Source: https://quaternius.com/packs/ultimatefantasyrts.html (full pack, free Go
 | `Port_SecondAge_Level1.gltf` | `glTF/Port_SecondAge_Level1.gltf` | 6,672 | Goldspire Rock: harbor (stage 2) |
 | `Port_SecondAge_Level2.gltf` | `glTF/Port_SecondAge_Level2.gltf` | 7,438 | Goldspire Rock: harbor (stage 3) |
 | `Dock_FirstAge.gltf` | `glTF/Dock_FirstAge.gltf` | 388 | Goldspire Rock: piers (stage 2+) |
+| `Mine.gltf` | `glTF/Mine.gltf` | 2,294 | Building card art: Gold Mines (`building.mine`) |
+| `Farm_FirstAge_Level2_Wheat.gltf` | `glTF/Farm_FirstAge_Level2_Wheat.gltf` | — | Building card art: Wheat Fields (`building.farm`) |
 | `License.txt` | `License.txt` | — | Pack license |
 
 ### Modular Weapons Pack — `assets/quaternius/weapons/`
@@ -137,7 +139,7 @@ The downloaded copies were checked on 2026-09-30: each pack's own license file s
 
 | Pack | Official page | Download | Planned use |
 |---|---|---|---|
-| Ultimate Fantasy RTS | https://quaternius.com/packs/ultimatefantasyrts.html | Google Drive, full pack free | Trees, rocks and the Goldspire Rock pieces: imported (above). Not yet imported: FirstAge town center, houses, watchtower, walls, farm, windmill, port and dock at levels 1–3 for the generic settlements |
+| Ultimate Fantasy RTS | https://quaternius.com/packs/ultimatefantasyrts.html | Google Drive, full pack free | Trees, rocks and the Goldspire Rock pieces and two building-card models: imported (above); building cards also reuse the Goldspire pieces. Not yet imported: FirstAge town center, houses, watchtower, walls, farm, windmill, port and dock at levels 1–3 for the generic settlements |
 | Pirate Kit | https://quaternius.com/packs/piratekit.html | Google Drive, full pack free | `Ship_Small` and `Ship_Large` only (not yet imported) |
 | Universal Base Characters | https://quaternius.com/packs/universalbasecharacters.html | itch.io, free Standard tier (2 base models, 5 hairstyles) | Shared soldier body: imported (above) |
 | Modular Character Outfits – Fantasy | https://quaternius.com/packs/modularcharacteroutfitsfantasy.html | itch.io, free Standard tier (Ranger and Peasant outfits) | Placeholder soldier outfits: imported (above) |
@@ -156,4 +158,4 @@ Godot 4.7.2 standard Windows build, MIT license: https://github.com/godotengine/
 
 ## System fonts
 
-The legacy prototype labels still use installed Windows system fonts (Georgia, Segoe UI) through Godot's SystemFont. These are not redistributed.
+The campaign UI uses the bundled OFL fonts above; no system fonts are used or redistributed.

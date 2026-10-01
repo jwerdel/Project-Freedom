@@ -1,0 +1,400 @@
+extends Control
+# Campaign UI shell modeled on Total War: Warhammer III: round menu buttons (top-left), resource
+# bar (top-center), minimap (top-right), event messages (right), province stats (left), province
+# or army panel (bottom-center) and the End Turn button (bottom-right).
+# Every value shown comes from the UiData interface (core/ui_data.gd); the UI never reads files.
+
+signal end_turn_requested
+signal settlement_selected(id: String)
+signal overlay_toggled(overlay: String,on: bool)
+
+const UiKit = preload("res://ui/ui_kit.gd")
+const Widgets = preload("res://ui/widgets.gd")
+const Cards = preload("res://ui/cards.gd")
+
+const MENU = [["faction","Faction overview"],["diplomacy","Diplomacy"],["tech","Technology"],["lords","Lords and heroes"],["finance","Finance"],["objectives","Objectives"]]
+const OVERLAYS = [["borders","Territory borders"],["settlements","Settlement banners"],["armies","Armies"]]
+
+var data
+var studio
+var colors: Dictionary
+var resource_labels = {}
+var event_box: VBoxContainer
+var collapsed = {}
+var stats_panel: Control
+var stats_box: VBoxContainer
+var bottom_panel: Control
+var bottom_box: VBoxContainer
+var end_turn_button: Button
+var end_turn_year: Label
+var hover_tip: PanelContainer
+var hover_label: Label
+var toast_label: Label
+var fps_label: Label
+var minimap_slot: Control
+var overlay_buttons = {}
+var selected_settlement := ""
+var selected_army := ""
+var army_location := ""
+var province_title := ""
+
+func setup(ui_data,portrait_studio):
+ data = ui_data
+ studio = portrait_studio
+ theme = UiKit.theme_for(data.player_faction())
+ colors = UiKit.colors(data.player_faction())
+ set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+ mouse_filter = Control.MOUSE_FILTER_IGNORE
+ _build_menu()
+ _build_resources()
+ _build_minimap()
+ _build_events()
+ _build_stats()
+ _build_bottom()
+ _build_end_turn()
+ _build_overlays()
+ data.changed.connect(refresh)
+ data.event_added.connect(func(_e): _rebuild_events())
+ refresh()
+ _rebuild_events()
+
+# --- Layout helpers ------------------------------------------------------------
+
+func _anchor(c: Control,left: float,top: float,right: float,bottom: float,offsets: Rect2):
+ c.anchor_left = left
+ c.anchor_top = top
+ c.anchor_right = right
+ c.anchor_bottom = bottom
+ c.offset_left = offsets.position.x
+ c.offset_top = offsets.position.y
+ c.offset_right = offsets.size.x
+ c.offset_bottom = offsets.size.y
+ add_child(c)
+
+func _framed(kind := "main") -> Widgets.Framed:
+ return Widgets.Framed.new(kind,colors.trim,Color(colors.panel,0.94))
+
+func _clear(box: Node):
+ for c in box.get_children():
+  box.remove_child(c)
+  c.queue_free()
+
+# --- Top-left menu, top-center resources, top-right minimap ---------------------
+
+func _build_menu():
+ var row = HBoxContainer.new()
+ row.add_theme_constant_override("separation",6)
+ for m in MENU: row.add_child(Widgets.RoundButton.new(m[0],"%s\n(placeholder: not implemented yet)" % m[1],46,colors.trim))
+ _anchor(row,0,0,0,0,Rect2(14,10,0,0))
+
+func _build_resources():
+ var bar = _framed()
+ var row = HBoxContainer.new()
+ row.add_theme_constant_override("separation",14)
+ row.alignment = BoxContainer.ALIGNMENT_CENTER
+ bar.add_child(row)
+ row.add_child(Widgets.Emblem.new(data.player_faction(),26))
+ var name_label = UiKit.header(data.player_faction().name,17)
+ name_label.tooltip_text = "%s\n%s" % [data.player_faction().name,data.player_faction().realm]
+ name_label.mouse_filter = Control.MOUSE_FILTER_PASS
+ row.add_child(name_label)
+ for item in [["treasury","coin","Treasury"],["income","income","Income per turn"],["population","population","Population"],["year","year","Year and turn"]]:
+  var group = HBoxContainer.new()
+  group.add_theme_constant_override("separation",5)
+  group.tooltip_text = "%s (mock value)" % item[2]
+  group.mouse_filter = Control.MOUSE_FILTER_PASS
+  group.add_child(Widgets.Icon.new(item[1],Color("e9c46a") if item[1]!="population" else Color("d9cfb6"),22))
+  var value = UiKit.label("",17,UiKit.TEXT,UiKit.FONT_BOLD)
+  group.add_child(value)
+  resource_labels[item[0]] = value
+  row.add_child(group)
+ _anchor(bar,0.5,0,0.5,0,Rect2(-360,8,360,64))
+
+func _build_minimap():
+ var frame = _framed()
+ minimap_slot = Control.new()
+ minimap_slot.custom_minimum_size = Vector2(206,206)
+ minimap_slot.clip_contents = true
+ frame.add_child(minimap_slot)
+ var placeholder = UiKit.label("Minimap",14,UiKit.TEXT_DIM)
+ placeholder.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+ placeholder.name = "Placeholder"
+ minimap_slot.add_child(placeholder)
+ _anchor(frame,1,0,1,0,Rect2(-250,10,-14,246))
+
+func _build_overlays():
+ var row = HBoxContainer.new()
+ row.add_theme_constant_override("separation",4)
+ for o in OVERLAYS:
+  var b = Widgets.RoundButton.new(o[0],"Show "+o[1].to_lower(),32,colors.trim)
+  b.toggle_mode = true
+  b.button_pressed = true
+  b.toggled.connect(func(on): overlay_toggled.emit(o[0],on))
+  overlay_buttons[o[0]] = b
+  row.add_child(b)
+ _anchor(row,1,0,1,0,Rect2(-250,250,-14,282))
+
+# --- Event messages (right) ------------------------------------------------------
+
+func _build_events():
+ var frame = _framed()
+ var v = VBoxContainer.new()
+ v.add_theme_constant_override("separation",4)
+ frame.add_child(v)
+ v.add_child(UiKit.header("Event Messages",16))
+ v.add_child(UiKit.divider(colors.trim))
+ var scroll = ScrollContainer.new()
+ scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+ scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+ v.add_child(scroll)
+ event_box = VBoxContainer.new()
+ event_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ event_box.add_theme_constant_override("separation",3)
+ scroll.add_child(event_box)
+ _anchor(frame,1,0,1,0,Rect2(-326,290,-14,640))
+
+func _rebuild_events():
+ _clear(event_box)
+ for cat in data.event_categories():
+  var entries = data.events(cat.id)
+  var open = not collapsed.get(cat.id,false)
+  var head = Button.new()
+  head.text = "%s  %s  (%d)" % ["–" if open else "+",cat.name,entries.size()]
+  head.alignment = HORIZONTAL_ALIGNMENT_LEFT
+  head.focus_mode = Control.FOCUS_NONE
+  head.add_theme_font_size_override("font_size",14)
+  head.pressed.connect(func():
+   collapsed[cat.id] = open
+   _rebuild_events())
+  event_box.add_child(head)
+  if not open: continue
+  for e in entries.slice(0,6):
+   var row = VBoxContainer.new()
+   row.add_theme_constant_override("separation",0)
+   var title = UiKit.label(e.title,15,Color("f1d79a"),UiKit.FONT_BOLD)
+   title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+   row.add_child(title)
+   if e.text != "":
+    var text = UiKit.label("%s  · Year %d" % [e.text,e.year],13,UiKit.TEXT_DIM)
+    text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    row.add_child(text)
+   var m = MarginContainer.new()
+   m.add_theme_constant_override("margin_left",10)
+   m.add_child(row)
+   event_box.add_child(m)
+
+# --- Province stats (left) ----------------------------------------------------------
+
+func _build_stats():
+ stats_panel = _framed()
+ stats_panel.custom_minimum_size = Vector2(300,0)
+ stats_box = VBoxContainer.new()
+ stats_box.add_theme_constant_override("separation",6)
+ stats_panel.add_child(stats_box)
+ stats_panel.visible = false
+ _anchor(stats_panel,0,0,0,0,Rect2(14,70,314,70))
+
+func _stat_row(icon: String,label: String,value: String,tip: String) -> Control:
+ var row = HBoxContainer.new()
+ row.tooltip_text = tip
+ row.mouse_filter = Control.MOUSE_FILTER_PASS
+ row.add_child(Widgets.Icon.new(icon,Color("e9c46a"),20))
+ var l = UiKit.label(label,15)
+ l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ row.add_child(l)
+ row.add_child(UiKit.label(value,16,Color("f1d79a"),UiKit.FONT_BOLD))
+ return row
+
+func _show_stats(s: Dictionary):
+ _clear(stats_box)
+ var p = data.province(s.province)
+ var st = data.province_stats(s.province)
+ province_title = p.name
+ stats_box.add_child(UiKit.header(p.name,20))
+ var owner_row = HBoxContainer.new()
+ owner_row.add_theme_constant_override("separation",8)
+ owner_row.add_child(Widgets.Emblem.new(s.faction,22))
+ owner_row.add_child(UiKit.label("%s\n%s" % [s.name,s.faction.name],14,UiKit.TEXT_DIM))
+ stats_box.add_child(owner_row)
+ stats_box.add_child(UiKit.divider(colors.trim))
+ stats_box.add_child(_stat_row("population","Growth","%+d" % st.growth,"Population growth per turn (mock)"))
+ stats_box.add_child(_stat_row("coin","Income",UiKit.signed(st.income),"Province income per turn (mock)"))
+ stats_box.add_child(_stat_row("population","Population",UiKit.format_int(st.population),"Province population (mock)"))
+ var order = HBoxContainer.new()
+ order.add_child(UiKit.label("Public order",15))
+ var spacer = Control.new()
+ spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ order.add_child(spacer)
+ order.add_child(UiKit.label("%+d" % st.public_order,16,Color("9fe08a") if st.public_order>=0 else Color("ef8a6a"),UiKit.FONT_BOLD))
+ stats_box.add_child(order)
+ var bar = Widgets.OrderBar.new(st.public_order/100.0)
+ bar.tooltip_text = "Public order, -100 to +100 (mock)"
+ bar.mouse_filter = Control.MOUSE_FILTER_PASS
+ stats_box.add_child(bar)
+ stats_box.add_child(UiKit.label("Placeholder values (data/mock_ui.json)",12,Color(UiKit.TEXT_DIM,0.7)))
+
+# --- Bottom panel: province (settlement tabs + building slots) or army ------------------
+
+func _build_bottom():
+ bottom_panel = _framed()
+ bottom_box = VBoxContainer.new()
+ bottom_box.add_theme_constant_override("separation",6)
+ bottom_panel.add_child(bottom_box)
+ bottom_panel.visible = false
+ _anchor(bottom_panel,0.5,1,0.5,1,Rect2(-480,-262,480,-10))
+
+func show_settlement(id: String):
+ var s = data.settlement(id)
+ if s.is_empty(): return
+ selected_settlement = id
+ selected_army = ""
+ _show_stats(s)
+ stats_panel.visible = true
+ _clear(bottom_box)
+ var head = HBoxContainer.new()
+ head.add_theme_constant_override("separation",10)
+ head.add_child(Widgets.Emblem.new(s.faction,24))
+ var title = VBoxContainer.new()
+ title.add_theme_constant_override("separation",-2)
+ title.add_child(UiKit.header(s.province_name,18))
+ title.add_child(UiKit.label("%s · %s · level %d · %s" % [s.name,s.type.capitalize(),s.level,s.faction.name],14,UiKit.TEXT_DIM))
+ head.add_child(title)
+ var spacer = Control.new()
+ spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ head.add_child(spacer)
+ for sid in data.settlements_in_province(s.province):
+  var tab = Button.new()
+  tab.text = data.settlement(sid).name
+  tab.focus_mode = Control.FOCUS_NONE
+  tab.custom_minimum_size = Vector2(130,36)
+  if sid == id:
+   tab.add_theme_stylebox_override("normal",UiKit.textured(UiKit.BUTTON_LONG_SELECTED,10,8))
+   tab.add_theme_stylebox_override("hover",UiKit.textured(UiKit.BUTTON_LONG_SELECTED,10,8))
+   tab.add_theme_color_override("font_color",UiKit.INK)
+   tab.add_theme_color_override("font_hover_color",UiKit.INK)
+  tab.pressed.connect(func():
+   show_settlement(sid)
+   settlement_selected.emit(sid))
+  head.add_child(tab)
+ bottom_box.add_child(head)
+ bottom_box.add_child(UiKit.divider(colors.trim))
+ var row = HBoxContainer.new()
+ row.add_theme_constant_override("separation",8)
+ for slot in data.building_slots(id): row.add_child(Cards.building_card(slot,colors.trim,studio))
+ bottom_box.add_child(_scroller(row))
+ bottom_panel.visible = true
+ _fit_bottom.call_deferred()
+
+# location: province name where the army stands (for tooltips).
+func show_army(army_id: String,location: String):
+ var a = data.army(army_id)
+ selected_army = army_id
+ selected_settlement = ""
+ army_location = location
+ stats_panel.visible = false
+ _clear(bottom_box)
+ var head = HBoxContainer.new()
+ head.add_theme_constant_override("separation",10)
+ head.add_child(Widgets.Emblem.new(a.faction_data,24))
+ var title = VBoxContainer.new()
+ title.add_theme_constant_override("separation",-2)
+ title.add_child(UiKit.header(a.display_name,18))
+ title.add_child(UiKit.label("Led by %s · %s · %s" % [a.commander.name,a.faction_data.name,location],14,UiKit.TEXT_DIM))
+ head.add_child(title)
+ var spacer = Control.new()
+ spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ head.add_child(spacer)
+ head.add_child(UiKit.label("Units %d / 20" % (a.units.size()+1),15,UiKit.TEXT_DIM))
+ bottom_box.add_child(head)
+ bottom_box.add_child(UiKit.divider(colors.trim))
+ var row = HBoxContainer.new()
+ row.alignment = BoxContainer.ALIGNMENT_BEGIN
+ row.add_theme_constant_override("separation",6)
+ for entry in [a.commander]+a.units:
+  var u = data.unit_type(entry.unit)
+  var name = entry.get("name",u.display_name)
+  var men = int(round(u.placeholder_stats.entities*float(entry.get("strength",1.0))))
+  var tip = "%s\n%s · %s\n%s\nStrength %d%% · %d of %d (placeholder)" % [name,a.faction_data.name,location,u.description,int(float(entry.get("strength",1.0))*100),men,u.placeholder_stats.entities]
+  if u.get("single_entity",false): tip = "%s\n%s · %s\n%s" % [name,a.faction_data.name,location,u.display_name]
+  row.add_child(Cards.unit_card(u,entry,a.faction_data,studio,tip))
+ bottom_box.add_child(_scroller(row))
+ bottom_panel.visible = true
+ _fit_bottom.call_deferred()
+
+func _scroller(content: Control) -> ScrollContainer:
+ var scroll = ScrollContainer.new()
+ var h = 0.0
+ for c in content.get_children(): h = maxf(h,c.custom_minimum_size.y)
+ scroll.custom_minimum_size = Vector2(0,h+12)
+ scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+ scroll.add_child(content)
+ return scroll
+
+func clear_selection():
+ selected_settlement = ""
+ selected_army = ""
+ stats_panel.visible = false
+ bottom_panel.visible = false
+
+# --- End turn (bottom-right), hover tooltip, toast, FPS --------------------------------
+
+func _build_end_turn():
+ var v = VBoxContainer.new()
+ v.alignment = BoxContainer.ALIGNMENT_END
+ v.add_theme_constant_override("separation",2)
+ end_turn_button = Widgets.RoundButton.new("year","End turn\nAdvances the year by one. No other mechanics yet.",112,Color("e2b955"))
+ end_turn_button.pressed.connect(func(): end_turn_requested.emit())
+ v.add_child(end_turn_button)
+ var l = UiKit.header("End Turn",15)
+ l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+ v.add_child(l)
+ end_turn_year = UiKit.label("",14,UiKit.TEXT_DIM)
+ end_turn_year.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+ v.add_child(end_turn_year)
+ _anchor(v,1,1,1,1,Rect2(-140,-178,-14,-10))
+ hover_tip = PanelContainer.new()
+ hover_tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ hover_tip.add_theme_stylebox_override("panel",UiKit.textured(UiKit.PARCHMENT,12,10))
+ hover_label = UiKit.label("",16,UiKit.INK)
+ hover_tip.add_child(hover_label)
+ hover_tip.visible = false
+ hover_tip.top_level = true
+ add_child(hover_tip)
+ toast_label = UiKit.header("",16,UiKit.TEXT)
+ toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+ _anchor(toast_label,0.5,0,0.5,0,Rect2(-400,74,400,100))
+ fps_label = UiKit.label("",12,Color(UiKit.TEXT_DIM,0.8))
+ _anchor(fps_label,0,1,0,1,Rect2(14,-26,400,-8))
+
+func show_hover(text: String,screen_pos: Vector2):
+ hover_label.text = text
+ hover_tip.reset_size()
+ var vp = get_viewport_rect().size
+ hover_tip.position = (screen_pos+Vector2(18,18)).clamp(Vector2.ZERO,vp-hover_tip.size)
+ hover_tip.visible = true
+
+func hide_hover():
+ hover_tip.visible = false
+
+func toast(text: String):
+ toast_label.text = text
+ toast_label.modulate.a = 1.0
+ var t = create_tween()
+ t.tween_interval(3.5)
+ t.tween_property(toast_label,"modulate:a",0.0,0.8)
+
+func set_fps(text: String):
+ fps_label.text = text
+
+func refresh():
+ var r = data.resources()
+ resource_labels.treasury.text = UiKit.format_int(r.treasury)
+ resource_labels.income.text = UiKit.signed(r.income)
+ resource_labels.population.text = UiKit.format_int(r.population)
+ resource_labels.year.text = "Year %d · Turn %d" % [r.year,r.turn]
+ end_turn_year.text = "Year %d" % r.year
+ if selected_settlement != "": show_settlement(selected_settlement)
+
+# Grow the bottom panel upward to fit its content (building cards are shorter than unit cards).
+func _fit_bottom():
+ bottom_panel.offset_top = bottom_panel.offset_bottom-bottom_panel.get_combined_minimum_size().y

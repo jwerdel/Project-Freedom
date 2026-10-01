@@ -1,0 +1,21 @@
+{
+  "_note": "Provinces and regions of the prototype map. Polygons are world x/z coordinates (meters) and tile the map without gaps; each settled region holds one settlement. Region ownership is world data; settlement levels other than Greyhaven's live stage are placeholders.",
+  "provinces": [
+    {"id": "greywater_march", "name": "The Greywater March", "capital": "greyhaven", "regions": ["greyhaven", "willowmere"]},
+    {"id": "crownwatch_pass", "name": "Crownwatch Pass", "capital": "crownwatch", "regions": ["crownwatch"]},
+    {"id": "goldspire", "name": "Goldspire", "capital": "goldspire_rock", "regions": ["goldspire_rock"]},
+    {"id": "greyspine_peaks", "name": "The Greyspine Peaks", "capital": "", "regions": ["greyspine"]}
+  ],
+  "regions": {
+    "greyhaven": {"name": "Greyhaven", "owner": "house_lannet", "settlement": {"name": "Greyhaven", "type": "city", "level": 2, "position": [-12, 6]},
+      "polygon": [[-26,-62],[14,-62],[10,-40],[18,-22],[12,-4],[20,12],[22,26],[18,40],[20,60],[-28,60],[-24,34],[-26,14],[-21,-6],[-24,-24],[-20,-38]]},
+    "willowmere": {"name": "Willowmere", "owner": "house_verrin", "settlement": {"name": "Willowmere", "type": "village", "level": 1, "position": [-56, -24]},
+      "polygon": [[-140,-58],[-100,-64],[-60,-60],[-26,-62],[-20,-38],[-24,-24],[-21,-6],[-26,14],[-24,34],[-28,60],[-140,60]]},
+    "crownwatch": {"name": "Crownwatch", "owner": "house_aurek", "settlement": {"name": "Crownwatch", "type": "fortress", "level": 2, "position": [48, -35]},
+      "polygon": [[14,-62],[50,-58],[90,-63],[140,-60],[140,22],[90,16],[66,20],[48,14],[30,16],[20,12],[12,-4],[18,-22],[10,-40]]},
+    "goldspire_rock": {"name": "Goldspire Rock", "owner": "house_aurek", "settlement": {"name": "Goldspire Rock", "type": "landmark", "level": 2, "position": [44, 36.5]},
+      "polygon": [[20,12],[30,16],[48,14],[66,20],[90,16],[140,22],[140,60],[20,60],[18,40],[22,26]]},
+    "greyspine": {"name": "The Greyspine", "owner": "", "settlement": null,
+      "polygon": [[-140,-140],[140,-140],[140,-60],[90,-63],[50,-58],[14,-62],[-26,-62],[-60,-60],[-100,-64],[-140,-58]]}
+  }
+}

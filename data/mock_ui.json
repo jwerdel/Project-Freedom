@@ -1,0 +1,60 @@
+{
+  "_MOCK": "MOCK DATA. Every value in this file is a placeholder for the UI shell only; no game system produces or reads it. Real systems replace it behind core/ui_data.gd without UI changes.",
+  "player_faction": "house_aurek",
+  "year": 1,
+  "turn": 1,
+  "treasury": 8450,
+  "income_per_turn": 1240,
+  "population": 41200,
+  "event_categories": [
+    {"id": "turn", "name": "Turn Summary"},
+    {"id": "buildings", "name": "Buildings Constructed"},
+    {"id": "war", "name": "War Declared"},
+    {"id": "world", "name": "World Events"}
+  ],
+  "events": [
+    {"category": "buildings", "title": "Mine Galleries Deepened", "text": "Goldspire Rock's mines now reach the second seam.", "year": 1},
+    {"category": "buildings", "title": "Harbour Expanded", "text": "Greyhaven's quays can berth more merchantmen.", "year": 1},
+    {"category": "war", "title": "The Oath of Stillwater Is Void", "text": "No realm is bound to peace any longer.", "year": 1},
+    {"category": "world", "title": "Grain Prices Rise", "text": "A wet spring in the Reach has thinned the harvest.", "year": 1},
+    {"category": "world", "title": "Ships Sighted off the Isles", "text": "Saltborn sails were seen near the Greywater coast.", "year": 1}
+  ],
+  "regions": {
+    "goldspire_rock": {"growth": 38, "income": 2150, "public_order": 45, "population": 15800,
+      "buildings": [
+        {"name": "Citadel of Goldspire", "visual": "building.keep", "level": 3},
+        {"name": "Gold Mines", "visual": "building.mine", "level": 3},
+        {"name": "Merchant Harbour", "visual": "building.port", "level": 2},
+        {"name": "Great Temple", "visual": "building.temple", "level": 1},
+        {"name": "Garrison", "visual": "building.barracks", "level": 1},
+        {"empty": true},
+        {"locked": true, "requires": "Terraced Citadel (stage 3)"},
+        {"locked": true, "requires": "Terraced Citadel (stage 3)"}
+      ]},
+    "crownwatch": {"growth": 12, "income": 380, "public_order": 70, "population": 3900,
+      "buildings": [
+        {"name": "Hill Fort", "visual": "building.keep", "level": 2},
+        {"name": "Watchtowers", "visual": "building.watchtower", "level": 2},
+        {"name": "Curtain Walls", "visual": "building.walls", "level": 2},
+        {"empty": true},
+        {"locked": true, "requires": "Fortress level 3"}
+      ]},
+    "greyhaven": {"growth": 42, "income": 860, "public_order": 20, "population": 12400,
+      "buildings": [
+        {"name": "Town Hall", "visual": "building.keep", "level": 2},
+        {"name": "Harbour", "visual": "building.port", "level": 2},
+        {"name": "Market", "visual": "building.market", "level": 1},
+        {"name": "Town Walls", "visual": "building.walls", "level": 1},
+        {"name": "Houses", "visual": "building.houses", "level": 2},
+        {"empty": true},
+        {"locked": true, "requires": "Chartered City"}
+      ]},
+    "willowmere": {"growth": 55, "income": 290, "public_order": -15, "population": 2100,
+      "buildings": [
+        {"name": "Village Green", "visual": "building.houses", "level": 1},
+        {"name": "Wheat Fields", "visual": "building.farm", "level": 2},
+        {"empty": true},
+        {"locked": true, "requires": "Town"}
+      ]}
+  }
+}

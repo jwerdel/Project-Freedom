@@ -1,0 +1,8 @@
+{
+  "_note": "Factions on the prototype map, from docs/world.md. House Aurek of Goldspire is canon there; giving Greyhaven to House Lannet and Willowmere to House Verrin is a placeholder assignment for the prototype map.",
+  "factions": {
+    "house_aurek": {"name": "House Aurek", "realm": "The Westerlands", "seat": "Goldspire Rock", "primary": "#7a1c1c", "secondary": "#d9ad45", "emblem": "spire", "placeholder_assignment": false},
+    "house_lannet": {"name": "House Lannet of Silverfall", "realm": "The Westerlands (minor house)", "seat": "Silverfall", "primary": "#244469", "secondary": "#c9d2db", "emblem": "wave", "placeholder_assignment": true},
+    "house_verrin": {"name": "House Verrin of Highbloom", "realm": "The Reach", "seat": "Highbloom", "primary": "#2c5526", "secondary": "#dcc66a", "emblem": "wheat", "placeholder_assignment": true}
+  }
+}

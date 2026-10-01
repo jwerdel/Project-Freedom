@@ -28,13 +28,20 @@ The launcher imports project assets automatically on the first run.
 | Mouse wheel | Zoom |
 | Home | Return to the overview |
 | Tab | Hide/show the interface |
-| Escape | Show the interface |
+| Escape | Close the selection panels and show the interface |
+| Left click | Select a settlement (province panel) or the commander (army panel) |
+| Hover | Tooltip with name, faction and province for settlements, the commander and unit cards |
+| C | Select the commander and open the army panel |
 | Space | Pause/resume trade traffic and mill |
 | F12 | Save a real in-engine screenshot in captures |
 | G | Jump the camera to Goldspire Rock (bookmark) |
 | F6 | Debug: cycle Goldspire Rock through its three stages |
+| F5 | Debug: cycle Greyhaven through its three stages |
+| F7 | Debug: cycle roads (dirt, gravel, stone) |
+| L | Toggle daylight / late afternoon |
+| End Turn button | Advance the year by one (adds "Year X begins" to Event Messages) |
 
-Click settlement labels to inspect them. The left panel lets you cycle Greyhaven through three stages (town, walled city, expanded city) and roads through dirt, gravel, and stone. Both changes alter the actual 3D geometry/materials. The light button switches between daylight and late afternoon. Pause affects traffic and the windmill; ambient water and cloth continue moving.
+The campaign UI is modeled on Total War: Warhammer III (see constitution.md). Click a settlement to open its province stats and the province panel (settlement tabs with building slot cards); click the commander for the army panel with unit cards. Economy, events, province stats and buildings are mock values from `data/mock_ui.json`, read through `core/ui_data.gd`. Greyhaven and road stages (F5, F7) alter the actual 3D geometry. Pause affects traffic and the windmill; ambient water and cloth continue moving.
 
 ## Included
 
