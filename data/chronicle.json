@@ -7,5 +7,8 @@
   "summary_title": ["The Scribes' Account of Year {year}", "Year {year}, as Set Down at Crownhaven", "The Ledger of Year {year}"],
   "summary_open": ["The Grey Scribes set down the following.", "Let it be recorded, without favour, as follows.", "The archive at Crownhaven notes the year thus."],
   "faction_line": ["{faction} closed the year with {treasury} gold ({net} on the year); its people number {population} ({growth}).", "The coffers of {faction} stood at {treasury} gold ({net}); {population} souls live under its banner ({growth})."],
-  "richest_line": ["Of all the realms, {faction} holds the fullest treasury.", "None counted more gold this year than {faction}."]
+  "richest_line": ["Of all the realms, {faction} holds the fullest treasury.", "None counted more gold this year than {faction}."],
+  "building_title": ["{building} Completed at {settlement}", "{settlement} Raises the {building}"],
+  "building_text": ["The builders of {faction} finished the {building} at {settlement} this year.", "Let it be recorded that {faction} completed the {building} at {settlement}."],
+  "upgrade_text": ["{settlement} grew in standing this year: {faction} raised it to {building}.", "Under {faction}, {settlement} became {building}, and its streets spread accordingly."]
 }

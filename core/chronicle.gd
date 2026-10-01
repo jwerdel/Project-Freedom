@@ -16,8 +16,20 @@ static func data() -> Dictionary:
 static func opening_entries() -> Array:
  return data().opening.duplicate(true)
 
-static func entry(year: int,category: String,title: String,text := "") -> Dictionary:
- return {"year":year,"category":category,"title":title,"text":text}
+static func entry(year: int,category: String,title: String,text := "",faction := "") -> Dictionary:
+ var e = {"year":year,"category":category,"title":title,"text":text}
+ if faction != "": e.faction = faction
+ return e
+
+# One "buildings" entry per construction completed this year (Construction.advance results).
+static func building_entries(ended: int,completed: Array,rng: RandomNumberGenerator) -> Array:
+ var d = data()
+ var out = []
+ for c in completed:
+  var vars = {"building":c.name,"settlement":WorldMap.region(c.settlement).settlement.name,"faction":WorldMap.faction(c.faction).name}
+  var text = _pick(d.upgrade_text if c.main else d.building_text,rng)
+  out.append(entry(ended,"buildings",_fill(_pick(d.building_title,rng),vars),_fill(text,vars),c.faction))
+ return out
 
 # Entries for the year that just ended: the new year begins, and the Scribes' yearly account.
 static func year_entries(state,ended: int,ledgers: Dictionary,growth: Dictionary,rng: RandomNumberGenerator) -> Array:

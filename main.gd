@@ -120,6 +120,12 @@ func _ready():
   distance = desired_distance
  for arg in OS.get_cmdline_user_args():
   if arg.begins_with("--select="): select_settlement(arg.get_slice("=",1))
+ for arg in OS.get_cmdline_user_args():
+  if arg.begins_with("--build=") and ui.selected_settlement != "":
+   var b = arg.get_slice("=",1)
+   ui_data.start_construction(ui.selected_settlement,int(b.get_slice(":",0)),b.get_slice(":",1))
+ for arg in OS.get_cmdline_user_args():
+  if arg.begins_with("--browser=") and ui.selected_settlement != "": ui.open_building_browser(ui.selected_settlement,int(arg.get_slice("=",1)))
  if "--army" in OS.get_cmdline_user_args(): select_army()
  for arg in OS.get_cmdline_user_args():
   if arg.begins_with("--end-turns="):
@@ -448,8 +454,22 @@ func make_ui():
   pins.append({"button":b,"world":settlement_anchors[id],"id":id})
  ui_data.changed.connect(func():
   for p in pins: p.button.update_settlement(ui_data.settlement(p.id)))
+ ui_data.changed.connect(sync_settlement_visuals)
  minimap = ui.setup_minimap(get_viewport().world_3d,TerritoryOverlay.RECT,camera_footprint)
  minimap.minimap_clicked.connect(func(p: Vector2): target = Vector3(clampf(p.x,-105,105),height_at(p.x,p.y),clampf(p.y,-90,65)))
+
+# Settlement visuals follow the campaign data: a finished main-building upgrade raises the level,
+# and the settlement switches to that growth stage (generic stages or its landmark's own).
+func sync_settlement_visuals():
+ var city_stage = ui_data.settlement_visual_stage(CITY_ID).stage
+ if city_stage != city_level:
+  city_level = city_stage
+  make_city()
+ var goldspire_stage = ui_data.settlement_visual_stage(GOLDSPIRE_ID).stage
+ if goldspire_stage != goldspire_level:
+  goldspire_level = goldspire_stage
+  make_goldspire()
+ if minimap: minimap.refresh()
 
 func select_settlement(id: String):
  ui.show_settlement(id)
@@ -724,6 +744,22 @@ func run_checks():
  assert(ui_data.resources().year==year+1)
  assert(ui_data.events("turn")[0].year==year+1 and ui_data.events("turn")[1].category=="turn")
  print("END_TURN_MS %.3f" % ui_data.last_turn_ms)
+ # Construction: a main-building upgrade at Goldspire completes on End Turn and moves the landmark
+ # to its next growth stage; the visual is then restored for the capture.
+ var level_now = goldspire_level
+ if level_now<3:
+  ui_data.state.treasury[ui_data.player_faction_id()] += 100000
+  assert(ui_data.start_construction(GOLDSPIRE_ID,0,ui_data.state.settlements[GOLDSPIRE_ID].buildings[0].chain).ok)
+  ui.show_settlement(GOLDSPIRE_ID)
+  ui.open_building_browser(GOLDSPIRE_ID,0)
+  assert(ui.browser_visible())
+  ui.close_building_browser()
+  for i in ui_data.construction(GOLDSPIRE_ID).turns_left: end_turn()
+  assert(ui_data.settlement(GOLDSPIRE_ID).level==level_now+1 and goldspire_level==level_now+1)
+  assert(goldspire_root.get_meta("stage")==level_now+1)
+  assert(ui_data.events("buildings").size()>0)
+  ui_data.set_settlement_level(GOLDSPIRE_ID,level_now)
+  assert(goldspire_level==level_now)
  ui.clear_selection()
  reset_camera()
- print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn")
+ print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn; construction upgrades goldspire's stage")

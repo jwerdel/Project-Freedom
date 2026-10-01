@@ -77,6 +77,7 @@ static func unit_card(unit_type: Dictionary,entry: Dictionary,faction: Dictionar
  return card
 
 class BuildingCard extends Control:
+ signal pressed
  var slot := {}
  var trim := Color.WHITE
  var thumb: TextureRect
@@ -87,15 +88,21 @@ class BuildingCard extends Control:
   studio = thumbnails
   custom_minimum_size = BUILDING_CARD
   texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+  var c = slot.get("construction",{})
   if slot.get("locked",false): tooltip_text = "Locked slot\nRequires: %s" % slot.get("requires","?")
-  elif slot.get("empty",false): tooltip_text = "Empty building slot\n(Construction is not implemented yet.)"
-  else: tooltip_text = "%s\nLevel %d" % [slot.name,int(slot.level)]
+  elif slot.get("empty",false): tooltip_text = "Empty building slot\nClick to choose a building."
+  elif not c.is_empty(): tooltip_text = "Under construction: %s (level %d)\n%d of %d turns left\nClick to cancel (refund %d gold)." % [c.name,c.level,c.turns_left,c.turns_total,c.refund]
+  else: tooltip_text = "%s\nLevel %d of %d\n%s\nClick for upgrades." % [slot.name,int(slot.level),int(slot.get("max_level",slot.level)),"\n".join(slot.get("effects",[]))]
+  if not slot.get("locked",false): mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+  gui_input.connect(func(e):
+   if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT and not slot.get("locked",false): pressed.emit())
   if slot.has("visual"):
    thumb = TextureRect.new()
    thumb.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
    thumb.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
    thumb.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
    thumb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+   if not c.is_empty(): thumb.modulate = Color(0.55,0.55,0.55)
    thumb.position = Vector2(5,5)
    thumb.size = Vector2(BUILDING_CARD.x-10,82)
    add_child(thumb)
@@ -107,6 +114,19 @@ class BuildingCard extends Control:
    name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
    name_label.add_theme_constant_override("line_spacing",-4)
    add_child(name_label)
+  if not c.is_empty():
+   # Turns remaining, above the dimmed thumbnail (children draw over the card's own _draw).
+   var turns = UiKit.label("%d turn%s" % [c.turns_left,"" if c.turns_left == 1 else "s"],15,Color("f1d79a"),UiKit.FONT_BOLD)
+   turns.name = "Turns"
+   turns.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+   turns.mouse_filter = Control.MOUSE_FILTER_IGNORE
+   var bg = StyleBoxFlat.new()
+   bg.bg_color = Color(0,0,0,0.65)
+   bg.set_corner_radius_all(3)
+   turns.add_theme_stylebox_override("normal",bg)
+   turns.position = Vector2(26,34)
+   turns.size = Vector2(BUILDING_CARD.x-52,22)
+   add_child(turns)
  func _ready():
   if thumb:
    var tex = studio.thumbnail(slot.visual)
@@ -125,16 +145,23 @@ class BuildingCard extends Control:
   elif slot.get("empty",false):
    Icons.draw(self,"plus",Rect2(size*0.5-Vector2(18,26),Vector2(36,36)),Color("d8c28c"))
    _caption("Empty slot")
+  elif slot.has("construction"):
+   # Progress bar and turns remaining.
+   var c = slot.construction
+   draw_rect(Rect2(8,size.y-12,size.x-16,6),Color(0,0,0,0.7))
+   draw_rect(Rect2(8,size.y-12,(size.x-16)*clampf(c.progress,0,1),6),Color("e9c46a"))
   else:
-   for i in 4:
+   var n = int(slot.get("max_level",3))
+   for i in n:
     var col = Color("f2cf6a") if i<int(slot.level) else Color(0,0,0,0.45)
-    draw_circle(Vector2(size.x*0.5+(i-1.5)*12,size.y-9),3.6,col)
+    draw_circle(Vector2(size.x*0.5+(i-(n-1)*0.5)*12,size.y-9),3.6,col)
  func _caption(text: String):
   var f = UiKit.FONT_BOLD
   var w = f.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,13).x
   draw_string(f,Vector2((size.x-w)*0.5,size.y-18),text,HORIZONTAL_ALIGNMENT_LEFT,-1,13,UiKit.TEXT_DIM)
 
-static func building_card(slot: Dictionary,trim: Color,studio) -> Control:
+static func building_card(slot: Dictionary,trim: Color,studio,on_press := Callable()) -> Control:
  var card = BuildingCard.new(slot,trim,studio)
+ if on_press.is_valid(): card.pressed.connect(on_press)
  card.add_child(CardFrame.new(trim))
  return card

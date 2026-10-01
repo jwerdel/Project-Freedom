@@ -42,6 +42,9 @@ var selected_settlement := ""
 var selected_army := ""
 var army_location := ""
 var province_title := ""
+var browser_panel: Control
+var browser_box: VBoxContainer
+var browser_target := {}
 
 func setup(ui_data,portrait_studio):
  data = ui_data
@@ -266,7 +269,7 @@ func show_settlement(id: String):
  var title = VBoxContainer.new()
  title.add_theme_constant_override("separation",-2)
  title.add_child(UiKit.header(s.province_name,18))
- title.add_child(UiKit.label("%s · %s · level %d · %s" % [s.name,s.type.capitalize(),s.level,s.faction.name],14,UiKit.TEXT_DIM))
+ title.add_child(UiKit.label("%s · %s · level %d · defense %d · %s" % [s.name,s.type.capitalize(),s.level,s.defense,s.faction.name],14,UiKit.TEXT_DIM))
  head.add_child(title)
  var spacer = Control.new()
  spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -289,13 +292,14 @@ func show_settlement(id: String):
  bottom_box.add_child(UiKit.divider(colors.trim))
  var row = HBoxContainer.new()
  row.add_theme_constant_override("separation",8)
- for slot in data.building_slots(id): row.add_child(Cards.building_card(slot,colors.trim,studio))
+ for slot in data.building_slots(id): row.add_child(Cards.building_card(slot,colors.trim,studio,open_building_browser.bind(id,int(slot.get("slot",-1)))))
  bottom_box.add_child(_scroller(row))
  bottom_panel.visible = true
  _fit_bottom.call_deferred()
 
 # location: province name where the army stands (for tooltips).
 func show_army(army_id: String,location: String):
+ close_building_browser()
  var a = data.army(army_id)
  selected_army = army_id
  selected_settlement = ""
@@ -340,10 +344,124 @@ func _scroller(content: Control) -> ScrollContainer:
  return scroll
 
 func clear_selection():
+ close_building_browser()
  selected_settlement = ""
  selected_army = ""
  stats_panel.visible = false
  bottom_panel.visible = false
+
+# --- Building browser (TW-style): opens above the province panel from a slot card -------------
+# Empty slot: every chain this settlement can build (level 1) with cost, turns, upkeep, effects
+# and locked reasons. Built slot: the next level as an upgrade. Under construction: progress and
+# a cancel button with the refund it would give now.
+
+func open_building_browser(settlement_id: String,slot: int):
+ if slot<0: return
+ browser_target = {"settlement":settlement_id,"slot":slot}
+ if browser_panel == null:
+  browser_panel = _framed()
+  browser_box = VBoxContainer.new()
+  browser_box.add_theme_constant_override("separation",6)
+  browser_panel.add_child(browser_box)
+  _anchor(browser_panel,0.5,1,0.5,1,Rect2(-480,-640,480,-272))
+ browser_panel.visible = true
+ _fill_browser()
+
+func close_building_browser():
+ browser_target = {}
+ if browser_panel: browser_panel.visible = false
+
+func browser_visible() -> bool:
+ return browser_panel != null and browser_panel.visible
+
+func _fill_browser():
+ _clear(browser_box)
+ var sid = browser_target.settlement
+ var slot_view = data.building_slots(sid)[browser_target.slot]
+ var s = data.settlement(sid)
+ var head = HBoxContainer.new()
+ var heading = "Construct in %s" % s.name
+ if slot_view.has("construction"): heading = "%s: under construction" % s.name
+ elif slot_view.has("chain"): heading = "%s · %s (level %d of %d)" % [s.name,slot_view.name,slot_view.level,slot_view.max_level]
+ var title = UiKit.header(heading,18)
+ title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ head.add_child(title)
+ head.add_child(UiKit.label("Treasury %s gold" % UiKit.format_int(data.resources().treasury),14,UiKit.TEXT_DIM))
+ var close = Button.new()
+ close.text = "Close"
+ close.focus_mode = Control.FOCUS_NONE
+ close.pressed.connect(close_building_browser)
+ head.add_child(close)
+ browser_box.add_child(head)
+ browser_box.add_child(UiKit.divider(colors.trim))
+ if slot_view.has("construction"):
+  var c = slot_view.construction
+  browser_box.add_child(UiKit.label("%s (level %d): %d of %d turns left. Paid %s gold." % [c.name,c.level,c.turns_left,c.turns_total,UiKit.format_int(c.cost)],15))
+  var cancel = Button.new()
+  cancel.name = "Cancel"
+  cancel.text = "Cancel construction (refund %s gold)" % UiKit.format_int(c.refund)
+  cancel.focus_mode = Control.FOCUS_NONE
+  cancel.disabled = not s.player_owned
+  cancel.pressed.connect(func():
+   var refund = data.cancel_construction(sid)
+   close_building_browser()
+   toast("Construction cancelled. %s gold refunded." % UiKit.format_int(refund)))
+  browser_box.add_child(cancel)
+  browser_box.add_child(UiKit.label("Refund rule (placeholder): full refund in the turn construction started, partial afterwards.",12,Color(UiKit.TEXT_DIM,0.7)))
+  return
+ if slot_view.has("chain"):
+  var current = "Current effects: "+(", ".join(slot_view.effects) if not slot_view.effects.is_empty() else "none")
+  var l = UiKit.label(current,14,UiKit.TEXT_DIM)
+  l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+  browser_box.add_child(l)
+ var options = data.building_options(sid,browser_target.slot)
+ if options.is_empty():
+  browser_box.add_child(UiKit.label("Fully upgraded.",15))
+  return
+ var grid = GridContainer.new()
+ grid.columns = 4
+ grid.add_theme_constant_override("h_separation",8)
+ grid.add_theme_constant_override("v_separation",8)
+ for o in options: grid.add_child(_option_tile(sid,o))
+ var scroll = ScrollContainer.new()
+ scroll.custom_minimum_size = Vector2(0,270)
+ scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+ scroll.add_child(grid)
+ browser_box.add_child(scroll)
+
+func _option_tile(sid: String,o: Dictionary) -> Control:
+ var tile = PanelContainer.new()
+ tile.custom_minimum_size = Vector2(222,0)
+ tile.add_theme_stylebox_override("panel",UiKit.textured(UiKit.SLOT,10,8,Color(0.55,0.5,0.45) if o.available else Color(0.35,0.32,0.3)))
+ var v = VBoxContainer.new()
+ v.add_theme_constant_override("separation",1)
+ tile.add_child(v)
+ var name_label = UiKit.label(o.name,15,Color("f1d79a") if o.available else UiKit.TEXT_DIM,UiKit.FONT_BOLD)
+ name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+ v.add_child(name_label)
+ v.add_child(UiKit.label("%s · level %d · %s" % [o.chain_name,o.level,o.category],12,UiKit.TEXT_DIM))
+ v.add_child(UiKit.label("%s gold · %d turn%s · upkeep %d" % [UiKit.format_int(o.cost),o.turns,"" if o.turns == 1 else "s",o.upkeep],13,UiKit.TEXT))
+ for e in o.effects:
+  var l = UiKit.label(e,12,Color("9fe08a"))
+  l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+  v.add_child(l)
+ for r in o.reasons:
+  var l = UiKit.label(r,12,Color("ef8a6a"))
+  l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+  v.add_child(l)
+ var build = Button.new()
+ build.name = "Build_"+o.chain
+ build.text = "Upgrade" if o.level>1 else "Build"
+ build.focus_mode = Control.FOCUS_NONE
+ build.disabled = not o.available
+ build.pressed.connect(func():
+  var r = data.start_construction(sid,browser_target.slot,o.chain)
+  if r.ok:
+   close_building_browser()
+   toast("Construction started: %s (%d turn%s)." % [o.name,o.turns,"" if o.turns == 1 else "s"])
+  else: toast(", ".join(r.reasons)))
+ v.add_child(build)
+ return tile
 
 # --- End turn (bottom-right), hover tooltip, toast, FPS --------------------------------
 
@@ -351,7 +469,7 @@ func _build_end_turn():
  var v = VBoxContainer.new()
  v.alignment = BoxContainer.ALIGNMENT_END
  v.add_theme_constant_override("separation",2)
- end_turn_button = Widgets.RoundButton.new("year","End turn\nAdvances the year by one. No other mechanics yet.",112,Color("e2b955"))
+ end_turn_button = Widgets.RoundButton.new("year","End turn\nAdvances the year: income, upkeep, construction and growth.",112,Color("e2b955"))
  end_turn_button.pressed.connect(func(): end_turn_requested.emit())
  v.add_child(end_turn_button)
  var l = UiKit.header("End Turn",15)
@@ -408,6 +526,7 @@ func refresh():
  if chronicle_panel and chronicle_panel.visible: _fill_chronicle()
  end_turn_year.text = "Year %d" % r.year
  if selected_settlement != "": show_settlement(selected_settlement)
+ if browser_visible() and not browser_target.is_empty(): _fill_browser()
 
 # Grow the bottom panel upward to fit its content (building cards are shorter than unit cards).
 func _fit_bottom():

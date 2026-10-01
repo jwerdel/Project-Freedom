@@ -7,6 +7,7 @@ const GameState = preload("res://core/game_state.gd")
 const Economy = preload("res://core/economy.gd")
 const TurnLoop = preload("res://core/turn_loop.gd")
 const Buildings = preload("res://core/buildings.gd")
+const Construction = preload("res://core/construction.gd")
 const NO_RESOURCES = {"wood":0,"stone":0,"food":0,"minerals":0}
 
 func after_each():
@@ -89,7 +90,10 @@ func test_food_and_wealth_raise_growth_and_popularity_is_a_neutral_stub():
 
 func test_population_approaches_but_does_not_pass_capacity():
  var s = state_with("village",1,{"wood":0,"stone":0,"food":5,"minerals":0},2000.0)
- for i in 200: TurnLoop.end_turn(s)
+ # Keep the placeholder AI from upgrading the settlement (which would raise the cap).
+ for i in 200:
+  s.treasury.house_lannet = 0
+  TurnLoop.end_turn(s)
  var cap = Economy.data().settlement_types.village.capacity[0]
  assert_lt(s.settlements.greyhaven.population,cap+0.5)
  assert_gt(s.settlements.greyhaven.population,cap*0.95)
@@ -101,7 +105,11 @@ func test_turn_applies_income_then_expenses_for_every_faction():
  for f in s.factions(): ledgers[f] = Economy.faction_ledger(s,f)
  var report = TurnLoop.end_turn(s)
  for f in s.factions():
-  assert_eq(s.treasury[f],before[f]+ledgers[f].income_total-ledgers[f].expense_total,f)
+  # The placeholder AI may also start construction after income and expenses.
+  var spent = 0
+  for a in report.ai_started:
+   if a.faction == f: spent += int(Construction.in_progress(s,a.settlement).cost)
+  assert_eq(s.treasury[f],before[f]+ledgers[f].income_total-ledgers[f].expense_total-spent,f)
  assert_eq(report.year,1)
  assert_eq(s.year,2)
  var aurek = ledgers.house_aurek

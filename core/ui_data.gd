@@ -12,6 +12,7 @@ const UnitTypes = preload("res://core/unit_types.gd")
 const GameState = preload("res://core/game_state.gd")
 const Economy = preload("res://core/economy.gd")
 const Buildings = preload("res://core/buildings.gd")
+const Construction = preload("res://core/construction.gd")
 const TurnLoop = preload("res://core/turn_loop.gd")
 const Chronicle = preload("res://core/chronicle.gd")
 const MOCK = "res://data/mock_ui.json"
@@ -71,10 +72,11 @@ func end_turn():
 func event_categories() -> Array:
  return CATEGORIES
 
+# Event Messages: building completions only for the player's own settlements (the chronicle keeps all).
 func events(category: String) -> Array:
  var out = []
  for e in state.chronicle:
-  if e.category == category: out.append(e)
+  if e.category == category and e.get("faction",state.player_faction) == state.player_faction: out.append(e)
  out.reverse() # newest first
  return out
 
@@ -106,11 +108,18 @@ func settlement(id: String) -> Dictionary:
  s.faction = faction(live.owner)
  s.province = WorldMap.province_of(id)
  s.province_name = WorldMap.province(s.province).name
+ s.defense = int(live.defense)
+ s.player_owned = live.owner == state.player_faction
  return s
 
+# Developer override (prototype keys, capture flags): sets the main building level directly.
 func set_settlement_level(id: String,level: int):
- state.settlements[id].level = level
+ Construction.set_level(state,id,level)
  changed.emit()
+
+# Growth-stage visual of a settlement: {stage, generic}; see AssetManifest.settlement_stage_path.
+func settlement_visual_stage(id: String) -> Dictionary:
+ return Construction.visual_stage(state,id)
 
 func province(id: String) -> Dictionary:
  return WorldMap.province(id)
@@ -134,16 +143,24 @@ func province_stats(province_id: String) -> Dictionary:
 
 # Building slots of a settlement as card views: {slot, chain, name, visual, level, max_level, main,
 # effects}, {slot, empty}, or {locked, requires} for slots a higher settlement level would open.
+# A slot under construction also carries "construction" (see construction()).
 func building_slots(settlement_id: String) -> Array:
  var s = state.settlements[settlement_id]
+ var pending = construction(settlement_id)
  var out = []
  for i in s.buildings.size():
   var b = s.buildings[i]
+  var view = {"slot":i,"empty":true}
   if b.has("chain"):
    var c = Buildings.chain(b.chain)
-   out.append({"slot":i,"chain":b.chain,"name":b.get("name",Buildings.building_name(settlement_id,b.chain,int(b.level))),"visual":c.visual,
-    "level":int(b.level),"max_level":Buildings.max_level(b.chain),"main":c.get("main",false),"effects":Buildings.effect_lines(b.chain,int(b.level))})
-  else: out.append({"slot":i,"empty":true})
+   view = {"slot":i,"chain":b.chain,"name":b.get("name",Buildings.building_name(settlement_id,b.chain,int(b.level))),"visual":c.visual,
+    "level":int(b.level),"max_level":Buildings.max_level(b.chain),"main":c.get("main",false),"effects":Buildings.effect_lines(b.chain,int(b.level))}
+  if not pending.is_empty() and pending.slot == i:
+   view.construction = pending
+   if view.has("empty"):
+    view.erase("empty")
+    view.merge({"chain":pending.chain,"name":pending.name,"visual":Buildings.chain(pending.chain).visual,"level":0,"max_level":Buildings.max_level(pending.chain),"main":false,"effects":[]})
+  out.append(view)
  var main = Buildings.main_chain_id(s.type)
  for level in range(int(s.level)+1,Buildings.max_level(main)+1):
   for i in Buildings.slot_count(s.type,level)-Buildings.slot_count(s.type,level-1):
@@ -152,6 +169,38 @@ func building_slots(settlement_id: String) -> Array:
 
 func settlement_defense(settlement_id: String) -> int:
  return int(state.settlements[settlement_id].defense)
+
+# --- Construction --------------------------------------------------------------
+
+# The settlement's construction in progress, or {}: {slot, chain, name, level, turns_left,
+# turns_total, cost, progress (0..1), refund (gold if cancelled now)}.
+func construction(settlement_id: String) -> Dictionary:
+ var c = Construction.in_progress(state,settlement_id)
+ if c.is_empty(): return {}
+ return {"slot":int(c.slot),"chain":c.chain,"name":Buildings.building_name(settlement_id,c.chain,int(c.level)),"level":int(c.level),
+  "turns_left":int(c.turns_left),"turns_total":int(c.turns_total),"cost":int(c.cost),
+  "progress":1.0-float(c.turns_left)/maxf(1.0,float(c.turns_total)),"refund":Construction.refund_amount(state,settlement_id)}
+
+# Building browser entries for a slot (see Construction.options); only the owner may build.
+func building_options(settlement_id: String,slot: int) -> Array:
+ var out = Construction.options(state,settlement_id,slot)
+ if state.settlements[settlement_id].owner != state.player_faction:
+  for o in out:
+   o.available = false
+   o.reasons = ["Not your settlement"]+o.reasons
+ return out
+
+func start_construction(settlement_id: String,slot: int,chain_id: String) -> Dictionary:
+ if state.settlements[settlement_id].owner != state.player_faction: return {"ok":false,"reasons":["Not your settlement"]}
+ var r = Construction.start(state,settlement_id,slot,chain_id)
+ if r.ok: changed.emit()
+ return r
+
+func cancel_construction(settlement_id: String) -> int:
+ if state.settlements[settlement_id].owner != state.player_faction: return 0
+ var refund = Construction.cancel(state,settlement_id)
+ changed.emit()
+ return refund
 
 # --- Armies and units --------------------------------------------------------
 
