@@ -8,5 +8,5 @@
   "loadout": ["weapon.sword", "weapon.shield_heater"],
   "visual_config": {"pose": "sword", "hair": ["hair.buzzed"], "tint": "#c9c2b0"},
   "card_portrait": {"framing": "full_body"},
-  "placeholder_stats": {"_note": "PLACEHOLDER values for UI layout only; not balanced, not used by any system", "entities": 120, "upkeep": 130, "melee_attack": 34, "melee_defence": 28, "armour": 40, "missile_range": 0}
+  "placeholder_stats": {"_note": "PLACEHOLDER values; not balanced. upkeep is used by the economy (data/economy.json army_upkeep_multiplier); the rest is shown in the UI only", "entities": 120, "upkeep": 130, "melee_attack": 34, "melee_defence": 28, "armour": 40, "missile_range": 0}
 }

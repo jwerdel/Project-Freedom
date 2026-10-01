@@ -9,5 +9,5 @@
   "loadout": [],
   "visual_config": {},
   "card_portrait": {"framing": "full_body"},
-  "placeholder_stats": {"_note": "PLACEHOLDER values for UI layout only; not balanced, not used by any system", "entities": 1, "upkeep": 300, "melee_attack": 50, "melee_defence": 45, "armour": 80, "missile_range": 0}
+  "placeholder_stats": {"_note": "PLACEHOLDER values; not balanced. upkeep is used by the economy (data/economy.json army_upkeep_multiplier); the rest is shown in the UI only", "entities": 1, "upkeep": 300, "melee_attack": 50, "melee_defence": 45, "armour": 80, "missile_range": 0}
 }

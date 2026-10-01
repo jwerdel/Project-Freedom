@@ -30,6 +30,12 @@ static func draw(c: CanvasItem,kind: String,r: Rect2,color: Color):
    c.draw_rect(Rect2(p.call(0.2,0.22),Vector2(0.6,0.56)*r.size),color)
    for y in [0.2,0.8]: c.draw_colored_polygon(_ellipse(p.call(0.5,y),s*0.34,s*0.08,false),dark)
    for y in [0.4,0.52,0.64]: c.draw_line(p.call(0.3,y),p.call(0.7,y),dark,w*0.6)
+  "chronicle":
+   c.draw_colored_polygon(PackedVector2Array([p.call(0.08,0.25),p.call(0.48,0.32),p.call(0.48,0.86),p.call(0.08,0.78)]),color)
+   c.draw_colored_polygon(PackedVector2Array([p.call(0.52,0.32),p.call(0.92,0.25),p.call(0.92,0.78),p.call(0.52,0.86)]),color)
+   for y in [0.45,0.58,0.7]:
+    c.draw_line(p.call(0.15,y-0.02),p.call(0.42,y+0.02),dark,w*0.5)
+    c.draw_line(p.call(0.58,y+0.02),p.call(0.85,y-0.02),dark,w*0.5)
   "tech":
    c.draw_rect(Rect2(p.call(0.18,0.18),Vector2(0.64,0.64)*r.size),color)
    c.draw_line(p.call(0.5,0.18),p.call(0.5,0.82),dark,w)

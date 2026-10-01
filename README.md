@@ -49,6 +49,7 @@ The campaign UI is modeled on Total War: Warhammer III (see constitution.md). Cl
 - Greyhaven, Crownwatch fortress, and Willowmere farming village with a hedgerowed farmland patchwork.
 - Goldspire Rock, the first landmark settlement (docs/world.md #2): a sea cliff fortress with three stages (mine tunnels and summit tower; carved halls, harbor and walls; terraced rock face).
 - Campaign map overlays: faction banners on settlements (emblem, name, level pips), glowing territory borders with a faction tint, and a clickable minimap. Provinces, regions and faction ownership come from `data/provinces.json` and `data/factions.json`.
+- A first gameplay system: End Turn runs a yearly turn loop (income, expenses, population growth, chronicle). Treasury, income, population and province stats in the UI are real; the treasury tooltip breaks income down; the Chronicle button (top-left, book) opens the Grey Scribes' log. Numbers are placeholders in `data/economy.json`.
 - Seven placeholder unit types with auto-rendered card portraits, and an eight-unit army led by the map commander.
 - Three settlement stages and three road stages.
 - Six moving caravans, four sailing vessels, docks, a lighthouse, and an animated mill.

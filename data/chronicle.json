@@ -1,0 +1,11 @@
+{
+  "_note": "Chronicle text in the voice of the Grey Scribes (docs/world.md: neutral chroniclers based in the Crownhaven archive). Phrasings are chosen with the campaign's seeded random generator. {placeholders} are filled by core/chronicle.gd.",
+  "opening": [
+    {"year": 1, "category": "world", "title": "The Oath of Stillwater Is Void", "text": "In this year the oath that bound the great houses to peace was declared void. The Grey Scribes, keeping no allegiance, take up the record of every realm."}
+  ],
+  "year_begins": ["Year {year} begins", "The {ordinal} year is entered in the archive"],
+  "summary_title": ["The Scribes' Account of Year {year}", "Year {year}, as Set Down at Crownhaven", "The Ledger of Year {year}"],
+  "summary_open": ["The Grey Scribes set down the following.", "Let it be recorded, without favour, as follows.", "The archive at Crownhaven notes the year thus."],
+  "faction_line": ["{faction} closed the year with {treasury} gold ({net} on the year); its people number {population} ({growth}).", "The coffers of {faction} stood at {treasury} gold ({net}); {population} souls live under its banner ({growth})."],
+  "richest_line": ["Of all the realms, {faction} holds the fullest treasury.", "None counted more gold this year than {faction}."]
+}

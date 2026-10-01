@@ -8,5 +8,5 @@
   "loadout": ["weapon.lance", "weapon.shield_round"],
   "visual_config": {"hair": ["hair.buzzed"], "tint": "#d8cdb8"},
   "card_portrait": {"framing": "mounted"},
-  "placeholder_stats": {"_note": "PLACEHOLDER values for UI layout only; not balanced, not used by any system", "entities": 60, "upkeep": 220, "melee_attack": 36, "melee_defence": 22, "armour": 40, "missile_range": 0}
+  "placeholder_stats": {"_note": "PLACEHOLDER values; not balanced. upkeep is used by the economy (data/economy.json army_upkeep_multiplier); the rest is shown in the UI only", "entities": 60, "upkeep": 220, "melee_attack": 36, "melee_defence": 22, "armour": 40, "missile_range": 0}
 }

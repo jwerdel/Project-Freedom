@@ -121,6 +121,10 @@ func _ready():
  for arg in OS.get_cmdline_user_args():
   if arg.begins_with("--select="): select_settlement(arg.get_slice("=",1))
  if "--army" in OS.get_cmdline_user_args(): select_army()
+ for arg in OS.get_cmdline_user_args():
+  if arg.begins_with("--end-turns="):
+   for i in int(arg.get_slice("=",1)): ui_data.end_turn()
+ if "--chronicle" in OS.get_cmdline_user_args(): ui.toggle_chronicle()
  if "--self-test" in OS.get_cmdline_user_args():
   run_checks()
  print("FREEDOM_READY | city=%s road=%s traffic=%s" % [city_level,road_level,traffic.size()])
@@ -468,7 +472,8 @@ func army_location() -> String:
 
 func end_turn():
  ui_data.end_turn()
- ui.toast("Year %d begins." % ui_data.resources().year)
+ var r = ui_data.resources()
+ ui.toast("Year %d begins. Treasury %s gold." % [r.year,UiKit.format_int(r.treasury)])
 
 func set_overlay(overlay: String,on: bool):
  overlays[overlay] = on
@@ -628,7 +633,8 @@ func _process(delta):
   b.set_selected(ui.selected_settlement == p.id)
  var mouse = get_viewport().get_mouse_position()
  var hit = "" if get_viewport().gui_get_hovered_control() != null else pick(mouse)
- if hit != "" and ui.visible: ui.show_hover(hover_text(hit),mouse)
+ if "--ledger" in OS.get_cmdline_user_args(): ui.show_hover(ui._ledger_text(),Vector2(560,70))
+ elif hit != "" and ui.visible: ui.show_hover(hover_text(hit),mouse)
  else: ui.hide_hover()
  ui.set_fps("%d FPS" % Engine.get_frames_per_second())
  if capture_mode:
@@ -716,7 +722,8 @@ func run_checks():
  var year = ui_data.resources().year
  end_turn()
  assert(ui_data.resources().year==year+1)
- assert(ui_data.events("turn")[0].title=="Year %d begins" % (year+1))
+ assert(ui_data.events("turn")[0].year==year+1 and ui_data.events("turn")[1].category=="turn")
+ print("END_TURN_MS %.3f" % ui_data.last_turn_ms)
  ui.clear_selection()
  reset_camera()
  print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn")

@@ -20,6 +20,9 @@ var data
 var studio
 var colors: Dictionary
 var resource_labels = {}
+var resource_groups = {}
+var chronicle_panel: Control
+var chronicle_box: VBoxContainer
 var event_box: VBoxContainer
 var collapsed = {}
 var stats_panel: Control
@@ -87,6 +90,9 @@ func _build_menu():
  var row = HBoxContainer.new()
  row.add_theme_constant_override("separation",6)
  for m in MENU: row.add_child(Widgets.RoundButton.new(m[0],"%s\n(placeholder: not implemented yet)" % m[1],46,colors.trim))
+ var chronicle_button = Widgets.RoundButton.new("chronicle","The Chronicle\nThe Grey Scribes' record of every year",46,colors.trim)
+ chronicle_button.pressed.connect(toggle_chronicle)
+ row.add_child(chronicle_button)
  _anchor(row,0,0,0,0,Rect2(14,10,0,0))
 
 func _build_resources():
@@ -103,7 +109,8 @@ func _build_resources():
  for item in [["treasury","coin","Treasury"],["income","income","Income per turn"],["population","population","Population"],["year","year","Year and turn"]]:
   var group = HBoxContainer.new()
   group.add_theme_constant_override("separation",5)
-  group.tooltip_text = "%s (mock value)" % item[2]
+  group.tooltip_text = item[2]
+  resource_groups[item[0]] = group
   group.mouse_filter = Control.MOUSE_FILTER_PASS
   group.add_child(Widgets.Icon.new(item[1],Color("e9c46a") if item[1]!="population" else Color("d9cfb6"),22))
   var value = UiKit.label("",17,UiKit.TEXT,UiKit.FONT_BOLD)
@@ -219,9 +226,9 @@ func _show_stats(s: Dictionary):
  owner_row.add_child(UiKit.label("%s\n%s" % [s.name,s.faction.name],14,UiKit.TEXT_DIM))
  stats_box.add_child(owner_row)
  stats_box.add_child(UiKit.divider(colors.trim))
- stats_box.add_child(_stat_row("population","Growth","%+d" % st.growth,"Population growth per turn (mock)"))
- stats_box.add_child(_stat_row("coin","Income",UiKit.signed(st.income),"Province income per turn (mock)"))
- stats_box.add_child(_stat_row("population","Population",UiKit.format_int(st.population),"Province population (mock)"))
+ stats_box.add_child(_stat_row("population","Growth","%+d / year" % st.growth,"Population growth per year, from settlement type, resource endowments and wealth.\nRuler popularity is not designed yet and counts as neutral."))
+ stats_box.add_child(_stat_row("coin","Income",UiKit.signed(st.income),"Settlement income per turn (before upkeep), from type, level and resource endowments."))
+ stats_box.add_child(_stat_row("population","Population",UiKit.format_int(st.population),"People living in the province's settlements."))
  var order = HBoxContainer.new()
  order.add_child(UiKit.label("Public order",15))
  var spacer = Control.new()
@@ -230,10 +237,10 @@ func _show_stats(s: Dictionary):
  order.add_child(UiKit.label("%+d" % st.public_order,16,Color("9fe08a") if st.public_order>=0 else Color("ef8a6a"),UiKit.FONT_BOLD))
  stats_box.add_child(order)
  var bar = Widgets.OrderBar.new(st.public_order/100.0)
- bar.tooltip_text = "Public order, -100 to +100 (mock)"
+ bar.tooltip_text = "Public order, -100 to +100 (placeholder: no public order system yet)"
  bar.mouse_filter = Control.MOUSE_FILTER_PASS
  stats_box.add_child(bar)
- stats_box.add_child(UiKit.label("Placeholder values (data/mock_ui.json)",12,Color(UiKit.TEXT_DIM,0.7)))
+ stats_box.add_child(UiKit.label("Public order: placeholder (data/mock_ui.json)",12,Color(UiKit.TEXT_DIM,0.7)))
 
 # --- Bottom panel: province (settlement tabs + building slots) or army ------------------
 
@@ -394,6 +401,11 @@ func refresh():
  resource_labels.income.text = UiKit.signed(r.income)
  resource_labels.population.text = UiKit.format_int(r.population)
  resource_labels.year.text = "Year %d · Turn %d" % [r.year,r.turn]
+ resource_groups.treasury.tooltip_text = _ledger_text()
+ resource_groups.income.tooltip_text = _ledger_text()
+ resource_groups.population.tooltip_text = "Population of your settlements: %s\nGrows each year with settlement type, resources and wealth." % UiKit.format_int(r.population)
+ resource_groups.year.tooltip_text = "Year %d, turn %d. One turn is one year." % [r.year,r.turn]
+ if chronicle_panel and chronicle_panel.visible: _fill_chronicle()
  end_turn_year.text = "Year %d" % r.year
  if selected_settlement != "": show_settlement(selected_settlement)
 
@@ -411,3 +423,66 @@ func setup_minimap(world: World3D,world_rect: Rect2,camera_footprint: Callable) 
  minimap.setup(data,world,world_rect,camera_footprint)
  minimap.tooltip_text = "Minimap: click or drag to move the camera"
  return minimap
+
+# TW-style income breakdown for the treasury tooltip: sources, expenses, net per turn.
+func _ledger_text() -> String:
+ var b = data.income_breakdown()
+ var lines = ["Treasury: %s gold" % UiKit.format_int(b.treasury),"","Income per turn: %s" % UiKit.signed(b.income_total)]
+ for e in b.income: lines.append("    %s  %s" % [e.label,UiKit.signed(e.amount)])
+ lines.append("Expenses per turn: %s" % UiKit.signed(-b.expense_total))
+ for e in b.expenses: lines.append("    %s  %s" % [e.label,UiKit.signed(-e.amount)])
+ lines.append("")
+ lines.append("Net per turn: %s" % UiKit.signed(b.net))
+ lines.append("(placeholder numbers: data/economy.json)")
+ return "\n".join(lines)
+
+# --- Chronicle window -------------------------------------------------------------
+
+func toggle_chronicle():
+ if chronicle_panel == null:
+  chronicle_panel = _framed()
+  var v = VBoxContainer.new()
+  v.add_theme_constant_override("separation",6)
+  chronicle_panel.add_child(v)
+  var head = HBoxContainer.new()
+  var title = UiKit.header("The Chronicle of the Grey Scribes",20)
+  title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  head.add_child(title)
+  var close = Button.new()
+  close.text = "Close"
+  close.focus_mode = Control.FOCUS_NONE
+  close.pressed.connect(func(): chronicle_panel.visible = false)
+  head.add_child(close)
+  v.add_child(head)
+  v.add_child(UiKit.label("Kept in the archive at Crownhaven, without favour to any realm.",14,UiKit.TEXT_DIM))
+  v.add_child(UiKit.divider(colors.trim))
+  var scroll = ScrollContainer.new()
+  scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+  scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+  v.add_child(scroll)
+  chronicle_box = VBoxContainer.new()
+  chronicle_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  chronicle_box.add_theme_constant_override("separation",10)
+  scroll.add_child(chronicle_box)
+  chronicle_panel.visible = false
+  _anchor(chronicle_panel,0.5,0.5,0.5,0.5,Rect2(-320,-300,320,300))
+ chronicle_panel.visible = not chronicle_panel.visible
+ if chronicle_panel.visible: _fill_chronicle()
+
+func _fill_chronicle():
+ _clear(chronicle_box)
+ for e in data.chronicle():
+  var row = VBoxContainer.new()
+  row.add_theme_constant_override("separation",1)
+  row.add_child(UiKit.label("Year %d" % e.year,13,UiKit.TEXT_DIM))
+  var title = UiKit.label(e.title,17,Color("f1d79a"),UiKit.FONT_BOLD)
+  title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+  row.add_child(title)
+  if e.text != "":
+   var text = UiKit.label(e.text,15,UiKit.TEXT)
+   text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+   row.add_child(text)
+  chronicle_box.add_child(row)
+
+func chronicle_visible() -> bool:
+ return chronicle_panel != null and chronicle_panel.visible
