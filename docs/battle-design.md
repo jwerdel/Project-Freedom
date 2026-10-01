@@ -1,6 +1,6 @@
 # Battle system design
 
-**STATUS: PROPOSAL, awaiting the owner's approval. Nothing here is implemented or confirmed.** `constitution.md` governs; every number below is a placeholder that will live in data files (`data/battle.json`, `data/units/*.json`).
+**STATUS: APPROVED design direction (2026-10-01). Not implemented yet. The open questions in section 13 stay open until answered.** `constitution.md` governs; every number below is a placeholder that will live in data files (`data/battle.json`, `data/units/*.json`).
 
 Constitution rules this design satisfies: the player inspects the battlefield, deploys and gives standing orders before resolution; resolution is a simulation with no animated 3D combat in V1; deployment and orders have visible, explainable consequences; a battle report teaches; troops, casualties and generals flow back into the campaign; an army may fight several battles while its movement allowance lasts; settlement walls and towers count in settlement battles; siege endurance is about 8 turns at most, supply model open.
 
@@ -8,7 +8,7 @@ Constitution rules this design satisfies: the player inspects the battlefield, d
 
 A battle happens where the defender stands. The field faces the attacker's approach direction (the last segment of its path).
 
-The field is **3 lanes (Left, Center, Right) x 6 bands deep**, sampled from the baked movement grid (`data/movement_grid.json`) in a window around the battle point: each lane is 3 grid cells wide, each band 2 cells deep (about 18 x 12 map meters, scaled up to a notional 300 x 240 m battlefield). Each lane-band takes the majority terrain of its cells:
+The field is **lanes x 6 bands deep** (3 or 5 lanes, section 2; shown with 3 below), sampled from the baked movement grid (`data/movement_grid.json`) in a window around the battle point: the window is 9-10 grid cells wide (3 cells per lane with 3 lanes, 2 with 5), each band 2 cells deep (about 18 x 12 map meters, scaled up to a notional 300 x 240 m battlefield). Each lane-band takes the majority terrain of its cells:
 
 | Terrain | Effect |
 |---|---|
@@ -49,9 +49,30 @@ Each side arranges its units on a small grid, not free placement, so choices sta
  RESERVE      [ any number of units, held behind the center ]
 ```
 
-- Lane capacity per line: 3 units on open ground, 2 in forest or hills, 1 in a pass, 0 in a closed lane. Up to 20 units per army (the army cap) fit across 3 lanes x 2 lines x 3 plus reserve.
+- Lane capacity per line (3 lanes): 3 units on open ground, 2 in forest or hills, 1 in a pass, 0 in a closed lane; with 5 lanes, 2, 1, 1 and 0. Up to 20 units per army (the army cap) fit in the slots plus reserve.
 - The general sits behind the center by default; it can be placed in any lane's back line.
 - Each unit has one order (section 3). Units without one get the default for their type.
+
+**3 lanes or 5?** The lane count is a data value (`lanes` in `data/battle.json`), so both can be tested by the harness (section 12). With 5 lanes (Far left, Left, Center, Right, Far right; each lane 2 grid cells wide, lane capacity 2 per line):
+
+```
+              FAR LEFT    LEFT      CENTER     RIGHT    FAR RIGHT
+ FRONT LINE   [  ][  ]   [  ][  ]   [  ][  ]   [  ][  ]   [  ][  ]
+ BACK LINE    [  ][  ]   [  ][  ]   [  ][  ]   [  ][  ]   [  ][  ]
+ GENERAL                           [ general ]
+ RESERVE      [ any number of units, held behind the center ]
+```
+
+| | 3 lanes | 5 lanes |
+|---|---|---|
+| Flanking | Flankers leave from a whole wing; "the flank" is a third of the army | Flankers leave from the far lanes; the line (Left, Center, Right) and the flanks are separate decisions |
+| Screening a flank | All or nothing per wing | A single unit in a far lane can screen or bait a flank |
+| Terrain | Coarse: one forest can fill a whole wing | A forest or hill can cover one far lane, which reads like a real battlefield edge |
+| Small armies (3-5 units) | Fill the field naturally | Leave the far lanes empty, so they are easy to outflank: a meaningful weakness of small armies |
+| Deployment effort | 18 slots, fast | 20 slots, a little more to arrange; templates and Auto-deploy do it in one click |
+| Simulation cost | Lower | Still small (under 2 ms target) |
+
+Recommendation: **5 lanes** (open question 1). With armies of up to 20 units, 3 lanes make flanking and screening too coarse to teach anything: whether a flank attack works should depend on which far lane it comes from and what screens it, not on a whole wing. The rest of this document is written for either count; "the outer lanes" means Left/Right with 3 lanes and Far left/Far right with 5.
 
 **Deployment screen:** a tabletop diorama built from the sampled terrain: flat tiles for open ground, raised tiles for hills, tree props from the manifest (`nature.tree`), wall pieces for sieges, a darker strip for no man's land. Units appear as small blocks of their existing figures (`UnitTypes.build_visual`, a few figures per block) on the slots. Unit cards along the bottom (the existing cards) are dragged onto slots; each placed card shows an order icon. A 2D top-down toggle shows the same grid as colored blocks. The enemy's visible units stand in their zone. Buttons: Auto-deploy, Quick resolve, Fight.
 
@@ -61,7 +82,7 @@ Each side arranges its units on a small grid, not free placement, so choices sta
 |---|---|
 | **Hold** | Stays in its slot and fights what reaches it. Braced: +15 defence against charges; spears holding negate the charge bonus entirely. Never advances, even when winning. |
 | **Aggressive** | Advances down its lane at its speed toward the nearest visible enemy in the lane, charging on contact. If its lane is empty it turns on the nearest enemy in an adjacent lane after 2 ticks. Leaves its slot open. |
-| **Flank** | Only from the Left or Right lane. Leaves the field edge and arrives at the enemy's flank after a delay (lane length / speed, x1.5 through forest, impossible past a closed lane). On arrival it attacks the enemy back line in that lane, from behind. |
+| **Flank** | Only from the outer lanes. Leaves the field edge and arrives at the enemy's flank after a delay (lane length / speed, x1.5 through forest, impossible past a closed lane). On arrival it attacks the enemy back line in that lane, from behind. |
 | **Protect (unit X)** | Stays next to X. Any enemy that engages X, or arrives to flank X, fights the protector first. A protector in front of archers lets them keep shooting. |
 | **Reserve** | Off the grid, behind the center. Commits automatically: (a) to intercept an arriving flanker, (b) to fill a lane whose front unit routs, (c) cavalry reserves pursue routing enemies. One commitment per reserve unit. |
 
@@ -73,6 +94,18 @@ Each side arranges its units on a small grid, not free placement, so choices sta
 - Aggressive vs aggressive: both charge, both get the charge bonus, the meeting point is where their movement crosses.
 
 **Speed, terrain and the general:** movement is in bands per tick (infantry 0.5, cavalry 1.5), times terrain. The general's rank (1-10) shortens order delays (flankers arrive 1 tick earlier per 3 ranks; reserves commit 1 tick sooner at rank 5+) and gives a morale aura of +2 per rank to units in its lane and the center. Mediocre generals (personality, section 8) add 1 tick to every delay.
+
+**General personality hook** (constitution: character behavior responds to experience and personality). The character system does not exist yet, so no general has traits today, but the simulation reads an optional `traits` list on the general and applies modifiers from a table in `data/battle.json`. Placeholder traits:
+
+| Trait | Effect on order execution |
+|---|---|
+| Cautious | Aggressive orders start 1 tick late; flankers wait until the enemy reserve has committed; +5 morale to units holding |
+| Reckless | +10 charge on the first clash; cavalry pursue routing enemies off the field and stay out for 3 ticks (exposed to counter-charges, unavailable as reserve) |
+| Steady | Reserves commit 1 tick sooner; lane neighbours lose 5 less morale when a unit routs |
+| Impetuous | Holding units with a winning neighbour may advance without orders (25% per tick) |
+| Mediocre | +1 tick to every delay (House Verrin's generals by faction default) |
+
+The report names the trait when it mattered ("Ser Bramwell's caution held his levies back until your cavalry had already turned the flank"). Once the character system exists, traits come from the general's personality and experience instead of faction defaults.
 
 ## 4. Unit stats and matchups
 
@@ -119,9 +152,18 @@ Every exchange gets seeded noise of +/-15%, so equal fights vary but deployment,
 
 ## 6. Battle report
 
-The simulation writes an event log with cause tags. The report shows:
+The simulation writes an event log with cause tags. The report must be scannable in under a minute, so it reads top to bottom from short to detailed:
 
-- **Outcome and decisive moments**, 3 to 8 plain sentences in time order, built from the tags, for example:
+1. **Headline:** outcome and cost in one line ("Victory at Greyhaven: 214 of your men lost, 610 enemy").
+2. **Why you won / why you lost:** 3 to 5 lines, each a cause and its effect, ranked by how many casualties or morale points the cause decided. Built from the same cause tags as the timeline. Example of a defeat:
+   - Your archers stood in the front line; enemy cavalry reached them on tick 4 and they broke.
+   - You had no reserve, so nothing stopped their flank attack on your right.
+   - Your spearmen held the center well (lost 18%), but were cut off once the right collapsed.
+   - Lesson: put missile troops behind infantry and keep one unit in reserve.
+3. **Key numbers:** men lost and killed per side, units destroyed, battle length.
+4. **Full timeline** (collapsed by default, for players who want detail):
+
+- **Decisive moments**, 3 to 8 plain sentences in time order, built from the tags, for example:
   - "Tick 6: Your left flank cavalry hit the enemy archers from behind because they had no reserve."
   - "Tick 9: The Highbloom Levy broke in the center after losing 40% of its men to your archers; its neighbours wavered."
   - "Your spearmen held the pass: the enemy could fight with only half its men at a time."
@@ -194,12 +236,13 @@ A Monte Carlo harness (a headless script plus a smaller GUT test subset) runs N 
 | 10 | More men, same everything else | win rate rises monotonically |
 | 11 | Same seed twice | identical result, report text and replay |
 | 12 | Speed | under 2 ms per battle |
+| 13 | Scenarios 2-6 with 3 lanes and with 5 lanes | both meet the targets; 5 lanes shows a larger gap between a screened and an unscreened flank |
 
 If a target fails, the fix goes into the numbers in data, not into special cases in code.
 
 ## 13. Open questions (recommended answer in bold)
 
-1. Deployment grid: 3 lanes x 2 lines plus reserve and general? **Yes; finer grids later only if battles feel samey.**
+1. Lane grid: 3 lanes or 5 (far left, left, center, right, far right), with 2 lines plus reserve and general? **5 lanes: with armies up to 20 units, 3 lanes make flanking and screening a whole-wing decision; 5 lanes separate the line from the flanks, let one unit screen a flank, and make small armies visibly easy to outflank. Keep the count in data and confirm with the harness (section 12, scenario 13).**
 2. Temporary war rule: attacking declares war after a confirmation? **Yes, flagged until diplomacy.**
 3. Automatic settlement garrisons from buildings? **Yes, small and data-driven, so empty settlements are not free captures.**
 4. General death: 10% killed / 20% wounded when the army loses, replaced by a captain? **Yes as placeholders until the family system.**

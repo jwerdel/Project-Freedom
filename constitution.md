@@ -115,6 +115,7 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 ## Battles and armies
 
 - Before resolution, players deploy units and assign standing orders such as hold ground, act aggressively, or attempt to flank.
+- Battle design (approved direction, 2026-10-01): docs/battle-design.md. Its numbers are placeholders and its open questions (section 13) are not decided until the owner answers them.
 - Resolve the battle through simulation without displaying animated combat in V1.
 - Detailed figures with minimal animation can be used in deployment; presentation specifics remain open.
 - Deployment and orders must have meaningful consequences. A useful explanation of results has been proposed; report format and simulation mechanics are not yet decided.
