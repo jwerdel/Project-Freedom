@@ -106,10 +106,13 @@ func _render(key: String) -> Texture2D:
   stage.add_child(node)
  await get_tree().process_frame
  _frame(node,unit.card_portrait.get("framing","full_body") if is_unit else "building",size)
- viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
- await RenderingServer.frame_post_draw
- await RenderingServer.frame_post_draw
- var img = viewport.get_texture().get_image()
+ var img: Image = null
+ # The headless dummy renderer never draws, so frame_post_draw would never arrive.
+ if DisplayServer.get_name() != "headless":
+  viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+  await RenderingServer.frame_post_draw
+  await RenderingServer.frame_post_draw
+  img = viewport.get_texture().get_image()
  node.queue_free()
  if img == null or img.is_empty():
   # Headless/dummy renderer: no pixels to read; hand back a labeled placeholder.
