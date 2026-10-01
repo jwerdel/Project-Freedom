@@ -252,11 +252,18 @@ func make_village():
  flags.append_array(village.rotors)
 
 func make_farms():
- for i in range(12):
-  var p = Vector2(-49+(i%4)*6,-2-floori(i/4.0)*6)
-  var field = AssetManifest.instantiate("terrain.farm_field")
-  add_child(field)
-  field.build({"origin":p,"ripe":i%3==0,"ground":ground,"height":height_at,"curve_from":curve_from})
+ var farms = AssetManifest.instantiate("terrain.farmland")
+ add_child(farms)
+ farms.build({"center":Vector2(-37.5,-9),"half_size":Vector2(16,14.5),"angle":0.21,"seed":5113,"height":height_at,"ground":ground,"open":farmland_open})
+
+# 1 where fields may grow, fading to 0 on roads and around the village and city.
+func farmland_open(p: Vector2) -> float:
+ var open = smoothstep(7.5,10.5,p.distance_to(VILLAGE))*smoothstep(15.5,18.0,p.distance_to(CITY))
+ var g = ground(p)
+ for c in road_curves:
+  var q = c.get_closest_point(g)
+  open *= smoothstep(1.15,2.0,Vector2(q.x,q.z).distance_to(p))
+ return open
 
 func make_forest():
  var source = AssetManifest.instantiate("nature.tree")

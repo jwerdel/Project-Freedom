@@ -7,7 +7,7 @@
     "settlement.fortress": "res://visuals/settlements/fortress.tscn",
     "settlement.village": "res://visuals/settlements/village.tscn",
     "settlement.harbor": "res://visuals/settlements/harbor.tscn",
-    "terrain.farm_field": "res://visuals/terrain/farm_field.tscn",
+    "terrain.farmland": "res://visuals/terrain/farmland.tscn",
     "nature.tree": "res://visuals/nature/trees.tscn",
     "nature.rock": "res://visuals/nature/rocks.tscn",
     "road.dirt": "res://visuals/roads/road_dirt.tscn",
