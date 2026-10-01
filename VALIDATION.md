@@ -166,6 +166,18 @@ Starting incomes with population taxes (year 1; old formula in brackets): House 
 
 AI construction in that run: Lannet built a mine (to level 3), upgraded its market twice, raised Greyhaven to Chartered City (level 3, year 8), then Wards and a Merchant Harbour; Verrin raised Willowmere to Market Village (year 2) and Market Town (year 12), and built Houses, Granaries/Estates and a mine. Every AI build kept the 1,500 gold reserve, and Willowmere's buildings never exceeded its settlement level.
 
+## Coastal ports and army movement (2026-10-01)
+
+Tests: 79/79 GUT tests pass headless and with the real renderer. Self-test passes, now including a path preview, a blocked order onto Greyhaven ("Battles not implemented yet", no points spent), a multi-turn order that continues on End Turn, cancel, and garrisoning Crownwatch (the army's state is restored before the capture).
+
+GPU time, same method as above (RTX 4060, 1440×900, vsync off, 10 s settle, 5 s average, 2 rounds): overview 2.04 / 2.09 ms (unchanged); army selected with a 3-turn path preview, reachable area and turn markers (camera at -58,-12, 112 m) 2.21 / 2.42 ms.
+
+CPU: End Turn 2.7 ms in the self-test; 2.94 ms average, 3.48 ms worst over 20 turns while the army marched a 6-turn order across the Greyspine Pass. A path plan takes about 1 ms (A* on the 140×102 grid); the reachable area about 13–22 ms, computed only when the army is selected or the state changes.
+
+Movement grid: 140×102 cells of 2 m (open 5,695, forest 1,391, hills 1,299, pass 140, mountain 3,340, water 2,365, settlement 50), baked from the map by `--bake-movement-grid`. The reachable area matches the planner exactly in a 415-cell cross-check.
+
+Screenshots (generated, in `captures/`): `move_preview.png` (3-turn path with turn markers 1-2-3, routed around foreign Willowmere), `move_reachable.png` (reachable area of the selected army; the hole is foreign Greyhaven), `move_garrison.png` (the host garrisoned in Crownwatch).
+
 ## Remaining limitations
 
 - Artwork is a prototype and has not been approved against the desired 2016 Total War campaign-map benchmark.

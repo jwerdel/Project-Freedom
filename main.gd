@@ -932,6 +932,42 @@ func run_checks():
  assert(ui_data.resources().year==year+1)
  assert(ui_data.events("turn")[0].year==year+1 and ui_data.events("turn")[1].category=="turn")
  print("END_TURN_MS %.3f" % ui_data.last_turn_ms)
+ # Army movement: preview, blocked order, multi-turn order continuing on End Turn, garrison, cancel.
+ # The army's state is restored afterwards so the capture is unchanged.
+ var saved_army = ui_data.state.army_state[COMMANDER_ARMY].duplicate(true)
+ select_army()
+ assert(movement_overlay.has_content("reach"))
+ preview_move(Vector2(-118,-30))
+ assert(movement_overlay.has_content("preview") and preview_text.contains("3 turns"))
+ var points_before = ui_data.army_movement(COMMANDER_ARMY).points
+ order_army(WorldMap.settlement_position(CITY_ID))
+ assert(ui.toast_label.text == "Battles not implemented yet")
+ assert(ui_data.army_movement(COMMANDER_ARMY).points == points_before)
+ order_army(Vector2(80,-10))
+ update_walk(1000.0)
+ var m = ui_data.army_movement(COMMANDER_ARMY)
+ assert(not m.order.is_empty() and m.points<points_before)
+ assert(movement_overlay.has_content("order"))
+ assert(commander.position.distance_to(army_ground(m.position))<0.01)
+ var mid = m.position
+ end_turn()
+ update_walk(1000.0)
+ assert(ui_data.army_movement(COMMANDER_ARMY).position != mid)
+ ui_data.cancel_army_order(COMMANDER_ARMY)
+ assert(ui_data.army_movement(COMMANDER_ARMY).order.is_empty())
+ end_turn()
+ update_walk(1000.0)
+ order_army(WorldMap.settlement_position("crownwatch"))
+ update_walk(1000.0)
+ for i in 5:
+  if ui_data.army_movement(COMMANDER_ARMY).order.is_empty(): break
+  end_turn()
+  update_walk(1000.0)
+ assert(ui_data.army_movement(COMMANDER_ARMY).garrison == "crownwatch")
+ assert(not ui_data.settlement("crownwatch").garrison.is_empty())
+ ui_data.state.army_state[COMMANDER_ARMY] = saved_army
+ place_commander()
+ refresh_army_overlays()
  # Construction: a main-building upgrade at Goldspire completes on End Turn and moves the landmark
  # to its next growth stage; the visual is then restored for the capture.
  var level_now = goldspire_level
@@ -950,7 +986,7 @@ func run_checks():
   assert(goldspire_level==level_now)
  ui.clear_selection()
  reset_camera()
- print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn; construction upgrades goldspire's stage")
+ print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn; construction upgrades goldspire's stage; army movement preview, orders, blocking and garrison")
 
 # --- Movement grid bake ------------------------------------------------------------
 # Writes data/movement_grid.json, the terrain grid army movement reads (core/movement.gd), by
