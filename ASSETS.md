@@ -159,3 +159,9 @@ Godot 4.7.2 standard Windows build, MIT license: https://github.com/godotengine/
 ## System fonts
 
 The campaign UI uses the bundled OFL fonts above; no system fonts are used or redistributed.
+
+## Reference material (not game assets)
+
+| File(s) | Source | Status |
+|---|---|---|
+| `docs/reference/cards/men_style_reference.jpg`, `docs/reference/cards/orc_style_reference.jpg` | AI-generated mockup card grids supplied by the project owner (metadata stripped) | **Style reference only.** Not shipped, not imported (`docs/reference/.gdignore`), never sliced into `assets/cards/` or used in-game. Final cards must use original faction heraldry (no real-world crosses or eagles), and orcs need their own crude visual language (scavenged armor, bone, fur, war paint), not human armor. See `docs/reference/cards/README.md`. |
