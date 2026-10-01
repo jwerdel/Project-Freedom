@@ -5,6 +5,8 @@
   "player_faction": "house_aurek",
   "treasury": {"house_aurek": 123456, "house_lannet": 6000, "house_verrin": 3000},
   "armies": ["aurek_host"],
+  "army_positions": {"aurek_host": [2, 0]},
+  "road_level": 1,
   "settlements": {
     "goldspire_rock": {"population": 15800, "buildings": [
       {"chain": "mine", "level": 2, "name": "Gold Mines"},

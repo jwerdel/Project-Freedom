@@ -6,11 +6,14 @@ const UnitTypes = preload("res://core/unit_types.gd")
 const COMMANDER_ARMY = "aurek_host"
 const WorldMap = preload("res://core/world_map.gd")
 const UiData = preload("res://core/ui_data.gd")
+const Movement = preload("res://core/movement.gd")
 const PortraitStudio = preload("res://core/portrait_studio.gd")
 const CampaignUI = preload("res://ui/campaign_ui.gd")
 const UiKit = preload("res://ui/ui_kit.gd")
 const SettlementBanner = preload("res://ui/settlement_banner.gd")
 const TerritoryOverlay = preload("res://visuals/terrain/territory_overlay.gd")
+const MovementOverlay = preload("res://ui/movement_overlay.gd")
+const WALK_SPEED = 12.0 # map meters per second while the figure walks (presentation only)
 # Overview camera (Home). Framed so the coast and Goldspire's sea face sit above the bottom panel.
 const OVERVIEW_TARGET = Vector3(10,3,21)
 const OVERVIEW_YAW = 0.08
@@ -45,6 +48,7 @@ var goldspire_level = 2
 var goldspire_root: Node3D
 var traffic: Array = []
 var road_curves: Array = []
+var forest_points: Array = [] # tree positions (x/z), used only by the movement-grid bake
 var flags: Array = []
 var sun: DirectionalLight3D
 var environment: Environment
@@ -68,6 +72,13 @@ var overlays = {"borders":true,"settlements":true,"armies":true}
 var press_pos = Vector2.ZERO
 var terrain_material: ShaderMaterial
 var minimap
+var movement_overlay
+var walk = {}            # the commander walking a path: {points, dist, total}
+var follow_army = false   # camera follows the selected army
+var right_press_pos = Vector2.ZERO
+var preview_key = Vector2i(1<<20,0)
+var preview_text = ""
+var forced_preview = null # capture flag --preview=x,z: preview this point instead of the mouse
 
 func _ready():
  rng.seed = 87231
@@ -95,6 +106,11 @@ func _ready():
   if arg.begins_with("--goldspire-stage="): goldspire_level = clampi(int(arg.get_slice("=",1)),1,3)
  make_goldspire()
  make_traffic()
+ if "--bake-movement-grid" in OS.get_cmdline_user_args():
+  bake_movement_grid()
+  set_process(false)
+  get_tree().quit()
+  return
  make_commander()
  make_ui()
  camera_update(1.0)
@@ -128,8 +144,27 @@ func _ready():
   if arg.begins_with("--browser=") and ui.selected_settlement != "": ui.open_building_browser(ui.selected_settlement,int(arg.get_slice("=",1)))
  if "--army" in OS.get_cmdline_user_args(): select_army()
  for arg in OS.get_cmdline_user_args():
+  var xz = arg.get_slice("=",1).split(",")
+  if arg.begins_with("--order="):
+   select_army()
+   order_army(Vector2(float(xz[0]),float(xz[1])))
+   update_walk(1000.0)
+  if arg.begins_with("--preview="):
+   select_army()
+   forced_preview = Vector2(float(xz[0]),float(xz[1]))
+ for arg in OS.get_cmdline_user_args():
+  if arg.begins_with("--view="):
+   var v = arg.get_slice("=",1).split(",")
+   target = ground(Vector2(float(v[0]),float(v[1])))
+   distance = float(v[2])
+   desired_distance = distance
+ for arg in OS.get_cmdline_user_args():
   if arg.begins_with("--end-turns="):
-   for i in int(arg.get_slice("=",1)): ui_data.end_turn()
+   for i in int(arg.get_slice("=",1)):
+    ui_data.end_turn()
+    update_walk(1000.0)
+ for arg in OS.get_cmdline_user_args():
+  if arg.begins_with("--select-after="): select_settlement(arg.get_slice("=",1))
  if "--chronicle" in OS.get_cmdline_user_args(): ui.toggle_chronicle()
  if "--self-test" in OS.get_cmdline_user_args():
   run_checks()
@@ -270,9 +305,11 @@ func make_roads():
  roads_root = AssetManifest.instantiate(ROAD_VISUALS[road_level])
  add_child(roads_root)
  road_curves.clear()
- road_curves.append(curve_from([CITY,Vector2(0,-5),Vector2(15,-14),Vector2(30,-22),KEEP]))
- road_curves.append(curve_from([CITY,Vector2(-24,-8),Vector2(-41,-13),VILLAGE]))
- road_curves.append(curve_from([CITY,Vector2(-17,17),Vector2(-18,27)]))
+ # The road network is gameplay data (movement costs); the map draws the same polylines.
+ for road in Movement.data().roads.network:
+  var pts = []
+  for p in road.points: pts.append(Vector2(p[0],p[1]))
+  road_curves.append(curve_from(pts))
  roads_root.build({"curves":road_curves,"height":height_at})
  road_material = roads_root.surface_material
 
@@ -334,6 +371,7 @@ func make_forest():
   # Checked after the rng draws so the rest of the layout is unchanged.
   if p.distance_to(GOLDSPIRE)<GOLDSPIRE_CLEAR: continue
   groups[idx].append(Transform3D(basis,Vector3(p.x,h,p.y)))
+  forest_points.append(p)
  for i in range(meshes.size()):
   make_multimesh(meshes[i],null,groups[i],false)
  source.free()
@@ -457,6 +495,15 @@ func make_ui():
  ui_data.changed.connect(sync_settlement_visuals)
  minimap = ui.setup_minimap(get_viewport().world_3d,TerritoryOverlay.RECT,camera_footprint)
  minimap.minimap_clicked.connect(func(p: Vector2): target = Vector3(clampf(p.x,-105,105),height_at(p.x,p.y),clampf(p.y,-90,65)))
+ movement_overlay = MovementOverlay.new()
+ add_child(movement_overlay)
+ movement_overlay.setup(height_at)
+ ui_data.army_moved.connect(_on_army_moved)
+ ui_data.changed.connect(refresh_army_overlays)
+ ui.follow_toggled.connect(func(on): follow_army = on)
+ ui.cancel_order_requested.connect(func(id): ui_data.cancel_army_order(id))
+ place_commander()
+ refresh_army_overlays()
 
 # Settlement visuals follow the campaign data: a finished main-building upgrade raises the level,
 # and the settlement switches to that growth stage (generic stages or its landmark's own).
@@ -485,10 +532,132 @@ func focus_settlement(id: String):
 func select_army():
  ui.show_army(COMMANDER_ARMY,army_location())
  focus_at(commander.position+Vector3(0,2.2,0),26.0)
+ refresh_army_overlays()
 
 func army_location() -> String:
  var region = WorldMap.region_at(Vector2(commander.position.x,commander.position.z))
  return WorldMap.province(WorldMap.province_of(region)).get("name","")
+
+# --- Army movement (rules: core/movement.gd via UiData; drawing: ui/movement_overlay.gd) ------
+# Select with left click or C; hovering the map previews the path; right click (without dragging)
+# gives the order; Backspace or the army panel cancels a standing order; F toggles camera follow.
+
+func army_selected() -> bool:
+ return ui != null and ui.selected_army == COMMANDER_ARMY
+
+func army_ground(p: Vector2,lift := 0.18) -> Vector3:
+ return Vector3(p.x,maxf(height_at(p.x,p.y),0.0)+lift,p.y)
+
+# Put the figure where the campaign state says the army is (garrisoned armies stand in the town).
+func place_commander():
+ if not walk.is_empty(): return
+ commander.position = army_ground(ui_data.army_movement(COMMANDER_ARMY).position)
+
+func refresh_army_overlays():
+ if movement_overlay == null: return
+ var path = ui_data.order_path(COMMANDER_ARMY)
+ if walk.is_empty() and path.points.size()>1: movement_overlay.show_path("order",path.points,path.turns,true)
+ else: movement_overlay.clear("order")
+ if army_selected() and walk.is_empty():
+  var area = ui_data.reachable_area(COMMANDER_ARMY)
+  movement_overlay.show_reachable(area.centers,area.cell)
+ else:
+  movement_overlay.clear("reach")
+  movement_overlay.clear("preview")
+ preview_key = Vector2i(1<<20,0)
+
+# Ground point under the mouse (x/z), marching the camera ray over the heightfield; the sea
+# surface counts as ground so orders onto water report "impassable".
+func ground_point(screen: Vector2) -> Vector2:
+ var origin = camera.project_ray_origin(screen)
+ var dir = camera.project_ray_normal(screen)
+ var t = 0.0
+ var prev = 0.0
+ while t<700.0:
+  var p = origin+dir*t
+  if p.y<=maxf(height_at(p.x,p.z),0.0):
+   var lo = prev
+   var hi = t
+   for i in 12:
+    var mid = (lo+hi)*0.5
+    var q = origin+dir*mid
+    if q.y<=maxf(height_at(q.x,q.z),0.0): hi = mid
+    else: lo = mid
+   var hit = origin+dir*hi
+   return Vector2(hit.x,hit.z)
+  prev = t
+  t += 1.0
+ var far = origin+dir*700.0
+ return Vector2(far.x,far.z)
+
+# Move target under the mouse: a settlement's position if one is hovered, else the ground.
+func move_target(screen: Vector2) -> Vector2:
+ var hit = pick(screen)
+ if hit != "" and hit != "army": return WorldMap.settlement_position(hit)
+ return ground_point(screen)
+
+# Preview the path to `p` (Total War style: this turn green, later turns in warmer colors, turn
+# numbers where each turn's walk ends). Returns the hover text.
+func preview_move(p: Vector2) -> String:
+ var key = Vector2i(floori(p.x),floori(p.y))
+ if key == preview_key: return preview_text
+ preview_key = key
+ var plan = ui_data.plan_move(COMMANDER_ARMY,p)
+ if not plan.ok:
+  movement_overlay.show_blocked(p,plan.reason)
+  preview_text = plan.reason
+ else:
+  movement_overlay.show_path("preview",plan.points,plan.turns)
+  var where = " to "+ui_data.settlement(plan.settlement).name if plan.settlement != "" else ""
+  preview_text = "Move%s: %s\nRight click to order" % [where,"this turn" if plan.total_turns == 1 else "%d turns" % plan.total_turns]
+ return preview_text
+
+func order_army(p: Vector2):
+ var r = ui_data.order_move(COMMANDER_ARMY,p)
+ movement_overlay.clear("preview")
+ if not r.ok:
+  ui.toast(r.reason)
+  return
+ if r.total_turns>1: ui.toast("Marching: %d turns to the destination. The order continues each End Turn." % r.total_turns)
+ elif r.settlement != "": ui.toast("Marching into %s." % ui_data.settlement(r.settlement).name)
+
+func toggle_follow():
+ follow_army = not follow_army
+ ui.set_follow(follow_army)
+ ui.toast("Camera follow %s." % ("on" if follow_army else "off"))
+
+func _on_army_moved(id: String,walked: Array):
+ if id != COMMANDER_ARMY or walked.size()<2: return
+ var total = 0.0
+ for i in range(1,walked.size()): total += walked[i-1].distance_to(walked[i])
+ walk = {"points":walked,"dist":0.0,"total":total}
+ movement_overlay.clear("reach")
+ movement_overlay.clear("preview")
+ movement_overlay.clear("order")
+
+# The figure slides along the walked path with a subtle step bob (the commander is a procedural
+# figure without a skeleton, so there is no walk cycle to play).
+func update_walk(delta: float):
+ if walk.is_empty(): return
+ walk.dist = minf(walk.total,walk.dist+delta*WALK_SPEED)
+ var left = walk.dist
+ var pts = walk.points
+ var at = pts[-1]
+ var dir = Vector2.ZERO
+ for i in range(1,pts.size()):
+  var seg = pts[i-1].distance_to(pts[i])
+  if left<=seg or i == pts.size()-1:
+   at = pts[i-1].lerp(pts[i],clampf(left/maxf(seg,0.0001),0,1))
+   dir = pts[i]-pts[i-1]
+   break
+  left -= seg
+ commander.position = army_ground(at,0.18+absf(sin(walk.dist*1.9))*0.14)
+ if dir.length()>0.001: commander.rotation.y = lerp_angle(commander.rotation.y,atan2(dir.x,dir.y),minf(1,delta*10))
+ if walk.dist>=walk.total:
+  walk = {}
+  place_commander()
+  refresh_army_overlays()
+  if army_selected(): ui.show_army(COMMANDER_ARMY,army_location())
 
 func end_turn():
  ui_data.end_turn()
@@ -581,10 +750,13 @@ func _unhandled_input(event):
    if event.button_index == MOUSE_BUTTON_WHEEL_UP: desired_distance = clampf(desired_distance*0.88,10,210)
    if event.button_index == MOUSE_BUTTON_WHEEL_DOWN: desired_distance = clampf(desired_distance*1.13,10,210)
    if event.button_index == MOUSE_BUTTON_LEFT: press_pos = event.position
+   if event.button_index == MOUSE_BUTTON_RIGHT: right_press_pos = event.position
   elif event.button_index == MOUSE_BUTTON_LEFT and event.position.distance_to(press_pos)<6:
    var hit = pick(event.position)
    if hit == "army": select_army()
    elif hit != "": select_settlement(hit)
+  elif event.button_index == MOUSE_BUTTON_RIGHT and event.position.distance_to(right_press_pos)<6 and army_selected():
+   order_army(move_target(event.position))
  if event is InputEventMouseMotion:
   if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
    yaw -= event.relative.x*0.005
@@ -600,10 +772,13 @@ func _unhandled_input(event):
    pins_root.visible = ui.visible
   if event.keycode == KEY_ESCAPE:
    ui.clear_selection()
+   refresh_army_overlays()
    ui.visible = true
    pins_root.visible = true
   if event.keycode == KEY_G: select_settlement(GOLDSPIRE_ID)
   if event.keycode == KEY_C: select_army()
+  if event.keycode == KEY_F: toggle_follow()
+  if event.keycode == KEY_BACKSPACE and army_selected(): ui_data.cancel_army_order(COMMANDER_ARMY)
   if event.keycode == KEY_F5: upgrade_city()
   if event.keycode == KEY_F6: cycle_goldspire()
   if event.keycode == KEY_F7: upgrade_roads()
@@ -645,6 +820,10 @@ func _process(delta):
     var q = curve.sample_baked(clampf(along*length+(0.25 if progress<1 else -0.25),0,length))
     n.position = Vector3(p.x,height_at(p.x,p.z)+0.14,p.z)
     if p.distance_to(q)>0.01: n.rotation.y = atan2(-(q-p).x,-(q-p).z)
+ update_walk(delta)
+ if follow_army and (not walk.is_empty() or army_selected()):
+  var c = commander.position
+  target = target.lerp(Vector3(c.x,c.y+2.2,c.z),minf(1,delta*4))
  camera_update(delta)
  for p in pins:
   var b = p.button
@@ -654,8 +833,17 @@ func _process(delta):
  var mouse = get_viewport().get_mouse_position()
  var hit = "" if get_viewport().gui_get_hovered_control() != null else pick(mouse)
  if "--ledger" in OS.get_cmdline_user_args(): ui.show_hover(ui._ledger_text(),Vector2(560,70))
+ elif forced_preview != null and army_selected() and walk.is_empty():
+  ui.show_hover(preview_move(forced_preview),camera.unproject_position(army_ground(forced_preview,1.0)))
+ elif army_selected() and ui.visible and walk.is_empty() and not capture_mode and get_viewport().gui_get_hovered_control() == null and hit != "army":
+  var text = preview_move(move_target(mouse))
+  ui.show_hover(hover_text(hit)+"
+"+text if hit != "" else text,mouse)
  elif hit != "" and ui.visible: ui.show_hover(hover_text(hit),mouse)
  else: ui.hide_hover()
+ if movement_overlay and forced_preview == null and movement_overlay.has_content("preview") and not (army_selected() and walk.is_empty() and get_viewport().gui_get_hovered_control() == null and hit != "army"):
+  movement_overlay.clear("preview")
+  preview_key = Vector2i(1<<20,0)
  ui.set_fps("%d FPS" % Engine.get_frames_per_second())
  if capture_mode:
   capture_frames += 1
@@ -763,3 +951,66 @@ func run_checks():
  ui.clear_selection()
  reset_camera()
  print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn; construction upgrades goldspire's stage")
+
+# --- Movement grid bake ------------------------------------------------------------
+# Writes data/movement_grid.json, the terrain grid army movement reads (core/movement.gd), by
+# classifying this map's heightfield, forest and coast with the thresholds in data/movement.json
+# (grid_bake), then stamping passes and settlements. Gameplay never reads the terrain mesh; rerun
+# after changing the map:  runtime\Godot.exe --path . -- --bake-movement-grid
+func bake_movement_grid():
+ var d = Movement.data()
+ var b = d.grid_bake
+ var cell = float(b.cell)
+ var origin = Vector2(b.rect[0],b.rect[1])
+ var cols = int(b.rect[2]/cell)
+ var rows = int(b.rect[3]/cell)
+ var sym = {}
+ for t in d.terrain:
+  if not t.begins_with("_"): sym[t] = d.terrain[t].symbol
+ var trees = {}
+ for p in forest_points:
+  var k = Vector2i(floori(p.x/4.0),floori(p.y/4.0))
+  if not trees.has(k): trees[k] = []
+  trees[k].append(p)
+ var out = []
+ var counts = {}
+ for z in rows:
+  var row = ""
+  for x in cols:
+   var p = origin+(Vector2(x,z)+Vector2(0.5,0.5))*cell
+   var h = height_at(p.x,p.y)
+   var slope = Vector2(height_at(p.x+1,p.y)-height_at(p.x-1,p.y),height_at(p.x,p.y+1)-height_at(p.x,p.y-1)).length()*0.5
+   var t = "open"
+   if h<float(b.water_below): t = "water"
+   elif h>float(b.mountain_above) or slope>float(b.steep_slope): t = "mountain"
+   elif h>float(b.hills_above): t = "hills"
+   else:
+    var k = Vector2i(floori(p.x/4.0),floori(p.y/4.0))
+    for dz in [-1,0,1]:
+     for dx in [-1,0,1]:
+      for q in trees.get(k+Vector2i(dx,dz),[]):
+       if q.distance_to(p)<float(b.forest_tree_radius): t = "forest"
+   for corridor in d.passes.list:
+    for i in corridor.points.size()-1:
+     var a = Vector2(corridor.points[i][0],corridor.points[i][1])
+     var e = Vector2(corridor.points[i+1][0],corridor.points[i+1][1])
+     if t != "water" and p.distance_to(Geometry2D.get_closest_point_to_segment(p,a,e))<=float(corridor.width)*0.5: t = "pass"
+   for id in WorldMap.settlement_ids():
+    if WorldMap.settlement_position(id).distance_to(p)<=float(d.settlements.radius): t = "settlement"
+   counts[t] = counts.get(t,0)+1
+   row += sym[t]
+  out.append(row)
+ var grid = {"_note":"GENERATED by main.gd --bake-movement-grid from the map and data/movement.json (grid_bake). Do not hand-edit; rerun the bake. One character per %s m cell, rows from z = %s (north) southward, columns from x = %s; symbols are data/movement.json terrain symbols." % [cell,origin.y,origin.x],
+  "cell":cell,"origin":[origin.x,origin.y],"cols":cols,"rows":rows,"rows_data":out}
+ var f = FileAccess.open("res://data/movement_grid.json",FileAccess.WRITE)
+ f.store_string(JSON.stringify(grid,"  ",false)+"\n")
+ f.close()
+ print("MOVEMENT_GRID %dx%d %s" % [cols,rows,counts])
+ # Lowest crossing of the northern mountains (to place passes): highest point per column.
+ var best = []
+ for x in range(-130,131,4):
+  var top = 0.0
+  for z in range(-130,-50,2): top = maxf(top,height_at(x,z))
+  best.append([top,x])
+ best.sort()
+ print("MOUNTAIN_CROSSINGS (max height, x): ",best.slice(0,6))

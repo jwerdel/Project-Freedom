@@ -122,6 +122,8 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 - Ordinary monsters require special buildings. Unique legendary monsters exist in the world and can be recruited only by heroes of extraordinary stature; qualification and recruitment mechanics remain open.
 - Wars are centered on the opposing factions. Allies choose whether to join the war or support it through gold, resources, or troop tribute without themselves becoming belligerents. Supporting an ally does not automatically mean joining its war.
 - Campaign movement uses a per-turn movement allowance in the Total War style. An army may fight multiple battles while its allowance permits; no separate fixed battle count is intended.
+- Implementation note (2026-10-01): the allowance is implemented with placeholder numbers (data/movement.json): points refill each End Turn, terrain changes the cost (forest, hills and passes slower; water and mountains impassable except at passes), multi-turn orders continue automatically, and ending a move in one's own settlement garrisons the army. That roads speed movement, scaling with road level, is a placeholder rule, not a confirmed mechanic.
+- Open (raised by army movement, not implemented): zone of control; attrition; movement after battle; military access or trespass through foreign territory (currently free); naval movement; what happens when an army moves onto a foreign settlement or army (battle is not implemented, so it is blocked).
 - Siege endurance depends on the settlement's resources, with an approximate maximum of eight turns proposed by the user. Exact supply model and limit remain to be set.
 
 ## Endgame crises

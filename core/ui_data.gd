@@ -6,6 +6,7 @@ extends RefCounted
 
 signal changed
 signal event_added(event: Dictionary)
+signal army_moved(army_id: String,walked: Array) # points walked (world x/z), for the map figure
 
 const WorldMap = preload("res://core/world_map.gd")
 const UnitTypes = preload("res://core/unit_types.gd")
@@ -13,6 +14,7 @@ const GameState = preload("res://core/game_state.gd")
 const Economy = preload("res://core/economy.gd")
 const Buildings = preload("res://core/buildings.gd")
 const Construction = preload("res://core/construction.gd")
+const Movement = preload("res://core/movement.gd")
 const TurnLoop = preload("res://core/turn_loop.gd")
 const Chronicle = preload("res://core/chronicle.gd")
 const MOCK = "res://data/mock_ui.json"
@@ -64,6 +66,7 @@ func end_turn():
  var report = TurnLoop.end_turn(state)
  last_turn_ms = (Time.get_ticks_usec()-t0)/1000.0
  for e in report.entries: event_added.emit(e)
+ for id in report.moves: army_moved.emit(id,report.moves[id])
  changed.emit()
  return report
 
@@ -109,6 +112,8 @@ func settlement(id: String) -> Dictionary:
  s.province = WorldMap.province_of(id)
  s.province_name = WorldMap.province(s.province).name
  s.defense = int(live.defense)
+ s.garrison = []
+ for a in Movement.garrison_of(state,id): s.garrison.append(UnitTypes.army(a).display_name)
  s.player_owned = live.owner == state.player_faction
  return s
 
@@ -212,3 +217,49 @@ func army(id: String) -> Dictionary:
 
 func unit_type(id: String) -> Dictionary:
  return UnitTypes.get_type(id)
+
+# --- Army movement ---------------------------------------------------------------
+
+func army_movement(army_id: String) -> Dictionary:
+ var m = Movement.army(state,army_id)
+ var order = []
+ for p in m.order: order.append(Vector2(p[0],p[1]))
+ return {"position":Movement.position(state,army_id),"points":float(m.points),"max_points":float(m.max_points),"order":order,
+  "garrison":m.garrison,"garrison_name":WorldMap.region(m.garrison).settlement.name if m.garrison != "" else "","player_owned":m.faction == state.player_faction}
+
+# Preview a move without committing it (see Movement.plan).
+func plan_move(army_id: String,target: Vector2) -> Dictionary:
+ return Movement.plan(state,army_id,target)
+
+# Commit a move: walks as far as this turn allows, keeps the rest as a standing order.
+func order_move(army_id: String,target: Vector2) -> Dictionary:
+ if Movement.army(state,army_id).faction != state.player_faction: return {"ok":false,"reason":"Not your army"}
+ var r = Movement.order(state,army_id,target)
+ if r.ok:
+  army_moved.emit(army_id,r.moved)
+  changed.emit()
+ return r
+
+func cancel_army_order(army_id: String):
+ Movement.cancel_order(state,army_id)
+ changed.emit()
+
+# World x/z centers of the cells the army can still reach this turn, and the cell size.
+func reachable_area(army_id: String) -> Dictionary:
+ var out = []
+ for c in Movement.reachable(state,army_id): out.append(Movement.center_of(c))
+ return {"centers":out,"cell":Movement.grid().cell}
+
+func road_level() -> int:
+ return state.road_level
+
+func set_road_level(level: int):
+ state.road_level = level
+ changed.emit()
+
+# The army's standing order as a drawable path: {points (from the army), turns (0 = this turn)}.
+func order_path(army_id: String) -> Dictionary:
+ var m = army_movement(army_id)
+ if m.order.is_empty(): return {"points":[],"turns":[]}
+ var pts = [m.position]+m.order
+ return {"points":pts,"turns":Movement.simulate(pts,m.points,m.max_points,state.road_level).turns}

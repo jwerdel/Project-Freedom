@@ -1,10 +1,12 @@
 {
-  "_note": "Starting state of the prototype campaign. Treasuries, populations and buildings are PLACEHOLDER values. Buildings list the non-main slots as {chain, level[, name]} (chains in data/buildings.json); the main building is implied at the settlement level and empty slots fill up to the slot count. Settlement type, level, owner and resource endowments live in data/provinces.json.",
+  "_note": "Starting state of the prototype campaign. Treasuries, populations, army positions and buildings are PLACEHOLDER values. road_level: 0 dirt, 1 gravel, 2 stone. Buildings list the non-main slots as {chain, level[, name]} (chains in data/buildings.json); the main building is implied at the settlement level and empty slots fill up to the slot count. Settlement type, level, owner and resource endowments live in data/provinces.json.",
   "seed": 1201,
   "year": 1,
   "player_faction": "house_aurek",
   "treasury": {"house_aurek": 8450, "house_lannet": 6000, "house_verrin": 3000},
   "armies": ["aurek_host"],
+  "army_positions": {"aurek_host": [2, 0]},
+  "road_level": 1,
   "settlements": {
     "goldspire_rock": {"population": 15800, "buildings": [
       {"chain": "mine", "level": 2, "name": "Gold Mines"},

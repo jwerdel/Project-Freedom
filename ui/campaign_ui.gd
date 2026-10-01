@@ -7,6 +7,8 @@ extends Control
 signal end_turn_requested
 signal settlement_selected(id: String)
 signal overlay_toggled(overlay: String,on: bool)
+signal follow_toggled(on: bool)
+signal cancel_order_requested(army_id: String)
 
 const UiKit = preload("res://ui/ui_kit.gd")
 const Widgets = preload("res://ui/widgets.gd")
@@ -42,6 +44,9 @@ var selected_settlement := ""
 var selected_army := ""
 var army_location := ""
 var province_title := ""
+var follow_on := false
+var follow_button: Button
+var movement_bar: Control
 var browser_panel: Control
 var browser_box: VBoxContainer
 var browser_target := {}
@@ -270,6 +275,7 @@ func show_settlement(id: String):
  title.add_theme_constant_override("separation",-2)
  title.add_child(UiKit.header(s.province_name,18))
  title.add_child(UiKit.label("%s · %s · level %d · defense %d · %s" % [s.name,s.type.capitalize(),s.level,s.defense,s.faction.name],14,UiKit.TEXT_DIM))
+ if not s.garrison.is_empty(): title.add_child(UiKit.label("Garrison: %s" % ", ".join(s.garrison),14,Color("f1d79a"),UiKit.FONT_BOLD))
  head.add_child(title)
  var spacer = Control.new()
  spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -317,6 +323,7 @@ func show_army(army_id: String,location: String):
  var spacer = Control.new()
  spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  head.add_child(spacer)
+ head.add_child(_movement_box(army_id))
  head.add_child(UiKit.label("Units %d / 20" % (a.units.size()+1),15,UiKit.TEXT_DIM))
  bottom_box.add_child(head)
  bottom_box.add_child(UiKit.divider(colors.trim))
@@ -333,6 +340,64 @@ func show_army(army_id: String,location: String):
  bottom_box.add_child(_scroller(row))
  bottom_panel.visible = true
  _fit_bottom.call_deferred()
+
+# TW-style movement readout for the army panel: remaining movement as a bar, the standing order
+# (with cancel) or the garrison, and the camera-follow toggle.
+class MovementBar extends Control:
+ var fraction := 1.0
+ func _init(f: float):
+  fraction = clampf(f,0,1)
+  custom_minimum_size = Vector2(150,12)
+  mouse_filter = Control.MOUSE_FILTER_PASS
+ func _draw():
+  var r = Rect2(Vector2(0,1),size-Vector2(0,2))
+  draw_rect(r,Color(0,0,0,0.7))
+  draw_rect(Rect2(r.position+Vector2(2,2),Vector2((r.size.x-4)*fraction,r.size.y-4)),Color("e9c46a") if fraction>0.15 else Color("d77a4a"))
+  draw_rect(r,Color("c9a45a"),false,1.0)
+
+func _movement_box(army_id: String) -> Control:
+ var m = data.army_movement(army_id)
+ var v = VBoxContainer.new()
+ v.add_theme_constant_override("separation",2)
+ var row = HBoxContainer.new()
+ row.add_theme_constant_override("separation",6)
+ row.add_child(UiKit.label("Movement",13,UiKit.TEXT_DIM))
+ movement_bar = MovementBar.new(m.points/maxf(1.0,m.max_points))
+ movement_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+ movement_bar.tooltip_text = "Movement points: %d of %d this turn.\nRefilled on End Turn. Open ground costs 1 per meter; forest, hills and passes cost more, roads less.\n(Placeholder numbers: data/movement.json)" % [int(m.points),int(m.max_points)]
+ row.add_child(movement_bar)
+ row.add_child(UiKit.label("%d / %d" % [int(m.points),int(m.max_points)],13,UiKit.TEXT))
+ v.add_child(row)
+ var row2 = HBoxContainer.new()
+ row2.add_theme_constant_override("separation",6)
+ if not m.order.is_empty():
+  row2.add_child(UiKit.label("Marching (order continues on End Turn)",12,Color("f1d79a")))
+  var cancel = Button.new()
+  cancel.name = "CancelOrder"
+  cancel.text = "Cancel order"
+  cancel.focus_mode = Control.FOCUS_NONE
+  cancel.disabled = not m.player_owned
+  cancel.pressed.connect(func(): cancel_order_requested.emit(army_id))
+  row2.add_child(cancel)
+ elif m.garrison != "": row2.add_child(UiKit.label("Garrisoned in %s" % m.garrison_name,12,Color("f1d79a")))
+ else: row2.add_child(UiKit.label("Right click the map to move",12,UiKit.TEXT_DIM))
+ follow_button = Button.new()
+ follow_button.name = "Follow"
+ follow_button.text = "Follow"
+ follow_button.toggle_mode = true
+ follow_button.button_pressed = follow_on
+ follow_button.focus_mode = Control.FOCUS_NONE
+ follow_button.tooltip_text = "Camera follows the army (F)"
+ follow_button.toggled.connect(func(on):
+  follow_on = on
+  follow_toggled.emit(on))
+ row2.add_child(follow_button)
+ v.add_child(row2)
+ return v
+
+func set_follow(on: bool):
+ follow_on = on
+ if follow_button and is_instance_valid(follow_button): follow_button.set_pressed_no_signal(on)
 
 func _scroller(content: Control) -> ScrollContainer:
  var scroll = ScrollContainer.new()
@@ -526,6 +591,7 @@ func refresh():
  if chronicle_panel and chronicle_panel.visible: _fill_chronicle()
  end_turn_year.text = "Year %d" % r.year
  if selected_settlement != "": show_settlement(selected_settlement)
+ if selected_army != "": show_army(selected_army,army_location)
  if browser_visible() and not browser_target.is_empty(): _fill_browser()
 
 # Grow the bottom panel upward to fit its content (building cards are shorter than unit cards).

@@ -1,0 +1,51 @@
+{
+  "_note": "PLACEHOLDER army movement tuning. Every number here is a tunable placeholder, not approved balance. Confirmed (constitution): campaign movement uses a per-turn movement allowance in the Total War style; an army may move several times while its allowance permits. Costs: one movement point per meter of open ground, times the terrain cost of the cell entered (diagonal steps cost their real length). core/movement.gd applies these values; the terrain grid itself is data/movement_grid.json.",
+  "army": {
+    "_note": "Movement points per turn, refilled on End Turn. The map is about 280 m across; Greyhaven to Crownwatch is about 75 m by road.",
+    "movement_points": 60
+  },
+  "terrain": {
+    "_note": "cost multiplies the distance walked into a cell of that terrain; null = impassable. Mountains are impassable except where a pass crosses them; water is impassable (no naval movement in this block).",
+    "open":       {"symbol": ".", "cost": 1.0},
+    "forest":     {"symbol": "f", "cost": 1.6},
+    "hills":      {"symbol": "h", "cost": 1.5},
+    "pass":       {"symbol": "p", "cost": 2.0},
+    "settlement": {"symbol": "s", "cost": 1.0},
+    "mountain":   {"symbol": "M", "cost": null},
+    "water":      {"symbol": "w", "cost": null}
+  },
+  "roads": {
+    "_note": "PLACEHOLDER RULE, not in the constitution: the constitution only confirms that road upgrades change the visible road surface. Here a road cell costs multiplier_by_level[road level] regardless of the terrain under it (dirt 0, gravel 1, stone 2). The road network is also what the map draws (main.gd reads it).",
+    "multiplier_by_level": [0.8, 0.65, 0.5],
+    "width": 3.0,
+    "network": [
+      {"id": "greyhaven_crownwatch", "points": [[-12, 6], [0, -5], [15, -14], [30, -22], [48, -35]]},
+      {"id": "greyhaven_willowmere", "points": [[-12, 6], [-24, -8], [-41, -13], [-56, -24]]},
+      {"id": "greyhaven_harbour", "points": [[-12, 6], [-17, 17], [-18, 27]]}
+    ]
+  },
+  "passes": {
+    "_note": "Corridors through the mountains that stay passable (terrain 'pass'). Baked into the grid by main.gd --bake-movement-grid.",
+    "list": [
+      {"name": "Greyspine Pass", "points": [[48, -46], [44, -70], [42, -95], [40, -136]], "width": 6.0}
+    ]
+  },
+  "settlements": {
+    "_note": "An army entering this radius around a settlement position (data/provinces.json) is at that settlement: its own settlement garrisons it; a foreign one would mean battle, which is not implemented.",
+    "radius": 4.0
+  },
+  "armies": {
+    "_note": "Destinations within this radius of another faction's army would mean battle (not implemented), so they are blocked.",
+    "block_radius": 4.0
+  },
+  "grid_bake": {
+    "_note": "Thresholds used only by the grid bake (main.gd --bake-movement-grid) to classify the map's terrain into data/movement_grid.json. Gameplay reads the baked grid, never the terrain mesh.",
+    "cell": 2.0,
+    "rect": [-140, -140, 280, 204],
+    "water_below": 0.4,
+    "hills_above": 8.5,
+    "mountain_above": 20.0,
+    "steep_slope": 1.1,
+    "forest_tree_radius": 2.2
+  }
+}
