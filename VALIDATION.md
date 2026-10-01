@@ -83,6 +83,27 @@ The landmark's static pieces are batched by material inside the visual. The `--c
 
 Known limits: at the default overview the bottom of Goldspire's sea face sits behind the bottom bar; the summit, labels and upper cliff stay visible. The map's coast stands in for the world bible's "west coast"; there is no road to Goldspire yet.
 
+## Unit types, campaign UI and map overlays (2026-09-30)
+
+GUT: 30 tests pass both headless and windowed (`test_asset_manifest`, `test_goldspire_rock`, `test_unit_types`, `test_campaign_ui`, `test_world_map`): every unit type loads, builds and renders a portrait (pixel checks windowed only), the portrait cache key changes with the visual, the UI shows exactly the UiData values (fixture with distinctive numbers), End Turn advances the year and posts "Year X begins" without touching other values, and province/faction lookup and region tiling hold. `--self-test` passes and now also covers settlement selection, the army panel and End Turn.
+
+The overview camera was reframed (target (10, 3, 21), yaw 0.08, pitch 0.85, distance 155) so Goldspire's sea face sits above the bottom panel. GPU time, same method as above (RTX 4060, 1440×900, vsync off, fresh process per configuration, 10 s settle, 5 s average, 2 rounds):
+
+| Configuration | GPU ms (r1 / r2) | FPS (vsync off) | Draw calls |
+|---|---|---|---|
+| **Overview, as shipped (new framing, full UI, borders)** | **2.05 / 2.06** | 422–425 | 676 |
+| Overview, UI and banners hidden | 2.03 / 2.03 | 429–431 | 478 |
+| Overview, territory borders off | 2.06 / 2.06 | 422–423 | 676 |
+| Previous overview framing, full UI | 2.24 / 2.24 | 394 | 754 |
+| Previous overview framing, UI hidden (compare 2.21 before this work) | 2.21 / 2.21 | 399 | 556 |
+| Zoomed on Goldspire (G) | 2.09 / 2.09 | 418–419 | 806 |
+| Commander selected, army panel with 9 cards | 1.88 / 1.88 | 457–459 | 808 |
+| Same, UI hidden | 1.84 / 1.84 | 469 | 627 |
+
+UI cost: about 0.02–0.04 ms GPU and about 200 2D draw calls. Portraits, building thumbnails and the minimap render once (cached) and cost nothing per frame. Startup adds about 0.17 s for the territory textures and about 1 s of one-time portrait rendering (then cached on disk).
+
+1440p: this display is 1920×1080, so a 2560×1440 window cannot be opened here. The game was rendered into an offscreen 2560×1440 viewport with the project's stretch rule (base 1600×1000, `canvas_items`, `expand`); the layout is identical to 1080p and sharper (`captures/ui_overview_1440p.png`).
+
 ## Remaining limitations
 
 - Artwork is a prototype and has not been approved against the desired 2016 Total War campaign-map benchmark.
