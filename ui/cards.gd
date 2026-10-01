@@ -1,9 +1,12 @@
 extends RefCounted
-# Unit cards and building slot cards for the campaign UI. Card art comes from the portrait
-# studio (rendered from the unit's or building's visual scene), never from hand-made images.
+# Unit cards and building slot cards for the campaign UI. Card art comes from the portrait studio
+# (rendered from the unit's or building's visual scene), unless a unit type has optional card art
+# (UnitTypes.card_art: its card_art path or assets/cards/<id>.png). Either way the game draws all
+# overlays on top, TW:WH3-style: faction border, strength bar, rank chevrons and unit count.
 
 const UiKit = preload("res://ui/ui_kit.gd")
 const Icons = preload("res://ui/icons.gd")
+const UnitTypes = preload("res://core/unit_types.gd")
 
 const UNIT_CARD = Vector2(80,150)
 const BUILDING_CARD = Vector2(112,132)
@@ -13,13 +16,20 @@ class UnitCard extends Control:
  var faction := {}
  var strength := 1.0
  var is_lord := false
+ var rank := 0
+ var men := 0
+ var art: Texture2D
  var portrait: TextureRect
+ var overlay: Control
  var studio
  func _init(unit_type: Dictionary,entry: Dictionary,faction_data: Dictionary,portraits,tip: String):
   unit_id = unit_type.id
   faction = faction_data
   strength = float(entry.get("strength",1.0))
   is_lord = unit_type.get("single_entity",false)
+  rank = int(entry.get("rank",0))
+  men = 0 if is_lord else int(round(float(unit_type.placeholder_stats.entities)*strength))
+  art = UnitTypes.card_art(unit_type)
   studio = portraits
   custom_minimum_size = UNIT_CARD*(Vector2(1.12,1.12) if is_lord else Vector2.ONE)
   tooltip_text = tip
@@ -32,10 +42,16 @@ class UnitCard extends Control:
   portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
   portrait.clip_contents = true
   add_child(portrait)
+  overlay = CardOverlay.new(self)
+  add_child(overlay)
   mouse_entered.connect(queue_redraw)
   mouse_exited.connect(queue_redraw)
   resized.connect(_layout)
  func _ready():
+  if art:
+   portrait.texture = art
+   _layout()
+   return
   var tex = studio.portrait(unit_id)
   if tex: portrait.texture = tex
   else: studio.portrait_ready.connect(_on_portrait)
@@ -44,20 +60,49 @@ class UnitCard extends Control:
   if key == "unit:"+unit_id:
    portrait.texture = tex
    studio.portrait_ready.disconnect(_on_portrait)
+ func uses_card_art() -> bool:
+  return art != null
  func _layout():
+  # Card art fills the card; the rendered portrait leaves room for the strength bar.
   portrait.position = Vector2(3,3)
-  portrait.size = size-Vector2(6,16)
+  portrait.size = size-(Vector2(6,6) if art else Vector2(6,16))
  func _draw():
   var c = UiKit.colors(faction)
   var top = c.primary.lightened(0.22 if is_hovered() else 0.1)
   var bottom = c.primary.darkened(0.6)
   var r = Rect2(Vector2.ZERO,size)
   draw_polygon(PackedVector2Array([r.position,Vector2(r.end.x,0),r.end,Vector2(0,r.end.y)]),PackedColorArray([top,top,bottom,bottom]))
-  # Strength bar along the bottom.
-  draw_rect(Rect2(4,size.y-11,size.x-8,6),Color(0,0,0,0.7))
-  draw_rect(Rect2(4,size.y-11,(size.x-8)*clampf(strength,0,1),6),Color("e9dcb4") if strength>0.5 else Color("d77a4a"))
  func is_hovered() -> bool:
   return get_global_rect().has_point(get_global_mouse_position())
+
+# Overlays the game draws over any card art (portrait or hand-made): faction border, strength bar,
+# rank chevrons (top-left) and unit count (bottom-right).
+class CardOverlay extends Control:
+ var card
+ func _init(owner_card):
+  card = owner_card
+  mouse_filter = Control.MOUSE_FILTER_IGNORE
+  set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+ func _draw():
+  var c = UiKit.colors(card.faction)
+  # Faction border inside the frame.
+  draw_rect(Rect2(Vector2(3,3),size-Vector2(6,6)),c.primary.lightened(0.15),false,2.0)
+  # Strength bar along the bottom.
+  draw_rect(Rect2(4,size.y-11,size.x-8,6),Color(0,0,0,0.7))
+  draw_rect(Rect2(4,size.y-11,(size.x-8)*clampf(card.strength,0,1),6),Color("e9dcb4") if card.strength>0.5 else Color("d77a4a"))
+  # Rank chevrons.
+  for i in card.rank:
+   var y = 10.0+i*6.0
+   draw_polyline(PackedVector2Array([Vector2(7,y+4),Vector2(12,y),Vector2(17,y+4)]),Color(0,0,0,0.8),4.0)
+   draw_polyline(PackedVector2Array([Vector2(7,y+4),Vector2(12,y),Vector2(17,y+4)]),Color("f2cf6a"),2.0)
+  # Unit count.
+  if card.men>0:
+   var f = UiKit.FONT_BOLD
+   var t = str(card.men)
+   var w = f.get_string_size(t,HORIZONTAL_ALIGNMENT_LEFT,-1,12).x
+   var p = Vector2(size.x-w-6,size.y-15)
+   draw_string(f,p+Vector2(1,1),t,HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color(0,0,0,0.9))
+   draw_string(f,p,t,HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("f1e6c8"))
 
 # Frame overlay for a card (drawn above the portrait child).
 class CardFrame extends Control:

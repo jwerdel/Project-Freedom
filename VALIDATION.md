@@ -128,6 +128,44 @@ End Turn processing: 1.2–1.5 ms per turn (4 settlements, 3 factions; self-test
 
 Per-turn ledgers (year 1): Aurek income 1,791 (Goldspire 1,528, Crownwatch 263) − expenses 1,346 (army 816, buildings 530) = +445; Lannet 976 − 215 = +761; Verrin 201 − 30 = +171. Income is flat over time because nothing in the confirmed rules ties income to population, and levels do not change without construction.
 
+## Population taxes, building effects and construction (2026-10-01)
+
+Tests: 66/66 GUT tests pass headless and with the real renderer (portrait pixel checks included). The headless run previously hung in `test_every_unit_renders_a_portrait` (the dummy renderer never emits `frame_post_draw`); the portrait studio now skips the GPU readback when headless. Self-test passes, including a main-building upgrade at Goldspire that completes on End Turn and switches the landmark to its next stage.
+
+GPU time, same method as above (RTX 4060, 1440×900, vsync off, 10 s settle, 5 s average, 2 rounds): overview 2.09 / 2.11 ms, army panel 1.92 / 1.87 ms, Goldspire selected with the building browser open 2.11 / 2.12 ms. Unchanged from before (economy and construction only run on End Turn or on clicks).
+
+End Turn: 2.6–2.7 ms in the self-test; 3.26 ms average, 4.98 ms worst over the 20-turn run below (4 settlements, 3 factions, construction and placeholder AI included).
+
+Starting incomes with population taxes (year 1; old formula in brackets): House Aurek 1,779 (1,791), of which Goldspire 1,518 (1,528) and Crownwatch 261 (263); House Lannet 879 (976); House Verrin 220 (201). Building upkeep now comes from each building level, so expenses fell (Aurek 340 vs 530 for buildings).
+
+20-turn sample run (seed 1201, placeholder numbers; treasury gold / population / settlement levels at the start of each year). House Aurek is the player and builds nothing in this run; Lannet and Verrin are driven by the placeholder AI.
+
+| Year | House Aurek (Crownwatch, Goldspire) | House Lannet (Greyhaven) | House Verrin (Willowmere) |
+|---|---|---|---|
+| 1 | 8450 / 19700 / L2, L2 | 6000 / 12400 / L2 | 3000 / 2100 / L1 |
+| 2 | 9073 / 19854 / L2, L2 | 6274 / 12635 / L2 | 2600 / 2119 / L1 |
+| 3 | 9701 / 20005 / L2, L2 | 6004 / 12871 / L2 | 2451 / 2175 / L2 |
+| 4 | 10335 / 20152 / L2, L2 | 6760 / 13105 / L2 | 2010 / 2247 / L2 |
+| 5 | 10974 / 20296 / L2, L2 | 6423 / 13339 / L2 | 2261 / 2324 / L2 |
+| 6 | 11618 / 20435 / L2, L2 | 7220 / 13570 / L2 | 1731 / 2400 / L2 |
+| 7 | 12267 / 20572 / L2, L2 | 4423 / 13804 / L2 | 2003 / 2495 / L2 |
+| 8 | 12921 / 20704 / L2, L2 | 5331 / 14035 / L2 | 2273 / 2591 / L2 |
+| 9 | 13580 / 20833 / L2, L2 | 4646 / 14406 / L3 | 2545 / 2689 / L2 |
+| 10 | 14243 / 20959 / L2, L2 | 5715 / 14778 / L3 | 2820 / 2788 / L2 |
+| 11 | 14911 / 21081 / L2, L2 | 4795 / 15172 / L3 | 1698 / 2887 / L2 |
+| 12 | 15583 / 21200 / L2, L2 | 5876 / 15567 / L3 | 1978 / 2988 / L2 |
+| 13 | 16259 / 21316 / L2, L2 | 4769 / 15967 / L3 | 1811 / 3109 / L3 |
+| 14 | 16939 / 21429 / L2, L2 | 5908 / 16367 / L3 | 2176 / 3232 / L3 |
+| 15 | 17624 / 21538 / L2, L2 | 4558 / 16777 / L3 | 1559 / 3358 / L3 |
+| 16 | 18312 / 21644 / L2, L2 | 5861 / 17187 / L3 | 1946 / 3485 / L3 |
+| 17 | 19004 / 21747 / L2, L2 | 7177 / 17611 / L3 | 2336 / 3614 / L3 |
+| 18 | 19699 / 21847 / L2, L2 | 8592 / 18034 / L3 | 2755 / 3744 / L3 |
+| 19 | 20399 / 21944 / L2, L2 | 10020 / 18456 / L3 | 1777 / 3875 / L3 |
+| 20 | 21102 / 22039 / L2, L2 | 11461 / 18876 / L3 | 2203 / 4007 / L3 |
+| 21 | 21808 / 22130 / L2, L2 | 12916 / 19294 / L3 | 2632 / 4146 / L3 |
+
+AI construction in that run: Lannet built a mine (to level 3), upgraded its market twice, raised Greyhaven to Chartered City (level 3, year 8), then Wards and a Merchant Harbour; Verrin raised Willowmere to Market Village (year 2) and Market Town (year 12), and built Houses, Granaries/Estates and a mine. Every AI build kept the 1,500 gold reserve, and Willowmere's buildings never exceeded its settlement level.
+
 ## Remaining limitations
 
 - Artwork is a prototype and has not been approved against the desired 2016 Total War campaign-map benchmark.

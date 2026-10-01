@@ -58,3 +58,25 @@ static func _read(path: String) -> Dictionary:
  var data = JSON.parse_string(FileAccess.get_file_as_string(path))
  assert(data is Dictionary,"Invalid JSON: "+path)
  return data
+
+# --- Card art override ------------------------------------------------------------
+# Optional hand-made card art: the unit's "card_art" path if set, else assets/cards/<id>.png if
+# that file exists. Without either, cards use the auto-rendered portrait (core/portrait_studio.gd).
+# Files are cropped and downscaled to card size by scripts/fit_card_art.gd.
+const CARD_ART_DIR = "res://assets/cards/"
+
+static func card_art_path(unit: Dictionary) -> String:
+ var path = str(unit.get("card_art",""))
+ if path == "": path = CARD_ART_DIR+unit.id+".png"
+ return path if ResourceLoader.exists(path) or FileAccess.file_exists(path) else ""
+
+# The card art texture, or null to fall back to the portrait. Loads imported textures normally and
+# reads not-yet-imported files straight from disk.
+static func card_art(unit: Dictionary) -> Texture2D:
+ var path = card_art_path(unit)
+ if path == "": return null
+ if ResourceLoader.exists(path):
+  var tex = load(path)
+  if tex is Texture2D: return tex
+ var img = Image.load_from_file(ProjectSettings.globalize_path(path) if path.begins_with("res://") or path.begins_with("user://") else path)
+ return ImageTexture.create_from_image(img) if img != null and not img.is_empty() else null

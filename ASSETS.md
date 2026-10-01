@@ -165,3 +165,11 @@ The campaign UI uses the bundled OFL fonts above; no system fonts are used or re
 | File(s) | Source | Status |
 |---|---|---|
 | `docs/reference/cards/men_style_reference.jpg`, `docs/reference/cards/orc_style_reference.jpg` | AI-generated mockup card grids supplied by the project owner (metadata stripped) | **Style reference only.** Not shipped, not imported (`docs/reference/.gdignore`), never sliced into `assets/cards/` or used in-game. Final cards must use original faction heraldry (no real-world crosses or eagles), and orcs need their own crude visual language (scavenged armor, bone, fur, war paint), not human armor. See `docs/reference/cards/README.md`. |
+
+## Unit card art (`assets/cards/`)
+
+Optional hand-made unit card art, one file per unit type (`assets/cards/<unit_id>.png`, see `assets/cards/README.md`). None is present yet; cards use portraits rendered from the visual scenes. Each file added here needs a row in this section (source URL, author, license) in the same commit, and must follow the card art rules in `CLAUDE.md`.
+
+| File | Source | Author | License |
+|---|---|---|---|
+| (none yet) | | | |

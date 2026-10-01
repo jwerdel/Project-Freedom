@@ -21,6 +21,7 @@ var stage: Node3D
 var camera: Camera3D
 var _cache = {}
 var _queue: Array = []
+var _rendering := ""
 var _busy = false
 
 func _ready():
@@ -74,7 +75,7 @@ func render_key(key: String) -> Texture2D:
 
 func _request(key: String) -> Texture2D:
  if _cache.has(key): return _cache[key]
- if not key in _queue: _queue.append(key)
+ if not key in _queue and key != _rendering: _queue.append(key)
  if not _busy: _drain()
  # A disk-cache hit finishes synchronously inside _drain, before the caller can connect.
  return _cache.get(key)
@@ -83,8 +84,10 @@ func _drain():
  _busy = true
  while not _queue.is_empty():
   var key = _queue.pop_front()
+  _rendering = key
   var tex = await _render(key)
   _cache[key] = tex
+  _rendering = ""
   portrait_ready.emit(key,tex)
  _busy = false
 
