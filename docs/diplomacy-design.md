@@ -1,242 +1,354 @@
-# Diplomacy design (proposal, awaiting approval)
+# Diplomacy design (revision 2, awaiting approval)
 
-Status: proposal (2026-10-01). No game code yet. It follows constitution.md "Faction behavior and diplomacy", "Minor factions", "Battles and armies" and the confirmed treaty, betrayal and loss rules. Every number is a placeholder for `data/diplomacy.json`. Section 13 lists the open questions, each with a recommended answer.
+Status: proposal, revised 2026-10-02 to fit `docs/game-design.md` §7 (Reputation, decrees and suspicion) and §8 (Diplomacy, allies, vassals and puppets). No game code. Confirmed rules come from `constitution.md`; game-design items marked Proposed stay proposals here. Every number is a placeholder for `data/diplomacy.json`. Lore names follow `docs/world-bible-v2.md`.
 
-V1 scope (docs/v1-scope.md) asks for basic diplomacy: war, peace, trade and alliance. This design covers those fully. It leaves hooks for marriage, subordination and confederation, which need the character system or are not V1.
+**Approved 2026-10-02 (treaty question 1):** treaty protection is 20 turns counted from signing.
+- A treaty cannot be cancelled during its first 20 turns.
+- Attacking while a treaty stands is betrayal.
+- After a treaty ends or is cancelled, an ordinary declaration of war applies.
 
-## 1. Diplomatic states between two factions
+Section 17 lists where this design conflicts with game-design.md, for your decision.
+
+## 1. Principles
+
+- **TW:WH3 look and feel, CK depth through decisions** (constitution, Vision). The player sees TW:WH3's diplomacy screen: faction list with attitude, proposal builder, live acceptance, short reasons. Depth comes from events and choices: an embassy reveals a court, a captured spy confesses, a vassal asks for help. It does not come from modifier spreadsheets.
+- **Numbers under the hood, words on the screen.** Attitude, reputation and suspicion are numbers in the simulation. The player sees TW-style labels, faces and a short list of reasons, never a CK opinion table.
+- **The AI plays by the same rules and never betrays** (constitution, confirmed).
+
+## 2. Diplomatic states and treaties
 
 | State | Meaning | Attacking the other side |
 |---|---|---|
-| **War** | Armies may attack each other's armies and settlements. | Allowed. |
-| **Neutral** | No treaty: the starting state (constitution: neutral start). | Requires a declaration of war (section 9). Not a betrayal. |
-| **Ceasefire** | A treaty pausing a war. Converts to Neutral when it ends unless peace is signed. | **Betrayal** (section 7). |
-| **Peace** | A treaty ending a war. Stays until cancelled. | **Betrayal**. |
-| **Alliance** | Peace plus mutual defence, shared military access and calls to arms. | **Betrayal**. |
+| **War** | Armies may attack each other. | Allowed. |
+| **Neutral** | No treaty: the starting state (game-design §3.4). | Needs a declaration of war (§7). |
+| **Ceasefire** | A treaty pausing a war; reverts to Neutral when its 20-turn protection ends unless peace is signed. | **Betrayal**. |
+| **Peace** | A treaty ending a war; stands until cancelled (possible after 20 turns). | **Betrayal**. |
+| **Alliance** | Peace plus mutual defence, calls to arms and commandable help (§9). | **Betrayal**. |
+| **Vassalage** | One faction serves another (§10). | **Betrayal** (either side). |
 
-Agreements that can be added to any non-war state:
-- **Trade.** Can be cancelled at any time with no betrayal, as the constitution says.
-- **Military access.** Can be cancelled at any time.
+Agreements on top of a non-war state:
+- **Trade:** can be cancelled at any time without betrayal (constitution).
+- **Military access:** can be cancelled at any time.
+- **Embassy:** can be closed at any time.
 
-**Treaty protection** (confirmed): a ceasefire, peace or alliance is protected for **20 turns** from signing. My reading of the constitution's "protected post-treaty period":
-- A treaty cannot be cancelled during its first 20 turns.
-- While a treaty stands, including that protection, attacking the other faction is betrayal.
-- After a treaty is cancelled (only possible once its protection has passed), the two factions are Neutral, and war needs an ordinary declaration.
-
-Section 13 asks you to confirm this reading.
-
-## 2. Relationships: attitude, tendencies, prejudice and willingness
-
-The constitution separates two things: a faction's *tendencies*, which others account for, and *relationship bonuses*. This design keeps four layers apart:
-
-1. **Attitude** (−100 … +100) is how a faction feels about another. It is the sum of **modifiers**, each with a value and a decay per turn. It starts at 0 for everyone (constitution: neutral starting relations).
-
-   | Modifier (placeholder) | Value | Decay |
-   |---|---|---|
-   | You attacked us / declared war on us | −40 | 1 per turn, floor −20 while at war |
-   | You attacked our ally | −15 | 1 per turn |
-   | You attacked a faction we like (attitude > 40) | −5 | 0.5 per turn |
-   | Alliance with us | +25 | none while it lasts |
-   | Marriage (hook, character system) | +20 | none while both live |
-   | Trade with us | +10 | none while it lasts |
-   | Common enemy at war | +10 | none while it lasts |
-   | Gift of gold (per 1,000) | +5, max +20 | 1 per turn |
-   | Trespass (section 8), per army per turn | −2, max −20 | 1 per turn |
-   | We are at war | −20 | none while it lasts |
-   | Broke trade with us | −10 | 0.5 per turn |
-   | Refused our call to arms | −15 | 0.5 per turn |
-   | Abandoned us mid-war (left the alliance) | −30 | 0.5 per turn |
-   | **Betrayer** (betrayal rule) | −100, permanent | none |
-
-2. **Tendencies** (passive, income-focused, generous, kind, expansionist, cruel, treacherous; already in `data/factions.json` traits) are **reputation**: what everyone knows about how a faction *acts*. They are **not** attitude points. They change other factions' *expectations*, through three fixed channels:
-   - **Threat** (already in the campaign AI as "wariness"). A cruel or treacherous neighbour's armies count as a threat even at Neutral, so others keep stronger garrisons and are more willing to ally against it. A kind or generous neighbour's armies count less.
-   - **Trust.** Every agreement with a faction is valued × its reliability: treacherous 0.6, cruel 0.85, income-focused 1.0, kind and generous 1.1 (placeholders). A treacherous faction's trade or alliance offer is worth less, because others expect it to break trade, abandon allies or refuse calls (constitution).
-   - **Fear of conquest.** Expansionist and cruel factions raise others' value of alliances and defensive deals *against* them.
-
-   So two factions can both sit at attitude 0 toward a kind and a cruel neighbour and still act differently: they garrison against the cruel one, discount its promises, and look for allies against it. Attitude says "how much we like you". Tendency says "what we expect you to do". A relationship bonus would wrongly make a cruel neighbour simply "liked less". Reputation makes it *distrusted and feared*, which is different. A cruel neighbour that treats you well can still be liked (high attitude) but feared (threat stays).
-
-3. **Permanent prejudice** is a fixed attitude modifier between peoples that never decays (data, by race and by faction pair). docs/archive/world-v1.md: the orc tribes and the northern human realms hate each other. The **Redhand Warband** is the orc faction open to friendship with men, and despised by other orcs for it.
-   - Placeholder: −60 between hating pairs.
-   - A minority of factions (the Redhand, possibly the Riverlands minor houses: world.md's friendship story) have **no** prejudice toward the other race. Instead they carry a −20 "betrayer of its kind" prejudice from their own race's haters.
-
-4. **Willingness to negotiate** is a hard gate per faction pair and proposal type, separate from attitude.
-   - The Ironjaw Horde will never sign an alliance or trade with a human realm, whatever the attitude, but it will accept a ceasefire when losing.
-   - Prejudice lowers attitude; unwillingness removes options. The diplomacy screen shows the reason ("The Ironjaw Horde will not ally with men").
-
-## 3. The relationship web
-
-- **Attacking** a faction (declaring war, or attacking its army or settlement while Neutral) applies "You attacked us" to the **victim** strongly (−40). It applies "You attacked our ally" to the **victim's allies** (−15), and a small hit (−5) to factions with attitude > 40 toward the victim. This is the constitution's "strongly with the victim and less with its allies".
-- **Alliances and marriages** improve relations (+25 and +20, above). Marriage is a hook: the item exists in the proposal builder, greyed out with "Requires the character system".
-- **Threat spreading:** a declaration of war by an expansionist or cruel faction raises every neighbour's fear of it (section 2, channel 3). Its targets become more willing to ally with each other.
-
-## 4. Bundled offers: items, eligibility and AI valuation
-
-A proposal is a list of items **offered** and **demanded**; either side may be empty (gifts, demands). The AI values each item in **gold equivalents**, *v*. A proposal's score for the receiving AI is:
-
-> score = Σ v(what it gets) − Σ v(what it gives) + attitude × `attitude_weight` + state bonus (war weariness, threat) − reluctance (personality)
-
-It accepts when score ≥ 0.
-
-| Item | Eligibility | AI value *v* (to the receiver, placeholder) |
-|---|---|---|
-| **Gold, lump sum** | ≤ giver's treasury; not while in debt | amount |
-| **Gold, tribute per turn** (N turns) | giver's net income ≥ amount | amount × N × 0.7 (risk of non-payment), × trust |
-| **Resource tribute** (a share of one resource's income for N turns) | the giver has that endowment | income share × N × 0.8, × trust |
-| **Land** (a settlement) | owned, not besieged, not the giver's last settlement, not a landmark seat or capital (section 13, Q8) | (income × 15 turns) + strategic value (border, walls, endowments) + 2,000 if it borders the receiver |
-| **Troops** (actual units: the constitution's army tribute) | units in an army inside one of the giver's settlements; arrive as a detachment (section 6) | recruitment cost × men ratio × rank bonus, if the receiver can pay their upkeep |
-| **Marriage** | hook: requires the character system (greyed out) | — |
-| **Alliance** | both at Peace or Neutral; no war between them; willingness | (threat reduced by the ally's power) − (risk of being dragged into the ally's wars), × trust |
-| **Ceasefire** | at war | weariness relief + odds-based loss avoided, for the losing side; small for the winner |
-| **Peace** | at war or in ceasefire | the same, larger; demands such as land or gold are usually attached by the winner |
-| **Trade** | Neutral, Peace or Alliance; trade-willing; a connection (section 9) | expected trade income × 20 turns, × trust |
-| **Military access** | Neutral, Peace or Alliance | small; negative if the receiver fears the giver (cruel or expansionist) |
-| **Join war against X** | the giver is not at a protected treaty with X (no AI betrayal) | value of X's defeat to the receiver × the giver's power share |
-| **Cancel trade or alliance with X** (demand) | the giver has that agreement | X's value to the giver, as a cost |
-
-- **War weariness** grows each turn at war and with losses, and decays at peace. It feeds the ceasefire and peace values, so long losing wars end. **This is what replaces "wars never end".**
-- **Reluctance:** proud and expansionist factions dislike giving land or tribute (× 1.5 cost); generous ones give gold more cheaply (× 0.7 cost); kind ones accept peace more readily (+ value).
-
-## 5. Allies and wars
-
-When a faction goes to war or is attacked, it may send a **call to arms** to each ally. Each ally chooses one of three answers:
-1. **Join:** declare war and become a belligerent.
-2. **Support only:** send gold, resource tribute or troops without becoming a belligerent. Its relations with the enemy take only a small hit (−5), as the constitution requires ("supporting an ally does not automatically mean joining its war").
-3. **Refuse:** a "Refused our call" penalty with the ally.
-
-How the AI chooses:
-- **Join** when the war's odds are good and the enemy is a threat or disliked.
-- **Support** when it values the ally but fears the enemy, or is far away.
-- **Refuse** otherwise.
-- **Treacherous** factions refuse more often (× 2 refusal weight) and may **abandon** an ally mid-war by cancelling the alliance once its protection has passed. This is allowed and not a betrayal: the betrayal rule covers attacking, not leaving.
-
-## 6. Troop transfers (actual troops)
-
-- Units given in a deal leave the giver's army in one of its own settlements.
-- They travel as a **detachment** to the receiver's nearest settlement, arriving after (distance ÷ one turn's movement) turns. They then join the receiver's army there, or form a garrison army if none is present (within the army cap).
-- Until they arrive, the giver still pays their upkeep.
-- If the receiver loses that settlement first, the detachment returns home.
-
-## 7. Betrayal (confirmed rule)
-
-Attacking a faction while a ceasefire, peace or alliance stands, including its 20-turn protection, makes the attacker a **Betrayer**:
-- irreversible war with **every** faction
+**Betrayal** (confirmed): attacking a treaty partner makes the attacker a Betrayer, with:
+- irreversible war with every faction
 - permanent loss of all allies and trade partners
-- the permanent −100 modifier
+- a permanent mark on both reputations
 
-Only loading an earlier save undoes it. Cancelling trade never triggers it.
+Only loading a save undoes it. The player can still do it, behind a dialog that spells out the consequences. The AI never does.
 
-- **The player** may still attack. A confirmation dialog states the consequences in full: "This breaks your peace with House Lannet. Every faction will declare war on you, forever."
-- **The AI never does** (hardcoded, confirmed). Its attack and war planners skip any faction it holds a treaty with. Treacherous AI shows treachery only through cancelled trade, refused calls and abandoned alliances.
+## 3. How factions see each other
 
-## 8. Military access and trespass
+Five layers stay separate:
 
-This replaces the current "armies move freely until diplomacy exists" rule (confirmed as temporary).
+| Layer | What it is | Changes |
+|---|---|---|
+| **Reputation** | What the world believes about a ruler and a House | through deeds and decrees |
+| **Attitude** | How one faction feels about another, from shared history | through events between them |
+| **Suspicion** | Unproven distrust of a neighbour | through suspicious events near you |
+| **Prejudice and bloc** | Fixed feelings between peoples | never (prejudice) or by bloc |
+| **Willingness** | Hard gates on what a faction will even discuss | by people, faith and state |
 
-- **Own, allied, or with an access agreement:** free movement, no penalty.
-- **At war:** enemy territory; no trespass (it is war).
-- **Neutral, Peace or Ceasefire without access:** movement is allowed, but each army-turn there is **trespass**: −2 attitude per army per turn (max −20), and the owner's AI treats the army as a threat. No automatic war.
-- An army that ends its turn adjacent to a neutral settlement triggers a warning to that faction (AI: higher threat; player: an event message).
-- Replenishment counts allied and access territory as friendly (`core/armies.gd` region_owner check), and every other foreign region as enemy, as now.
+### 3.1 Reputation: ruler and House (game-design §7.1 to §7.4, confirmed)
 
-## 9. Trade agreements
+- Each faction has a **ruler reputation** (moves relatively quickly, weighs more overall) and a **House reputation** (the dynasty's long memory, slow).
+- Both are held on **reputation axes**, using game-design §7.3's list (Proposed): Trustworthy/Treacherous, Merciful/Cruel, Generous/Greedy, Peaceful/Expansionist, Pious/Impious, Liberator/Conqueror, Honorable/Dishonorable. Each axis runs −100 … +100. A label shows once an axis passes ±30, with a tooltip listing the deeds behind it.
+- **Distance weighting** (confirmed): how another faction perceives you blends the two reputations by distance. Placeholder: perceived = w × ruler + (1 − w) × House, with w = 0.75 for neighbours, falling to 0.3 for distant factions (by travel turns between capitals).
+- **First-impressions window** (confirmed): for about 10 turns after a new ruler takes power, deeds and decrees move both reputations about 3× faster (placeholder), in either direction.
+- **Faction tendencies** (passive, income-focused, generous, kind, expansionist, cruel, treacherous; constitution) are kept in two places:
+  1. **Seed** the House reputation at campaign start: a cruel House starts Cruel −40, a kind one Merciful +30, and so on.
+  2. Drive the **AI's own behaviour**, as they already do in `core/ai.gd`.
 
-- **Connection required:** a land route through non-hostile territory between the two capitals' regions, or both factions holding a port settlement. This uses the existing road and movement grid and the port building.
-- **Income:** each partner gains `trade_share` (placeholder 8%) of the other's settlement income, × (1 + 0.5 per endowment the partner has and you lack), × road/port bonus. It is capped at 25% of your own income. The ledger shows it as "Trade with House Lannet +312".
-- This fits the constitution ("trade agreements, partners, roads, ships … affect how effectively resources generate gold"). Detailed pricing stays open.
-- **Cancel** at any time: no betrayal, and a "Broke trade" penalty with the partner. Treacherous AI cancels when the partner is at war and losing, or when a better partner appears.
+  After the start, the world judges deeds, not labels. A treacherous House that keeps its word for decades drifts toward Trustworthy. An AI faction's tendencies keep pulling its own behaviour, so such drift is rare for it and possible for the player.
+- **What reputation does** in diplomacy (the "reputation, not relationship points" rule from revision 1):
+  - **Trust:** every agreement with you is valued × your perceived Trustworthy/Treacherous factor (0.6 … 1.1). Deals with a known Treacherous ruler are discounted.
+  - **Threat:** a perceived Cruel and Expansionist reputation makes others garrison against you, value alliances against you, and treat your armies as threats at Neutral (the existing "wariness").
+  - **Respect and fear:** Merciful, Generous and Liberator make minors and the oppressed more willing to become vassals or answer your Liberator's Call. Cruel makes the weak submit out of fear, and the strong ally against you.
 
-## 10. Minor factions (proposal; the constitution leaves the exceptions open)
+### 3.2 Decrees as reputation levers (game-design §7.6, confirmed concept)
 
-The constitution wants minors attackable "without wider diplomatic repercussions", but not as free targets.
+Decrees are the ruler's main deliberate way to shape reputation.
 
-- Minors carry a `minor` flag in `data/factions.json`.
-- **Attacking an unprotected minor** costs relations **only with the minor itself**, plus anyone with a **protection pact** with it. The web's ally and third-party penalties are skipped.
-- Minors can sign only **Ceasefire, Peace, Trade, and protection** with majors. A *protection pact* is a major's guarantee: an alliance-lite treaty where only the major defends. Minors cannot join wars as belligerents.
-- Treaties with minors are still **protected** (20 turns, betrayal rule), so a peace with a minor is honoured. A minor's value is that you need not *make* peace with it.
-- **Consolidation** (constitution: absorbing same-race minors by conquest, confederation, marriage, subordination): conquest works now. Confederation and subordination are listed as V2 hooks.
+| Decree (examples from §7.6) | Axes moved (placeholders, per decree) |
+|---|---|
+| Lower taxes, grain doles | Generous +10 |
+| Amnesty for rebels | Merciful +15 |
+| Open trade | Generous +5, Trustworthy +5 |
+| Honor old treaties | Trustworthy +15, Honorable +10 |
+| Temple endowments | Pious +10 |
+| Purge the court | Cruel −15 |
+| Mobilize the realm | Expansionist −10 |
+| Seize merchant gold | Greedy −15 |
+| Punish a rebellious region | Cruel −10 |
+| Forced conversion | Cruel −10, Pious ±10 by faith |
 
-## 11. The diplomacy screen (Total War: Warhammer III layout and flow)
+- Effects are ×3 during the first-impressions window.
+- The number of active decrees is capped by Realm Standing (confirmed).
+- **Diplomacy reads decrees:** an "Honor old treaties" decree raises the trust others place in your new treaties for as long as it is active.
 
-Constitution UI direction: the campaign UI should heavily resemble TW:WH3. The diplomacy screen is a full-screen panel (round menu button "Diplomacy", top-left) with the TW:WH3 arrangement:
+### 3.3 Attitude: shared history (internal numbers, TW-style display)
 
-- **Left: faction list.** Every met faction with its emblem, name, diplomatic state icon (war, neutral, ceasefire, peace, alliance) and an **attitude face** (TW-style, five steps from hostile to friendly) with the attitude number on hover. Filters: All, At war, Allies, Neighbours. A treaty's remaining protection shows as a lock with turns left.
-- **Centre-top: the two factions** side by side (your emblem, theirs), their tendencies as trait icons (reputation), and the current treaties and agreements between you.
-- **Centre: proposal builder.** Two columns, "You offer" and "You demand", filled from an item palette grouped as in TW:WH3: Treaties (Peace, Ceasefire, Alliance, Military access, Trade), Payments (Gold, Tribute, Resource tribute), Land, Troops, War (Join war against…), and Marriage (greyed out, with a hook tooltip). Ineligible items are greyed out with their reason.
-- **Bottom: live acceptance indicator.** A TW-style bar from "Will not accept" to "Very likely", with the 0 line marked. It updates as items are added (it re-scores the bundle each time). A "Balance" button lets the AI suggest what would make it acceptable, as TW's "What would it take?" does.
-- **Right: their reasoning**, the "why" list as in TW:WH3:
-  - each attitude modifier with its value and decay ("You attacked our ally −15, fading")
-  - tendency effects ("You are known as cruel: they fear your armies")
-  - the item values ("Wants: Greyhaven +2,400")
-  - willingness gates ("Will not ally with men")
-- **Buttons:** Propose, Clear, Declare war (with the betrayal warning when a treaty stands), Cancel agreement (shows protection turns left).
-- **AI proposals to the player** arrive as an Event Messages entry with a pop-up (accept, counter in the screen, decline), at most one per turn per faction.
+- Attitude runs −100 … +100 per faction pair and starts at 0 (constitution: neutral start).
+- It is the sum of remembered events between the two factions, each with a value and a decay:
 
-## 12. Retiring the temporary war rule
+  | Event | Value | Decay |
+  |---|---|---|
+  | You attacked us | −40 | |
+  | You attacked our ally | −15 | |
+  | Alliance | +25 | |
+  | Marriage between our houses | +20 | |
+  | Trade | +10 | |
+  | Embassy | +5 | |
+  | Common enemy | +10 | |
+  | Gift (per 1,000 gold, max +20) | +5 | |
+  | Released our captive | +10 | |
+  | Trespass, per army per turn (max −20) | −2 | |
+  | Broke trade | −10 | |
+  | Refused our call | −15 | |
+  | Abandoned us mid-war | −30 | |
+  | Betrayer | −100 | permanent |
 
-The temporary rule ("attacking another faction's army or settlement declares war after a confirmation; no peace until diplomacy") is replaced by:
+- **Display (TW parity):** the faction list shows an attitude face in five steps. The reasons panel shows the three to five biggest current causes as short phrases ("You attacked our ally, fading"). No full table, no numbers unless the player hovers.
 
-- **Neutral target:** ordering an attack opens a **declaration of war** dialog. It lists the relationship consequences (victim −40, its allies −15, which allies may answer its call). Confirming sets War and applies the web effects; the attack proceeds.
-- **Treaty target:** the **betrayal** dialog (section 7). The AI never reaches this.
-- Wars end through **ceasefire or peace**, driven by war weariness and odds (section 4).
-- The campaign AI's war decision (`core/ai.gd`: aggression, weakness, personality) moves into the diplomacy layer. War becomes one option among offers: a faction that can get land or tribute by demand does not need to fight. Its targets exclude treaty partners.
-- The constitution's implementation note on the temporary rule is updated when this is built.
+### 3.4 Suspicion (game-design §7.7 and §7.8, Proposed)
 
-Code, after approval:
-- `core/diplomacy.gd`: states, treaties, attitude modifiers, valuation, calls to arms
-- `data/diplomacy.json`: every number above
-- `ui/diplomacy_screen.gd`
-- state additions: relations, treaties, weariness and trade, saved (save schema 4 with a migration)
+- Each faction tracks **suspicion** of each neighbour (0 … 100). Every suspicious war, death, coup or rebellion near you nudges it up even without proof (placeholder +5 to +20 by event); it decays 2 per turn.
+- **Suspected vs proven:**
+  - *Suspected* acts add suspicion and a small attitude penalty (−5).
+  - *Proven* acts (a captured low-level agent confesses, an intercepted letter) cost full reputation: Treacherous −20, and Dishonorable when an ally is the victim. They hit attitude with the victim (−30), and with all your allies if the victim was one of them. They may give the victim a war justification (§7).
+- **Effects:** high suspicion makes your schemes against that faction harder and its counter-intelligence stronger, and lowers the trust it places in your new treaties (× 0.8 above 60). Pacing your plots is rewarded.
 
-## 13. Validation plan
+### 3.5 Prejudice, blocs and racial politics (game-design §3.4, §7.9, §8.7, confirmed)
+
+- **Permanent prejudice** (never decays):
+  - most orc tribes ↔ men −60; the **Redhand Warband** seeks friendship with men instead, and other orcs despise it (−20)
+  - elves ↔ dark elves −60
+  - lizardmen ↔ ratmen −60
+
+  Dwarves are handled as **specific grudges** in the Book of Grudges rather than a blanket racial modifier. A grudge against a named House is −40 until avenged, and reminding the dwarves of a grudge is a scheme (game-design §6.3).
+- **Blocs** (Order, Destruction, neutral):
+  - **Same-bloc** deals get a bonus (+10 attitude-equivalent in valuation).
+  - **Cross-bloc** deals cost more (−15). They also cost reputation with your own bloc ("Allied with orcs") and earn respect from the other bloc.
+  - Neutral peoples (Tomb-King desert humans; lizardmen leaning Order) can be courted by both without the cross-bloc penalty.
+- **Racial politics:** a human who schemes heavily against other humans gains quiet respect from Destruction peoples (+5 per proven scheme, max +20), and the reverse for Destruction schemers.
+- **Cross-race marriage** (confirmed allowed): prejudiced factions and faiths disapprove (−10 with each); the other bloc may respect it (+5).
+
+### 3.6 Willingness to negotiate
+
+Hard gates per faction pair and proposal type, separate from attitude. The diplomacy screen shows the reason.
+- The haters among the orc tribes never ally or trade with men, but accept a ceasefire or peace when war weariness is high.
+- Elves never ally with dark elves.
+- An anathematized faction cannot ally with faithful Throne Church realms (game-design §9.7, Proposed).
+
+## 4. Information: embassies, dossiers and contact
+
+- **Contact:** you can negotiate only with factions you have met: a shared border, or having seen one of their armies, agents or settlements (shroud, game-design §12.6).
+- **Embassies** (game-design §8.2, confirmed):
+  - Sending an embassy is a diplomatic action. A faction with no reason to refuse accepts. Reasons to refuse: at war, prejudice-gated, Betrayer, or suspicion above 80.
+  - An embassy reveals that faction's **full court**: members, blurbs, who hates whom and why. It also gives vision of its capital region.
+  - Factions **at war with you** close their embassies; seeing their court needs a **spy**.
+  - Deeper information (true loyalties, secrets, hidden traits) always needs a spy embedded in that court (intrigue design).
+- **Faction dossiers** (game-design §8.3, confirmed): for any faction you have visibility into, you can open:
+  - its court, and each member's blurb
+  - who hates whom and why
+  - its perceived reputation labels, tendencies, treaties and wars
+
+  Blurbs are written in the **Grey Scribes'** voice from what actually happened (`core/chronicle.gd`-style generators), so each faction reads like a chronicle. Information from a low-reliability source (a misinformed spy, game-design §6.8) is marked "by report".
+
+## 5. The relationship web (constitution, confirmed)
+
+- **Attacking** a faction applies "You attacked us" to the **victim** (−40) and "You attacked our ally" to its **allies and vassals** (−15).
+  - It adds −5 with factions that like the victim (attitude > 40), and with the victim's suzerain or patron.
+  - It nudges **suspicion** if the attack looks staged.
+- **Alliances, marriages, trade and embassies** improve relations (§3.3).
+- **Reputation spreads further:** an unjustified war or a proven scheme changes your reputation, which every faction sees, weighted by distance.
+
+## 6. Bundled offers: items, eligibility and AI valuation
+
+A proposal is a list of items **offered** and **demanded**. The AI values each in **gold equivalents**:
+
+> score = Σ v(gets) − Σ v(gives) + attitude × `attitude_weight` + bloc term + state (war weariness, threat) − reluctance (tendencies)
+
+Treaty-type items are valued × trust (§3.1, reduced by suspicion, §3.4). The AI accepts at score ≥ 0.
+
+| Item | Eligibility | AI value *v* (placeholder) |
+|---|---|---|
+| Gold (lump sum) | ≤ treasury; not in debt | amount |
+| Gold tribute (N turns) | net income ≥ amount | amount × N × 0.7 × trust |
+| Resource tribute | the giver has the endowment | income share × N × 0.8 × trust |
+| Land (a settlement) | not the last settlement, capital or a landmark seat; not besieged | income × 15 + strategic value |
+| Troops (actual units) | units in an own settlement; travel as a detachment | recruitment cost × men ratio × rank, if upkeep is affordable |
+| **Captive** (game-design §4.11, Proposed) | a captured family member or agent you hold | the captive's level, rank and family ties (an heir is worth most); +attitude when returned |
+| **Secret** (game-design §6.8 and §8.1, Proposed addition) | a secret your spies hold about the receiver or a third party | about the receiver: blackmail value (it pays to keep it unleaked); about a third party: its intel or scheme value |
+| **Marriage** (game-design §4.9, confirmed) | two eligible unmarried adults; needs the characters system | +20 attitude-equivalent; claims and Throne City influence for Church-aligned families |
+| **Embassy** | contact, no reason to refuse | small; positive for everyone not hostile |
+| Alliance | Neutral or Peace; willingness; not a Betrayer | (threat reduction by the ally's power) − (risk of its wars) × trust |
+| **Vassalage** (§10) | see §10 | protection value vs lost independence |
+| Ceasefire | at war | weariness relief + loss avoided |
+| Peace | at war or in ceasefire | the same, larger |
+| Trade | Neutral or better; trade-willing; a route (§12) | route income × 20 turns × trust |
+| Military access | Neutral or better | small; negative if it fears you |
+| Join war against X | no treaty with X (the AI never betrays) | X's defeat value × the giver's power share |
+| Cancel an agreement with X (demand) | the giver has that agreement | X's value to the giver, as a cost |
+
+- **War weariness** grows each turn at war and with losses, and decays at peace. It raises the value of ceasefire and peace, so wars end.
+- **Reluctance:** proud and expansionist factions dislike giving land or tribute (cost × 1.5); generous factions give gold cheaply (× 0.7); kind factions value peace more.
+
+## 7. War: declarations and justifications (game-design §8.8, Proposed)
+
+- **The temporary rule retires.** War needs a declaration, from the diplomacy screen or the attack confirmation when you order an attack on a Neutral faction.
+- **Justifications:** a grudge (Book of Grudges, past attacks), a claim (marriage or inheritance, a former holding), a **provocation** (proven schemes or raids against you, trespass beyond a limit), a **Holy War** call or an **Anathema** target (game-design §9, Proposed), or **defending an ally or vassal**. Schemes can manufacture justifications: a staged border raid, a forged insult.
+- **Without a justification**, declaring war costs reputation (Peaceful/Expansionist −15, Honorable −10). The victim's allies treat it as unprovoked aggression (−20 instead of −15).
+- The declaration dialog shows what will happen: the justification, or its absence and its reputation cost; who will be angered; which of the victim's allies are likely to join.
+
+## 8. Allies, calls to arms and commandable allies
+
+- **Calls to arms** (constitution, confirmed): an ally at war asks for help. Each ally chooses:
+  - **Join** (becomes a belligerent)
+  - **Support only** (gold, resources or troops, without becoming a belligerent; relations with the enemy take only −5)
+  - **Refuse** (−15 with the caller)
+
+  Treacherous factions refuse more often, and may abandon an alliance once its protection has passed (not betrayal).
+- **Commandable allies** (game-design §8.4, confirmed): the player can give allies and vassals **specific orders**: attack this settlement, attack this army, defend this region, join this siege.
+  - **Willingness** (0 … 1) comes from:
+    - your economic and military dominance (the strongest economy in the region gets the most help)
+    - their dependence on you
+    - the rewards offered with the order
+    - their personality
+    - your perceived reputation
+  - Weaker factions competing for your favour score higher.
+  - **A genuine attempt** (confirmed): an accepted order commits **a real force**. The ally's AI assigns the army (or armies) that gives the best odds, at least `min_commit` of the needed power (placeholder 0.8 of the target's defence) or its strongest army. It marches until it attacks, besieges or the order is cancelled.
+  - If it cannot commit a real force, it **declines openly** with the reason ("Our armies are needed at home"). It never sends a token army.
+  - The order shows on the map as a TW-style objective marker with the ally's army path.
+- Implementation hooks: orders become a new job type in `core/ai.gd` `_command` (above defend for vassals, below defend for allies), using the existing attack, besiege and march code with a pinned target.
+
+## 9. Vassals (game-design §8.5, every route confirmed; obligations Proposed)
+
+- **Routes to vassalage:**
+  1. **War and surrender:** a losing faction may offer or accept vassalage in place of destruction or land.
+  2. **Diplomacy:** a weak neighbour accepts protection for independence.
+  3. **Debt:** a faction deep in debt sells its freedom for your gold.
+  4. **Marriage:** your heir marries into a ruling house with a vassalage clause.
+  5. **Protection from a bigger threat:** a faction facing a cruel, expansionist or Destruction power seeks a suzerain.
+- **Obligations** (Proposed): tribute, troops on request, obeying war calls, following your diplomatic lead (no separate wars or alliances). **Loyalty and dependence** decide how reliably each is met.
+- **Vassals commit real forces** to commanded orders (§8), with higher willingness than allies.
+- **Independence:** a neglected, low-loyalty vassal can break away. It uses the small-rebellion rules (constitution): visible warning for several turns, at most one region at a time, and the Liberator's Call when its people dislike the rebel.
+- **Culture variants** (game-design §10, Confirmed core, details Proposed): Roman **clients**, Medieval **feudal vassals**, Greek **league members**. They share this vassal model with culture-specific obligations and screens.
+
+## 10. Puppets (game-design §6.6, confirmed)
+
+- A **puppet** is a ruler you installed in another faction. Routes are the intrigue schemes: assassinate and back a weak heir, fund a coup, marry your candidate in, tip a succession, support a pretender.
+- **Control scales with investment:**
+  - A ward you raised and invested in obeys you like a vassal: commandable orders at the highest willingness, follows your diplomatic lead.
+  - Someone you merely paid becomes a friendly ally, not a servant.
+- **Skim:** a puppet skims its host faction's gold to you (confirmed; amount by investment, placeholder 5–15% of the host's income). Your own governors never skim.
+- **Exposure:** a puppet relationship is secret. Discovery is a proven scheme (§3.4) against the host's other powers, and may cost you the puppet.
+
+## 11. Military access and trespass
+
+This is aligned with game-design §12.1: full movement at home and in allied land, drastically reduced abroad.
+- **Military access** (an agreement) and **alliance** give **home-territory movement** in the partner's land. Outposts extend home movement too (confirmed).
+- **Without access**, foreign land is entered at reduced movement. At Neutral, Peace or Ceasefire it is also **trespass**: −2 attitude per army per turn (max −20), and the owner's AI treats the army as a threat. A trespass limit gives the owner a **provocation** justification.
+- At war, enemy territory is war, not trespass.
+
+## 12. Trade (game-design §12.7, confirmed)
+
+- A trade agreement creates a **trade route**: drawn on the map as a land or sea line with caravans and ships (visual only). It carries an **abstract income** for both partners.
+  - Placeholder income: 8% of the partner's settlement income, × (1 + 0.5 per endowment you lack and they have), × a road or port bonus, capped at 25% of your own income.
+- A route needs a **connection**: a land path through non-hostile territory, or ports on both ends.
+- **Raiding:** a raiding army or fleet next to a route draws its income away. It harms relations but is not an act of war, and lowers public order in the raided province.
+- Cancelling trade is free of betrayal, but costs −10 with the partner. Treacherous AI cancels when its partner is losing a war, or when a better partner appears.
+
+## 13. Minor factions (game-design §8.6, Proposed)
+
+- Minor factions start with **no allies** and carry a `minor` flag.
+- Attacking an **unprotected** minor costs relations **only with the minor itself**. The web's ally and third-party penalties are skipped, and no war justification is needed (no reputation cost for an undeclared war on a minor).
+- **Protection:** a major's explicit **protection pact** with a minor makes an attack on it count as an attack on the protector's ward. The protector gets −15 attitude and a justification, and the full web applies. So does a **Throne City edict** protecting a minor (game-design §9, Proposed).
+- Minors sign ceasefire, peace, trade, embassy, protection and vassalage, but not alliances. Their treaties are still **protected**: the betrayal rule applies to every treaty.
+
+## 14. The Throne City in diplomacy (game-design §9, Throne City confirmed, the rest Proposed)
+
+- Caeloth is **untouchable**: it cannot be attacked or schemed against in V1 (confirmed). It has an embassy and dossier like any faction.
+- Its edicts (Proposed) can protect minors, call Holy Wars (a justification for all faithful), and name **Anathema** targets (a justification against them; an alliance gate, §3.6).
+- Throne City influence (confirmed) adds legitimacy, which feeds ruler reputation (Pious, Honorable).
+
+## 15. The diplomacy screens (TW:WH3 parity)
+
+- **Diplomacy** (round menu button, as in TW:WH3), full screen:
+  - **Left:** faction list. Emblem, name, state icon, TW attitude face, treaty lock with protection turns left. Filters: All, At war, Allies, Vassals, Neighbours.
+  - **Centre-top:** both factions with their **perceived reputation labels** (TW trait-style icons) and current treaties.
+  - **Centre:** a **proposal builder** with "You offer" and "You demand" columns, filled from an item palette grouped as in TW:WH3: Treaties, Payments, Land, Troops, Characters (marriage, captives), Intelligence (secrets), War. Ineligible items are greyed out with their reason.
+  - **Bottom:** a **live acceptance bar** (TW-style, "Will not accept" … "Very likely"), plus a "What would it take?" button.
+  - **Right:** **their reasoning**, three to five short phrases: biggest attitude causes, reputation ("They think you are Treacherous"), suspicion ("They suspect you"), bloc and prejudice, willingness gates, and what they want.
+- **Faction dossier:** opened from the faction list or the map. Court portraits and blurbs (Scribes' voice), who hates whom, reputation labels with their deeds, treaties and wars. Locked sections show what reveals them ("Send an embassy", "Embed a spy").
+- **Orders to allies and vassals:** right-click on the map target with an ally's or vassal's army selected in the diplomacy orders mode, or from the dossier. Objective markers on the map, TW-style.
+- **AI proposals to the player** come as Event Messages pop-ups (accept, counter, decline), at most one per AI faction per turn.
+
+## 16. Validation plan
 
 **GUT tests:**
-- Attitude modifiers apply and decay.
-- The web: the victim −40, its allies −15, others only if they like the victim.
-- Tendencies change threat and trust, not attitude.
-- Prejudice is permanent; willingness gates hide options.
-- Each item's eligibility.
-- Valuation is monotonic: more gold is never less acceptable.
-- The AI never attacks a treaty partner over 100 seeded turns, betrayal count = 0.
-- Player betrayal triggers war with all factions and loses allies and trade.
-- Treaty cancellation is blocked during protection.
-- Trade income appears in the ledger and needs a connection.
-- Trespass penalties accrue and military access removes them.
-- Calls to arms resolve as join, support or refuse.
-- Troop transfers arrive as actual units.
-- Minor-faction attacks skip the web.
+- Reputation:
+  - distance weighting blends ruler and House as specified
+  - the first-impressions window speeds both up
+  - decrees move axes
+  - tendencies seed the House reputation only at start
+- Attitude events and decay.
+- Suspicion rises on suspicious events and decays; proven acts cost reputation and attitude with allies.
+- Embassies reveal courts; at war they need spies.
+- Every item's eligibility, including captives and secrets.
+- Valuation is monotonic; trust and suspicion reduce treaty values.
+- War justifications: an unjustified war costs reputation.
+- Commandable orders:
+  - an accepted order commits at least `min_commit` of the needed power, or is declined with a reason
+  - no token armies over 50 seeded orders
+- Vassalage by each route.
+- Puppet skim and control by investment.
+- Military access and trespass.
+- Trade routes and raiding income.
+- Minor factions skip the web unless protected.
+- The AI never betrays, over 100 seeded turns.
 - Save/load keeps every diplomatic state.
 
-**Soak tests** (extend `scripts/ai_soak.gd`; 8 seeds × 100 turns, all AI, plus a variant map with more factions when the V1 map exists). Proposed targets:
+**Soak tests** (extend `scripts/ai_soak.gd`; 8 seeds × 100 turns, all AI; plus a Stage A map run):
 
 | Measure | Target |
 |---|---|
 | Wars end | ≥ 70% of wars end in ceasefire or peace within 25 turns |
-| Peace holds | 0 AI betrayals; ≥ 80% of peace treaties still standing 20 turns after signing |
-| Alliances form | at least one alliance per campaign on average; alliances against cruel or expansionist factions more often than against kind ones |
-| Treacherous factions behave differently | cancel trade ≥ 2× as often, refuse calls ≥ 2× as often, abandon allies at least occasionally, and never betray a treaty |
-| Kind and generous factions | accept peace sooner (shorter wars) than cruel ones |
-| Trade | income share between 5% and 25% of faction income where trade exists |
-| Determinism | identical results per seed, including across a save/load |
-| Performance | diplomacy evaluation ≤ 10 ms per AI faction per turn in the debug build (bundle scoring is cheap; proposals capped per turn) |
+| AI betrayals | 0 |
+| Peace holds | ≥ 80% of peace treaties still stand 20 turns after signing |
+| Alliances | at least one alliance and one vassal per campaign on average |
+| Treacherous factions | cancel trade and refuse calls ≥ 2× as often as others, and never betray |
+| Kind and generous factions | shorter wars than cruel ones |
+| Justified wars | a larger share than unjustified wars for factions with a Peaceful or Honorable reputation |
+| Commanded orders | ≥ 90% of accepted orders produce a real attack or siege within 5 turns |
+| Performance | ≤ 10 ms per AI faction per turn for diplomacy in the debug build, with staggered re-evaluation (game-design §17) |
 
-## 14. Open questions (batched, each with a recommended answer)
+## 17. Conflicts with game-design.md (for your decision)
 
-1. **Treaty protection reading.** Is the 20 turns counted from signing (the treaty cannot be cancelled before then, and attacking while it stands is betrayal), or a period after a treaty ends? *Recommended: from signing, as in section 1. After a cancellation the factions are Neutral, and war is an ordinary declaration.*
-2. **Ceasefire length.** *Recommended: a ceasefire lasts until its 20-turn protection ends, then reverts to Neutral unless peace is signed.*
-3. **Attitude numbers and decay** (the section 2 table). *Recommended: adopt as placeholders in data and tune by soak test.*
-4. **Which peoples hate each other permanently.** *Recommended:*
-   - the Ironjaw Horde and Frostmaw Clans hate all human realms (−60)
-   - House Varn and the Wardens of the Greywall hate all orcs (−60)
-   - the Redhand Warband and the Riverlands minor houses have no race prejudice, and carry −20 from the other orcs
-   - everyone else neutral, until races beyond humans and orcs are designed
-5. **Willingness gates.** *Recommended: the orc haters never ally or trade with humans (and vice versa for the haters on the human side), but always accept a ceasefire or peace when weariness is high.*
-6. **Tendency trust factors** (treacherous 0.6, cruel 0.85, kind and generous 1.1). *Recommended: adopt as placeholders.*
-7. **Minor factions.** *Recommended: section 10. Attacks on unprotected minors hit relations only with the minor and its protectors; minors sign only ceasefire, peace, trade and protection; their treaties are still protected.*
-8. **Land in deals.** *Recommended: any settlement except the giver's last, its capital and landmark seats (Goldspire Rock, Highbloom…), which change hands only by conquest.*
-9. **Troop transfer travel.** *Recommended: detachments travel (section 6) rather than appearing instantly.*
-10. **Player betrayal.** *Recommended: allow it, behind a dialog that spells out the permanent consequences.*
-11. **AI proposals to the player.** *Recommended: yes, at most one per AI faction per turn, as Event Messages pop-ups; the player can turn them off per faction.*
-12. **Third-party reaction to declarations of war.** *Recommended: only factions that like the victim (attitude > 40) react (−5), plus increased fear of expansionist or cruel attackers.*
-13. **Contact.** Can you negotiate with factions you have not met? *Recommended: contact is needed (a shared border, or having seen one of their armies or settlements). On the prototype map all factions are in contact.*
-14. **Vassals, confederation and marriage.** *Recommended: not V1. Marriage is a greyed-out item; confederation and subordination are listed for V2, once the character system exists.*
-15. **Peace terms that last** (tribute for N turns). *Recommended: tribute stops if the payer goes into debt (no debt from tribute), and stopping it is not betrayal but costs −20 attitude.*
+1. **"No opinion-modifier spreadsheets"** (game-design §1.3). My design keeps numeric attitude events with decay. Proposal: they stay internal, and the screen shows only TW-style faces and three to five short reasons, which is what TW:WH3 itself shows. *Please confirm that is acceptable.*
+2. **Tendencies vs earned reputation.** Game-design §3.4 and §8.1 say fixed tendencies "shape how others perceive them". §7.3 adds earned reputation traits. I reconcile them by having tendencies *seed* the House reputation and drive the AI's own behaviour, after which perception follows deeds. *A faction's tendency label could therefore stop matching its reputation: is that intended?*
+3. **Military access timing.** Game-design §8.1 repeats the old rule "armies move freely until diplomacy adds trespass penalties". §12.1 makes reduced foreign movement a baseline. I follow §12.1: access gives home movement, and trespass applies on top.
+4. **Marriage.** Revision 1 treated marriage as a greyed-out hook. Game-design §4.9 confirms it, and the characters core comes before diplomacy in the §21 roadmap. Here marriage is a real item that depends on that system.
+5. **Minor factions.** Game-design §8.6 says a "reduced" web penalty. I propose **none** beyond the minor itself, unless it is protected. *Reduced or none?*
+6. **War weariness** is my addition. Game-design does not mention how wars end. *Approve it as the mechanism?*
+7. **Unjustified war cost** (game-design §8.8, Proposed). I propose −15 Peaceful/Expansionist, −10 Honorable, plus a heavier ally penalty. *Approve the mechanism?* The values stay placeholders.
+8. **Dwarf grudges** are modelled as specific Book-of-Grudges entries rather than a racial prejudice. Game-design §3.4 says "dwarves remember grudges", which fits either reading.
+9. **Contact requirement.** Game-design §8.2 says any faction with no reason to refuse accepts an embassy. I add that you must have met them first (shroud), in line with game-design §12.6.
+10. **Secrets as tradable items** are marked a "Proposed addition" in game-design §8.1, and captives are Proposed (§4.11). Both are included here as proposals.
+11. **Commandable-order hook.** Allies' orders rank below their own defence, vassals' above. Game-design §8.4 does not set a priority. *Approve?*
+
+## 18. Open questions (batched, each with my recommended answer)
+
+1. **Ceasefire length.** *Recommended: a ceasefire lasts until its 20-turn protection ends, then reverts to Neutral unless peace is signed.*
+2. **Reputation scale and label thresholds.** *Recommended: axes −100 … +100, labels at ±30, distance weights 0.75 near → 0.3 far, first-impressions × 3. Tune by soak.*
+3. **Attitude event values and decay** (§3.3). *Recommended: adopt as placeholders.*
+4. **Prejudice pairs.** *Recommended: §3.5 (orc haters ↔ men, elves ↔ dark elves, lizardmen ↔ ratmen; dwarf grudges as named entries; the Redhand friendly to men).*
+5. **Land in deals.** *Recommended: never the last settlement, the capital or a landmark seat.*
+6. **Troop transfers.** *Recommended: they travel as detachments (captain-led, game-design §12.3) instead of appearing instantly.*
+7. **Player betrayal.** *Recommended: allowed, behind a dialog that spells out the consequences.*
+8. **AI proposals to the player.** *Recommended: yes, at most one per AI faction per turn, and the player can mute them per faction.*
+9. **Tribute and debt.** *Recommended: tribute pauses while the payer is in debt. That is not betrayal, but costs −20 attitude.*
+10. **Puppet skim size.** *Recommended: 5% for a paid ruler, up to 15% for a raised ward.*
+11. **Vassal obligations** (game-design §8.5, Proposed). *Recommended: tribute 10% of income, troops on request, follows your wars, no independent alliances. Loyalty below 30 makes each obligation a chance rather than a certainty.*
+12. **Throne City edicts protecting minors.** *Recommended: decide with the religion design (roadmap item 10). Until then, only major factions' protection pacts protect minors.*
