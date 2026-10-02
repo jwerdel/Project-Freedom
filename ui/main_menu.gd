@@ -102,7 +102,9 @@ func _build():
  v.add_child(nci)
  _button(v,"Load",_show_load)
  _button(v,"Settings",_show_settings)
- _button(v,"Quit",func(): get_tree().quit())
+ _button(v,"Quit",func():
+  SaveSystem.wait_for_images()
+  get_tree().quit())
  notice = UiKit.label(Session.message,15,Color("ef8a6a"))
  notice.anchor_top = 1.0
  notice.anchor_bottom = 1.0
@@ -145,6 +147,7 @@ func _new_campaign():
 
 func _load(file: String):
  var r = SaveSystem.load_save(file)
+ if "--capture" in OS.get_cmdline_user_args(): print("LOAD_FILE_MS %.2f" % r.get("ms",0.0))
  if not r.ok:
   notice.text = r.error
   if overlay: overlay.queue_free()

@@ -599,6 +599,7 @@ func make_ui():
   sync_settlement_visuals()
   sync_territory()
   if loaded_from != "new": ui.toast("Loaded: %s" % loaded_from)
+  if capture_mode: print("LOAD_TO_CAMPAIGN_MS %d (scene rebuilt from the save)" % (Time.get_ticks_msec()-Session.started_at))
 
 # Territory colors follow settlement ownership (captures change them).
 var territory_owners := {}
@@ -823,7 +824,9 @@ func update_walk(delta: float):
 
 func end_turn():
  # Autosave at the start of End Turn (3 rotating slots), before anything changes.
+ var t0 = Time.get_ticks_usec()
  var a = SaveSystem.autosave(ui_data.state,thumbnail())
+ if capture_mode: print("AUTOSAVE_MS %.2f (with thumbnail) BYTES %d" % [(Time.get_ticks_usec()-t0)/1000.0,a.get("bytes",0)])
  if not a.ok: ui.toast("Autosave failed: %s" % a.error)
  ui_data.end_turn()
  var r = ui_data.resources()
@@ -1057,7 +1060,9 @@ func save_capture():
  var result = get_viewport().get_texture().get_image().save_png(path)
  print("CAPTURE ",path," result=",result," window=",DisplayServer.window_get_size()," ui=",get_viewport().get_visible_rect().size)
  if ui: ui.toast("Saved view to ProjectFreedom / captures.")
- if capture_mode: get_tree().quit(0 if result==OK else 1)
+ if capture_mode:
+  SaveSystem.wait_for_images()
+  get_tree().quit(0 if result==OK else 1)
 
 func run_checks():
  assert(city_level>=1 and city_level<=3)
@@ -1330,7 +1335,9 @@ func quicksave():
  return r
 
 func save_named(name: String) -> Dictionary:
+ var t0 = Time.get_ticks_usec()
  var r = SaveSystem.save(ui_data.state,SaveSystem.file_for(name),name,"manual",thumbnail())
+ if capture_mode: print("SAVE_NAMED_MS %.2f (with thumbnail) BYTES %d" % [(Time.get_ticks_usec()-t0)/1000.0,r.get("bytes",0)])
  if r.ok: unsaved = false
  ui.toast("Saved \"%s\"." % name if r.ok else "Save failed: %s" % r.error)
  return r
@@ -1362,3 +1369,7 @@ func open_pause_menu():
 func close_pause_menu():
  if pause_menu: pause_menu.queue_free()
  pause_menu = null
+
+func _notification(what):
+ # Let thumbnails still being written finish before the window closes.
+ if what == NOTIFICATION_WM_CLOSE_REQUEST: SaveSystem.wait_for_images()

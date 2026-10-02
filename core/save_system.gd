@@ -23,12 +23,13 @@ const BACKDROP = Vector2i(960,600)
 const MIGRATIONS = {}
 
 static var dir := DIR # tests and captures point this elsewhere
+static var _pending: Array = [] # worker tasks writing thumbnails
 
 static func path_of(file: String) -> String:
  return "%s/%s.json" % [dir,file]
 
 static func thumb_of(file: String) -> String:
- return "%s/%s.png" % [dir,file]
+ return "%s/%s.jpg" % [dir,file]
 
 static func backdrop_path() -> String:
  return dir+"/menu_backdrop.jpg"
@@ -57,18 +58,18 @@ static func save(state,file: String,name: String,kind := "manual",thumbnail: Ima
  if err != OK: return {"ok":false,"error":"Could not write the save (%s)." % error_string(err)}
  if _interrupt: return {"ok":false,"error":"interrupted"}
  if thumbnail != null and not thumbnail.is_empty():
-  var img = thumbnail.duplicate()
-  img.resize(THUMB.x,THUMB.y,Image.INTERPOLATE_BILINEAR)
-  _write_atomic(thumb_of(file),img.save_png_to_buffer())
-  # The main menu's backdrop: the latest saved view of the campaign, larger than a thumbnail.
-  var big = thumbnail.duplicate()
-  big.resize(BACKDROP.x,BACKDROP.y,Image.INTERPOLATE_BILINEAR)
-  _write_atomic(backdrop_path(),big.save_jpg_to_buffer(0.85))
+  # Scaling and encoding the pictures runs on a worker thread so End Turn does not hitch; each
+  # file still lands atomically. wait_for_images() waits for them (tests, quitting).
+  _pending = _pending.filter(func(t):
+   if not WorkerThreadPool.is_task_completed(t): return true
+   WorkerThreadPool.wait_for_task_completion(t)
+   return false)
+  _pending.append(WorkerThreadPool.add_task(_write_images.bind(thumb_of(file),backdrop_path(),thumbnail)))
  elif FileAccess.file_exists(thumb_of(file)): DirAccess.remove_absolute(thumb_of(file))
  return {"ok":true,"file":file,"path":path,"bytes":text.length(),"ms":(Time.get_ticks_usec()-t0)/1000.0,"meta":meta}
 
-static func _write_atomic(path: String,bytes: PackedByteArray,interrupt := false) -> int:
- var tmp = path+".tmp"
+static func _write_atomic(path: String,bytes: PackedByteArray,interrupt := false,tmp_tag := "") -> int:
+ var tmp = path+tmp_tag+".tmp"
  var f = FileAccess.open(tmp,FileAccess.WRITE)
  if f == null: return FileAccess.get_open_error()
  f.store_buffer(bytes)
@@ -136,7 +137,8 @@ static func read_meta(file: String) -> Dictionary:
  if j.parse(FileAccess.get_file_as_string(path)) != OK or not (j.data is Dictionary):
   return {"name":file,"kind":"damaged","faction":"","faction_name":"Damaged save","year":0,"turn":0,"saved_text":"","seq":0}
  var meta = SaveCodec.decode(j.data.get("meta",{}))
- if not (meta is Dictionary): meta = {}
+ if not (meta is Dictionary) or not meta.has("name") or not j.data.has("state"):
+  return {"name":file,"kind":"damaged","faction":"","faction_name":"Damaged save","year":0,"turn":0,"saved_text":"","seq":0}
  meta.schema = int(j.data.get("schema",0))
  return meta
 
@@ -173,3 +175,17 @@ static func autosave(state,thumbnail: Image = null) -> Dictionary:
 
 static func quicksave(state,thumbnail: Image = null) -> Dictionary:
  return save(state,QUICKSAVE,"Quicksave","quick",thumbnail)
+
+# Thumbnail (load screen) and the main menu's backdrop (the latest saved view, larger).
+static func _write_images(thumb_path: String,backdrop: String,source: Image):
+ var img = source.duplicate()
+ img.resize(THUMB.x,THUMB.y,Image.INTERPOLATE_BILINEAR)
+ var tag = ".%d" % OS.get_thread_caller_id() # overlapping saves never share a temp file
+ _write_atomic(thumb_path,img.save_jpg_to_buffer(0.85),false,tag)
+ var big = source.duplicate()
+ big.resize(BACKDROP.x,BACKDROP.y,Image.INTERPOLATE_BILINEAR)
+ _write_atomic(backdrop,big.save_jpg_to_buffer(0.85),false,tag)
+
+static func wait_for_images():
+ for task in _pending: WorkerThreadPool.wait_for_task_completion(task)
+ _pending.clear()

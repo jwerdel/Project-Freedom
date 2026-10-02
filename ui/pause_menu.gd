@@ -10,6 +10,7 @@ const Widgets = preload("res://ui/widgets.gd")
 const LoadScreen = preload("res://ui/load_screen.gd")
 const SettingsPanel = preload("res://ui/settings_panel.gd")
 const Session = preload("res://core/session.gd")
+const SaveSystem = preload("res://core/save_system.gd")
 
 var host
 var trim := Color("c9a45a")
@@ -55,7 +56,9 @@ func setup(campaign):
  v.add_child(buttons)
  for b in [["Resume",func(): closed.emit()],["Save",_show_save],["Load",_show_load],["Settings",_show_settings],
   ["Exit to main menu",func(): _guard("Exit to the main menu?",func(): Session.to_menu(get_tree()))],
-  ["Quit",func(): _guard("Quit the game?",func(): get_tree().quit())]]:
+  ["Quit",func(): _guard("Quit the game?",func():
+   SaveSystem.wait_for_images()
+   get_tree().quit())]]:
   var btn = Button.new()
   btn.name = b[0].replace(" ","")
   btn.text = b[0]

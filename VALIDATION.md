@@ -319,6 +319,66 @@ Screenshots (generated, in `captures/`):
 - `deploy_2d.png`
 - `battle_report_replay.png` (Greyhaven siege, replay at tick 6 of 9 with the event's unit highlighted)
 
+## Save/load, main menu and pause menu (2026-10-01)
+
+**Saves** (`core/save_system.gd`) are one JSON file per save under `user://saves`, with a schema version and a migration hook. The full campaign state is `GameState.to_dict()`: settlements, buildings and construction, armies and their orders and queues, wars, treasuries, year and turn, chronicle, last ledgers, campaign seed and battle counter. There is no separate RNG state, because every random draw is seeded from the campaign seed, year and battle counter.
+
+`core/save_codec.gd` keeps the state exact:
+- int and float stay distinct (Godot's JSON parser returns every number as a float)
+- dictionary order is kept
+- floats are bit-exact. Godot's JSON parser is not correctly rounded, so a float that would not read back exactly is stored as its 64-bit pattern.
+
+Writes go to a temp file that is renamed over the old one. Incompatible, damaged or foreign files fail with a message and never produce a partial state.
+
+**Autosave and quicksave:** autosave runs at the start of End Turn into three rotating slots. Quicksave and quickload are Ctrl+S and Ctrl+L. Each save stores a JPEG thumbnail of the map (320×200, about 20 KB, drawn without the interface) plus faction, year and real date. The thumbnail is encoded on a worker thread, and the newest view also becomes the main menu backdrop.
+
+**Menus:**
+- Main menu on launch: Continue, New Campaign (as House Aurek; faction choice comes with the V1 map), Load, Settings, Quit.
+- Pause menu: Esc with no panel open; Esc still closes panels first. It has Resume, Save (named), Load, Settings, Exit to main menu and Quit. Exiting or quitting with unsaved progress asks first, with Save and continue, Continue without saving, or Cancel.
+- Load screen: thumbnail, name, faction, year and date; delete asks for confirmation; damaged files list as damaged.
+- Settings (placeholder): resolution, fullscreen, UI scale, and debug keys (on by default). The debug keys F5–F7, L and Space are listed in the README.
+
+Tests: 152/152 GUT tests pass headless. The new `tests/test_saves.gd` has 11 tests:
+- codec types, order and bit-exact floats
+- a full round trip gives the identical state hash
+- 10 turns played straight vs. 5 turns, save, load, 5 more: identical state and identical battle results. The script includes construction, recruitment, two battles, a multi-turn march, and a siege active at the save point.
+- construction, recruitment queues, multi-turn orders and an active siege survive a save and keep running identically for 3 more turns
+- autosave rotation
+- newer, older, damaged and foreign files fail with messages
+- the migration hook
+- an interrupted save leaves the old file byte-identical and loadable
+- save names, listing and delete
+- the load screen's delete confirmation and Load button
+
+Self-test passes, now including: autosave on End Turn, a save/load round trip, the Esc order, and pause-menu save and the unsaved-progress warning. The full menu → load → campaign path was run as a capture (`--menu --menu-load=…`): year 4, treasury, events and the Goldspire stage were all restored.
+
+Timings (RTX 4060, real renderer, campaign at year 13 after 12 End Turns; 5 runs each, 2 rounds):
+
+| Measure | Result |
+|---|---|
+| Save (JSON written, thumbnail queued) | 7.3–9.3 ms |
+| Thumbnail grab (one extra frame without the interface) | 13–14 ms |
+| Background JPEG encoding | about 16 ms, off the main thread |
+| End Turn including autosave and thumbnail | 40–50 ms (End Turn alone 2–5 ms) |
+| Load from file (parse, decode, rebuild state) | 0.9–6.4 ms |
+| Load into a playable campaign (menu → map scene rebuilt from the save) | 2.69–2.70 s, almost all of it building the 3D map scene |
+
+File sizes:
+
+| Save | Size |
+|---|---|
+| Year-1 start | 3.9 KB |
+| After a battle | 7.5 KB |
+| Year 13 | 13.6 KB |
+| Thumbnail | about 20 KB |
+| Menu backdrop | 960×600 JPEG |
+
+Screenshots (generated, in `captures/`):
+- `main_menu.png`
+- `load_screen.png` (three saves with thumbnails)
+- `pause_menu.png`
+- `loaded_goldspire.png` (a save loaded through the menu)
+
 ## Remaining limitations
 
 - Artwork is a prototype and has not been approved against the desired 2016 Total War campaign-map benchmark.
