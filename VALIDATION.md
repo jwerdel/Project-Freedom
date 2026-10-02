@@ -242,6 +242,16 @@ Screenshots (generated, in `captures/`): `recruit_panel.png` (recruitment at Gol
 
 Speed: 3.07 ms per 10-v-10 battle in the debug editor build (target under 10 ms; re-measure against under 2 ms once a release build exists).
 
+## Battles in the campaign (2026-10-01)
+
+Tests: 129/129 GUT tests pass headless and with the real renderer (including `tests/test_battles.gd`: war declaration, garrisons, reinforcements, walls, casualties, experience, movement cost, destroyed units and armies, capture, retreat, generals and captains, sieges and surrender, withdrawal, report summary, determinism). Self-test passes; ordering onto an enemy settlement opens the war confirmation.
+
+GPU time, same method as above (RTX 4060, 1440×900, vsync off, 10 s settle, 5 s average, 2 rounds): overview 2.06 / 2.07 ms; pre-battle panel open over Greyhaven 2.26 / 2.27 ms.
+
+CPU: one quick-resolved battle (Aurek host against Greyhaven's garrison and the Silverfall Guard behind walls) 4.7-5.5 ms including the aftermath; opening the pre-battle panel 160-180 ms (50 seeded runs for the balance-of-power bar; cache it per panel or cut to 25 runs if it ever feels slow). End Turn 2.8 ms in the self-test.
+
+Screenshots (generated, in `captures/`): `battle_prebattle.png` (siege assault on Greyhaven: both armies, garrison, walls, balance of power 12%), `battle_report.png` (victory at Willowmere: headline, why you won, key numbers, units), `battle_captured.png` (Willowmere under House Aurek, territory recolored, the host garrisoned).
+
 ## Remaining limitations
 
 - Artwork is a prototype and has not been approved against the desired 2016 Total War campaign-map benchmark.
