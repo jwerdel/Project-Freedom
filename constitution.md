@@ -204,11 +204,12 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
   - An army standing anywhere in a region its faction owns can recruit, not only in or next to a settlement.
   - The units on offer come from the faction's buildings in that region's province.
   - Each recruit's men are still drawn from a settlement's population: the most populous settlement in the province whose buildings unlock the unit, which keeps its minimum population.
-  - Outside its own territory an army cannot recruit, and the game says why ("Must be in your own territory").
-  - Queued recruits appear in the army at once as greyed cards with their turns left; clicking one cancels it with a full refund.
-  - Global recruitment and recruitment capacity remain open.
+  - Outside its own territory an army cannot recruit locally, and the game says why ("Must be in your own territory"). Global recruitment still works there (below).
+  - Queued recruits appear in the army at once as greyed cards with their turns left and a TW-style colour banner (green: local; blue: global; orange: over capacity); clicking one cancels it with a full refund.
   - Deliberate difference from TW:WH3 (owner, 2026-10-02): recruiting does not lock the lord's movement.
   This replaces the per-settlement part of the implementation note above.
+- Confirmed (2026-10-02, owner; TW:WH3 parity), global recruitment: available anywhere, including outside your territory, from every unit your faction's buildings unlock anywhere in the realm, at a higher cost and twice the turns (placeholders in data/recruitment.json: 2x gold, 2x turns). Men come from the faction's most populous settlement that unlocks the unit, which keeps its minimum population. The recruit buttons (local and global) sit below the army's unit cards and open the recruitment panel above the army.
+- Confirmed (2026-10-02, owner; TW:WH3 parity), recruitment capacity: a lord recruits up to 3 units per turn by default (data value); each unit beyond the capacity takes extra turns (placeholder: +1 turn per started batch of 3 beyond it). The panel shows the capacity slots. Buildings, traits and skills can raise the capacity (hooks exist; values come with those systems). Whether TW:WH3 keeps separate local and global capacities is unverified; ours is one shared capacity.
 - Open (raised by recruitment): recruitment slots per settlement; disbanding a whole army or its general; who counts as an enemy for replenishment once diplomacy exists (now every region the faction does not own). The maximum number of lord armies is now capped by Realm Standing (Economy and settlements); its values are open, and the prototype placeholder is 3.
 - Confirmed (2026-10-02, game-design §12.2 and §12.3):
   - A lord (General) is required to attack; a full stack is 20 units.

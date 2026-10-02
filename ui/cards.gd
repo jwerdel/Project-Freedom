@@ -11,9 +11,13 @@ const UnitTypes = preload("res://core/unit_types.gd")
 const UNIT_CARD = Vector2(80,150)
 const BUILDING_CARD = Vector2(112,132)
 
+# TW:WH3 recruitment banners on queued units.
+const QUEUE_COLORS = {"local":Color("3f9b3a"),"global":Color("3a6fc4"),"overflow":Color("d8892a")}
+
 class UnitCard extends Control:
  signal pressed
  var queued_turns := 0 # > 0: a queued recruit, drawn veiled with its turns left
+ var queued_kind := "local" # TW:WH3 banner: local green, global blue, overflow orange
  var selected := false:
   set(v):
    selected = v
@@ -38,6 +42,7 @@ class UnitCard extends Control:
   rank = int(entry.get("rank",0))
   men = 0 if is_lord else int(entry.get("men",max_men))
   queued_turns = int(entry.get("queued_turns",0))
+  queued_kind = str(entry.get("queued_kind","local"))
   art = UnitTypes.card_art(unit_type)
   studio = portraits
   custom_minimum_size = UNIT_CARD*(Vector2(1.12,1.12) if is_lord else Vector2.ONE)
@@ -56,8 +61,13 @@ class UnitCard extends Control:
   mouse_entered.connect(queue_redraw)
   mouse_exited.connect(queue_redraw)
   resized.connect(_layout)
+  # accept_event first: a press handler may rebuild the panel and free this card, and an unaccepted
+  # press (and its release) would then fall through to the map as a click on empty ground, which
+  # deselected the army and closed the recruitment drawer (playtest bug, 2026-10-02).
   gui_input.connect(func(e):
-   if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT: pressed.emit())
+   if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+    accept_event()
+    pressed.emit())
  func _ready():
   if art:
    portrait.texture = art
@@ -109,13 +119,19 @@ class CardOverlay extends Control:
    var y = 10.0+i*6.0
    draw_polyline(PackedVector2Array([Vector2(7,y+4),Vector2(12,y),Vector2(17,y+4)]),Color(0,0,0,0.8),4.0)
    draw_polyline(PackedVector2Array([Vector2(7,y+4),Vector2(12,y),Vector2(17,y+4)]),Color("f2cf6a"),2.0)
-  # Queued recruit: veiled, with the turns left instead of a count.
+  # Queued recruit: veiled, with a TW:WH3 colour banner across it (green local, blue global, orange
+  # overflow) carrying the turns left.
   if card.queued_turns>0:
    draw_rect(Rect2(Vector2(3,3),size-Vector2(6,6)),Color(0,0,0,0.55))
+   var band = Rect2(3,size.y*0.5-11,size.x-6,22)
+   draw_rect(band,QUEUE_COLORS.get(card.queued_kind,QUEUE_COLORS.local))
+   draw_rect(band,Color(0,0,0,0.5),false,1.0)
    var qf = UiKit.FONT_BOLD
    var qt = "%d turn%s" % [card.queued_turns,"" if card.queued_turns == 1 else "s"]
-   var qw = qf.get_string_size(qt,HORIZONTAL_ALIGNMENT_LEFT,-1,14).x
-   draw_string(qf,Vector2((size.x-qw)*0.5,size.y*0.5),qt,HORIZONTAL_ALIGNMENT_LEFT,-1,14,Color("f1d79a"))
+   var fs = 13 if size.x>=60 else 11
+   var qw = qf.get_string_size(qt,HORIZONTAL_ALIGNMENT_LEFT,-1,fs).x
+   draw_string(qf,Vector2((size.x-qw)*0.5+1,band.position.y+16),qt,HORIZONTAL_ALIGNMENT_LEFT,-1,fs,Color(0,0,0,0.8))
+   draw_string(qf,Vector2((size.x-qw)*0.5,band.position.y+15),qt,HORIZONTAL_ALIGNMENT_LEFT,-1,fs,Color("fff6dc"))
    return
   if card.selected: draw_rect(Rect2(Vector2(1,1),size-Vector2(2,2)),Color("ffe08a"),false,3.0)
   # Unit count.
@@ -164,7 +180,9 @@ class BuildingCard extends Control:
   else: tooltip_text = "%s\nLevel %d of %d\n%s\nClick for upgrades." % [slot.name,int(slot.level),int(slot.get("max_level",slot.level)),"\n".join(slot.get("effects",[]))]
   if not slot.get("locked",false): mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
   gui_input.connect(func(e):
-   if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT and not slot.get("locked",false): pressed.emit())
+   if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT and not slot.get("locked",false):
+    accept_event() # see UnitCard
+    pressed.emit())
   if slot.has("visual"):
    thumb = TextureRect.new()
    thumb.expand_mode = TextureRect.EXPAND_IGNORE_SIZE

@@ -312,7 +312,9 @@ const BOTTOM_WIDTH = 1256.0 # left edge to the round menu (1600-wide viewport)
 const BOTTOM_LEFT_W = 210.0
 const BOTTOM_RIGHT_W = 190.0
 const CARD_GAP = 4
-const ARMY_PANEL_WIDTH = BOTTOM_WIDTH-BOTTOM_LEFT_W-BOTTOM_RIGHT_W-60.0 # the middle column
+# The middle column: what is left after the side columns, the four 12 px gaps, the two rules and
+# the frame margins (2 x 14), so the panel never grows past BOTTOM_WIDTH into the event feed.
+const ARMY_PANEL_WIDTH = BOTTOM_WIDTH-BOTTOM_LEFT_W-BOTTOM_RIGHT_W-4*12.0-2.0-28.0
 const SETTLEMENT_TABS = [["buildings","Buildings","Building slots (1 overview, 3 building browser)"],["garrison","Garrison","Who defends the settlement (2)"]]
 
 var lord_box: VBoxContainer   # army: left column
@@ -595,30 +597,35 @@ func show_army(army_id: String,location: String):
  title.add_child(UiKit.label("%s · %s" % [a.faction_data.name,location],13,UiKit.TEXT_DIM))
  title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  head.add_child(title)
- # Recruit buttons above the cards (TW:WH3), with the reason when recruiting is impossible.
+ var actions: HBoxContainer = null
+ # Recruit buttons below the cards (TW:WH3: local and global recruitment), with the reason when
+ # local recruitment is impossible. They open the recruitment panel above the army.
  if a.player_owned:
-  var actions = HBoxContainer.new()
+  actions = HBoxContainer.new()
   actions.name = "ArmyActions"
   actions.add_theme_constant_override("separation",8)
-  var where = data.recruitment(army_id)
-  if not where.ok:
-   var why = UiKit.label("Cannot recruit: %s" % where.reason,13,Color("ef8a6a"))
-   why.name = "RecruitReason"
-   why.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-   why.custom_minimum_size = Vector2(160,0)
-   why.tooltip_text = why.text
-   why.mouse_filter = Control.MOUSE_FILTER_PASS
-   actions.add_child(why)
+  var where = data.recruitment(army_id,"local")
   var recruit = Button.new()
   recruit.name = "Recruit"
-  recruit.text = "Hide recruitment" if recruit_army == army_id else "Recruit units"
+  recruit.text = "Local recruitment"
+  recruit.toggle_mode = true
+  recruit.set_pressed_no_signal(recruit_army == army_id and recruit_mode == "local")
   recruit.focus_mode = Control.FOCUS_NONE
   recruit.disabled = not where.ok
-  recruit.tooltip_text = ("Recruit units from your buildings in %s (4)" % where.province_name) if where.ok else "Cannot recruit: %s." % where.reason
-  recruit.pressed.connect(func():
-   if recruit_army == army_id: close_recruitment()
-   else: open_recruitment(army_id))
+  recruit.tooltip_text = ("Local recruitment (4)\nUnits from your buildings in %s, at normal cost and time." % where.province_name) if where.ok else "Local recruitment\nCannot recruit here: %s.\nGlobal recruitment works anywhere." % where.reason
+  recruit.pressed.connect(toggle_recruitment.bind(army_id,"local"))
   actions.add_child(recruit)
+  var global = Button.new()
+  global.name = "RecruitGlobal"
+  global.text = "Global recruitment"
+  global.toggle_mode = true
+  global.set_pressed_no_signal(recruit_army == army_id and recruit_mode == "global")
+  global.focus_mode = Control.FOCUS_NONE
+  var gw = data.recruitment(army_id,"global")
+  global.disabled = not gw.ok
+  global.tooltip_text = "Global recruitment\nAnywhere, also abroad: every unit your buildings unlock across your realm, at %s× the cost and %d× the turns." % [str(gw.global_cost),gw.global_turns] if gw.ok else "Global recruitment\n%s." % gw.reason
+  global.pressed.connect(toggle_recruitment.bind(army_id,"global"))
+  actions.add_child(global)
   var disband = Button.new()
   disband.name = "Disband"
   disband.text = "Disband"
@@ -627,7 +634,14 @@ func show_army(army_id: String,location: String):
   disband.tooltip_text = "Disband the selected unit (Ctrl+P); its men return to the population of this region." if selected_unit>=0 else "Click a unit card to select it."
   disband.pressed.connect(disband_selected)
   actions.add_child(disband)
-  head.add_child(actions)
+  if not where.ok:
+   var why = UiKit.label("Local: %s" % where.reason,13,Color("ef8a6a"))
+   why.name = "RecruitReason"
+   why.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+   why.custom_minimum_size = Vector2(160,0)
+   why.tooltip_text = "Cannot recruit locally: %s." % where.reason
+   why.mouse_filter = Control.MOUSE_FILTER_PASS
+   actions.add_child(why)
  var count = UiKit.label("Units %d / %d" % [1+a.units.size()+a.queue.size(),a.max_units],14,UiKit.TEXT_DIM)
  count.name = "UnitCount"
  count.tooltip_text = "General, units and queued recruits. The %d-unit cap is a placeholder (data/recruitment.json)." % a.max_units
@@ -657,8 +671,9 @@ func show_army(army_id: String,location: String):
  for i in a.queue.size():
   var q = a.queue[i]
   var u = data.unit_type(q.unit)
-  var entry = {"unit":q.unit,"men":q.men,"max_men":q.men,"queued_turns":q.turns_left}
-  var tip = "%s (recruiting)\n%d turn%s left · from %s\nClick to cancel (full refund: %d gold, %d men)" % [u.display_name,q.turns_left,"" if q.turns_left == 1 else "s",data.settlement(q.settlement).name,q.cost,q.men]
+  var entry = {"unit":q.unit,"men":q.men,"max_men":q.men,"queued_turns":q.turns_left,"queued_kind":q.kind}
+  var how = {"local":"Local recruitment","global":"Global recruitment","overflow":"Over recruitment capacity: extra turns"}[q.kind]
+  var tip = "%s (recruiting)\n%s\n%d turn%s left · men from %s\nClick to cancel (full refund: %d gold, %d men)" % [u.display_name,how,q.turns_left,"" if q.turns_left == 1 else "s",data.settlement(q.settlement).name,q.cost,q.men]
   var qc = Cards.unit_card(u,entry,a.faction_data,studio,tip,(func():
    var r = data.cancel_recruit(army_id,i)
    toast("Recruitment cancelled: %d gold and %d men returned." % [r.gold,r.men])) if a.player_owned else Callable())
@@ -666,6 +681,7 @@ func show_army(army_id: String,location: String):
   qc.set_card_scale(card_scale)
   row.add_child(qc)
  bottom_box.add_child(_scroller(row))
+ if actions: bottom_box.add_child(actions)
  bottom_panel.visible = true
  _fit_bottom.call_deferred()
 
@@ -899,10 +915,20 @@ func _option_tile(sid: String,o: Dictionary) -> Control:
 # Recruitable unit cards with cost, turns, upkeep and the men drawn from the settlement; locked
 # units show why. Recruiting queues the unit on the army (see the army panel).
 
-func open_recruitment(army_id: String):
+var recruit_mode := "local" # local or global (TW:WH3's two recruit buttons)
+
+# Open the recruitment panel above the army. It stays open while units are queued; it closes only
+# with its Close button, the same recruit button again, Esc, or when the army is deselected.
+func open_recruitment(army_id: String,mode := "local"):
  close_building_browser()
  recruit_army = army_id
+ recruit_mode = mode
  if selected_army == army_id: show_army(army_id,army_location)
+
+# A recruit button: opens that mode, switches modes, or closes the panel when it is that mode's.
+func toggle_recruitment(army_id: String,mode: String):
+ if recruit_army == army_id and recruit_mode == mode: close_recruitment()
+ else: open_recruitment(army_id,mode)
 
 func close_recruitment():
  var was = recruit_army
@@ -915,11 +941,28 @@ func recruitment_visible() -> bool:
 func _fill_recruitment():
  if recruitment_visible(): show_army(recruit_army,army_location)
 
-# The drawer (TW:WH3 local recruitment): one card per unit your buildings in this province offer,
-# turns above the card, cost and upkeep below; click a card to queue it. Unavailable units are
-# greyed with the reason in their tooltip.
+# Capacity slots (TW:WH3 squares): one per unit the lord recruits at normal speed, filled by queued
+# units; queued units beyond them are overflow (orange).
+class CapacitySlots extends Control:
+ var capacity := 3
+ var queued := 0
+ func _init(c: int,q: int):
+  capacity = c
+  queued = q
+  custom_minimum_size = Vector2(c*18,16)
+  mouse_filter = Control.MOUSE_FILTER_PASS
+ func _draw():
+  for i in capacity:
+   var r = Rect2(i*18,1,14,14)
+   draw_rect(r,Color("3f9b3a") if i<queued else Color(0,0,0,0.5))
+   draw_rect(r,Color("c9a45a"),false,1.0)
+
+# The recruitment panel (TW:WH3): local (this province's buildings) or global (the whole realm, at
+# a higher cost and twice the turns). Each card shows its turns above, then cost, upkeep and men
+# below; locked cards are greyed with the reason underneath. Click a card to queue it; the panel
+# stays open.
 func _recruitment_drawer(army_id: String) -> Control:
- var r = data.recruitment(army_id)
+ var r = data.recruitment(army_id,recruit_mode)
  var a = data.army(army_id)
  var box = VBoxContainer.new()
  box.name = "RecruitDrawer"
@@ -927,11 +970,39 @@ func _recruitment_drawer(army_id: String) -> Control:
  recruit_box = box
  var head = HBoxContainer.new()
  head.add_theme_constant_override("separation",10)
- var title = UiKit.header("Recruit in %s" % r.province_name if r.ok else "Recruitment unavailable",16)
- head.add_child(title)
+ var title_text = ("Global recruitment" if recruit_mode == "global" else "Recruit in %s" % r.province_name) if r.ok else "Recruitment unavailable"
+ head.add_child(UiKit.header(title_text,16))
  if r.ok:
-  var towns = ", ".join(r.settlements.map(func(t): return "%s %s" % [t.name,UiKit.format_int(t.population)]))
-  head.add_child(UiKit.label("Population: %s (each keeps at least %s)" % [towns,UiKit.format_int(r.min_population)],13,UiKit.TEXT_DIM))
+  var note = "Your whole realm · %s× cost, %d× turns" % [str(r.global_cost),r.global_turns] if recruit_mode == "global" else "Population: %s" % ", ".join(r.settlements.map(func(t): return "%s %s" % [t.name,UiKit.format_int(t.population)]))
+  var nl = UiKit.label(note,13,UiKit.TEXT_DIM)
+  nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  nl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+  nl.tooltip_text = note+"\nEach source settlement keeps at least %s people." % UiKit.format_int(r.min_population)
+  nl.mouse_filter = Control.MOUSE_FILTER_PASS
+  head.add_child(nl)
+ else:
+  var sp = Control.new()
+  sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  head.add_child(sp)
+ var cap = HBoxContainer.new()
+ cap.name = "Capacity"
+ cap.add_theme_constant_override("separation",6)
+ cap.tooltip_text = "Recruitment capacity: %d units at normal speed. Each unit beyond it takes extra turns (orange). Buildings, traits and skills will raise it." % r.capacity
+ cap.mouse_filter = Control.MOUSE_FILTER_PASS
+ cap.add_child(UiKit.label("Capacity",13,UiKit.TEXT_DIM))
+ var slots = CapacitySlots.new(r.capacity,r.queued)
+ slots.name = "CapacitySlots"
+ slots.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+ cap.add_child(slots)
+ if r.queued>r.capacity: cap.add_child(UiKit.label("+%d" % (r.queued-r.capacity),13,Cards.QUEUE_COLORS.overflow,UiKit.FONT_BOLD))
+ head.add_child(cap)
+ var close = Button.new()
+ close.name = "CloseRecruitment"
+ close.text = "Close"
+ close.focus_mode = Control.FOCUS_NONE
+ close.tooltip_text = "Close the recruitment panel (Esc)"
+ close.pressed.connect(close_recruitment)
+ head.add_child(close)
  box.add_child(head)
  if not r.ok:
   box.add_child(UiKit.label("Cannot recruit here: %s." % r.reason,14,Color("ef8a6a")))
@@ -943,21 +1014,38 @@ func _recruitment_drawer(army_id: String) -> Control:
   var u = data.unit_type(o.unit)
   var col = VBoxContainer.new()
   col.add_theme_constant_override("separation",1)
-  var turns = UiKit.label("%d turn%s" % [o.turns,"" if o.turns == 1 else "s"],12,Color("f1d79a") if o.available else UiKit.TEXT_DIM,UiKit.FONT_BOLD)
+  col.custom_minimum_size.x = 72
+  var turns = UiKit.label("%d turn%s" % [o.turns,"" if o.turns == 1 else "s"],12,(Cards.QUEUE_COLORS.overflow.lightened(0.2) if o.overflow else Color("f1d79a")) if o.available else UiKit.TEXT_DIM,UiKit.FONT_BOLD)
   turns.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
   col.add_child(turns)
-  var tip = "%s\n%s\nCost %s gold · Upkeep %d per turn · %d men from the population\n%s" % [u.display_name,u.description,UiKit.format_int(o.cost),o.upkeep,o.men,
-   "Click to recruit (%d turn%s)." % [o.turns,"" if o.turns == 1 else "s"] if o.available else "Unavailable: %s." % ", ".join(o.reasons)]
+  var tip = "%s\n%s\nCost %s gold · %d turn%s%s · Upkeep %d per turn · %d men from the population\n%s" % [u.display_name,u.description,UiKit.format_int(o.cost),o.turns,"" if o.turns == 1 else "s",
+   " (over capacity)" if o.overflow else "",o.upkeep,o.men,
+   "Click to recruit. The panel stays open." if o.available else "Unavailable: %s." % ", ".join(o.reasons)]
   var card = Cards.unit_card(u,{"unit":o.unit,"men":o.men,"max_men":o.men},a.faction_data,studio,tip,(func():
-   var res = data.recruit(army_id,o.unit)
+   var res = data.recruit(army_id,o.unit,recruit_mode)
    if not res.ok: toast(", ".join(res.reasons))) if o.available else Callable())
   card.name = "Recruit_"+o.unit
   card.set_card_scale(0.8)
   if not o.available: card.modulate = Color(0.45,0.45,0.45)
   col.add_child(card)
-  var cost = UiKit.label(UiKit.format_int(o.cost),12,UiKit.TEXT if o.available else UiKit.TEXT_DIM)
+  var cost = UiKit.label("%s gold" % UiKit.format_int(o.cost),12,UiKit.TEXT if o.available else UiKit.TEXT_DIM)
+  cost.name = "Cost"
   cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
   col.add_child(cost)
+  var info = UiKit.label("%d men · %d/turn" % [o.men,o.upkeep],11,UiKit.TEXT_DIM)
+  info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+  info.tooltip_text = "%d men · upkeep %d gold per turn" % [o.men,o.upkeep]
+  info.mouse_filter = Control.MOUSE_FILTER_PASS
+  col.add_child(info)
+  if not o.available:
+   var why = UiKit.label(o.reasons[0] if not o.reasons.is_empty() else "Locked",11,Color("ef8a6a"))
+   why.name = "Locked"
+   why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+   why.custom_minimum_size.x = 72
+   why.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+   why.tooltip_text = ", ".join(o.reasons)
+   why.mouse_filter = Control.MOUSE_FILTER_PASS
+   col.add_child(why)
   row.add_child(col)
  box.add_child(row)
  box.add_child(UiKit.divider(colors.trim))

@@ -82,6 +82,7 @@ var pins_root: Control
 var settlement_anchors = {}
 var overlays = {"borders":true,"settlements":true,"armies":true}
 var press_pos = Vector2.ZERO
+var map_press := false # the left press landed on the map (not on the interface); only then is the release a map click
 var terrain_material: ShaderMaterial
 var minimap
 var movement_overlay
@@ -172,6 +173,17 @@ func _ready():
  for arg in OS.get_cmdline_user_args():
   if arg.begins_with("--browser=") and ui.selected_settlement != "": ui.open_building_browser(ui.selected_settlement,int(arg.get_slice("=",1)))
  if "--army" in OS.get_cmdline_user_args(): select_army()
+ # --recruit-demo (captures): the host at Goldspire with a mixed queue (local green, global blue,
+ # overflow orange) and the recruitment panel open.
+ if "--recruit-demo" in OS.get_cmdline_user_args():
+  var gp = WorldMap.settlement_position(GOLDSPIRE_ID)
+  ui_data.state.army_state[COMMANDER_ARMY].position = [gp.x,gp.y]
+  ui_data.state.army_state[COMMANDER_ARMY].garrison = GOLDSPIRE_ID
+  ui_data.state.treasury[ui_data.player_faction_id()] += 20000
+  place_commander()
+  for m in ["local","local","global","local","local"]: ui_data.recruit(COMMANDER_ARMY,"peasant_levy",m)
+  select_army()
+  ui.open_recruitment(COMMANDER_ARMY)
  for arg in OS.get_cmdline_user_args():
   var xz = arg.get_slice("=",1).split(",")
   if arg.begins_with("--order="):
@@ -1166,15 +1178,18 @@ func _unhandled_input(event):
     desired_distance = clampf(desired_distance*1.13,10,210)
    if event.button_index == MOUSE_BUTTON_LEFT:
     press_pos = event.position
+    map_press = true
     if rmb_held: cancel_move_preview()
    if event.button_index == MOUSE_BUTTON_RIGHT and army_selected():
     rmb_held = true
     preview_key = Vector2i(1<<20,0)
-  elif event.button_index == MOUSE_BUTTON_LEFT and event.position.distance_to(press_pos)<6:
+  elif event.button_index == MOUSE_BUTTON_LEFT and map_press and event.position.distance_to(press_pos)<6:
+   map_press = false
    var hit = pick(event.position)
    if hit.begins_with("army:"): select_army(hit.get_slice(":",1))
    elif hit != "": select_settlement(hit)
    else: deselect()
+  elif event.button_index == MOUSE_BUTTON_LEFT: map_press = false
   elif event.button_index == MOUSE_BUTTON_RIGHT:
    var held = rmb_held
    rmb_held = false
@@ -1543,7 +1558,20 @@ func run_checks():
  var pop0 = ui_data.settlement("crownwatch").population
  ui.recruit_box.find_child("Recruit_peasant_levy",true,false).pressed.emit()
  assert(ui_data.army(COMMANDER_ARMY).queue.size()==1 and ui_data.settlement("crownwatch").population<pop0)
- ui_data.cancel_recruit(COMMANDER_ARMY,0)
+ # TW:WH3 recruitment: the panel stays open across clicks; past the capacity (3) units overflow
+ # (orange); global recruitment (blue) costs more; every cancel refunds in full.
+ ui_data.state.treasury[ui_data.player_faction_id()] += 5000
+ for i in 3:
+  ui.recruit_box.find_child("Recruit_peasant_levy",true,false).pressed.emit()
+  assert(ui.recruitment_visible())
+ ui.toggle_recruitment(COMMANDER_ARMY,"global")
+ assert(ui.recruitment_visible() and ui.recruit_mode == "global")
+ ui.recruit_box.find_child("Recruit_peasant_levy",true,false).pressed.emit()
+ var kinds = ui_data.army(COMMANDER_ARMY).queue.map(func(q): return q.kind)
+ assert(kinds == ["local","local","local","overflow","overflow"],str(kinds))
+ assert(ui.recruitment_visible())
+ while not ui_data.army(COMMANDER_ARMY).queue.is_empty(): ui_data.cancel_recruit(COMMANDER_ARMY,0)
+ ui_data.state.treasury[ui_data.player_faction_id()] -= 5000
  assert(ui_data.resources().treasury==gold0 and ui_data.settlement("crownwatch").population==pop0)
  ui.close_recruitment()
  ui_data.state.army_state[COMMANDER_ARMY] = saved_army
@@ -1567,7 +1595,7 @@ func run_checks():
   assert(goldspire_level==level_now)
  ui.clear_selection()
  reset_camera()
- print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn; construction upgrades goldspire's stage; army movement preview (hold right click, no numbers), selection without camera moves, cycling at the current zoom, End Turn warnings, orders, blocking and garrison; deployment screen place, orders, view and back; battle report replay, timeline and jump; autosave and save/load round trip; esc order and pause menu; recruitment queue and refund")
+ print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn; construction upgrades goldspire's stage; army movement preview (hold right click, no numbers), selection without camera moves, cycling at the current zoom, End Turn warnings, orders, blocking and garrison; deployment screen place, orders, view and back; battle report replay, timeline and jump; autosave and save/load round trip; esc order and pause menu; recruitment queue and refund, panel open across clicks, capacity overflow, global recruitment")
 
 # --- Movement grid bake ------------------------------------------------------------
 # Writes data/movement_grid.json, the terrain grid army movement reads (core/movement.gd), by

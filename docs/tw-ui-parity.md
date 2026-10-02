@@ -188,11 +188,11 @@ Legend:
 | C11 | Notification jumps | Matched (owner) | Pan at the current zoom |
 | C12 | Hold Space for overlays | Matched | Settlement banners at any zoom; debug traffic pause moved to F8 |
 | A1 | Army panel structure | Matched (close) | Three parts (L7): lord card, greyed equipment, traits and stances, movement; recruit buttons above the cards; upkeep, replenishment, greyed stance (right column ours) |
-| A2 | Recruit button above the cards, recruitment drawer | Matched | Moved above the cards in the layout pass (gamepressure); local recruitment |
-| A3 | Local recruitment from the province's buildings | Matched | Global recruitment: not yet possible |
-| A4 | Recruitment capacity | By design | Constitution open item |
+| A2 | Recruit buttons below the cards open the recruitment panel above the army | Matched (owner) | Local and Global buttons below the cards (section 14); the panel stays open across clicks and closes with Close, its button again, Esc or deselection |
+| A3 | Local and global recruitment | Matched | Local: the province's buildings, own territory. Global: anywhere, the whole realm's units, 2x cost and 2x turns (placeholders) |
+| A4 | Recruitment capacity | Matched | 3 per lord per turn (data); overflow +1 turn per started batch beyond it; slots shown in the panel; hooks for buildings, traits, skills. Separate local and global capacities: unverified (ours is shared) |
 | A5 | Recruiting locks movement | By design | Owner decision 2026-10-02: no lock |
-| A6 | Queued units greyed with turns, always visible | Matched (owner) | Cards narrow so 20 fit |
+| A6 | Queued units greyed with turns and a colour banner, always visible | Matched | Green local, blue global, orange overflow (wiki); cards narrow so 20 fit |
 | A7 | Click a queued card to cancel | Matched (owner) | |
 | A8 | Unit card tooltips | Partial | Rich styling (bold title); sticky or inspectable tooltips not yet |
 | A9 | Right-click on a unit card | Open | |
@@ -256,3 +256,31 @@ Key changes this pass:
 - F (follow army) and G (Goldspire bookmark) are ours, with no TW key.
 - Space: hold for overlays on the map, and skip during the AI turn.
 - R is TW's character move speed.
+
+## 14. Recruitment research (round 3, 2026-10-02) and the rebuilt flow
+
+Sources:
+- totalwarwarhammer wiki, [Recruitment](https://totalwarwarhammer.fandom.com/wiki/Recruitment) and [Global recruitment](https://totalwarwarhammer.fandom.com/wiki/Global_recruitment). The pages themselves returned HTTP 402 to our fetcher, so these findings rest on their search-result extracts.
+- gamepressure, [Army: recruitment and replenishment](https://www.gamepressure.com/total-war-warhammer-3/army-recruiting-and-replenishment/z8f97b) and [Recruitment](https://www.gamepressure.com/total-war-warhammer-3/recruitment/z7f980).
+
+| # | TW:WH3 | Conf. | Ours |
+|---|---|---|---|
+| R1 | Two recruit buttons on the army panel: local and global | S | "Local recruitment" and "Global recruitment" below the unit cards (owner); they open the panel above the army |
+| R2 | Local: units from the buildings in the province the army stands in | C | Same (constitution: province-wide recruitment) |
+| R3 | Global: units available at any of your settlements across the faction, at about double the upfront cost and double the time (a 2-turn unit takes 4). The wiki says it needs encampment outside your territory; gamepressure doesn't mention that | C (cost and time), S (conditions) | Anywhere, including abroad, with no stance (owner); 2x cost and 2x turns as placeholders |
+| R4 | Recruitment capacity: a lord recruits up to 3 units in a turn; more units take one or more extra turns; buildings, traits and skills raise the capacity | C (wiki, gamepressure) | 3 by default; each started batch of 3 beyond it adds a turn (placeholder); hooks for buildings (`recruit_capacity` effect), traits and skills (the general's `recruit_capacity`) |
+| R5 | Capacity is shown as small squares | C (gamepressure) | Capacity squares in the panel, filled by queued units, with "+N" for overflow |
+| R6 | Queued units show a banner: green regular, blue global, orange over the limits | C (wiki) | Same colours, with the turns left on the banner |
+| R7 | Turns above the unit card, upkeep below, cost at the top | C (gamepressure) | Turns above (orange when the next unit would overflow), cost, then men and upkeep below; locked units are greyed with the reason underneath |
+| R8 | Whether local and global have separate capacities: gamepressure's example shows 2 global and 2 local squares; the wiki says "regular or global" limits | ? | One shared capacity (owner wording); left open |
+| R9 | Recruiting locks the lord's movement | C | No lock (owner, deliberate difference; constitution) |
+
+**The playtest bug (the drawer closed after one click):**
+1. Unit cards act on the mouse press. Queuing a unit changes the campaign data, and the panel rebuilds at once.
+2. The card under the mouse was freed inside its own input callback, before Godot marked the press as handled. The press fell through to the map.
+3. The release then had no control to go to (its card was gone) and fell through too.
+4. main.gd saw a press and a release at the same spot and treated them as a click on empty ground, which deselected the army and closed the panel.
+
+Fixed in two places:
+- Cards accept the press before acting.
+- The map counts a release as a click only if it also received the press.

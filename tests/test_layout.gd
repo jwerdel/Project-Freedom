@@ -151,6 +151,19 @@ func test_drawer_never_covers_the_event_feed_or_round_menu():
  var ring_left = vp.x+ui.find_child("RoundMenu",true,false).offset_left
  assert_lt(panel_right,feed_left)
  assert_lt(panel_right,ring_left)
+ # Its content never makes it wider than that (it did: the columns' minimum widths added up to
+ # more, and the panel grew into the feed). Checked with the drawer open and a full queue.
+ var s = data.state
+ s.treasury.house_aurek = 100000
+ var gp = load("res://core/world_map.gd").settlement_position("goldspire_rock")
+ s.army_state.aurek_host.position = [gp.x,gp.y]
+ s.army_state.aurek_host.garrison = "goldspire_rock"
+ for i in 6: data.recruit("aurek_host","peasant_levy")
+ ui.show_army("aurek_host","Goldspire")
+ ui.open_recruitment("aurek_host")
+ assert_lte(ui.bottom_panel.get_combined_minimum_size().x,ui.BOTTOM_WIDTH,"the army panel with the drawer fits its width")
+ ui.show_settlement("goldspire_rock")
+ assert_lte(ui.bottom_panel.get_combined_minimum_size().x,ui.BOTTOM_WIDTH,"the province panel fits its width")
  # The feed ends above the round menu and its warning.
  assert_lt(ui.events_frame.offset_bottom,ui.warning_box.offset_top)
 

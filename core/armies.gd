@@ -12,7 +12,8 @@ extends RefCounted
 #  - Army cap: max_units cards per army (general included, queued units counted). PLACEHOLDER.
 #  - Max armies per faction is OPEN; general cost and generated names are STUBS until the character
 #    and family system exists.
-# OPEN (not implemented): recruitment slots per settlement, global recruitment, raise banners,
+# Global recruitment and recruitment capacity: see "Recruitment modes and capacity" below.
+# OPEN (not implemented): recruitment slots per settlement, raise banners,
 # disbanding a whole army or its general, how a negative treasury is handled, who counts as an enemy
 # for replenishment once diplomacy exists (now: any region the army's faction does not own).
 
@@ -115,46 +116,110 @@ static func unlocked_by(unit_id: String) -> String:
    if unit_id in ch.levels[i].effects.get("unlocks",[]): return "%s: %s" % [ch.name,ch.levels[i].name]
  return "a building"
 
-static func can_recruit(state,army_id: String,unit_id: String) -> Dictionary:
+# --- Recruitment modes and capacity (TW:WH3; constitution, confirmed 2026-10-02) ---------------
+# Local: units from the faction's buildings in the army's province, in its own territory (above).
+# Global: anywhere (also abroad), every unit the faction's buildings unlock anywhere, at
+# global.cost_multiplier x the gold and global.turns_multiplier x the turns.
+# Capacity: capacity() units recruit at their normal time; further units are overflow and take
+# extra turns (data/recruitment.json capacity). Queue entries carry their kind for the TW banner
+# (local green, global blue, overflow orange). Recruiting never locks movement (owner decision).
+
+const MODES = ["local","global"]
+
+# Units this army's lord recruits at normal speed. Hooks: buildings in the army's province with the
+# effect recruit_capacity, and the general's own recruit_capacity (traits and skills, from the
+# character system; none exist yet).
+static func capacity(state,army_id: String) -> int:
  var a = army(state,army_id)
+ var n = int(data().recruitment.capacity.per_turn)
  var ctx = recruit_context(state,army_id)
+ for sid in ctx.settlements:
+  for b in Buildings.built(state,sid): n += int(Buildings.level_data(b.chain,b.level).effects.get("recruit_capacity",0))
+ n += int(a.get("commander",{}).get("recruit_capacity",0))
+ return maxi(1,n)
+
+# Extra turns for a unit queued at position `pos` (0-based) in a queue with capacity `cap`.
+static func overflow_turns(pos: int,cap: int) -> int:
+ if pos<cap: return 0
+ return (1+(pos-cap)/cap)*int(data().recruitment.capacity.overflow_extra_turns)
+
+# Global recruitment: every settlement of the faction counts as a source.
+static func global_context(state,army_id: String) -> Dictionary:
+ var a = army(state,army_id)
+ var region = WorldMap.region_at(Movement.position(state,army_id))
+ var own = state.settlements_of(a.faction)
+ own.sort()
+ if own.is_empty(): return {"ok":false,"reason":"Your house holds no settlement","region":region,"province":"","settlements":[]}
+ return {"ok":true,"reason":"","region":region,"province":"","settlements":own}
+
+static func mode_context(state,army_id: String,mode: String) -> Dictionary:
+ return global_context(state,army_id) if mode == "global" else recruit_context(state,army_id)
+
+# Gold and turns of a unit in a mode (before overflow).
+static func mode_cost(unit_id: String,mode: String) -> int:
+ var c = int(UnitTypes.get_type(unit_id).recruitment.cost)
+ return int(ceil(c*float(data().recruitment.global.cost_multiplier))) if mode == "global" else c
+
+static func mode_turns(unit_id: String,mode: String) -> int:
+ var t = int(UnitTypes.get_type(unit_id).recruitment.turns)
+ return t*int(data().recruitment.global.turns_multiplier) if mode == "global" else t
+
+static func can_recruit(state,army_id: String,unit_id: String,mode := "local") -> Dictionary:
+ var a = army(state,army_id)
+ var ctx = mode_context(state,army_id,mode)
  if not ctx.ok: return {"ok":false,"reasons":[ctx.reason],"settlement":""}
  var u = UnitTypes.get_type(unit_id)
  if u.recruitment == null: return {"ok":false,"reasons":["Cannot be recruited"],"settlement":""}
  var sid = recruit_source(state,ctx,unit_id)
  var reasons = []
- if sid == "": reasons.append("Requires %s in this province" % unlocked_by(unit_id))
+ if sid == "": reasons.append(("Requires %s in your realm" if mode == "global" else "Requires %s in this province") % unlocked_by(unit_id))
  var s = state.settlements[sid] if sid != "" else {"population":0.0}
+ var cost = mode_cost(unit_id,mode)
  if card_count(a)+1>max_units(): reasons.append("Army is full (%d units)" % max_units())
  if int(state.treasury.get(a.faction,0))<0: reasons.append("In debt: no recruitment until the treasury is out of debt")
- elif int(state.treasury.get(a.faction,0))<int(u.recruitment.cost): reasons.append("Not enough gold (%d needed)" % int(u.recruitment.cost))
+ elif int(state.treasury.get(a.faction,0))<cost: reasons.append("Not enough gold (%d needed)" % cost)
  if sid != "" and float(s.population)-int(u.size)<float(data().recruitment.min_population):
   reasons.append("Too few people in %s (keeps at least %d)" % [WorldMap.region(sid).settlement.name,int(data().recruitment.min_population)])
  return {"ok":reasons.is_empty(),"reasons":reasons,"settlement":sid}
 
-# Recruitment panel entries: every recruitable unit type with cost, turns, upkeep, men and reasons.
-static func options(state,army_id: String) -> Array:
+# Recruitment panel entries for a mode: every recruitable unit type with cost, turns (including the
+# overflow the next recruit would get), upkeep, men and reasons.
+static func options(state,army_id: String,mode := "local") -> Array:
  var out = []
+ var a = army(state,army_id)
+ var extra = overflow_turns(a.queue.size(),capacity(state,army_id))
  for id in recruitable_types():
   var u = UnitTypes.get_type(id)
-  var check = can_recruit(state,army_id,id)
-  out.append({"unit":id,"name":u.display_name,"cost":int(u.recruitment.cost),"turns":int(u.recruitment.turns),
+  var check = can_recruit(state,army_id,id,mode)
+  out.append({"unit":id,"name":u.display_name,"cost":mode_cost(id,mode),"turns":mode_turns(id,mode)+extra,"overflow":extra>0,"mode":mode,
    "upkeep":int(round(float(u.placeholder_stats.upkeep)*float(Economy.data().upkeep.army_upkeep_multiplier))),"men":int(u.size),
    "available":check.ok,"reasons":check.reasons,"settlement":check.settlement})
  return out
 
-# Queue a unit: gold and men are taken now. Returns {ok, reasons}.
-static func recruit(state,army_id: String,unit_id: String) -> Dictionary:
- var check = can_recruit(state,army_id,unit_id)
+# Queue a unit: gold and men are taken now. Its kind is the mode, or "overflow" past the capacity.
+# Returns {ok, reasons, settlement, kind, turns}.
+static func recruit(state,army_id: String,unit_id: String,mode := "local") -> Dictionary:
+ var check = can_recruit(state,army_id,unit_id,mode)
  if not check.ok: return check
  var a = army(state,army_id)
  var u = UnitTypes.get_type(unit_id)
- state.treasury[a.faction] -= int(u.recruitment.cost)
+ var cost = mode_cost(unit_id,mode)
+ var extra = overflow_turns(a.queue.size(),capacity(state,army_id))
+ var turns = mode_turns(unit_id,mode)+extra
+ state.treasury[a.faction] -= cost
  state.settlements[check.settlement].population = float(state.settlements[check.settlement].population)-int(u.size)
- a.queue.append({"unit":unit_id,"settlement":check.settlement,"turns_left":int(u.recruitment.turns),"turns_total":int(u.recruitment.turns),"cost":int(u.recruitment.cost),"men":int(u.size)})
+ a.queue.append({"unit":unit_id,"settlement":check.settlement,"turns_left":turns,"turns_total":turns,"cost":cost,"men":int(u.size),"mode":mode,"extra":extra})
+ check.kind = queue_kind(a.queue[-1])
+ check.turns = turns
  return check
 
-# Cancel a queued unit: full refund of gold and men. Returns {gold, men}.
+# Banner kind of a queue entry: overflow (orange) beats global (blue) beats local (green).
+static func queue_kind(q: Dictionary) -> String:
+ if int(q.get("extra",0))>0: return "overflow"
+ return "global" if q.get("mode","local") == "global" else "local"
+
+# Cancel a queued unit: full refund of gold and men. Later overflow units move up into the freed
+# slot and lose the extra turns they no longer need. Returns {gold, men}.
 static func cancel_recruit(state,army_id: String,index: int) -> Dictionary:
  var a = army(state,army_id)
  if index<0 or index>=a.queue.size(): return {"gold":0,"men":0}
@@ -162,6 +227,13 @@ static func cancel_recruit(state,army_id: String,index: int) -> Dictionary:
  a.queue.remove_at(index)
  state.treasury[a.faction] += int(q.cost)
  state.settlements[q.settlement].population = float(state.settlements[q.settlement].population)+int(q.men)
+ var cap = capacity(state,army_id)
+ for i in a.queue.size():
+  var e = a.queue[i]
+  var now = overflow_turns(i,cap)
+  if now<int(e.get("extra",0)):
+   e.turns_left = maxi(1,int(e.turns_left)-(int(e.extra)-now))
+   e.extra = now
  return {"gold":int(q.cost),"men":int(q.men)}
 
 # End Turn: queued units count down; finished ones join their army at full strength.

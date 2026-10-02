@@ -277,7 +277,10 @@ func cancel_construction(settlement_id: String) -> int:
 func army(id: String) -> Dictionary:
  var a = state.army_state[id]
  var queue = []
- for q in a.queue: queue.append(q.duplicate())
+ for q in a.queue:
+  var e = q.duplicate()
+  e.kind = Armies.queue_kind(q) # TW banner: local green, global blue, overflow orange
+  queue.append(e)
  return {"id":id,"display_name":a.display_name,"faction":a.faction,"faction_data":faction(a.faction),
   "commander":{"unit":"commander","name":a.commander.name,"rank":int(a.commander.rank),"men":1,"max_men":1},
   "units":a.units.duplicate(true),"queue":queue,"upkeep":Economy.army_upkeep(state,id),"max_units":Armies.max_units(),
@@ -294,16 +297,20 @@ func army_ids() -> Array:
 # settlement_name, population, min_population, options (see Armies.options)}.
 # Recruitment for an army (province-wide, core/armies.gd): {ok, reason, province, province_name,
 # settlements [{id, name, population}], min_population, options}.
-func recruitment(army_id: String) -> Dictionary:
- var ctx = Armies.recruit_context(state,army_id)
+# The recruitment panel for a mode (local or global, TW:WH3): where, the sources' population,
+# capacity slots (units queued vs the lord's capacity) and the recruitable units.
+func recruitment(army_id: String,mode := "local") -> Dictionary:
+ var ctx = Armies.mode_context(state,army_id,mode)
  var towns = []
  for sid in ctx.settlements: towns.append({"id":sid,"name":WorldMap.region(sid).settlement.name,"population":int(state.settlements[sid].population)})
  return {"ok":ctx.ok,"reason":ctx.reason,"province":ctx.province,"province_name":WorldMap.province(ctx.province).name if ctx.province != "" else "",
-  "settlements":towns,"min_population":int(Armies.data().recruitment.min_population),"options":Armies.options(state,army_id)}
+  "settlements":towns,"min_population":int(Armies.data().recruitment.min_population),"options":Armies.options(state,army_id,mode),"mode":mode,
+  "capacity":Armies.capacity(state,army_id),"queued":state.army_state[army_id].queue.size(),
+  "global_cost":float(Armies.data().recruitment.global.cost_multiplier),"global_turns":int(Armies.data().recruitment.global.turns_multiplier)}
 
-func recruit(army_id: String,unit_id: String) -> Dictionary:
+func recruit(army_id: String,unit_id: String,mode := "local") -> Dictionary:
  if state.army_state[army_id].faction != state.player_faction: return {"ok":false,"reasons":["Not your army"]}
- var r = Armies.recruit(state,army_id,unit_id)
+ var r = Armies.recruit(state,army_id,unit_id,mode)
  if r.ok: changed.emit()
  return r
 

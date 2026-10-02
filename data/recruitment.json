@@ -2,7 +2,17 @@
   "_note": "PLACEHOLDER recruitment and army tuning. Every number here is a tunable placeholder, not approved balance. Rules (constitution, Economy and settlements; Battles and armies): recruitment draws directly from the settlement's population; disbanded survivors return to population; replenishment is automatic in friendly regions without population cost and faster in populous regions, and costs gold in enemy territory. core/armies.gd applies these values. Unit size, cost and recruitment time are in data/units/*.json.",
   "recruitment": {
     "_note": "Province-wide recruitment (constitution, confirmed 2026-10-02): an army standing anywhere in a region its faction owns can recruit. Units come from the faction's buildings (unlocks) in that province; each recruit's men come from the most populous settlement there that unlocks it, which may not fall below min_population. Gold and men are taken when a unit is queued; cancelling refunds both in full.",
-    "min_population": 500
+    "min_population": 500,
+    "capacity": {
+      "_note": "TW:WH3 recruitment capacity (constitution, confirmed 2026-10-02): a lord recruits up to per_turn units at their normal time; each further unit is overflow and takes extra turns: overflow_extra_turns for every started batch of per_turn units beyond the capacity (the 1st to 3rd unit over: +1, the 4th to 6th: +2, with per_turn 3). Queued units fill the slots; a cancelled one frees its slot, shortening later overflow units. Buildings (effect recruit_capacity in data/buildings.json), traits and skills (the general's recruit_capacity, from the character system) can raise it: hooks in core/armies.gd capacity(). PLACEHOLDER numbers.",
+      "per_turn": 3,
+      "overflow_extra_turns": 1
+    },
+    "global": {
+      "_note": "TW:WH3 global recruitment (constitution, confirmed 2026-10-02): available anywhere, also outside your territory, from every unit your faction's buildings unlock anywhere; costs cost_multiplier times the gold and turns_multiplier times the turns. Men come from the faction's most populous settlement that unlocks the unit, which keeps min_population. PLACEHOLDER numbers.",
+      "cost_multiplier": 2.0,
+      "turns_multiplier": 2
+    }
   },
   "army_cap": {
     "_note": "PLACEHOLDER, TW-style: at most max_units cards per army, the general included, queued units counted. The constitution rejects the earlier 6-10 cap; 20 stands until the army performance test sets a real budget.",
