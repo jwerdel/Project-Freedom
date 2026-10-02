@@ -17,6 +17,7 @@ const DIR = "user://saves"
 const AUTOSAVES = 3
 const QUICKSAVE = "quicksave"
 const THUMB = Vector2i(320,200)
+const BACKDROP = Vector2i(960,600)
 # Migration hook: MIGRATIONS[n] turns a schema-n save dictionary into schema n+1. Add one each
 # time SCHEMA rises (and keep OLDEST at the first version still convertible).
 const MIGRATIONS = {}
@@ -28,6 +29,9 @@ static func path_of(file: String) -> String:
 
 static func thumb_of(file: String) -> String:
  return "%s/%s.png" % [dir,file]
+
+static func backdrop_path() -> String:
+ return dir+"/menu_backdrop.jpg"
 
 # A file name from a player-chosen save name.
 static func file_for(name: String) -> String:
@@ -56,6 +60,10 @@ static func save(state,file: String,name: String,kind := "manual",thumbnail: Ima
   var img = thumbnail.duplicate()
   img.resize(THUMB.x,THUMB.y,Image.INTERPOLATE_BILINEAR)
   _write_atomic(thumb_of(file),img.save_png_to_buffer())
+  # The main menu's backdrop: the latest saved view of the campaign, larger than a thumbnail.
+  var big = thumbnail.duplicate()
+  big.resize(BACKDROP.x,BACKDROP.y,Image.INTERPOLATE_BILINEAR)
+  _write_atomic(backdrop_path(),big.save_jpg_to_buffer(0.85))
  elif FileAccess.file_exists(thumb_of(file)): DirAccess.remove_absolute(thumb_of(file))
  return {"ok":true,"file":file,"path":path,"bytes":text.length(),"ms":(Time.get_ticks_usec()-t0)/1000.0,"meta":meta}
 

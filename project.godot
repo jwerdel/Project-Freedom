@@ -2,7 +2,7 @@ config_version=5
 
 [application]
 config/name="Project Freedom — The Greywater March"
-run/main_scene="res://Main.tscn"
+run/main_scene="res://ui/main_menu.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 
 [display]

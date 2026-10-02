@@ -1191,3 +1191,29 @@ func _fill_chronicle():
 
 func chronicle_visible() -> bool:
  return chronicle_panel != null and chronicle_panel.visible
+
+# Esc: close the topmost open panel. Returns false when nothing was open (the map then opens
+# the pause menu).
+func close_top_panel() -> bool:
+ if deployment_visible():
+  deployment_screen.closed.emit()
+  return true
+ if report_visible():
+  close_report()
+  return true
+ if battle_visible():
+  close_battle()
+  return true
+ if recruitment_visible():
+  close_recruitment()
+  return true
+ if browser_visible():
+  close_building_browser()
+  return true
+ if chronicle_visible():
+  toggle_chronicle()
+  return true
+ if selected_settlement != "" or selected_army != "":
+  clear_selection()
+  return true
+ return false

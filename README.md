@@ -28,18 +28,28 @@ The launcher imports project assets automatically on the first run.
 | Mouse wheel | Zoom |
 | Home | Return to the overview |
 | Tab | Hide/show the interface |
-| Escape | Close the selection panels and show the interface |
+| Escape | Close the open panel (or show a hidden interface); with nothing open, open the pause menu |
+| Ctrl+S / Ctrl+L | Quicksave / quickload |
 | Left click | Select a settlement (province panel) or the commander (army panel) |
 | Hover | Tooltip with name, faction and province for settlements, the commander and unit cards |
 | C | Select the commander and open the army panel |
-| Space | Pause/resume trade traffic and mill |
 | F12 | Save a real in-engine screenshot in captures |
 | G | Jump the camera to Goldspire Rock (bookmark) |
-| F6 | Debug: cycle Goldspire Rock through its three stages |
-| F5 | Debug: cycle Greyhaven through its three stages |
-| F7 | Debug: cycle roads (dirt, gravel, stone) |
-| L | Toggle daylight / late afternoon |
 | End Turn button | Advance the year by one (adds "Year X begins" to Event Messages) |
+
+The game opens on the main menu (Continue, New Campaign, Load, Settings, Quit). End Turn autosaves first (three rotating slots); saves live in `.local` via `user://saves`. Add `-- --campaign` to the Godot command line to skip the menu and start the prototype campaign directly.
+
+### Debug keys
+
+On by default for now; switch them off in Settings (Debug keys).
+
+| Key | Action |
+|---|---|
+| F5 | Cycle Greyhaven through its three stages |
+| F6 | Cycle Goldspire Rock through its three stages |
+| F7 | Cycle roads (dirt, gravel, stone) |
+| L | Toggle daylight / late afternoon |
+| Space | Pause/resume trade traffic and mill |
 
 The campaign UI is modeled on Total War: Warhammer III (see constitution.md). Click a settlement to open its province stats and the province panel (settlement tabs with building slot cards); click the commander for the army panel with unit cards. Economy, events, province stats and buildings are mock values from `data/mock_ui.json`, read through `core/ui_data.gd`. Greyhaven and road stages (F5, F7) alter the actual 3D geometry. Pause affects traffic and the windmill; ambient water and cloth continue moving.
 

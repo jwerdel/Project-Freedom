@@ -17,6 +17,8 @@ const Battles = preload("res://core/battles.gd")
 const Deployment = preload("res://core/deployment.gd")
 const SaveSystem = preload("res://core/save_system.gd")
 const Session = preload("res://core/session.gd")
+const Settings = preload("res://core/settings.gd")
+const PauseMenu = preload("res://ui/pause_menu.gd")
 const BattleSim = preload("res://core/battle_sim.gd")
 const WALK_SPEED = 12.0 # map meters per second while the figure walks (presentation only)
 # Overview camera (Home). Framed so the coast and Goldspire's sea face sit above the bottom panel.
@@ -86,6 +88,7 @@ var preview_text = ""
 var forced_preview = null # capture flag --preview=x,z: preview this point instead of the mouse
 var loaded_from := ""    # "" prototype start, "new" campaign from the menu, or the save file loaded
 var unsaved := false     # campaign changed since the last save or load
+var pause_menu: Control
 
 func _ready():
  rng.seed = 87231
@@ -99,6 +102,7 @@ func _ready():
  # Captures and the self-test never touch the player's saves.
  if capture_mode or "--self-test" in OS.get_cmdline_user_args(): SaveSystem.dir = "user://capture_saves"
  kit = ProtoKit.shared()
+ Settings.apply(get_tree())
  make_environment()
  make_terrain()
  make_sea()
@@ -230,6 +234,7 @@ func _ready():
    if ev: ev.pressed.emit()
   if arg == "--report-timeline" and ui.report_visible(): ui.report_box.find_child("TimelineToggle",true,false).pressed.emit()
  if "--chronicle" in OS.get_cmdline_user_args(): ui.toggle_chronicle()
+ if "--pause-menu" in OS.get_cmdline_user_args(): open_pause_menu()
  if "--self-test" in OS.get_cmdline_user_args():
   run_checks()
  print("FREEDOM_READY | city=%s road=%s traffic=%s seed=%d" % [city_level,road_level,traffic.size(),ui_data.state.seed])
@@ -910,6 +915,7 @@ func hover_text(hit: String) -> String:
  return "%s\n%s\n%s" % [s.name,s.faction.name,s.province_name]
 
 func _unhandled_input(event):
+ if pause_menu != null: return
  if event is InputEventMouseButton:
   if event.pressed:
    if event.button_index == MOUSE_BUTTON_WHEEL_UP: desired_distance = clampf(desired_distance*0.88,10,210)
@@ -934,24 +940,28 @@ func _unhandled_input(event):
   return
  if event is InputEventKey and event.pressed and not event.echo:
   if event.keycode == KEY_HOME: reset_camera()
-  if event.keycode == KEY_SPACE: toggle_pause()
   if event.keycode == KEY_F12: request_capture()
   if event.keycode == KEY_TAB:
    ui.visible = not ui.visible
    pins_root.visible = ui.visible
   if event.keycode == KEY_ESCAPE:
-   ui.clear_selection()
-   refresh_army_overlays()
-   ui.visible = true
-   pins_root.visible = true
+   # Esc closes panels first (and shows a hidden interface); with nothing open it pauses.
+   if not ui.visible:
+    ui.visible = true
+    pins_root.visible = true
+   elif ui.close_top_panel(): refresh_army_overlays()
+   else: open_pause_menu()
   if event.keycode == KEY_G: select_settlement(GOLDSPIRE_ID)
   if event.keycode == KEY_C: cycle_player_army()
   if event.keycode == KEY_F: toggle_follow()
   if event.keycode == KEY_BACKSPACE and army_selected(): ui_data.cancel_army_order(COMMANDER_ARMY)
-  if event.keycode == KEY_F5: upgrade_city()
-  if event.keycode == KEY_F6: cycle_goldspire()
-  if event.keycode == KEY_F7: upgrade_roads()
-  if event.keycode == KEY_L: toggle_light()
+  # Debug keys (Settings: on by default for now; listed in README).
+  if Settings.debug_keys():
+   if event.keycode == KEY_SPACE: toggle_pause()
+   if event.keycode == KEY_F5: upgrade_city()
+   if event.keycode == KEY_F6: cycle_goldspire()
+   if event.keycode == KEY_F7: upgrade_roads()
+   if event.keycode == KEY_L: toggle_light()
 
 func camera_update(delta: float):
  var dir = Vector3.ZERO
@@ -959,7 +969,7 @@ func camera_update(delta: float):
  if Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN): dir.z+=1
  if Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT): dir.x-=1
  if Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT): dir.x+=1
- if Input.is_key_pressed(KEY_CTRL): dir = Vector3.ZERO # Ctrl+S is quicksave, not a camera move
+ if Input.is_key_pressed(KEY_CTRL) or pause_menu != null: dir = Vector3.ZERO # Ctrl+S is quicksave; paused means paused
  target += dir.rotated(Vector3.UP,yaw)*delta*distance*0.30
  target.x = clampf(target.x,-105,105)
  target.z = clampf(target.z,-90,65)
@@ -1026,6 +1036,9 @@ func _process(delta):
 
 func save_capture():
  await RenderingServer.frame_post_draw
+ # --save-as=Name (captures): save the campaign with this frame as its thumbnail.
+ for arg in OS.get_cmdline_user_args():
+  if arg.begins_with("--save-as="): save_named(arg.get_slice("=",1))
  var folder = ProjectSettings.globalize_path("res://captures")
  DirAccess.make_dir_recursive_absolute(folder)
  var args = OS.get_cmdline_user_args()
@@ -1109,6 +1122,24 @@ func run_checks():
  var ld = SaveSystem.load_save("self_test")
  assert(sv.ok and ld.ok and ld.state.state_hash() == ui_data.state.state_hash())
  print("SAVE_MS %.2f LOAD_MS %.2f SAVE_BYTES %d" % [sv.ms,ld.ms,sv.bytes])
+ # Esc order: panels close first; with nothing open the pause menu opens. Exiting with unsaved
+ # progress asks first.
+ ui.show_settlement(CITY_ID)
+ assert(ui.close_top_panel() and not ui.close_top_panel())
+ open_pause_menu()
+ assert(pause_menu != null and pause_menu.buttons.visible)
+ pause_menu._show_save()
+ assert(pause_menu.save_box.visible and pause_menu.save_name.text.contains("year"))
+ pause_menu._show_buttons()
+ unsaved = true
+ var exited = [false]
+ pause_menu._guard("Exit?",func(): exited[0] = true)
+ assert(pause_menu.confirm_box.visible and not exited[0])
+ pause_menu._show_buttons()
+ unsaved = false
+ pause_menu._guard("Exit?",func(): exited[0] = true)
+ assert(exited[0])
+ close_pause_menu()
  # Army movement: preview, blocked order, multi-turn order continuing on End Turn, garrison, cancel.
  # The army's state is restored afterwards so the capture is unchanged.
  var saved_army = ui_data.state.army_state[COMMANDER_ARMY].duplicate(true)
@@ -1213,7 +1244,7 @@ func run_checks():
   assert(goldspire_level==level_now)
  ui.clear_selection()
  reset_camera()
- print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn; construction upgrades goldspire's stage; army movement preview, orders, blocking and garrison; deployment screen place, orders, view and back; battle report replay, timeline and jump; autosave and save/load round trip; recruitment queue and refund")
+ print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn; construction upgrades goldspire's stage; army movement preview, orders, blocking and garrison; deployment screen place, orders, view and back; battle report replay, timeline and jump; autosave and save/load round trip; esc order and pause menu; recruitment queue and refund")
 
 # --- Movement grid bake ------------------------------------------------------------
 # Writes data/movement_grid.json, the terrain grid army movement reads (core/movement.gd), by
@@ -1279,10 +1310,17 @@ func bake_movement_grid():
  print("MOUNTAIN_CROSSINGS (max height, x): ",best.slice(0,6))
 
 # --- Saves ---------------------------------------------------------------------------------
-# A small picture of the current frame for the load screen (none when headless).
+# A picture of the map for the load screen and menu backdrop: one extra frame drawn with the
+# interface hidden (none when headless or before the first frames).
 func thumbnail() -> Image:
- if DisplayServer.get_name() == "headless": return null
+ if DisplayServer.get_name() == "headless" or Engine.get_frames_drawn()<3: return null
+ var shown = [ui.visible,pins_root.visible]
+ ui.visible = false
+ pins_root.visible = false
+ RenderingServer.force_draw(false)
  var img = get_viewport().get_texture().get_image()
+ ui.visible = shown[0]
+ pins_root.visible = shown[1]
  return img if img != null and not img.is_empty() else null
 
 func quicksave():
@@ -1311,3 +1349,16 @@ func quickload():
   ui.toast("No quicksave yet (Ctrl+S makes one).")
   return
  load_file(SaveSystem.QUICKSAVE)
+
+func open_pause_menu():
+ if pause_menu != null: return
+ ui.hide_hover()
+ pause_menu = PauseMenu.new()
+ pause_menu.name = "PauseMenu"
+ ui.add_child(pause_menu)
+ pause_menu.setup(self)
+ pause_menu.closed.connect(close_pause_menu)
+
+func close_pause_menu():
+ if pause_menu: pause_menu.queue_free()
+ pause_menu = null

@@ -60,7 +60,7 @@ Godot 4.7.2 fantasy strategy game. Personal project; free and local only.
 ## Engine and running
 
 - Engine is pinned to Godot 4.7.2 (standard build). `scripts/get_godot.ps1` downloads and SHA-512-verifies it into `runtime/`. Upgrading means changing the version and hash there, then updating `project.godot` and the constitution.
-- Play: `Play Project Freedom.cmd` (redirects user data into `.local/`, imports on first run).
+- Play: `Play Project Freedom.cmd` (redirects user data into `.local/`, imports on first run). The project opens on the main menu (`ui/main_menu.tscn`); `--capture`, `--self-test`, `--bake-movement-grid`, `--seed=N` and `--campaign` go straight to the campaign (`Main.tscn`), and `--menu` keeps the menu for captures (`--load-screen`, `--menu-load=<file>`). Scenes hand the campaign state over through `core/session.gd`; player settings live in `core/settings.gd` (debug keys on by default).
 - After adding or renaming scripts, scenes, or assets, run a headless import so caches and `.uid` files are current:
   `runtime\Godot.exe --headless --path . --import`
 - Prototype self-test and screenshot capture (quits when done, writes `captures/overview.png`):
