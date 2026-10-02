@@ -16,6 +16,7 @@ const Widgets = preload("res://ui/widgets.gd")
 const Cards = preload("res://ui/cards.gd")
 const Minimap = preload("res://ui/minimap.gd")
 const DeploymentScreen = preload("res://ui/deployment_screen.gd")
+const BattleReplay = preload("res://ui/battle_replay.gd")
 
 const MENU = [["faction","Faction overview"],["diplomacy","Diplomacy"],["tech","Technology"],["lords","Lords and heroes"],["finance","Finance"],["objectives","Objectives"]]
 const OVERLAYS = [["borders","Territory borders"],["settlements","Settlement banners"],["armies","Armies"]]
@@ -925,13 +926,18 @@ func close_deployment():
  deployment_screen = null
  get_viewport().disable_3d = false
 
-# Battle report (Phase C, minimal): headline, why you won/lost (3-5 lines), key numbers, units.
+# Battle report window (open_battle_report below).
 func close_report():
  if report_panel: report_panel.visible = false
 
+var report_replay: Control
+var report_timeline: VBoxContainer
+
+# Battle report: headline, why you won/lost, key numbers, the top-down replay with event markers,
+# both sides' unit tables, and the full timeline (collapsed; clicking an event jumps the replay).
 func open_battle_report(pb: Dictionary,out: Dictionary):
  if report_panel == null:
-  var pv = _center_panel(820,600)
+  var pv = _center_panel(1240,860)
   report_panel = pv[0]
   report_box = pv[1]
  _clear(report_box)
@@ -950,36 +956,96 @@ func open_battle_report(pb: Dictionary,out: Dictionary):
  head.add_child(close)
  report_box.add_child(head)
  report_box.add_child(UiKit.divider(colors.trim))
- report_box.add_child(UiKit.header("Why you %s" % ("won" if rep.won else "lost"),16))
+ var scroll = ScrollContainer.new()
+ scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+ scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+ scroll.custom_minimum_size = Vector2(1200,760)
+ var body = VBoxContainer.new()
+ body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ body.add_theme_constant_override("separation",6)
+ scroll.add_child(body)
+ report_box.add_child(scroll)
+ var top = HBoxContainer.new()
+ top.add_theme_constant_override("separation",16)
+ body.add_child(top)
+ var left = VBoxContainer.new()
+ left.custom_minimum_size = Vector2(520,0)
+ top.add_child(left)
+ left.add_child(UiKit.header("Why you %s" % ("won" if rep.won else "lost"),16))
  var why = VBoxContainer.new()
  why.name = "Why"
  for line in rep.why:
   var l = UiKit.label("•  "+line,15,UiKit.TEXT if not line.begins_with("Lesson") else Color("f1d79a"))
   l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-  l.custom_minimum_size = Vector2(760,0)
+  l.custom_minimum_size = Vector2(510,0)
   why.add_child(l)
- report_box.add_child(why)
- report_box.add_child(UiKit.divider(colors.trim))
+ left.add_child(why)
+ left.add_child(UiKit.divider(colors.trim))
  var n = rep.numbers
- report_box.add_child(UiKit.label("Your men: %s, lost %s · Theirs: %s, lost %s · Units destroyed: %d yours, %d theirs · %d ticks · %s" % [
-  UiKit.format_int(n.your_men),UiKit.format_int(n.your_losses),UiKit.format_int(n.their_men),UiKit.format_int(n.their_losses),n.your_destroyed,n.their_destroyed,n.ticks,n.weather],14,UiKit.TEXT_DIM))
- for g in rep.generals: report_box.add_child(UiKit.label(g,14,Color("f1d79a")))
+ var nl = UiKit.label("Your men: %s, lost %s · Theirs: %s, lost %s · Units destroyed: %d yours, %d theirs · %d ticks · %s" % [
+  UiKit.format_int(n.your_men),UiKit.format_int(n.your_losses),UiKit.format_int(n.their_men),UiKit.format_int(n.their_losses),n.your_destroyed,n.their_destroyed,n.ticks,n.weather],14,UiKit.TEXT_DIM)
+ nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+ nl.custom_minimum_size = Vector2(510,0)
+ left.add_child(nl)
+ for g in rep.generals: left.add_child(UiKit.label(g,14,Color("f1d79a")))
+ var right = VBoxContainer.new()
+ right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ top.add_child(right)
+ right.add_child(UiKit.header("Replay",16))
+ var my_fac = data.faction(pb.attacker.faction if rep.my_side == 0 else pb.defender.faction)
+ var their_fac = data.faction(pb.defender.faction if rep.my_side == 0 else pb.attacker.faction)
+ report_replay = BattleReplay.new()
+ report_replay.name = "Replay"
+ report_replay.setup(rep,UiKit.colors(my_fac).primary.lightened(0.1),UiKit.colors(their_fac).primary.lightened(0.1))
+ right.add_child(report_replay)
+ right.add_child(UiKit.label("Markers: green helped you, red helped them. Click one to jump there.",12,Color(UiKit.TEXT_DIM,0.8)))
+ body.add_child(UiKit.divider(colors.trim))
+ var tables = HBoxContainer.new()
+ tables.add_theme_constant_override("separation",40)
+ tables.add_child(_unit_table("Your units",rep.units,"Units"))
+ tables.add_child(_unit_table("Enemy units",rep.enemy_units,"EnemyUnits"))
+ body.add_child(tables)
+ body.add_child(UiKit.divider(colors.trim))
+ var toggle = Button.new()
+ toggle.name = "TimelineToggle"
+ toggle.text = "Show full timeline (%d events)" % rep.timeline.size()
+ toggle.focus_mode = Control.FOCUS_NONE
+ toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+ body.add_child(toggle)
+ report_timeline = VBoxContainer.new()
+ report_timeline.name = "Timeline"
+ report_timeline.visible = false
+ report_timeline.add_theme_constant_override("separation",0)
+ for e in rep.timeline:
+  var b = Button.new()
+  b.flat = true
+  b.focus_mode = Control.FOCUS_NONE
+  b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+  b.text = "Tick %d  ·  %s" % [e.tick,e.text]
+  b.add_theme_color_override("font_color",Color("bfe3a8") if e.ours else Color("efb39f"))
+  b.pressed.connect(report_replay.jump.bind(e.tick,e.units))
+  report_timeline.add_child(b)
+ body.add_child(report_timeline)
+ toggle.pressed.connect(func():
+  report_timeline.visible = not report_timeline.visible
+  toggle.text = ("Hide full timeline" if report_timeline.visible else "Show full timeline (%d events)" % rep.timeline.size()))
+
+func _unit_table(title: String,units: Array,name: String) -> Control:
+ var v = VBoxContainer.new()
+ v.add_child(UiKit.header(title,15))
  var grid = GridContainer.new()
- grid.name = "Units"
+ grid.name = name
  grid.columns = 5
- grid.add_theme_constant_override("h_separation",18)
+ grid.add_theme_constant_override("h_separation",16)
  for h in ["Unit","Men","Lost","Kills","Outcome"]: grid.add_child(UiKit.label(h,13,UiKit.TEXT_DIM,UiKit.FONT_BOLD))
- for u in rep.units:
+ for u in units:
   grid.add_child(UiKit.label(u.name,14))
   grid.add_child(UiKit.label(str(u.men_start),14))
   grid.add_child(UiKit.label(str(u.losses),14))
   grid.add_child(UiKit.label(str(u.kills),14))
   grid.add_child(UiKit.label(u.outcome,14,Color("ef8a6a") if u.outcome in ["routed","destroyed"] else UiKit.TEXT))
- var scroll = ScrollContainer.new()
- scroll.custom_minimum_size = Vector2(0,190)
- scroll.add_child(grid)
- report_box.add_child(scroll)
- report_box.add_child(UiKit.label("Full timeline and top-down replay: next block.",12,Color(UiKit.TEXT_DIM,0.7)))
+ v.add_child(grid)
+ return v
 
 # --- End turn (bottom-right), hover tooltip, toast, FPS --------------------------------
 

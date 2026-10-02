@@ -39,7 +39,7 @@ func test_same_seed_gives_identical_result_report_and_replay():
  var b = BattleSim.simulate(standard_setup(99))
  assert_eq(JSON.stringify(a),JSON.stringify(b))
  assert_gt(a.events.size(),0)
- assert_eq(a.replay.size(),a.ticks)
+ assert_eq(a.replay.size(),a.ticks+1)
  var c = BattleSim.simulate(standard_setup(100))
  assert_ne(JSON.stringify(a),JSON.stringify(c),"a different seed gives a different battle")
 

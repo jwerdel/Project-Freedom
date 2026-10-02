@@ -278,6 +278,47 @@ Screenshots (generated, in `captures/`):
 - `deploy_orders.png`: heavy infantry protecting archers, cavalry flanking right, with arrows.
 - `deploy_2d.png`: the same orders on the 2D board.
 
+## Full battle report and replay (2026-10-01)
+
+The report window (the same window for Fight and Quick Resolve) shows:
+- the headline
+- "why you won/lost" and the key numbers
+- a top-down 2D replay of unit blocks per tick: your side at the bottom, block height by men left, routed units faded, destroyed ones crossed out, walls and gates drawn for sieges
+- a scrubber with play/pause, and timeline events as markers on it (green helped you, red helped them); clicking a marker jumps to it
+- unit tables for both sides
+- the full timeline, collapsed by default. Each event is a plain sentence, for example "The enemy Peasant Levy (left) charges your Swordsmen (left)." Clicking one jumps the replay to its tick and highlights the units involved.
+
+The simulation now records the deployment as replay frame 0 (frames are ticks + 1) and returns a roster that maps replay columns to units.
+
+One fix: a deployment now keeps its template's unit order, which is also the simulation's order. Before, the player's units went back to roster order, so an unchanged template could fight slightly differently from the default.
+
+Tests: 141/141 GUT tests pass headless. The new `tests/test_deployment.gd` covers:
+- impassable lanes, pass limits and lane capacity per terrain, with refused moves leaving the unit unchanged
+- every template legal on four terrains, both roles and three army sizes
+- orders and the general's lane saved into the battle setup, with the enemy keeping its default
+- a deployment matching a template gives the same result as that template: the faction default through Quick Resolve, and all five templates at the simulation
+- replay frames match the simulation: starting and final men, and destroyed and routed states at their event ticks
+- the report carries the timeline, roster, enemy table and walls
+- Quick Resolve gets the full report
+
+The seed tests from Phase A (`tests/test_seeds.gd`) cover different seeds per new campaign, exact reproduction, and two battles in one year differing.
+
+The self-test passes. It now also opens the full report from a pure simulation of the deployment, checks the frame count and the collapsed timeline, and clicks an event to check the jump and highlight. The overview capture is unchanged.
+
+GPU time, same method as above (RTX 4060, 1440×900, vsync off, 10 s settle, 5 s average, 2 rounds):
+
+| View | GPU ms |
+|---|---|
+| Deployment, 3D tabletop | 1.01 / 1.07 |
+| Deployment, 2D board | 0.26 / 0.26 |
+| Report window over the map (after a battle at Greyhaven) | 1.99 / 1.99 |
+
+Screenshots (generated, in `captures/`):
+- `deploy_3d.png`
+- `deploy_orders.png` (Protect and Flank arrows)
+- `deploy_2d.png`
+- `battle_report_replay.png` (Greyhaven siege, replay at tick 6 of 9 with the event's unit highlighted)
+
 ## Remaining limitations
 
 - Artwork is a prototype and has not been approved against the desired 2016 Total War campaign-map benchmark.

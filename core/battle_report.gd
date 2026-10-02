@@ -1,11 +1,13 @@
 extends RefCounted
 # Battle report text (docs/battle-design.md section 6): scannable in under a minute. A headline, a
 # 3-5 line "why you won / why you lost" ranked by impact (built from the simulation's cause tags),
-# key numbers and a per-unit table. The timeline and 2D replay come in a later block.
+# key numbers, both sides' unit tables, a full timeline in plain sentences, and the replay data
+# (per-tick unit positions with a roster) for the top-down replay in the report window.
 
 const UnitTypes = preload("res://core/unit_types.gd")
 const WorldMap = preload("res://core/world_map.gd")
 const Chronicle = preload("res://core/chronicle.gd")
+const BattleSim = preload("res://core/battle_sim.gd")
 
 # Cause tag -> [line when it helped the reader's side, line when it helped the enemy, lesson for a loss].
 const CAUSES = {
@@ -60,15 +62,15 @@ static func build(pb: Dictionary,result: Dictionary,after: Dictionary,perspectiv
   if not won and not c.ours and lesson == "": lesson = CAUSES[c.tag][2]
  if why.is_empty(): why.append("Neither side gained a clear edge; the larger and steadier army prevailed." if result.outcome == "victory" else "The defenders held their ground until the day ended.")
  if not won and lesson != "": why.append("Lesson: "+lesson)
- var units = []
- for u in result.sides[my_side].units:
-  units.append({"name":UnitTypes.get_type(u.unit).display_name,"men_start":int(u.men_start),"losses":int(u.losses),"kills":int(u.kills),"outcome":u.outcome})
+ var units = _table(result.sides[my_side].units)
+ var enemy_units = _table(result.sides[1-my_side].units)
  var numbers = {"your_losses":losses[my_side],"their_losses":losses[1-my_side],"your_men":start[my_side],"their_men":start[1-my_side],
   "your_destroyed":destroyed[my_side],"their_destroyed":destroyed[1-my_side],"ticks":int(result.ticks),"weather":result.weather}
  var generals = []
  for g in after.generals: generals.append("%s was %s." % [g.name,"killed" if g.fate == "killed" else "wounded"])
  for p in after.promoted: generals.append("%s was promoted to general." % p.name)
- return {"won":won,"headline":headline,"why":why.slice(0,5),"numbers":numbers,"units":units,"generals":generals,"place":place}
+ return {"won":won,"headline":headline,"why":why.slice(0,5),"numbers":numbers,"units":units,"enemy_units":enemy_units,"generals":generals,"place":place,
+  "timeline":timeline(result,my_side),"replay":result.get("replay",[]),"roster":roster(result,my_side),"lanes":int(result.lanes),"my_side":my_side,"walls":_walls(pb)}
 
 static func _has(list: Array,tag: String,ours: bool) -> bool:
  for c in list:
@@ -79,3 +81,78 @@ static func _has(list: Array,tag: String,ours: bool) -> bool:
 static func _weight(c: Dictionary,won: bool) -> float:
  var favoured = c.ours == won
  return c.impact*(2.0 if favoured else 1.0)
+
+static func _table(list: Array) -> Array:
+ var out = []
+ for u in list: out.append({"name":UnitTypes.get_type(u.unit).display_name,"men_start":int(u.men_start),"losses":int(u.losses),"kills":int(u.kills),"outcome":u.outcome})
+ return out
+
+# The replay's units as the reader sees them: {name, ours, general}, in replay column order.
+static func roster(result: Dictionary,my_side: int) -> Array:
+ var out = []
+ for r in result.get("roster",[]):
+  out.append({"name":"General" if r.general else UnitTypes.get_type(r.unit).display_name,"ours":int(r.side) == my_side,"general":r.general})
+ return out
+
+# Every simulation event as a sentence: [{tick, text, units: [replay columns], ours}]. A unit
+# shielding the same ally from the same attacker is told once.
+static func timeline(result: Dictionary,my_side: int) -> Array:
+ var out = []
+ var roster = result.get("roster",[])
+ if roster.is_empty(): return out
+ var seen = {}
+ for e in result.events:
+  var u = int(e.unit)
+  var t = int(e.get("target",-1))
+  var by = int(e.get("by",-1))
+  var ours = int(e.side) == my_side
+  var text = ""
+  match e.tag:
+   "reinforcements": text = "%s arrive as reinforcements." % _who(result,my_side,u,e.tick)
+   "reserve_plugs": text = "%s moves up from the reserve to fill a broken lane." % _who(result,my_side,u,e.tick)
+   "protected":
+    var k = "%d:%d:%d" % [u,t,by]
+    if seen.has(k): continue
+    seen[k] = true
+    text = "%s shields %s from %s." % [_who(result,my_side,u,e.tick),_who(result,my_side,t,e.tick,false),_who(result,my_side,by,e.tick,false)]
+   "flank_intercepted": text = "%s intercepts the flank attack of %s." % [_who(result,my_side,u,e.tick),_who(result,my_side,by,e.tick,false)]
+   "flank_screened": text = "%s screens the flank against %s." % [_who(result,my_side,u,e.tick),_who(result,my_side,by,e.tick,false)]
+   "turned_to_face": text = "%s turns to face the flank attack of %s." % [_who(result,my_side,u,e.tick),_who(result,my_side,by,e.tick,false)]
+   "flank_hit_rear": text = "%s hits %s in the rear." % [_who(result,my_side,u,e.tick),_who(result,my_side,t,e.tick,false)]
+   "charge_braced": text = "%s braces and blunts the charge of %s." % [_who(result,my_side,u,e.tick),_who(result,my_side,by,e.tick,false)]
+   "charge": text = "%s charges %s." % [_who(result,my_side,u,e.tick),_who(result,my_side,t,e.tick,false)]
+   "general_killed": text = "%s is killed." % _who(result,my_side,u,e.tick)
+   "destroyed": text = "%s is destroyed." % _who(result,my_side,u,e.tick)
+   "routed": text = "%s routs." % _who(result,my_side,u,e.tick)
+   "general_fled": text = "%s flees the field." % _who(result,my_side,u,e.tick)
+   "reserve_pursues": text = "%s rides down the fleeing %s." % [_who(result,my_side,u,e.tick),_who(result,my_side,t,e.tick,false)]
+   "army_broke": text = "%s breaks after losing %d%% of its men." % ["Your army" if ours else "The enemy army",int(round(float(e.get("share",0))*100))]
+   _: text = "%s: %s." % [e.tag.capitalize(),_who(result,my_side,u,e.tick)]
+  var units = []
+  for x in [u,t,by]:
+   if x>=0 and x<roster.size() and not x in units: units.append(x)
+  out.append({"tick":int(e.tick),"text":text,"units":units,"ours":ours,"tag":e.tag})
+ return out
+
+# "Your Spearmen (left)" / "the enemy Archers (center)": lane from the replay frame at that tick.
+static func _who(result: Dictionary,my_side: int,i: int,tick: int,first := true) -> String:
+ var roster = result.roster
+ if i<0 or i>=roster.size(): return "someone"
+ var r = roster[i]
+ var name = "general" if r.general else UnitTypes.get_type(r.unit).display_name
+ var own = int(r.side) == my_side
+ var s = ("Your " if first else "your ")+name if own else ("The enemy " if first else "the enemy ")+name
+ var lanes = int(result.lanes)
+ var replay = result.get("replay",[])
+ if not r.general and tick<replay.size():
+  var lane = int(replay[tick][i][0])
+  var names = ["far left","left","center","right","far right"] if lanes == 5 else (["left","center","right"] if lanes == 3 else [])
+  if lane<names.size():
+   s += " (%s)" % names[lane] # same lane names as the deployment screen
+ return s
+
+# Walls for the replay: {y, gates: [lane]} or empty when the battle has none.
+static func _walls(pb: Dictionary) -> Dictionary:
+ var w = pb.get("field",{}).get("walls")
+ if w == null: return {}
+ return {"y":float(BattleSim.data().sieges.wall_band_y),"gates":w.get("gates",[])}

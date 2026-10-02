@@ -16,20 +16,14 @@ static func create(units: Array,terrain: Array,role: int,template := "line") -> 
  apply_template(dep,units,template)
  return dep
 
-# Replace the layout with a template's (the player can then adjust it). Unit order is kept.
+# Replace the layout with a template's (the player can then adjust it). Units keep the template's
+# order, which is also the simulation's, so an unchanged template fights exactly like the default.
 static func apply_template(dep: Dictionary,units: Array,template: String):
- var placed = BattleDeploy.deploy(units,template,dep.terrain,dep.role)
- var by_key = {}
- for p in placed: by_key[_key(p)] = p
  dep.units = []
- for u in units:
-  var p = by_key[_key(u)].duplicate()
+ for p in BattleDeploy.deploy(units,template,dep.terrain,dep.role):
   if not p.has("protect"): p.protect = -1
   dep.units.append(p)
  dep.template = template
-
-static func _key(u: Dictionary) -> String:
- return "%s:%d:%s" % [u.get("army",""),int(u.get("index",-1)),u.unit]
 
 # Band of a line for this side (0-based, from the attacker's edge).
 static func band(dep: Dictionary,line: String) -> int:

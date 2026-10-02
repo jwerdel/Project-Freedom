@@ -10,7 +10,7 @@ extends RefCounted
 #          arrive_tick?, army?, index?}]}}
 # Orders: hold, aggressive, flank, protect, reserve.
 # result = {winner (0 attacker, 1 defender), outcome, ticks, weather, sides: [{units: [...],
-#          general: {...}}], events: [{tick, tag, side, unit, target, lane, ...}], causes, replay}
+#          general: {...}}], events: [{tick, tag, side, unit, target, lane, ...}], causes, replay: [tick 0..ticks][sim unit] = [lane, y, state, men], roster: [sim unit] = {side, unit, general, row}}
 
 const UnitTypes = preload("res://core/unit_types.gd")
 const DATA = "res://data/battle.json"
@@ -237,6 +237,7 @@ static func simulate(setup: Dictionary) -> Dictionary:
  b.rank_def = float(b.d.experience.rank_defence)
  b.front_scale = float(b.d.field.frontage_lane_scale.get(str(b.lanes),1.0))
  _deploy(b,setup)
+ _record(b) # replay[0] is the deployment; replay[t] is the field after tick t
  var winner = -1
  var outcome = "defender_holds"
  for tick in range(1,int(b.d.combat.max_ticks)+1):
@@ -933,6 +934,12 @@ static func _record(b: Battle):
 static func _result(b: Battle,winner: int,outcome: String,setup: Dictionary) -> Dictionary:
  var sides = [{"units":[],"general":{}},{"units":[],"general":{}}]
  var xp = b.d.experience
+ # Roster: who each replay column / event unit index is (row = index in sides[side].units, -1 for a general).
+ var roster = []
+ var rows = [0,0]
+ for r: Unit in b.u:
+  roster.append({"side":r.side,"unit":r.unit,"general":r.is_general,"row":-1 if r.is_general else rows[r.side]})
+  if not r.is_general: rows[r.side] += 1
  for i in b.u.size():
   var r: Unit = b.u[i]
   var men = int(round(r.men))
@@ -953,7 +960,7 @@ static func _result(b: Battle,winner: int,outcome: String,setup: Dictionary) -> 
   for s in 2:
    if b.causes[k][s] != 0.0: report_causes["%s:%d" % [k,s]] = snappedf(b.causes[k][s],0.01)
  return {"winner":winner,"outcome":outcome if outcome != "mutual" else "victory","ticks":b.t,"weather":b.weather,"sides":sides,
-  "events":b.events,"causes":report_causes,"replay":b.replay,"lanes":b.lanes}
+  "events":b.events,"causes":report_causes,"replay":b.replay,"roster":roster,"lanes":b.lanes}
 
 # Total men lost per side.
 static func losses(result: Dictionary,side: int) -> int:

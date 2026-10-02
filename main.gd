@@ -15,6 +15,7 @@ const TerritoryOverlay = preload("res://visuals/terrain/territory_overlay.gd")
 const MovementOverlay = preload("res://ui/movement_overlay.gd")
 const Battles = preload("res://core/battles.gd")
 const Deployment = preload("res://core/deployment.gd")
+const BattleSim = preload("res://core/battle_sim.gd")
 const WALK_SPEED = 12.0 # map meters per second while the figure walks (presentation only)
 # Overview camera (Home). Framed so the coast and Goldspire's sea face sit above the bottom panel.
 const OVERVIEW_TARGET = Vector3(10,3,21)
@@ -216,6 +217,12 @@ func _ready():
   if arg.begins_with("--select-after="):
    ui.close_report()
    select_settlement(arg.get_slice("=",1))
+ # Report captures: --report-event=k jumps the replay to timeline event k; --report-timeline expands it.
+ for arg in OS.get_cmdline_user_args():
+  if arg.begins_with("--report-event=") and ui.report_visible():
+   var ev = ui.report_timeline.get_child(int(arg.get_slice("=",1)))
+   if ev: ev.pressed.emit()
+  if arg == "--report-timeline" and ui.report_visible(): ui.report_box.find_child("TimelineToggle",true,false).pressed.emit()
  if "--chronicle" in OS.get_cmdline_user_args(): ui.toggle_chronicle()
  if "--self-test" in OS.get_cmdline_user_args():
   run_checks()
@@ -1101,6 +1108,18 @@ func run_checks():
  assert(ds.board.visible and not ds.viewport_box.visible)
  ds.update_odds()
  assert(ds.odds>=0.0 and ds.odds<=1.0)
+ # Full report from a pure simulation of this deployment (no campaign change): replay, scrubber
+ # markers, tables, collapsed timeline; clicking an event jumps the replay and highlights.
+ var rpb = ds.pb.duplicate()
+ rpb.deployment = ds.dep
+ var sim = BattleSim.simulate(Battles.setup(ui_data.state,rpb,rpb.seed))
+ ui.open_battle_report(rpb,{"result":sim,"aftermath":{"captured":"","generals":[],"promoted":[]}})
+ assert(ui.report_visible() and ui.report_replay.frames.size() == int(sim.ticks)+1)
+ assert(not ui.report_timeline.visible and ui.report_box.find_child("EnemyUnits",true,false) != null)
+ if ui.report_timeline.get_child_count()>0:
+  ui.report_timeline.get_child(0).pressed.emit()
+  assert(ui.report_replay.tick == int(sim.events[0].tick) and not ui.report_replay.highlight.is_empty())
+ ui.close_report()
  ds.closed.emit()
  assert(not ui.deployment_visible() and ui.battle_visible())
  assert(ui_data.army_movement(COMMANDER_ARMY).points == points_before)
@@ -1160,7 +1179,7 @@ func run_checks():
   assert(goldspire_level==level_now)
  ui.clear_selection()
  reset_camera()
- print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn; construction upgrades goldspire's stage; army movement preview, orders, blocking and garrison; deployment screen place, orders, view and back; recruitment queue and refund")
+ print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn; construction upgrades goldspire's stage; army movement preview, orders, blocking and garrison; deployment screen place, orders, view and back; battle report replay, timeline and jump; recruitment queue and refund")
 
 # --- Movement grid bake ------------------------------------------------------------
 # Writes data/movement_grid.json, the terrain grid army movement reads (core/movement.gd), by
