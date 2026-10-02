@@ -72,20 +72,33 @@ static func men(a: Dictionary) -> int:
 
 # --- Recruitment --------------------------------------------------------------------
 
-# The own settlement this army can recruit at: where it is garrisoned, else the nearest own
-# settlement within the adjacent radius; "" if none.
-static func recruit_settlement(state,army_id: String) -> String:
+# Province-wide recruitment (constitution, confirmed 2026-10-02; TW:WH3 local recruitment): an army
+# standing anywhere in a region its faction owns can recruit. The units on offer come from the
+# faction's buildings in that region's province (every settlement it owns there); each recruit's men
+# are drawn from one of those settlements (the one that unlocks it with the most people).
+# Returns {ok, reason, region, province, settlements: [own settlements in the province]}.
+static func recruit_context(state,army_id: String) -> Dictionary:
  var a = army(state,army_id)
- if a.garrison != "" and state.settlements[a.garrison].owner == a.faction: return a.garrison
- var at = Movement.position(state,army_id)
+ var region = WorldMap.region_at(Movement.position(state,army_id))
+ if region == "" or not state.settlements.has(region) or state.settlements[region].owner != a.faction:
+  return {"ok":false,"reason":"Must be in your own territory","region":region,"province":"","settlements":[]}
+ var province = WorldMap.province_of(region)
+ var own = []
+ for sid in WorldMap.province(province).regions:
+  if state.settlements.has(sid) and state.settlements[sid].owner == a.faction: own.append(sid)
+ return {"ok":true,"reason":"","region":region,"province":province,"settlements":own}
+
+# The settlement in the army's province that would supply this unit: one that unlocks it, the
+# most populous first (ties: the army's own region, then id). "" if none unlocks it.
+static func recruit_source(state,ctx: Dictionary,unit_id: String) -> String:
  var best = ""
- var best_d = float(data().recruitment.adjacent_radius)
- for id in WorldMap.settlement_ids():
-  if state.settlements[id].owner != a.faction: continue
-  var d = WorldMap.settlement_position(id).distance_to(at)
-  if d<=best_d:
-   best = id
-   best_d = d
+ for sid in ctx.settlements:
+  if not unit_id in state.settlements[sid].get("unlocks",[]): continue
+  if best == "": best = sid
+  else:
+   var p = float(state.settlements[sid].population)
+   var q = float(state.settlements[best].population)
+   if p>q or (p == q and (sid == ctx.region or (best != ctx.region and sid<best))): best = sid
  return best
 
 static func recruitable_types() -> Array:
@@ -104,17 +117,18 @@ static func unlocked_by(unit_id: String) -> String:
 
 static func can_recruit(state,army_id: String,unit_id: String) -> Dictionary:
  var a = army(state,army_id)
- var sid = recruit_settlement(state,army_id)
- if sid == "": return {"ok":false,"reasons":["Must be in or next to one of your settlements"],"settlement":""}
+ var ctx = recruit_context(state,army_id)
+ if not ctx.ok: return {"ok":false,"reasons":[ctx.reason],"settlement":""}
  var u = UnitTypes.get_type(unit_id)
- if u.recruitment == null: return {"ok":false,"reasons":["Cannot be recruited"],"settlement":sid}
- var s = state.settlements[sid]
+ if u.recruitment == null: return {"ok":false,"reasons":["Cannot be recruited"],"settlement":""}
+ var sid = recruit_source(state,ctx,unit_id)
  var reasons = []
- if not unit_id in s.get("unlocks",[]): reasons.append("Requires %s" % unlocked_by(unit_id))
+ if sid == "": reasons.append("Requires %s in this province" % unlocked_by(unit_id))
+ var s = state.settlements[sid] if sid != "" else {"population":0.0}
  if card_count(a)+1>max_units(): reasons.append("Army is full (%d units)" % max_units())
  if int(state.treasury.get(a.faction,0))<0: reasons.append("In debt: no recruitment until the treasury is out of debt")
  elif int(state.treasury.get(a.faction,0))<int(u.recruitment.cost): reasons.append("Not enough gold (%d needed)" % int(u.recruitment.cost))
- if float(s.population)-int(u.size)<float(data().recruitment.min_population):
+ if sid != "" and float(s.population)-int(u.size)<float(data().recruitment.min_population):
   reasons.append("Too few people in %s (keeps at least %d)" % [WorldMap.region(sid).settlement.name,int(data().recruitment.min_population)])
  return {"ok":reasons.is_empty(),"reasons":reasons,"settlement":sid}
 

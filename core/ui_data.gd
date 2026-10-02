@@ -288,11 +288,14 @@ func army_ids() -> Array:
 
 # Recruitment panel data: {settlement ("" if the army is not in or next to its own settlement),
 # settlement_name, population, min_population, options (see Armies.options)}.
+# Recruitment for an army (province-wide, core/armies.gd): {ok, reason, province, province_name,
+# settlements [{id, name, population}], min_population, options}.
 func recruitment(army_id: String) -> Dictionary:
- var sid = Armies.recruit_settlement(state,army_id)
- return {"settlement":sid,"settlement_name":WorldMap.region(sid).settlement.name if sid != "" else "",
-  "population":int(state.settlements[sid].population) if sid != "" else 0,"min_population":int(Armies.data().recruitment.min_population),
-  "options":Armies.options(state,army_id)}
+ var ctx = Armies.recruit_context(state,army_id)
+ var towns = []
+ for sid in ctx.settlements: towns.append({"id":sid,"name":WorldMap.region(sid).settlement.name,"population":int(state.settlements[sid].population)})
+ return {"ok":ctx.ok,"reason":ctx.reason,"province":ctx.province,"province_name":WorldMap.province(ctx.province).name if ctx.province != "" else "",
+  "settlements":towns,"min_population":int(Armies.data().recruitment.min_population),"options":Armies.options(state,army_id)}
 
 func recruit(army_id: String,unit_id: String) -> Dictionary:
  if state.army_state[army_id].faction != state.player_faction: return {"ok":false,"reasons":["Not your army"]}

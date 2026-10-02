@@ -44,6 +44,8 @@ func test_in_debt_no_construction_recruitment_or_new_armies():
  var b = Construction.can_build(s,"goldspire_rock",slot,"market")
  assert_false(b.ok)
  assert_string_contains(", ".join(b.reasons),"In debt")
+ var gp = WorldMap.settlement_position("goldspire_rock")
+ s.army_state[HOST].position = [gp.x,gp.y]
  s.army_state[HOST].garrison = "goldspire_rock"
  var r = Armies.can_recruit(s,HOST,"peasant_levy")
  assert_false(r.ok)

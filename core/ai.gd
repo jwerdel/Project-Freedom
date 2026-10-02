@@ -367,7 +367,7 @@ static func _recruit(state,f: String,p: Dictionary,report: Dictionary):
  var floor = reserve(f,p) if total>=int(r.garrison_units) else int(reserve(f,p)*float(r.emergency_reserve_share))
  for id in Armies.armies_of(state,f):
   var a = state.army_state[id]
-  if Armies.recruit_settlement(state,id) == "": continue
+  if not Armies.recruit_context(state,id).ok: continue
   for n in int(r.max_recruits_per_turn):
    var size = a.units.size()+a.queue.size()
    # A rich faction fills its armies past the field size, up to the army cap.

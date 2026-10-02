@@ -73,6 +73,9 @@ class UnitCard extends Control:
    studio.portrait_ready.disconnect(_on_portrait)
  func uses_card_art() -> bool:
   return art != null
+ # Shrink (or grow) the card, e.g. so a full 20-card army fits the panel (TW:WH3 narrows its cards).
+ func set_card_scale(s: float):
+  custom_minimum_size = UNIT_CARD*(1.12 if is_lord else 1.0)*s
  func _layout():
   # Card art fills the card; the rendered portrait leaves room for the strength bar.
   portrait.position = Vector2(3,3)

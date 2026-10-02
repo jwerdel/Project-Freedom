@@ -1,9 +1,8 @@
 {
   "_note": "PLACEHOLDER recruitment and army tuning. Every number here is a tunable placeholder, not approved balance. Rules (constitution, Economy and settlements; Battles and armies): recruitment draws directly from the settlement's population; disbanded survivors return to population; replenishment is automatic in friendly regions without population cost and faster in populous regions, and costs gold in enemy territory. core/armies.gd applies these values. Unit size, cost and recruitment time are in data/units/*.json.",
   "recruitment": {
-    "_note": "An army can recruit at its own settlement when garrisoned there or within adjacent_radius meters of it. Units come from that settlement's buildings (unlocks) and population, which may not fall below min_population. Gold and men are taken when a unit is queued; cancelling refunds both in full.",
-    "min_population": 500,
-    "adjacent_radius": 12.0
+    "_note": "Province-wide recruitment (constitution, confirmed 2026-10-02): an army standing anywhere in a region its faction owns can recruit. Units come from the faction's buildings (unlocks) in that province; each recruit's men come from the most populous settlement there that unlocks it, which may not fall below min_population. Gold and men are taken when a unit is queued; cancelling refunds both in full.",
+    "min_population": 500
   },
   "army_cap": {
     "_note": "PLACEHOLDER, TW-style: at most max_units cards per army, the general included, queued units counted. The constitution rejects the earlier 6-10 cap; 20 stands until the army performance test sets a real budget.",

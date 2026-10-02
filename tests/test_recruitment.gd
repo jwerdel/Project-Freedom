@@ -76,17 +76,22 @@ func test_only_units_unlocked_by_a_settlement_building_can_be_recruited():
  assert_true(Armies.can_recruit(s,ARMY,"peasant_levy").ok)
  assert_false(Armies.can_recruit(s,ARMY,"spearmen").ok)
 
-func test_recruiting_needs_an_own_settlement_in_or_next_to_the_army():
+func test_recruiting_needs_own_territory_not_a_settlement():
  var s = home_state()
- place(s,Vector2(2,0)) # open country in Lannet's land
- assert_eq(Armies.recruit_settlement(s,ARMY),"")
- assert_false(Armies.can_recruit(s,ARMY,"peasant_levy").ok)
- # Adjacent (not garrisoned) counts.
- place(s,WorldMap.settlement_position("crownwatch")+Vector2(6,0))
- assert_eq(Armies.recruit_settlement(s,ARMY),"crownwatch")
- # Foreign settlements never recruit for this army.
+ place(s,Vector2(2,0)) # open country in Lannet's land (Greyhaven's region)
+ var r = Armies.can_recruit(s,ARMY,"peasant_levy")
+ assert_false(r.ok)
+ assert_eq(r.reasons,["Must be in your own territory"])
+ assert_false(Armies.recruit_context(s,ARMY).ok)
+ # Anywhere in an own region counts, far from the settlement itself.
+ var c = WorldMap.settlement_position("crownwatch")
+ place(s,c+Vector2(0,-14))
+ assert_eq(WorldMap.region_at(c+Vector2(0,-14)),"crownwatch","precondition: still Crownwatch's region")
+ assert_true(Armies.recruit_context(s,ARMY).ok)
+ assert_eq(Armies.can_recruit(s,ARMY,"peasant_levy").settlement,"crownwatch")
+ # A foreign region never recruits for this army.
  place(s,WorldMap.settlement_position("greyhaven")+Vector2(5,0))
- assert_eq(Armies.recruit_settlement(s,ARMY),"")
+ assert_false(Armies.recruit_context(s,ARMY).ok)
 
 func test_queue_completes_on_time_and_cancel_refunds_fully():
  var s = home_state()
