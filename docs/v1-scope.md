@@ -2,11 +2,11 @@
 
 **STATUS: APPROVED (2026-10-01).** This is the confirmed V1 content scope.
 
-This is what the first playable version (V1) contains. `constitution.md` remains the design source of truth for mechanics; this file sets which content and systems ship in V1. Names refer to `docs/world.md`.
+This is what the first playable version (V1) contains. `constitution.md` remains the design source of truth for mechanics; this file sets which content and systems ship in V1. Names refer to `docs/archive/world-v1.md`.
 
 ## Map
 
-The southern half of Aldryn from `docs/world.md`:
+The southern half of Aldryn from `docs/archive/world-v1.md`:
 
 - The Westerlands
 - The Riverlands
@@ -35,7 +35,7 @@ Majors:
 - Hold Emberdeep
 - Skulkmire Brood
 
-Minors: the Riverlands and other minor houses from `docs/world.md`.
+Minors: the Riverlands and other minor houses from `docs/archive/world-v1.md`.
 
 Crowded start, quick consolidation.
 

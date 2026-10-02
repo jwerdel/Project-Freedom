@@ -1,5 +1,5 @@
 {
-  "_note": "Chronicle text in the voice of the Grey Scribes (docs/world.md: neutral chroniclers based in the Crownhaven archive). Phrasings are chosen with the campaign's seeded random generator. {placeholders} are filled by core/chronicle.gd.",
+  "_note": "Chronicle text in the voice of the Grey Scribes (docs/archive/world-v1.md: neutral chroniclers based in the Crownhaven archive). Phrasings are chosen with the campaign's seeded random generator. {placeholders} are filled by core/chronicle.gd.",
   "opening": [
     {"year": 1, "category": "world", "title": "The Oath of Stillwater Is Void", "text": "In this year the oath that bound the great houses to peace was declared void. The Grey Scribes, keeping no allegiance, take up the record of every realm."}
   ],

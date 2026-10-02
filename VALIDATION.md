@@ -65,7 +65,7 @@ With vsync on (normal play), the `--capture --self-test` overview reads 60 FPS a
 
 Farmland near Willowmere is now one terrain-draped patchwork (`terrain.farmland`) instead of twelve flat squares; before/after from the same camera: `captures/farmland_before.png`, `captures/farmland_after.png` (local captures, not committed).
 
-Goldspire Rock (`goldspire_rock`, docs/world.md landmark #2) is the first landmark in the manifest's landmark slot. It stands in the sea at world (44, 36.5) on the map's coastline, about 28 × 21 m and 21 m to the summit plateau, with the summit tower at about 5 m (the top of the campaign tower range). The coastal ship loop was narrowed so ships stay west of it. Keys: **G** jumps the camera to it, **F6** cycles its stage (debug). Captures: `--capture --goldspire-stage=N` (overview) and `--capture --goldspire --goldspire-stage=N` (close), saved as `captures/overview_goldspire_stage_N.png` and `captures/goldspire_stage_N.png`.
+Goldspire Rock (`goldspire_rock`, docs/archive/world-v1.md landmark #2) is the first landmark in the manifest's landmark slot. It stands in the sea at world (44, 36.5) on the map's coastline, about 28 × 21 m and 21 m to the summit plateau, with the summit tower at about 5 m (the top of the campaign tower range). The coastal ship loop was narrowed so ships stay west of it. Keys: **G** jumps the camera to it, **F6** cycles its stage (debug). Captures: `--capture --goldspire-stage=N` (overview) and `--capture --goldspire --goldspire-stage=N` (close), saved as `captures/overview_goldspire_stage_N.png` and `captures/goldspire_stage_N.png`.
 
 GPU time, same method as the profiles above (RTX 4060, 1440×900, vsync off, fresh process per configuration, 10 s settle then 5 s average, 2 rounds). Goldspire starts at stage 2. "Zoomed" is the G bookmark view.
 
@@ -381,7 +381,7 @@ Screenshots (generated, in `captures/`):
 
 ## Campaign AI (2026-10-01)
 
-Design: `docs/ai-design.md`. Code: `core/ai.gd`. Weights: `data/ai.json`. Faction traits: `data/factions.json`, from docs/world.md:
+Design: `docs/ai-design.md`. Code: `core/ai.gd`. Weights: `data/ai.json`. Faction traits: `data/factions.json`, from docs/archive/world-v1.md:
 - Aurek: income-focused, cruel when crossed
 - Verrin: generous, income-focused, levy-heavy
 - Lannet: none listed

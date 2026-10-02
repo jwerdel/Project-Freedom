@@ -1,5 +1,5 @@
 extends GutTest
-# Goldspire Rock (docs/world.md landmark #2) is registered in the manifest's landmark slot, and
+# Goldspire Rock (docs/archive/world-v1.md landmark #2) is registered in the manifest's landmark slot, and
 # each of its three stage scenes loads, builds, and shows the features its stage calls for.
 
 const AssetManifest = preload("res://core/asset_manifest.gd")

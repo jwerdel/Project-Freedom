@@ -15,14 +15,14 @@ Godot 4.7.2 fantasy strategy game. Personal project; free and local only.
 - Keep confirmed decisions separate from open questions when editing the constitution.
 - `docs/battle-design.md` is the approved battle design (implemented: simulation, campaign battles, deployment screen; numbers are placeholders; section 13 lists open questions to ask about, not decide).
 - `docs/v1-scope.md` is the approved V1 content scope (map, races, factions, systems, and what is deferred past V1). Don't build deferred systems for V1 without the user's approval.
-- `docs/world.md` is the lore and landmark reference (geography, factions, faiths, landmark settlements). `constitution.md` still governs mechanics. Don't invent lore that contradicts `world.md`; ask instead.
+- `docs/world-bible-v2.md` is the lore and landmark reference (geography, factions, faiths, landmark settlements); it supersedes `docs/archive/world-v1.md` (kept for history: the prototype map was built from it). `constitution.md` still governs mechanics. Don't invent lore that contradicts the world bible; ask instead.
 
 ## Art / data separation (critical)
 
 - Gameplay values (size, footprint, speed, stats, costs) live in data files (Godot Resources or JSON under `data/`). Never derive them from meshes, bounding boxes, or visual scenes.
 - Every visual is its own scene under `visuals/` (e.g. `visuals/units/spearman.tscn`), plugged into a generic gameplay scene. Swapping art = swapping the visual scene only; no gameplay code changes.
 - One asset manifest, `data/asset_manifest.json`, maps unit / building / road IDs to visual scene paths. Load visuals only through `core/asset_manifest.gd` (`AssetManifest.instantiate(id)`), never by hard-coded scene path in gameplay code.
-- Landmarks: the manifest's `landmarks` section maps a settlement ID (e.g. `"crownhaven"`, from `docs/world.md`) to its own `stage_1`/`stage_2`/`stage_3` scenes. Load settlements with `AssetManifest.instantiate_settlement(settlement_id, stage)`; settlements without a landmark entry fall back to the generic `settlement.city.stage_N` visuals. A landmark must define all three stages (missing stages are an error, not a silent fallback).
+- Landmarks: the manifest's `landmarks` section maps a settlement ID (e.g. `"crownhaven"`, from `docs/world-bible-v2.md`) to its own `stage_1`/`stage_2`/`stage_3` scenes. Load settlements with `AssetManifest.instantiate_settlement(settlement_id, stage)`; settlements without a landmark entry fall back to the generic `settlement.city.stage_N` visuals. A landmark must define all three stages (missing stages are an error, not a silent fallback).
 - Two scales:
   - World/battle scale: 1 Godot unit = 1 meter; humans about 1.8 m, including placeholders. Applies to deployment and battle scenes and to the source proportions of every character model.
   - Campaign map scale: stylized miniature. Generals and heroes are deliberately oversized relative to settlements for readability. The current prototype's proportions (recorded in the constitution) are the reference. Campaign figures are scaled-up world-scale sources, not separately proportioned models.

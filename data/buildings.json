@@ -24,7 +24,7 @@
     "fortress": "main_fortress"
   },
   "landmark_names": {
-    "_note": "Main-building names for landmark settlements (docs/world.md), per level.",
+    "_note": "Main-building names for landmark settlements (docs/archive/world-v1.md), per level.",
     "goldspire_rock": ["Goldspire Hold", "Carved Halls of Goldspire", "Terraced Citadel"]
   },
   "chains": {

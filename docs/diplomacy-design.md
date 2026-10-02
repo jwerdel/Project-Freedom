@@ -55,7 +55,7 @@ The constitution separates two things: a faction's *tendencies*, which others ac
 
    So two factions can both sit at attitude 0 toward a kind and a cruel neighbour and still act differently: they garrison against the cruel one, discount its promises, and look for allies against it. Attitude says "how much we like you". Tendency says "what we expect you to do". A relationship bonus would wrongly make a cruel neighbour simply "liked less". Reputation makes it *distrusted and feared*, which is different. A cruel neighbour that treats you well can still be liked (high attitude) but feared (threat stays).
 
-3. **Permanent prejudice** is a fixed attitude modifier between peoples that never decays (data, by race and by faction pair). docs/world.md: the orc tribes and the northern human realms hate each other. The **Redhand Warband** is the orc faction open to friendship with men, and despised by other orcs for it.
+3. **Permanent prejudice** is a fixed attitude modifier between peoples that never decays (data, by race and by faction pair). docs/archive/world-v1.md: the orc tribes and the northern human realms hate each other. The **Redhand Warband** is the orc faction open to friendship with men, and despised by other orcs for it.
    - Placeholder: −60 between hating pairs.
    - A minority of factions (the Redhand, possibly the Riverlands minor houses: world.md's friendship story) have **no** prejudice toward the other race. Instead they carry a −20 "betrayer of its kind" prejudice from their own race's haters.
 

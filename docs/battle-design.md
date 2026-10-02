@@ -188,7 +188,7 @@ The AI picks a template, fills slots by unit type, and assigns orders:
 | Levy swarm | Levies aggressive in every lane; better units behind and in reserve |
 | Hold the walls | Settlement defense: missile units on the wall, infantry at the gates, cavalry in reserve |
 
-Choice comes from faction personality (a `battle_style` field in `data/factions.json`, from `docs/world.md`) and army makeup:
+Choice comes from faction personality (a `battle_style` field in `data/factions.json`, from `docs/archive/world-v1.md`) and army makeup:
 
 - House Aurek (income-focused, cruel when crossed): Line; Hammer and anvil when it has more cavalry.
 - House Verrin (huge levies, mediocre generals): Levy swarm when levies outnumber everything else, otherwise Line; mediocre generals add 1 tick to every delay.

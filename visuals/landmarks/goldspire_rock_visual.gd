@@ -1,5 +1,5 @@
 extends Node3D
-# Goldspire Rock (docs/world.md landmark #2, House Aurek): a colossal sea cliff with a fortress
+# Goldspire Rock (docs/archive/world-v1.md landmark #2, House Aurek): a colossal sea cliff with a fortress
 # carved into and on top of it, glowing mine entrances, gold-roofed towers, harbor at its foot.
 # Stage 1: mine tunnels and a tower on the summit. Stage 2: carved halls, harbor, walls.
 # Stage 3: the whole sea face terraced with halls and towers.

@@ -1,3 +1,5 @@
+> **Archived (2026-10-02).** Superseded by [`docs/world-bible-v2.md`](../world-bible-v2.md), which is now the lore reference. Kept for history: the prototype map (House Aurek, House Lannet, House Verrin, Goldspire Rock) and earlier code comments were written against this version.
+
 # Project Freedom: World Bible (Draft v1)
 
 Status: first draft written by the design assistant at the owner's request. Everything here is editable. Names are placeholders chosen to be original; geography deliberately follows Game of Thrones, tone is Game of Thrones politics meets 40K-scale fantasy threats. This file is lore and landmark reference. constitution.md still governs mechanics.

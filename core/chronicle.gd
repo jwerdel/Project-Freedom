@@ -1,5 +1,5 @@
 extends RefCounted
-# The chronicle: entries in the voice of the Grey Scribes (docs/world.md), kept in GameState so
+# The chronicle: entries in the voice of the Grey Scribes (docs/archive/world-v1.md), kept in GameState so
 # any later system can add to it. Wording comes from data/chronicle.json.
 
 const WorldMap = preload("res://core/world_map.gd")
