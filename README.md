@@ -30,7 +30,7 @@ Controls follow Total War: Warhammer III (see `docs/tw-ui-parity.md`).
 | WASD / arrow keys | Pan (hold Shift to pan faster) |
 | Q / E | Rotate the camera |
 | Middle mouse drag | Orbit and tilt |
-| Mouse wheel | Zoom (the tilt follows the zoom) |
+| Mouse wheel | Zoom (the tilt follows the zoom); zooming out past the farthest zoom opens the strategic map |
 | Home / End | Pan to your capital / reset the rotation |
 | , / . | Previous / next army (or settlement, when one is selected); the camera pans at the current zoom |
 | Backspace | Cancel the selected army's order |
@@ -46,7 +46,7 @@ Controls follow Total War: Warhammer III (see `docs/tw-ui-parity.md`).
 | Escape | Cancel a held move; else close the open panel (or show a hidden interface); with nothing open, open the pause menu |
 | Space / Escape (AI turn) | Skip following the AI armies. The AI turn bar also has Pause, 1x / 2x / 4x speed and ">> Skip"; following AI movements is Off / Only near my territory / All in the camera settings or Settings (default Off) |
 | R | Your armies move at 1x or 2x speed on the map (also in the camera settings and Settings) |
-| Tab | Strategic map |
+| Tab | Strategic map: territory colours, borders, settlements and armies, with map layers. Click a place or scroll in to return there; Tab or Escape returns where you were |
 | K / Alt+K | Hide or show the interface / the same with cinematic letterbox bars (Escape also brings it back) |
 | Ctrl+T | Settlement labels (banners) on or off |
 | F | Camera follows the selected army |

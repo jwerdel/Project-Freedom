@@ -9,6 +9,7 @@ const UiData = preload("res://core/ui_data.gd")
 const Movement = preload("res://core/movement.gd")
 const PortraitStudio = preload("res://core/portrait_studio.gd")
 const CampaignUI = preload("res://ui/campaign_ui.gd")
+const StrategicMap = preload("res://ui/strategic_map.gd")
 const UiKit = preload("res://ui/ui_kit.gd")
 const SettlementBanner = preload("res://ui/settlement_banner.gd")
 const TerritoryOverlay = preload("res://visuals/terrain/territory_overlay.gd")
@@ -25,6 +26,7 @@ const Ai = preload("res://core/ai.gd")
 const TurnLoop = preload("res://core/turn_loop.gd")
 const BattleSim = preload("res://core/battle_sim.gd")
 const WALK_SPEED = 12.0 # map meters per second while the figure walks (presentation only)
+const STRATEGIC_RETURN_DISTANCE = 150.0 # zoom after returning from the strategic map to a place
 # Overview camera (Home). Framed so the coast and Goldspire's sea face sit above the bottom panel.
 const OVERVIEW_TARGET = Vector3(10,3,21)
 const OVERVIEW_YAW = 0.08
@@ -90,6 +92,7 @@ var collecting_moves = false # End Turn: moves are gathered, then replayed (AI a
 var collected_moves = {}
 var spectate_queue: Array = [] # [[army id, path]] still to show, camera following
 var ai_paused := false # the AI turn bar's Pause (presentation only)
+var strategic: Control # the strategic map (Tab or zooming out)
 var spectating := {}           # {id, hold}: the AI army the camera follows now
 var rmb_held := false       # right mouse held with an army selected: path preview (TW:WH3)
 var pitch_offset := 0.0     # middle-drag tilt on top of the zoom-dependent tilt
@@ -295,6 +298,10 @@ func _ready():
    if ev: ev.pressed.emit()
   if arg == "--report-timeline" and ui.report_visible(): ui.report_box.find_child("TimelineToggle",true,false).pressed.emit()
  if "--chronicle" in OS.get_cmdline_user_args(): ui.toggle_chronicle()
+ # --strategic opens the strategic map at once; --layer=ID picks its layer (captures).
+ for arg in OS.get_cmdline_user_args():
+  if arg.begins_with("--layer="): strategic.set_layer(arg.get_slice("=",1))
+ if "--strategic" in OS.get_cmdline_user_args(): open_strategic_map(true)
  if "--pause-menu" in OS.get_cmdline_user_args(): open_pause_menu()
  if "--self-test" in OS.get_cmdline_user_args():
   run_checks()
@@ -628,6 +635,13 @@ func make_ui():
  layer.add_child(ui)
  ui.setup(ui_data,studio)
  pins_root.theme = ui.theme
+ strategic = StrategicMap.new()
+ strategic.name = "StrategicMap"
+ layer.add_child(strategic)
+ layer.move_child(strategic,ui.get_index()) # under the interface, over the 3D map
+ strategic.setup(ui_data,TerritoryOverlay.RECT)
+ strategic.location_chosen.connect(close_strategic_map)
+ strategic.closed.connect(func(): close_strategic_map())
  ui.end_turn_requested.connect(end_turn_pressed)
  ui.warning_step.connect(step_warning)
  ui.warning_skip.connect(skip_warning)
@@ -769,9 +783,32 @@ func toggle_army_speed():
  ui.toast("Your armies move at %dx speed." % Settings.army_speed())
  ui.camera_settings_changed()
 
-# Tab: the strategic map (filled in by the strategic map part of this block).
+# Tab, or zooming out past the farthest zoom (TW:WH3): the flat strategic map. Clicking a place or
+# scrolling in there returns to the 3D map at that place; Tab or Esc returns where the camera was.
 func toggle_strategic_map():
- pass
+ if map_open(): close_strategic_map()
+ else: open_strategic_map()
+
+func map_open() -> bool:
+ return strategic != null and strategic.is_open()
+
+func open_strategic_map(instant := false):
+ if map_open(): return
+ cancel_move_preview()
+ ui.hide_hover()
+ strategic.set_selected_army(selected_army_id())
+ strategic.open_map(instant)
+ pins_root.visible = false
+
+# world: where to return (null: where the camera was).
+func close_strategic_map(world = null):
+ if not map_open(): return
+ strategic.close_map()
+ get_viewport().disable_3d = false
+ pins_root.visible = ui.visible and overlays.get("settlements",true)
+ if world != null:
+  pan_to(ground(world))
+  desired_distance = minf(desired_distance,STRATEGIC_RETURN_DISTANCE)
 
 func cancel_move_preview():
  rmb_held = false
@@ -1108,6 +1145,12 @@ func hover_text(hit: String) -> String:
 
 func _unhandled_input(event):
  if pause_menu != null or game_over != null: return
+ if map_open():
+  # The strategic map takes the mouse itself; here only Tab and Esc (back to the 3D map).
+  if event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_TAB,KEY_ESCAPE]:
+   close_strategic_map()
+   get_viewport().set_input_as_handled()
+  return
  if spectating_now() and event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_SPACE,KEY_ESCAPE]:
   skip_spectating()
   get_viewport().set_input_as_handled()
@@ -1118,7 +1161,9 @@ func _unhandled_input(event):
  if event is InputEventMouseButton:
   if event.pressed:
    if event.button_index == MOUSE_BUTTON_WHEEL_UP: desired_distance = clampf(desired_distance*0.88,10,210)
-   if event.button_index == MOUSE_BUTTON_WHEEL_DOWN: desired_distance = clampf(desired_distance*1.13,10,210)
+   if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+    if desired_distance>=209.9: open_strategic_map() # past the farthest zoom (TW:WH3)
+    desired_distance = clampf(desired_distance*1.13,10,210)
    if event.button_index == MOUSE_BUTTON_LEFT:
     press_pos = event.position
     if rmb_held: cancel_move_preview()
@@ -1191,12 +1236,12 @@ func camera_update(delta: float):
  if Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN): dir.z+=1
  if Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT): dir.x-=1
  if Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT): dir.x+=1
- if Input.is_key_pressed(KEY_CTRL) or pause_menu != null: dir = Vector3.ZERO # Ctrl+S is quicksave; paused means paused
+ if Input.is_key_pressed(KEY_CTRL) or pause_menu != null or map_open(): dir = Vector3.ZERO # Ctrl+S is quicksave; paused means paused
  target += dir.rotated(Vector3.UP,yaw)*delta*distance*(0.75 if Input.is_key_pressed(KEY_SHIFT) else 0.30)
  target.x = clampf(target.x,-105,105)
  target.z = clampf(target.z,-90,65)
  # Q / E rotate (TW:WH3); Shift pans faster.
- if pause_menu == null and not Input.is_key_pressed(KEY_CTRL):
+ if pause_menu == null and not Input.is_key_pressed(KEY_CTRL) and not map_open():
   if Input.is_physical_key_pressed(KEY_Q): yaw += delta*1.6
   if Input.is_physical_key_pressed(KEY_E): yaw -= delta*1.6
  distance = lerpf(distance,desired_distance,minf(1,delta*9))
@@ -1210,6 +1255,8 @@ func camera_update(delta: float):
 
 func _process(delta):
  _update_spectate(delta)
+ # Nothing 3D shows behind the opaque strategic map: skip rendering it once the fade is done.
+ if map_open() and strategic.fade>=1.0 and not get_viewport().disable_3d: get_viewport().disable_3d = true
  # Answer AI attacks once nothing else is on screen (captures only with --defense).
  if not spectating_now() and (not capture_mode or "--defense" in OS.get_cmdline_user_args()) and ui_data.has_pending_battle(): open_pending_battle()
  if not paused:
