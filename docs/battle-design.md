@@ -1,6 +1,6 @@
 # Battle system design
 
-**STATUS: APPROVED design direction (2026-10-01). Not implemented yet. The open questions in section 13 stay open until answered.** `constitution.md` governs; every number below is a placeholder that will live in data files (`data/battle.json`, `data/units/*.json`).
+**STATUS: APPROVED (2026-10-01), decisions in section 13. Being implemented; section 13 overrides earlier sections where they differ.** `constitution.md` governs; every number below is a placeholder that will live in data files (`data/battle.json`, `data/units/*.json`).
 
 Constitution rules this design satisfies: the player inspects the battlefield, deploys and gives standing orders before resolution; resolution is a simulation with no animated 3D combat in V1; deployment and orders have visible, explainable consequences; a battle report teaches; troops, casualties and generals flow back into the campaign; an army may fight several battles while its movement allowance lasts; settlement walls and towers count in settlement battles; siege endurance is about 8 turns at most, supply model open.
 
@@ -33,7 +33,7 @@ Bands 1-2 are the attacker's deployment zone, 3-4 no man's land, 5-6 the defende
  band 1  [  open  ]  [  open  ]  [ water  ]   attacker back line (Right lane closed: water)
 ```
 
-**Weather** is rolled from the battle seed: clear (60%), rain (20%: missiles -30%, charges -20%), fog (10%: missile range -1 band, enemy back line hidden), wind (10%: missiles -15%).
+**Weather** is rolled from the battle seed, light effects only: clear (70%), rain (20%: missiles -30%), fog (10%: missile range -1 band, enemy back line hidden).
 
 **What you see of the enemy:** its units on open ground and hills, with type and strength. Units in forest, in reserve, or in the back line during fog show as an "unknown unit" card. The defender always knows the attacker's composition; the attacker sees the defender's army list but not hidden placements.
 
@@ -225,37 +225,82 @@ A Monte Carlo harness (a headless script plus a smaller GUT test subset) runs N 
 | # | Scenario | Target |
 |---|---|---|
 | 1 | Mirror: same army, same deployment | each side 45-55% |
-| 2 | Good deployment (archers protected, cavalry in reserve, spears hold) vs bad (archers in front, cavalry aggressive into spears) | good side 75% or more |
-| 3 | Braced spears vs a frontal cavalry charge | spears 80% or more |
-| 4 | Cavalry vs unprotected archers | cavalry 85% or more |
-| 5 | Flanking an enemy with no reserve | flanker 70% or more; with a reserve, 40-60% |
-| 6 | 1:2 outnumbered, holding a pass vs open ground | holding the pass 50% or more; in the open 15% or less |
+| 2 | Good deployment (archers protected, cavalry in reserve, spears hold) vs bad (archers in front, cavalry aggressive into spears) | good side 75-92% |
+| 3 | Braced spears vs a frontal cavalry charge | spears 80-95% |
+| 4 | Cavalry vs unprotected archers | cavalry 85-97% |
+| 5 | Flanking an enemy with no reserve (meeting engagement: both lines advance) | flanker 70-90%; with a reserve, 40-60% |
+| 6 | 1:2 outnumbered, holding a pass vs open ground | holding the pass 50-95%; in the open 15% or less |
 | 7 | Archers against heavy infantry vs against levies | at most half the kill rate |
-| 8 | Wall assault, equal armies | defender 75% or more; after 4 siege turns, 60% or less |
+| 8 | Wall assault, equal armies | defender 75-92%; after 4 siege turns, 60% or less |
 | 9 | General rank 5 vs rank 1 | rank 5 wins 55-65% (matters but does not decide) |
 | 10 | More men, same everything else | win rate rises monotonically |
 | 11 | Same seed twice | identical result, report text and replay |
-| 12 | Speed | under 2 ms per battle |
-| 13 | Scenarios 2-6 with 3 lanes and with 5 lanes | both meet the targets; 5 lanes shows a larger gap between a screened and an unscreened flank |
+| 12 | Speed | under 10 ms per battle in the debug editor build; re-measure against under 2 ms once a release build exists |
+| 13 | Scenarios 2-6 with 3 lanes and with 5 lanes | targets apply to 5 lanes (the configured count); the 3-lane row is informational; 5 lanes shows a larger gap between a screened and an unscreened flank |
+
+Upper bounds (owner, 2026-10-01): no tactical choice is a guaranteed win; good decisions are rewarded clearly but some risk always remains. The pass bound is 50-95% (owner, 2026-10-01): chokepoint defense is intentionally strong; attackers counter it by flanking routes, besieging, or overwhelming numbers. (The archer strength that good-vs-bad deployment and cavalry-vs-archers need also makes the archer behind a braced spear in a pass decisive.)
 
 If a target fails, the fix goes into the numbers in data, not into special cases in code.
 
-## 13. Open questions (recommended answer in bold)
+## 13. Decisions (owner, 2026-10-01)
 
-1. Lane grid: 3 lanes or 5 (far left, left, center, right, far right), with 2 lines plus reserve and general? **5 lanes: with armies up to 20 units, 3 lanes make flanking and screening a whole-wing decision; 5 lanes separate the line from the flanks, let one unit screen a flank, and make small armies visibly easy to outflank. Keep the count in data and confirm with the harness (section 12, scenario 13).**
-2. Temporary war rule: attacking declares war after a confirmation? **Yes, flagged until diplomacy.**
-3. Automatic settlement garrisons from buildings? **Yes, small and data-driven, so empty settlements are not free captures.**
-4. General death: 10% killed / 20% wounded when the army loses, replaced by a captain? **Yes as placeholders until the family system.**
-5. Retreat: 15 m toward the nearest own settlement, destroyed if cornered? **Yes.**
-6. Weather: seeded per battle, mild effects? **Yes; seasons later.**
-7. Captured settlements: occupy only, buildings and population kept? **Yes; sack, raze and expel stay open.**
-8. Experience: ranks 0-9 with small bonuses? **Yes.**
-9. Movement cost of fighting: 25% of max points for the attacker? **Yes.**
-10. AI attacking: keep AI armies static for the first implementation? **Yes; AI aggression as its own block.**
-11. Several armies in one battle (reinforcements within a radius)? **Not in the first implementation; 1 army vs 1 army plus garrison.**
-12. Visibility: forest, reserve and fog hide units as "unknown"? **Yes.**
-13. Show estimated odds before battle? **Yes, from 50 seeded runs.**
-14. The general as a single 20-hp elite entity with a morale aura? **Yes; bodyguard units later.**
+These answers are confirmed and override earlier sections where they differ. Every number stays a placeholder in data.
+
+1. **Lanes: 5** (far left, left, center, right, far right). The lane count stays a data value for the harness.
+2. **War rule:** attacking another faction's army or settlement declares war after a confirmation; no peace until diplomacy exists. Flagged temporary.
+3. **Automatic settlement garrisons:** yes, scaled by main building level and walls (placeholder data).
+4. **Generals:** a general can be wounded (out for N turns) or killed. Death is unlikely normally and likelier when the army is routed or destroyed. When the general is dead or wounded, a **captain** takes command: the captain fights but **cannot move the army**. The army moves again when a new general is appointed (general fee), when the wounded general returns, or when the captain **wins an important or big battle and is promoted to general**. Flagged placeholder until the character and family system exists.
+5. **Retreat:** the loser retreats toward its nearest own settlement with a reduced movement allowance; it is destroyed if no path exists. Defenders may also **withdraw before battle** at a casualty cost (Total War style, placeholder).
+6. **Weather:** seeded, light effects only: rain weakens missiles, fog limits visibility (missile range and hidden back lines). Wind is dropped.
+7. **Capture:** occupy only; sack, raze and expel stay open.
+8. **Experience:** units gain experience from kills and survival; ranks give small stat bonuses; generals gain ranks too.
+9. **Movement cost:** attacking costs a fixed share of the attacker's movement points; the army may fight again if points remain.
+10. **AI armies stay static** until the AI block (the AI only defends).
+11. **Reinforcements, basic:** friendly armies within a radius join the battle, arriving in reserve or a few ticks late depending on distance.
+12. **Hidden units:** forest, reserve and fog, as designed.
+13. **Win odds:** shown as a Total War-style balance-of-power bar before battle (from seeded simulation runs).
+14. **The general** is a single elite fighter with a morale aura; its death or flight shocks its army's morale.
+
+## 14. Rules added while implementing (approved by the owner, 2026-10-01)
+
+Tuning against the harness showed gaps that numbers alone could not close. These general rules (no scenario-specific code) are now part of the design and override earlier sections where they differ:
+
+1. **Army break:** a side breaks (everyone left routs, reserves and flankers leave) when it has lost `army_break_fraction` of its starting men to death or rout, or when no melee unit is left (missile troops alone cannot hold the field).
+2. **Shared frontage:** attackers on one target share that target's frontage (front and rear counted separately), so piling units onto one enemy has diminishing returns.
+3. **Line depth:** an idle holding melee unit joins a fight against an enemy already in contact in its lane. Missile troops keep shooting instead.
+4. **Archers:** missile units with an advance order move only until an enemy is in range, then stand and shoot; they never charge. They never shoot into a melee they are part of, and shoot into other melees at `engaged_target_factor` of normal effect.
+5. **Flank resolution order:** an uncommitted reserve rides out and meets an arriving flanker in its outer lane (cavalry meeting cavalry: both charge). Otherwise an idle unit in that outer lane, in its own half of the field, screens it (units already in melee cannot screen). Otherwise the flanker hits the nearest enemy lane from the outside in, back line first. A flanker that has arrived, and a reserve that has intercepted, keep attacking.
+6. **Turning to face:** before a rear hit lands, the target turns to face with chance `turn_face.base + morale x per_morale + general rank x per_general_rank` (capped at `max`). Then it is a frontal fight with no rear bonus and no morale shock. Morale and the general's rank raise the chance.
+7. **Braced spears** cut `brace_charge_reduction` of an incoming charge instead of cancelling it.
+8. **Passes:** units waiting behind a unit fighting in a pass (idle melee units of its side in that lane, plus the reserve when the pass is the only open lane) add `pass_support_fraction` of their fighting men to that fight.
+9. **Reserves and pursuit:** cavalry reserves ride down routing enemies, but not while enemy flankers are still on their way.
+10. **Fortunes of the day:** each unit's starting morale varies by up to `start_morale_noise` (seeded), so small edges do not become certainties.
+11. **Weather** (decision 6): clear, rain (missiles weaker), fog (missile range and hidden back lines); wind removed.
+
+## 15. Tuned numbers (Phase A, 2026-10-01)
+
+Tuned against the harness with 500 seeded battles per case; further balance comes from playtesting, not the harness (owner, 2026-10-01). Changes from the numbers in sections 4-5 and 11 (all in `data/battle.json` and `data/units/*.json`):
+
+| Value | Design | Tuned |
+|---|---|---|
+| Melee kill rate | 0.08 | 0.4 |
+| Missile rate | 0.04 | 0.03 |
+| Archer range | 2 bands | 4 bands |
+| Shooting into others' melee (new) | - | 10% of normal |
+| General aura per rank / lanes reached | 2 / 1 | 0.4 / 2 |
+| Starting morale variation (new) | - | ±37% |
+| Army break share (new) | - | 46% of men |
+| Braced spears' charge cut (was: cancel) | 100% | 57% |
+| Turn to face a flanker (new) | - | 0.48 + 0.002 x morale + 0.02 x general rank, max 0.6 |
+| Pass support (new) | - | 56% of waiting men |
+| Flank route length | 5 bands | 8.5 bands |
+| Wall defence bonus / attack penalty | 20 / 20 | 14 / 14 |
+| Tower damage per defense point | 0.5 | 0.38 |
+| Wall bonus lost per siege turn | 15% | 23% |
+| Cavalry melee attack / defence / charge / armour | 36 / 22 / 40 / 40 | 48 / 28 / 50 / 52 |
+| Weather | clear 60, rain 20, fog 10, wind 10 | clear 70, rain 20, fog 10 (decision 6) |
+
+Final harness (5 lanes, 500 battles per case): see VALIDATION.md. The mirror can read up to about 55.5% at this sample size; that is noise (owner, 2026-10-01).
 
 ## Implementation phases after approval
 

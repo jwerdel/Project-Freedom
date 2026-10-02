@@ -10,5 +10,6 @@
   "size": 160,
   "recruitment": {"cost": 250, "turns": 1},
   "card_portrait": {"framing": "full_body"},
-  "placeholder_stats": {"_note": "PLACEHOLDER values; not balanced. upkeep is used by the economy (data/economy.json army_upkeep_multiplier); the rest is shown in the UI only. size (men at full strength) and recruitment (gold cost, turns; null = not recruitable) are PLACEHOLDER values too", "upkeep": 60, "melee_attack": 18, "melee_defence": 14, "armour": 10, "missile_range": 0}
+  "battle": {"speed": 0.5, "melee_attack": 18, "melee_defence": 14, "charge": 6, "armour": 10, "ap": 0.1, "missile": null, "shield": 0.0, "morale": 30, "bonus_vs_cavalry": 0, "brace": false},
+  "placeholder_stats": {"_note": "PLACEHOLDER values; not balanced. upkeep is used by the economy (data/economy.json army_upkeep_multiplier). battle holds the battle simulation stats (docs/battle-design.md section 4: speed in bands per tick, melee attack and defence, charge, armour 0-100, ap = armour-piercing fraction, missile damage/range in bands/volleys, shield = frontal missile block, morale, bonus_vs_cavalry, brace = negates charges when holding; the general also has hp). size (men at full strength) and recruitment (gold cost, turns; null = not recruitable) are PLACEHOLDER values too", "upkeep": 60}
 }

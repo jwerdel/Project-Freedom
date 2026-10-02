@@ -1,0 +1,81 @@
+{
+  "_note": "Monte Carlo validation scenarios (docs/battle-design.md section 12). Side A is listed first; role 'swap' runs half the seeds with A attacking and half with A defending. Lanes are given for the 5-lane grid; the 3-lane run maps them (0,1 -> 0; 2 -> 1; 3,4 -> 2). Equal-cost armies unless the scenario says otherwise (levy 250, spearmen 450, archers 500, swordsmen 550, heavy infantry 800, cavalry 900).",
+  "armies": {
+    "standard": ["spearmen", "spearmen", "swordsmen", "swordsmen", "archers", "archers", "cavalry", "cavalry", "peasant_levy", "peasant_levy"]
+  },
+  "scenarios": [
+    {"id": "1", "name": "Mirror: same army, same deployment", "metric": "win_rate", "role": "swap",
+     "cases": [{"label": "mirror", "min": 0.45, "max": 0.55,
+       "a": {"template": "line", "army": "standard", "front": "aggressive"},
+       "b": {"template": "line", "army": "standard", "front": "aggressive"}}]},
+    {"id": "2", "name": "Good deployment vs bad deployment, equal armies", "metric": "win_rate", "role": "swap", "lanes_check": true,
+     "cases": [{"label": "good vs bad", "min": 0.75, "max": 0.92,
+       "a": {"units": [
+         {"unit": "spearmen", "lane": 1, "line": "front", "order": "hold"}, {"unit": "spearmen", "lane": 2, "line": "front", "order": "hold"},
+         {"unit": "swordsmen", "lane": 3, "line": "front", "order": "hold"}, {"unit": "swordsmen", "lane": 2, "line": "front", "order": "hold"},
+         {"unit": "peasant_levy", "lane": 1, "line": "front", "order": "hold"}, {"unit": "peasant_levy", "lane": 3, "line": "front", "order": "hold"},
+         {"unit": "archers", "lane": 1, "line": "back", "order": "hold"}, {"unit": "archers", "lane": 2, "line": "back", "order": "hold"},
+         {"unit": "cavalry", "line": "reserve", "order": "reserve"}, {"unit": "cavalry", "line": "reserve", "order": "reserve"}]},
+       "b": {"units": [
+         {"unit": "archers", "lane": 1, "line": "front", "order": "aggressive"}, {"unit": "archers", "lane": 2, "line": "front", "order": "aggressive"},
+         {"unit": "cavalry", "lane": 2, "line": "front", "order": "aggressive"}, {"unit": "cavalry", "lane": 3, "line": "front", "order": "aggressive"},
+         {"unit": "spearmen", "lane": 1, "line": "back", "order": "aggressive"}, {"unit": "spearmen", "lane": 2, "line": "back", "order": "aggressive"},
+         {"unit": "swordsmen", "lane": 3, "line": "back", "order": "aggressive"}, {"unit": "swordsmen", "lane": 3, "line": "front", "order": "aggressive"},
+         {"unit": "peasant_levy", "lane": 1, "line": "back", "order": "aggressive"}, {"unit": "peasant_levy", "lane": 2, "line": "back", "order": "aggressive"}]}}]},
+    {"id": "3", "name": "Braced spears vs a frontal cavalry charge (equal cost: 2 spearmen vs 1 cavalry)", "metric": "win_rate", "role": "defender", "lanes_check": true,
+     "cases": [{"label": "spears hold", "min": 0.8, "max": 0.95,
+       "a": {"units": [{"unit": "spearmen", "lane": 2, "line": "front", "order": "hold"}, {"unit": "spearmen", "lane": 2, "line": "front", "order": "protect", "protect": 0}]},
+       "b": {"units": [{"unit": "cavalry", "lane": 2, "line": "front", "order": "aggressive"}]}}]},
+    {"id": "4", "name": "Cavalry vs unprotected archers (1 cavalry vs 2 archers)", "metric": "win_rate", "role": "attacker", "lanes_check": true,
+     "cases": [{"label": "cavalry charges", "min": 0.85, "max": 0.97,
+       "a": {"units": [{"unit": "cavalry", "lane": 2, "line": "front", "order": "aggressive"}]},
+       "b": {"units": [{"unit": "archers", "lane": 2, "line": "front", "order": "hold"}, {"unit": "archers", "lane": 2, "line": "back", "order": "hold"}]}}]},
+    {"id": "5", "name": "Flanking an enemy with and without a reserve (meeting engagement: both lines advance)", "metric": "win_rate", "role": "swap", "lanes_check": true,
+     "cases": [
+      {"label": "target has no reserve", "min": 0.7, "max": 0.9,
+       "a": {"units": [
+         {"unit": "spearmen", "lane": 1, "line": "front", "order": "aggressive"}, {"unit": "swordsmen", "lane": 2, "line": "front", "order": "aggressive"}, {"unit": "spearmen", "lane": 3, "line": "front", "order": "aggressive"}, {"unit": "swordsmen", "lane": 2, "line": "front", "order": "aggressive"},
+         {"unit": "archers", "lane": 1, "line": "back", "order": "hold"}, {"unit": "archers", "lane": 3, "line": "back", "order": "hold"},
+         {"unit": "cavalry", "lane": 0, "line": "front", "order": "flank"}, {"unit": "cavalry", "lane": 4, "line": "front", "order": "flank"}]},
+       "b": {"units": [
+         {"unit": "spearmen", "lane": 1, "line": "front", "order": "aggressive"}, {"unit": "swordsmen", "lane": 2, "line": "front", "order": "aggressive"}, {"unit": "spearmen", "lane": 3, "line": "front", "order": "aggressive"}, {"unit": "swordsmen", "lane": 2, "line": "front", "order": "aggressive"},
+         {"unit": "archers", "lane": 1, "line": "back", "order": "hold"}, {"unit": "archers", "lane": 3, "line": "back", "order": "hold"},
+         {"unit": "cavalry", "lane": 2, "line": "back", "order": "aggressive"}, {"unit": "cavalry", "lane": 2, "line": "back", "order": "aggressive"}]}},
+      {"label": "target keeps a cavalry reserve", "min": 0.4, "max": 0.6, "same_as": 0,
+       "b_override": {"6": {"line": "reserve", "order": "reserve"}, "7": {"line": "reserve", "order": "reserve"}}},
+      {"label": "target screens both outer lanes (reference for the flank gap)", "same_as": 0, "reference": true,
+       "b_override": {"6": {"lane": 0, "line": "front", "order": "hold"}, "7": {"lane": 4, "line": "front", "order": "hold"}}}]},
+    {"id": "6", "name": "Outnumbered 1:2, holding a pass vs open ground", "metric": "win_rate", "role": "defender", "lanes_check": true,
+     "cases": [
+      {"label": "holding the pass", "min": 0.5, "max": 0.95, "field": "pass",
+       "a": {"units": [{"unit": "spearmen", "lane": 2, "line": "front", "order": "hold"}, {"unit": "archers", "lane": 2, "line": "back", "order": "hold"}, {"unit": "spearmen", "line": "reserve", "order": "reserve"}]},
+       "b": {"template": "line", "army": ["spearmen", "spearmen", "spearmen", "spearmen", "archers", "archers"]}},
+      {"label": "same armies in the open", "max": 0.15, "field": "open", "same_as": 0}]},
+    {"id": "7", "name": "Archers against heavy infantry vs against levies", "metric": "kills_per_volley", "role": "defender",
+     "cases": [
+      {"label": "vs heavy infantry",
+       "a": {"units": [{"unit": "archers", "lane": 2, "line": "front", "order": "hold"}]},
+       "b": {"units": [{"unit": "heavy_infantry", "lane": 2, "line": "front", "order": "aggressive"}]}},
+      {"label": "vs levies", "same_as": 0, "b": {"units": [{"unit": "peasant_levy", "lane": 2, "line": "front", "order": "aggressive"}]}}],
+     "ratio_max": 0.5},
+    {"id": "8", "name": "Wall assault, equal armies", "metric": "win_rate", "role": "defender",
+     "cases": [
+      {"label": "fresh walls", "min": 0.75, "max": 0.92, "field": "walls", "walls": {"defense": 30, "siege_turns": 0},
+       "a": {"template": "hold_walls", "army": "standard"}, "b": {"template": "line", "army": "standard", "front": "aggressive"}},
+      {"label": "after 4 siege turns", "max": 0.6, "same_as": 0, "walls": {"defense": 30, "siege_turns": 4}}]},
+    {"id": "9", "name": "General rank 5 vs rank 1, same armies", "metric": "win_rate", "role": "swap",
+     "cases": [{"label": "rank 5 vs 1", "min": 0.55, "max": 0.65,
+       "a": {"template": "line", "army": "standard", "front": "aggressive", "general_rank": 5},
+       "b": {"template": "line", "army": "standard", "front": "aggressive", "general_rank": 1}}]},
+    {"id": "10", "name": "More men, everything else equal", "metric": "monotonic", "role": "swap",
+     "cases": [
+      {"label": "70% men", "men_scale": 0.7, "a": {"template": "line", "army": "standard", "front": "aggressive"}, "b": {"template": "line", "army": "standard", "front": "aggressive"}},
+      {"label": "85% men", "men_scale": 0.85, "same_as": 0},
+      {"label": "100% men", "men_scale": 1.0, "same_as": 0},
+      {"label": "115% men", "men_scale": 1.15, "same_as": 0},
+      {"label": "130% men", "men_scale": 1.3, "same_as": 0}]},
+    {"id": "11", "name": "Same seed twice", "metric": "determinism", "role": "swap", "cases": [{"label": "repeat", "same_as_scenario": "2"}]},
+    {"id": "12", "name": "Speed", "metric": "speed", "role": "swap", "max_ms": 10.0, "_speed": "Debug editor build target (owner, 2026-10-01): under 10 ms; re-measure against under 2 ms once a release build exists.", "cases": [{"label": "standard armies", "same_as_scenario": "1"}]},
+    {"id": "13", "name": "Scenarios 2-6 with 3 lanes and with 5 lanes (targets apply to 5 lanes; the 3-lane row is informational, owner 2026-10-01)", "metric": "lanes", "role": "swap", "cases": []}
+  ]
+}

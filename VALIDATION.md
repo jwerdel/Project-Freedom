@@ -214,6 +214,34 @@ End Turn: 2.5 ms in the self-test; 2.38 ms average, 3.22 ms worst over the 20-tu
 
 Screenshots (generated, in `captures/`): `recruit_panel.png` (recruitment at Goldspire, locked units with their building), `recruit_queue.png` (two queued recruits on the army panel), `rival_army.png` (the Highbloom Levy garrisoned in Willowmere, green banner).
 
+## Battle simulation and Monte Carlo harness (2026-10-01)
+
+`scripts/battle_harness.gd` (headless), 500 seeded battles per case, 5 lanes, debug editor build. Targets and tuned numbers: docs/battle-design.md sections 12 and 15. The GUT subset (`tests/test_battle_sim.gd`) runs the same seeds and reproduces this table.
+
+| # | Case | Target | Actual |
+|---|---|---|---|
+| 1 | mirror | 45-55% | 52.4% |
+| 2 | good vs bad | 75-92% | 77.2% |
+| 3 | spears hold | 80-95% | 92.6% |
+| 4 | cavalry charges | 85-97% | 95.4% |
+| 5 | target has no reserve | 70-90% | 84.6% |
+| 5 | target keeps a cavalry reserve | 40-60% | 58.0% |
+| 5 | target screens both outer lanes (reference for the flank gap) | (reference) | 70.4% |
+| 6 | holding the pass | 50-95% | 93.8% |
+| 6 | same armies in the open | <= 15% | 10.2% |
+| 7 | heavy infantry / levies kills per volley | <= 0.50 | 0.29 (4.40 vs 15.39) |
+| 8 | fresh walls | 75-92% | 78.4% |
+| 8 | after 4 siege turns | <= 60% | 15.8% |
+| 9 | rank 5 vs 1 | 55-65% | 59.6% |
+| 10 | 70/85/100/115/130% men | rising | 1% 10% 46% 84% 98% |
+| 11 | same seed, same result and report | identical | identical |
+| 12 | ms per battle (10 v 10 units, debug build) | < 10.0 ms | 3.07 ms |
+| 13 | 3 lanes: scenarios 2-6 meet targets (informational) | (info) | some miss |
+| 13 | 5 lanes: scenarios 2-6 meet targets | all pass | all pass |
+| 13 | flank gap (unscreened - screened) | 5 lanes > 3 lanes | 14% vs -13% |
+
+Speed: 3.07 ms per 10-v-10 battle in the debug editor build (target under 10 ms; re-measure against under 2 ms once a release build exists).
+
 ## Remaining limitations
 
 - Artwork is a prototype and has not been approved against the desired 2016 Total War campaign-map benchmark.
