@@ -2,6 +2,23 @@
 
 Godot 4.7.2 fantasy strategy game. Personal project; free and local only.
 
+## Vision
+
+- **"Crusader Kings depth, Total War look and feel."**
+- Depth comes through meaningful events and decisions, not management screens full of modifiers. Routine administration runs automatically; the game surfaces what needs attention.
+- Battles are complete for V1. No further battle work except bug fixes.
+
+## TW:WH3 UI parity principle
+
+- Everything the player touches must match Total War: Warhammer III as closely as possible: map interactions, camera, UI layout, panels, cards, tooltips, controls, notifications and feedback. Only the game rules differ.
+- When unsure how TW:WH3 does something, research it before building. Never invent a UI convention.
+
+## Doc precedence
+
+- `constitution.md` governs confirmed mechanics.
+- `docs/game-design.md` is the full design. Items marked **Proposed** need the user's approval before implementation.
+- `docs/world-bible-v2.md` is the lore reference.
+
 ## Project location (check first, every session)
 
 - The canonical project path is `C:\Users\Owner\dev\project-freedom`. It does not live on the OneDrive Desktop.
@@ -10,7 +27,7 @@ Godot 4.7.2 fantasy strategy game. Personal project; free and local only.
 
 ## Source of truth
 
-- `constitution.md` is the design source of truth. Read it before design or gameplay work.
+- `constitution.md` is the source of truth for confirmed mechanics (see Doc precedence). Read it, and the relevant sections of `docs/game-design.md`, before design or gameplay work.
 - Never implement a mechanic the constitution lists as open, unresolved, or undecided without the user's approval. Ask instead.
 - Keep confirmed decisions separate from open questions when editing the constitution.
 - `docs/battle-design.md` is the approved battle design (implemented: simulation, campaign battles, deployment screen; numbers are placeholders; section 13 lists open questions to ask about, not decide).
