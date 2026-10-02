@@ -15,6 +15,8 @@ const TerritoryOverlay = preload("res://visuals/terrain/territory_overlay.gd")
 const MovementOverlay = preload("res://ui/movement_overlay.gd")
 const Battles = preload("res://core/battles.gd")
 const Deployment = preload("res://core/deployment.gd")
+const SaveSystem = preload("res://core/save_system.gd")
+const Session = preload("res://core/session.gd")
 const BattleSim = preload("res://core/battle_sim.gd")
 const WALK_SPEED = 12.0 # map meters per second while the figure walks (presentation only)
 # Overview camera (Home). Framed so the coast and Goldspire's sea face sit above the bottom panel.
@@ -82,6 +84,8 @@ var right_press_pos = Vector2.ZERO
 var preview_key = Vector2i(1<<20,0)
 var preview_text = ""
 var forced_preview = null # capture flag --preview=x,z: preview this point instead of the mouse
+var loaded_from := ""    # "" prototype start, "new" campaign from the menu, or the save file loaded
+var unsaved := false     # campaign changed since the last save or load
 
 func _ready():
  rng.seed = 87231
@@ -92,6 +96,8 @@ func _ready():
  detail.frequency = 0.12
  detail.fractal_octaves = 3
  capture_mode = "--capture" in OS.get_cmdline_user_args()
+ # Captures and the self-test never touch the player's saves.
+ if capture_mode or "--self-test" in OS.get_cmdline_user_args(): SaveSystem.dir = "user://capture_saves"
  kit = ProtoKit.shared()
  make_environment()
  make_terrain()
@@ -526,6 +532,12 @@ func make_commander():
 # and --seed=N replays a given campaign.
 func _campaign():
  var GameState = load("res://core/game_state.gd")
+ if Session.pending_state != null:
+  loaded_from = Session.pending_name if Session.pending_name != "" else "new"
+  var s = Session.pending_state
+  Session.pending_state = null
+  Session.pending_name = ""
+  return s
  for arg in OS.get_cmdline_user_args():
   if arg.begins_with("--seed="): return GameState.from_data(GameState.START,int(arg.get_slice("=",1)))
  if capture_mode or "--self-test" in OS.get_cmdline_user_args(): return GameState.from_data()
@@ -537,8 +549,11 @@ func make_ui():
  studio = PortraitStudio.new()
  add_child(studio)
  ui_data = UiData.new(_campaign())
- ui_data.set_settlement_level(CITY_ID,city_level)
- ui_data.set_settlement_level(GOLDSPIRE_ID,goldspire_level)
+ # The prototype start state takes its two showcase settlements' levels from the scene; a loaded or
+ # menu-started campaign keeps its own and the scene follows it (sync_settlement_visuals).
+ if loaded_from == "":
+  ui_data.set_settlement_level(CITY_ID,city_level)
+  ui_data.set_settlement_level(GOLDSPIRE_ID,goldspire_level)
  pins_root = Control.new()
  pins_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  pins_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -574,6 +589,11 @@ func make_ui():
   refresh_army_overlays()
   select_army(id))
  refresh_army_overlays()
+ ui_data.changed.connect(func(): unsaved = true)
+ if loaded_from != "":
+  sync_settlement_visuals()
+  sync_territory()
+  if loaded_from != "new": ui.toast("Loaded: %s" % loaded_from)
 
 # Territory colors follow settlement ownership (captures change them).
 var territory_owners := {}
@@ -797,6 +817,9 @@ func update_walk(delta: float):
    if id == selected_army_id(): ui.show_army(id,army_location(id))
 
 func end_turn():
+ # Autosave at the start of End Turn (3 rotating slots), before anything changes.
+ var a = SaveSystem.autosave(ui_data.state,thumbnail())
+ if not a.ok: ui.toast("Autosave failed: %s" % a.error)
  ui_data.end_turn()
  var r = ui_data.resources()
  ui.toast("Year %d begins. Treasury %s gold." % [r.year,UiKit.format_int(r.treasury)])
@@ -905,6 +928,10 @@ func _unhandled_input(event):
    pitch = clampf(pitch+event.relative.y*0.004,0.15,1.25)
   if Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE):
    target += (-camera.global_basis.x*event.relative.x+Vector3(camera.global_basis.z.x,0,camera.global_basis.z.z).normalized()*-event.relative.y)*distance*0.0015
+ if event is InputEventKey and event.pressed and not event.echo and event.ctrl_pressed:
+  if event.keycode == KEY_S: quicksave()
+  if event.keycode == KEY_L: quickload()
+  return
  if event is InputEventKey and event.pressed and not event.echo:
   if event.keycode == KEY_HOME: reset_camera()
   if event.keycode == KEY_SPACE: toggle_pause()
@@ -932,6 +959,7 @@ func camera_update(delta: float):
  if Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN): dir.z+=1
  if Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT): dir.x-=1
  if Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT): dir.x+=1
+ if Input.is_key_pressed(KEY_CTRL): dir = Vector3.ZERO # Ctrl+S is quicksave, not a camera move
  target += dir.rotated(Vector3.UP,yaw)*delta*distance*0.30
  target.x = clampf(target.x,-105,105)
  target.z = clampf(target.z,-90,65)
@@ -1075,6 +1103,12 @@ func run_checks():
  assert(ui_data.resources().year==year+1)
  assert(ui_data.events("turn")[0].year==year+1 and ui_data.events("turn")[1].category=="turn")
  print("END_TURN_MS %.3f" % ui_data.last_turn_ms)
+ # Saves: End Turn autosaved; a manual save loads back to the identical state.
+ assert(FileAccess.file_exists(SaveSystem.path_of("autosave_1")))
+ var sv = SaveSystem.save(ui_data.state,"self_test","Self-test","manual",thumbnail())
+ var ld = SaveSystem.load_save("self_test")
+ assert(sv.ok and ld.ok and ld.state.state_hash() == ui_data.state.state_hash())
+ print("SAVE_MS %.2f LOAD_MS %.2f SAVE_BYTES %d" % [sv.ms,ld.ms,sv.bytes])
  # Army movement: preview, blocked order, multi-turn order continuing on End Turn, garrison, cancel.
  # The army's state is restored afterwards so the capture is unchanged.
  var saved_army = ui_data.state.army_state[COMMANDER_ARMY].duplicate(true)
@@ -1179,7 +1213,7 @@ func run_checks():
   assert(goldspire_level==level_now)
  ui.clear_selection()
  reset_camera()
- print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn; construction upgrades goldspire's stage; army movement preview, orders, blocking and garrison; deployment screen place, orders, view and back; battle report replay, timeline and jump; recruitment queue and refund")
+ print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn; construction upgrades goldspire's stage; army movement preview, orders, blocking and garrison; deployment screen place, orders, view and back; battle report replay, timeline and jump; autosave and save/load round trip; recruitment queue and refund")
 
 # --- Movement grid bake ------------------------------------------------------------
 # Writes data/movement_grid.json, the terrain grid army movement reads (core/movement.gd), by
@@ -1243,3 +1277,37 @@ func bake_movement_grid():
   best.append([top,x])
  best.sort()
  print("MOUNTAIN_CROSSINGS (max height, x): ",best.slice(0,6))
+
+# --- Saves ---------------------------------------------------------------------------------
+# A small picture of the current frame for the load screen (none when headless).
+func thumbnail() -> Image:
+ if DisplayServer.get_name() == "headless": return null
+ var img = get_viewport().get_texture().get_image()
+ return img if img != null and not img.is_empty() else null
+
+func quicksave():
+ var r = SaveSystem.quicksave(ui_data.state,thumbnail())
+ if r.ok: unsaved = false
+ ui.toast("Quicksaved (year %d)." % ui_data.state.year if r.ok else "Quicksave failed: %s" % r.error)
+ return r
+
+func save_named(name: String) -> Dictionary:
+ var r = SaveSystem.save(ui_data.state,SaveSystem.file_for(name),name,"manual",thumbnail())
+ if r.ok: unsaved = false
+ ui.toast("Saved \"%s\"." % name if r.ok else "Save failed: %s" % r.error)
+ return r
+
+# Load a save into a freshly built campaign scene; a failed load leaves this campaign untouched.
+func load_file(file: String) -> Dictionary:
+ var r = SaveSystem.load_save(file)
+ if not r.ok:
+  ui.toast(r.error)
+  return r
+ Session.start(get_tree(),r.state,r.meta.get("name",file))
+ return r
+
+func quickload():
+ if not FileAccess.file_exists(SaveSystem.path_of(SaveSystem.QUICKSAVE)):
+  ui.toast("No quicksave yet (Ctrl+S makes one).")
+  return
+ load_file(SaveSystem.QUICKSAVE)

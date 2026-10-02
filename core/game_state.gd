@@ -86,9 +86,32 @@ func armies_of(faction: String) -> Array:
   if army_state[id].faction == faction: out.append(id)
  return out
 
-# Everything that defines the state, for determinism checks and later save/load.
+# Everything that defines the state: determinism checks and save files (core/save_system.gd).
+# Nothing the campaign needs may live outside these fields.
 func to_dict() -> Dictionary:
- return {"seed":seed,"year":year,"turn":turn,"player_faction":player_faction,"treasury":treasury.duplicate(true),"settlements":settlements.duplicate(true),"armies":armies.duplicate(),"army_state":army_state.duplicate(true),"road_level":road_level,"wars":wars.duplicate(),"battles":battles,"chronicle":chronicle.duplicate(true)}
+ return {"seed":seed,"year":year,"turn":turn,"player_faction":player_faction,"treasury":treasury.duplicate(true),"settlements":settlements.duplicate(true),"armies":armies.duplicate(),"army_state":army_state.duplicate(true),"road_level":road_level,"wars":wars.duplicate(),"battles":battles,"chronicle":chronicle.duplicate(true),"last_ledgers":last_ledgers.duplicate(true)}
+
+# The inverse of to_dict (a loaded save).
+static func from_dict(d: Dictionary) -> RefCounted:
+ var s = load("res://core/game_state.gd").new()
+ s.seed = int(d.seed)
+ s.year = int(d.year)
+ s.turn = int(d.turn)
+ s.player_faction = str(d.player_faction)
+ s.treasury = d.treasury.duplicate(true)
+ s.settlements = d.settlements.duplicate(true)
+ s.armies = d.armies.duplicate()
+ s.army_state = d.army_state.duplicate(true)
+ s.road_level = int(d.road_level)
+ s.wars = d.wars.duplicate()
+ s.battles = int(d.battles)
+ s.chronicle = d.chronicle.duplicate(true)
+ s.last_ledgers = d.get("last_ledgers",{}).duplicate(true)
+ return s
+
+# A hash of the full state in its saved form: values, int/float types and dictionary order.
+func state_hash() -> int:
+ return load("res://core/save_codec.gd").to_json(to_dict()).hash()
 
 # Slot list of a starting settlement: the main building (at the settlement's level) in slot 0, the
 # start file's other buildings ({chain, level[, name]}), then empty slots up to the slot count.
