@@ -1,22 +1,25 @@
 extends RefCounted
 # Mutable campaign state: calendar, faction treasuries, settlements (owner, type, level,
-# population, buildings), armies, and the chronicle log. Built from data/campaign_start.json
-# plus the world data in data/provinces.json. Systems change it; the UI reads it via UiData.
+# population, buildings), armies, and the chronicle log. Built from the active map's
+# campaign_start.json plus its world data (data/maps/<id>/, core/map_registry.gd). Systems change it; the UI reads it via UiData.
 
 const WorldMap = preload("res://core/world_map.gd")
 const UnitTypes = preload("res://core/unit_types.gd")
 const Buildings = preload("res://core/buildings.gd")
 const Movement = preload("res://core/movement.gd")
 const Armies = preload("res://core/armies.gd")
-const START = "res://data/campaign_start.json"
+const MapRegistry = preload("res://core/map_registry.gd")
+const START = "" # "" = the active map's campaign_start.json (see start_path)
 
+var map_id := ""      # the map this campaign plays on (data/maps/<id>)
+var map_version := 0 # its map.json version (saves from another version are refused)
 var seed := 0
 var year := 1
 var turn := 1
 var player_faction := ""
 var treasury = {}     # faction id -> int gold
 var settlements = {}  # settlement id -> {owner, type, level, population (float), buildings (slots), construction, resources, defense, unlocks}
-var armies = []       # army ids (data/armies/)
+var armies = []       # army ids (data/maps/<map>/armies/)
 var army_state = {}   # army id -> army: composition and queue (core/armies.gd) plus movement (core/movement.gd)
 var wars = []        # faction pairs at war, "a|b" sorted (core/battles.gd; temporary rule until diplomacy)
 var battles := 0     # battles fought so far (part of each battle's seed)
@@ -35,10 +38,16 @@ static func new_campaign(path := START) -> RefCounted:
  return from_data(path,rng.randi_range(1,2147483646))
 
 # The starting state. campaign_seed 0 uses the start file's fixed seed (tests, self-test, captures).
+static func start_path(path := START) -> String:
+ return path if path != "" else MapRegistry.path("campaign_start.json")
+
 static func from_data(path := START,campaign_seed := 0) -> RefCounted:
+ path = start_path(path)
  var data = JSON.parse_string(FileAccess.get_file_as_string(path))
  assert(data is Dictionary and data.has("settlements"),"Invalid campaign start: "+path)
  var s = load("res://core/game_state.gd").new()
+ s.map_id = MapRegistry.active
+ s.map_version = MapRegistry.version()
  s.seed = campaign_seed if campaign_seed != 0 else int(data.seed)
  s.year = int(data.year)
  s.turn = 1
@@ -92,11 +101,13 @@ func armies_of(faction: String) -> Array:
 # Everything that defines the state: determinism checks and save files (core/save_system.gd).
 # Nothing the campaign needs may live outside these fields.
 func to_dict() -> Dictionary:
- return {"seed":seed,"year":year,"turn":turn,"player_faction":player_faction,"treasury":treasury.duplicate(true),"settlements":settlements.duplicate(true),"armies":armies.duplicate(),"army_state":army_state.duplicate(true),"road_level":road_level,"wars":wars.duplicate(),"battles":battles,"chronicle":chronicle.duplicate(true),"last_ledgers":last_ledgers.duplicate(true),"pending_battles":pending_battles.duplicate(true),"grace":grace.duplicate(),"destroyed":destroyed.duplicate()}
+ return {"map_id":map_id,"map_version":map_version,"seed":seed,"year":year,"turn":turn,"player_faction":player_faction,"treasury":treasury.duplicate(true),"settlements":settlements.duplicate(true),"armies":armies.duplicate(),"army_state":army_state.duplicate(true),"road_level":road_level,"wars":wars.duplicate(),"battles":battles,"chronicle":chronicle.duplicate(true),"last_ledgers":last_ledgers.duplicate(true),"pending_battles":pending_battles.duplicate(true),"grace":grace.duplicate(),"destroyed":destroyed.duplicate()}
 
 # The inverse of to_dict (a loaded save).
 static func from_dict(d: Dictionary) -> RefCounted:
  var s = load("res://core/game_state.gd").new()
+ s.map_id = str(d.get("map_id",MapRegistry.DEFAULT))
+ s.map_version = int(d.get("map_version",1))
  s.seed = int(d.seed)
  s.year = int(d.year)
  s.turn = int(d.turn)

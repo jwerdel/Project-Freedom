@@ -1,11 +1,11 @@
 extends RefCounted
-# Unit types (data/units/*.json) and armies (data/armies/*.json).
+# Unit types (data/units/*.json) and armies (the active map's armies/*.json, core/map_registry.gd).
 # A unit type names its visual by manifest ID plus an outfit, weapon loadout and visual_config;
 # build_visual() turns that into a node through the asset manifest. Stats are placeholders.
 
 const AssetManifest = preload("res://core/asset_manifest.gd")
 const UNIT_DIR = "res://data/units/"
-const ARMY_DIR = "res://data/armies/"
+const MapRegistry = preload("res://core/map_registry.gd")
 const REQUIRED = ["id","display_name","category","visual","outfit","loadout","card_portrait","placeholder_stats","size","recruitment","battle"]
 
 static var _types = null
@@ -34,7 +34,7 @@ static func reset():
  _types = null
 
 static func army(id: String) -> Dictionary:
- var data = _read(ARMY_DIR+id+".json")
+ var data = _read(MapRegistry.path("armies/"+id+".json"))
  assert(data.has("commander") and data.has("units"),"Army %s needs a commander and units" % id)
  for entry in [data.commander]+data.units: get_type(entry.unit)
  return data

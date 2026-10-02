@@ -67,7 +67,7 @@ Randomness in AI choices (war rolls, tie-breaks) comes only from a generator see
 
 ## 4. Personality
 
-Faction traits are listed in `data/factions.json` (`traits`, from docs/archive/world-v1.md). Each trait multiplies the base weights in `data/ai.json`:
+Faction traits are listed in `data/maps/<map>/factions.json` (`traits`, from docs/archive/world-v1.md). Each trait multiplies the base weights in `data/ai.json`:
 
 | Trait | Effect |
 |---|---|

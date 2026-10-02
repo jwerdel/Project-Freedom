@@ -1,0 +1,9 @@
+{
+  "_note": "The test map: the prototype world (four settlements, House Aurek, House Lannet, House Verrin) kept small and stable for tests, the self-test and captures (docs/map-pipeline-design.md §7). Its terrain is still main.gd's hand-tuned noise and its movement grid is baked by main.gd --bake-movement-grid until it is rebuilt by the pipeline. version: bump when region IDs or geometry change incompatibly (saves from another version are refused).",
+  "id": "testmap",
+  "name": "Test map",
+  "version": 1,
+  "kind": "legacy",
+  "size": [280, 280],
+  "origin": [-140, -140]
+}

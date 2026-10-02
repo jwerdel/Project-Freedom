@@ -1,0 +1,19 @@
+{
+  "_note": "Test map overlay on data/movement.json (core/movement.gd merges it over the global rules): this map's road network, passes and grid-bake rectangle. The rules and costs stay global.",
+  "roads": {
+    "network": [
+      {"id": "greyhaven_crownwatch", "points": [[-12, 6], [0, -5], [15, -14], [30, -22], [48, -35]]},
+      {"id": "greyhaven_willowmere", "points": [[-12, 6], [-24, -8], [-41, -13], [-56, -24]]},
+      {"id": "greyhaven_harbour", "points": [[-12, 6], [-17, 17], [-18, 27]]}
+    ]
+  },
+  "passes": {
+    "_note": "Corridors through the mountains that stay passable (terrain 'pass'). Baked into the grid by main.gd --bake-movement-grid.",
+    "list": [
+      {"name": "Greyspine Pass", "points": [[48, -46], [44, -70], [42, -95], [40, -136]], "width": 6.0}
+    ]
+  },
+  "grid_bake": {
+    "rect": [-140, -140, 280, 204]
+  }
+}

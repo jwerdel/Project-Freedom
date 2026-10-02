@@ -33,7 +33,7 @@ static func reset():
 
 # --- Personality --------------------------------------------------------------------------------
 
-# The product of the faction's trait multipliers (data/factions.json traits; data/ai.json).
+# The product of the faction's trait multipliers (data/maps/<map>/factions.json traits; data/ai.json).
 static func personality(faction: String) -> Dictionary:
  var p = {"aggression":1.0,"boldness":1.0,"reserve":1.0,"armies":1.0,"economy":1.0,"defense":1.0,"wariness":0.0,
   "assault":0,"vengeful":0,"opportunist":0,"landless":-1,"composition":data().recruitment.composition}

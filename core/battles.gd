@@ -181,7 +181,7 @@ static func side_units(state,pb: Dictionary,role: int) -> Array:
  if role == 1 and pb.kind == "settlement": units.append_array(garrison_units(state,pb.settlement))
  return units
 
-# The faction's default template for this battle (data/factions.json battle_style).
+# The faction's default template for this battle (data/maps/<map>/factions.json battle_style).
 static func default_template(state,pb: Dictionary,role: int) -> String:
  var spec = pb.attacker if role == 0 else pb.defender
  var style = WorldMap.faction(spec.faction).get("battle_style",{"default":"line"})

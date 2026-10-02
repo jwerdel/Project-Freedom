@@ -49,7 +49,7 @@ static func max_units() -> int:
 
 # --- Composition -------------------------------------------------------------------
 
-# Starting composition from data/armies/<id>.json ("strength" is the fraction of full size).
+# Starting composition from data/maps/<map>/armies/<id>.json ("strength" is the fraction of full size).
 static func from_data(army_id: String) -> Dictionary:
  var a = UnitTypes.army(army_id)
  var units = []

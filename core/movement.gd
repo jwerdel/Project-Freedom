@@ -4,7 +4,7 @@ extends RefCounted
 #  - Each army has movement points per turn (data/movement.json), refilled on End Turn.
 #  - Walking into a grid cell costs the distance in meters times that cell's terrain cost; road
 #    cells cost the road multiplier of the current road level instead (PLACEHOLDER rule).
-#  - Pathfinding: A* on the baked terrain cost grid (data/movement_grid.json, 2 m cells).
+#  - Pathfinding: A* on the baked terrain cost grid (the map's movement grid, 2 m cells).
 #  - An order beyond this turn's range moves as far as the points allow; the rest of the path is
 #    kept on the army and continues automatically on End Turn. Orders can be cancelled.
 #  - Ending a move in one's own settlement garrisons the army there. Moving onto a foreign
@@ -14,8 +14,8 @@ extends RefCounted
 
 const WorldMap = preload("res://core/world_map.gd")
 const UnitTypes = preload("res://core/unit_types.gd")
-const DATA = "res://data/movement.json"
-const GRID = "res://data/movement_grid.json"
+const MapRegistry = preload("res://core/map_registry.gd")
+const DATA = "res://data/movement.json" # global rules; the active map's movement.json overlays it
 const BLOCKED_BATTLE = "Enemy here: attacking means battle"
 const IMPASSABLE = "Impassable terrain"
 const NO_ROUTE = "No route"
@@ -23,26 +23,46 @@ const NO_GENERAL = "No general: a captain cannot move the army"
 
 static var _data = null
 static var _grid = null
+static var _map := "" # the map the caches belong to
 static var _astar = {} # road level -> AStarGrid2D
 static var _costs = {} # road level -> PackedFloat64Array of cell_cost per cell index
 
+static func _check_map():
+ if _map != MapRegistry.active:
+  reset()
+  _map = MapRegistry.active
+
+# The global rules (data/movement.json) with the active map's overlay merged in (its road network,
+# passes and bake rectangle).
 static func data() -> Dictionary:
+ _check_map()
  if _data == null:
   _data = JSON.parse_string(FileAccess.get_file_as_string(DATA))
   assert(_data is Dictionary and _data.has("terrain") and _data.has("roads"),"Invalid "+DATA)
+  if MapRegistry.has_file("movement.json"):
+   var over = JSON.parse_string(FileAccess.get_file_as_string(MapRegistry.path("movement.json")))
+   for k in over:
+    if over[k] is Dictionary and _data.get(k) is Dictionary: _data[k].merge(over[k],true)
+    else: _data[k] = over[k]
  return _data
 
 static func reset():
  _data = null
  _grid = null
+ _map = ""
  _astar = {}
  _costs = {}
  _applied = {}
 
 # The baked grid: {cell, origin, cols, rows, terrain (PackedByteArray of terrain indices), names,
-# road (PackedByteArray, 1 where a road crosses the cell)}.
+# road (PackedByteArray, 1 where a road crosses the cell)}. A pipeline map stores it in
+# baked/movement.bin (below); the test map in movement_grid.json (one symbol per cell, baked by
+# main.gd --bake-movement-grid).
 static func grid() -> Dictionary:
+ _check_map()
+ if _grid == null and MapRegistry.has_file("baked/movement.json"): _grid = _load_baked()
  if _grid == null:
+  var GRID = MapRegistry.path("movement_grid.json")
   var g = JSON.parse_string(FileAccess.get_file_as_string(GRID))
   assert(g is Dictionary and g.has("rows_data"),"Invalid "+GRID+" (rebuild: main.gd --bake-movement-grid)")
   var names = []
@@ -64,6 +84,25 @@ static func grid() -> Dictionary:
   _grid = {"cell":float(g.cell),"origin":Vector2(g.origin[0],g.origin[1]),"cols":cols,"rows":rows,"terrain":terrain,"names":names}
   _grid.road = _road_mask()
  return _grid
+
+# Pipeline grid: baked/movement.json {cell, origin, cols, rows, names} and baked/movement.bin,
+# zstd-compressed: cols x rows terrain bytes (indices into names, which must equal data/movement.json
+# terrain in order), then cols x rows road bytes (1 = road). Sliced natively, no per-cell loop.
+static func _load_baked() -> Dictionary:
+ var meta = JSON.parse_string(FileAccess.get_file_as_string(MapRegistry.path("baked/movement.json")))
+ var names = []
+ for t in data().terrain:
+  if not t.begins_with("_"): names.append(t)
+ assert(meta.names == names,"baked/movement.json terrain names differ from data/movement.json: rebuild the map")
+ var n = int(meta.cols)*int(meta.rows)
+ var f = FileAccess.open_compressed(MapRegistry.path("baked/movement.bin"),FileAccess.READ,FileAccess.COMPRESSION_ZSTD)
+ var raw = f.get_buffer(2*n)
+ assert(raw.size() == 2*n,"baked/movement.bin is truncated: rebuild the map")
+ var cols = int(meta.cols)
+ var rows = int(meta.rows)
+ var terrain = raw.slice(0,n)
+ var road = raw.slice(n)
+ return {"cell":float(meta.cell),"origin":Vector2(meta.origin[0],meta.origin[1]),"cols":cols,"rows":rows,"terrain":terrain,"names":names,"road":road}
 
 static func _road_mask() -> PackedByteArray:
  var g = _grid

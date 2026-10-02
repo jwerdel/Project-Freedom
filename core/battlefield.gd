@@ -1,6 +1,6 @@
 extends RefCounted
 # Battlefield generation (docs/battle-design.md section 1): samples the campaign movement grid
-# (data/movement_grid.json) around the defender into lanes x 6 bands, oriented along the
+# (the map's movement grid) around the defender into lanes x 6 bands, oriented along the
 # attacker's approach. Each lane-band takes the majority terrain of its cells. Settlement battles
 # add walls when the settlement's stored defense is high enough.
 

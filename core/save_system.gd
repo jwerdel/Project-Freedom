@@ -11,7 +11,8 @@ extends RefCounted
 const SaveCodec = preload("res://core/save_codec.gd")
 const GameState = preload("res://core/game_state.gd")
 const WorldMap = preload("res://core/world_map.gd")
-const SCHEMA = 3
+const MapRegistry = preload("res://core/map_registry.gd")
+const SCHEMA = 4
 const OLDEST = 1 # oldest schema a migration chain still reaches
 const DIR = "user://saves"
 const AUTOSAVES = 3
@@ -21,7 +22,7 @@ const BACKDROP = Vector2i(960,600)
 # Migration hook: migrations()[n] turns a schema-n save dictionary into schema n+1. Add one each
 # time SCHEMA rises (and keep OLDEST at the first version still convertible).
 static func migrations() -> Dictionary:
- return {1:_v1_to_v2,2:_v2_to_v3}
+ return {1:_v1_to_v2,2:_v2_to_v3,3:_v3_to_v4}
 
 # Schema 2 (campaign AI block): pending AI attacks on the player and the camera view are saved.
 # A schema-1 save has neither: no pending attacks, and the default camera.
@@ -35,6 +36,14 @@ static func _v2_to_v3(d: Dictionary) -> Dictionary:
  if d.get("state") is Dictionary:
   if not d.state.has("grace"): d.state.grace = {}
   if not d.state.has("destroyed"): d.state.destroyed = []
+ return d
+
+# Schema 4 (map pipeline): a campaign records its map and the map's version. Every older save was
+# made on the prototype map, now the test map, version 1.
+static func _v3_to_v4(d: Dictionary) -> Dictionary:
+ if d.get("state") is Dictionary:
+  if not d.state.has("map_id"): d.state.map_id = MapRegistry.DEFAULT
+  if not d.state.has("map_version"): d.state.map_version = 1
  return d
 
 static var dir := DIR # tests and captures point this elsewhere
@@ -109,6 +118,13 @@ static func load_save(file: String) -> Dictionary:
  if not (state_dict is Dictionary): return {"ok":false,"error":"The save \"%s\" is damaged: no campaign state." % file}
  for k in ["seed","year","turn","player_faction","treasury","settlements","armies","army_state","road_level","wars","battles","chronicle"]:
   if not state_dict.has(k): return {"ok":false,"error":"The save \"%s\" is damaged: missing %s." % [file,k]}
+ # The save's map must exist in this version, at the same map version: during development, saves
+ # across map versions are incompatible (docs/map-pipeline-design.md §7, Q11).
+ var map_id = str(state_dict.get("map_id",MapRegistry.DEFAULT))
+ if not map_id in MapRegistry.maps(): return {"ok":false,"error":"The save \"%s\" was made on the map \"%s\", which this version of the game does not have." % [file,map_id]}
+ if int(state_dict.get("map_version",1)) != MapRegistry.version(map_id):
+  return {"ok":false,"error":"The save \"%s\" was made with an older version of the map \"%s\" (map version %d, now %d) and cannot be loaded." % [file,MapRegistry.meta(map_id).get("name",map_id),int(state_dict.get("map_version",1)),MapRegistry.version(map_id)]}
+ MapRegistry.set_active(map_id)
  var state = GameState.from_dict(state_dict)
  # References the current world data must still know (a save from another map cannot load).
  for id in state.settlements:

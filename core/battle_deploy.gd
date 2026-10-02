@@ -1,7 +1,7 @@
 extends RefCounted
 # Default deployments (docs/battle-design.md sections 7-8): AI templates and the player's quick
 # resolve. deploy() places an army's units on the lane grid with orders; templates are chosen from
-# the faction's battle_style in data/factions.json and the army's makeup.
+# the faction's battle_style in data/maps/<map>/factions.json and the army's makeup.
 
 const UnitTypes = preload("res://core/unit_types.gd")
 const BattleSim = preload("res://core/battle_sim.gd")
@@ -28,7 +28,7 @@ static func strength(u: Dictionary) -> float:
  var b = UnitTypes.get_type(u.unit).battle
  return float(b.melee_attack)+float(b.melee_defence)+float(b.armour)*0.5
 
-# Template for a faction: its style from data/factions.json, adapted to the army.
+# Template for a faction: its style from data/maps/<map>/factions.json, adapted to the army.
 static func choose_template(style: Dictionary,units: Array,siege_defender: bool) -> String:
  if siege_defender: return "hold_walls"
  var levies = 0

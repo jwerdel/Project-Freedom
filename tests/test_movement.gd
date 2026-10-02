@@ -1,5 +1,5 @@
 extends GutTest
-# Army movement (data/movement.json, data/movement_grid.json): points are spent by distance and
+# Army movement (data/movement.json, the map's movement grid): points are spent by distance and
 # terrain, roads are cheaper the higher the road level, water and mountains are impassable except at
 # passes, orders beyond this turn continue on End Turn, points refill, armies garrison in their own
 # settlements, and foreign settlements or armies are not move targets (they start the battle flow).

@@ -417,7 +417,7 @@ func _show_region_info(id: String):
  for k in ["food","wood","stone","minerals"]:
   var n = int(d.resources.get(k,0))
   var l = UiKit.label("%s %d" % [k.capitalize(),n],13,UiKit.TEXT if n>0 else Color(UiKit.TEXT_DIM,0.6))
-  l.tooltip_text = "%s endowment %d (raises income and growth; data/provinces.json)" % [k.capitalize(),n]
+  l.tooltip_text = "%s endowment %d (raises income and growth)" % [k.capitalize(),n]
   l.mouse_filter = Control.MOUSE_FILTER_PASS
   res.add_child(l)
  info_box.add_child(res)

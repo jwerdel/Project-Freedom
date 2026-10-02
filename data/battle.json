@@ -76,7 +76,7 @@
     "default_orders": {"infantry": "hold", "missile": "hold", "cavalry": "reserve", "lord": "hold"}
   },
   "traits": {
-    "_note": "General personality hook (section 3). No general has traits until the character system exists, except faction defaults (data/factions.json battle_style).",
+    "_note": "General personality hook (section 3). No general has traits until the character system exists, except faction defaults (data/maps/<map>/factions.json battle_style).",
     "cautious": {"aggressive_delay": 1, "flank_waits_for_reserve": true, "hold_morale": 5},
     "reckless": {"first_charge": 10, "pursue_off_field_ticks": 3},
     "steady": {"reserve_delay": -1, "neighbour_rout": -5},

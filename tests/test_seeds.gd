@@ -28,7 +28,7 @@ func test_new_campaigns_get_different_random_seeds():
  assert_eq(s.to_dict().seed,s.seed,"the seed is part of the campaign state")
 
 func test_the_fixed_seed_stays_available():
- var start = JSON.parse_string(FileAccess.get_file_as_string(GameState.START))
+ var start = JSON.parse_string(FileAccess.get_file_as_string(GameState.start_path()))
  assert_eq(GameState.from_data().seed,int(start.seed))
  assert_eq(GameState.from_data(GameState.START,777).seed,777)
 

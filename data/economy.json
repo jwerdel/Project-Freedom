@@ -14,7 +14,7 @@
     "fortress": {"role": "defensive", "base_income": [150, 220, 300], "economic_factor": 0.6,  "income_ceiling": [300, 450, 600],   "growth_base": 0.006, "capacity": [3000, 5000, 8000]}
   },
   "resources": {
-    "_note": "Regional endowments (0-5 per region, data/provinces.json) raise economic potential and growth; they are never spent. income_bonus is the fractional increase of base and tax income per endowment point.",
+    "_note": "Regional endowments (0-5 per region, data/maps/<map>/provinces.json) raise economic potential and growth; they are never spent. income_bonus is the fractional increase of base and tax income per endowment point.",
     "wood":     {"income_bonus": 0.05, "growth_bonus": 0.0008},
     "stone":    {"income_bonus": 0.05, "growth_bonus": 0.0004},
     "food":     {"income_bonus": 0.06, "growth_bonus": 0.0040},

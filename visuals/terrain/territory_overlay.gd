@@ -1,6 +1,6 @@
 extends RefCounted
 # Territory overlay textures for the terrain shader, rasterized from the region polygons in
-# data/provinces.json (via core/world_map.gd):
+# data/maps/<map>/provinces.json (via core/world_map.gd):
 #  - tint: RGB = owning faction's color, A = tint strength (0 for unclaimed land)
 #  - border: R = faction border, G = province border (same owner), B = region border (same province)
 # Each side of a border carries its own faction color in the tint, so each side glows in its color.
@@ -12,7 +12,7 @@ const BORDER_PER_M = 3
 const CORE = 0.45 # m, bright line half-width
 const GLOW = 2.2 # m, soft glow reach
 
-# Current owners (region id -> faction) when they differ from data/provinces.json, e.g. after a
+# Current owners (region id -> faction) when they differ from data/maps/<map>/provinces.json, e.g. after a
 # settlement is captured. main.gd sets this from the campaign state and rebuilds the textures.
 static var live_owners := {}
 
