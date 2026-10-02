@@ -18,6 +18,8 @@ var treasury = {}     # faction id -> int gold
 var settlements = {}  # settlement id -> {owner, type, level, population (float), buildings (slots), construction, resources, defense, unlocks}
 var armies = []       # army ids (data/armies/)
 var army_state = {}   # army id -> army: composition and queue (core/armies.gd) plus movement (core/movement.gd)
+var wars = []        # faction pairs at war, "a|b" sorted (core/battles.gd; temporary rule until diplomacy)
+var battles := 0     # battles fought so far (part of each battle's seed)
 var road_level := 0   # road network level: 0 dirt, 1 gravel, 2 stone
 var chronicle = []    # {year, category, title, text}
 var last_ledgers = {} # faction id -> ledger of the last processed turn
@@ -78,7 +80,7 @@ func armies_of(faction: String) -> Array:
 
 # Everything that defines the state, for determinism checks and later save/load.
 func to_dict() -> Dictionary:
- return {"seed":seed,"year":year,"turn":turn,"player_faction":player_faction,"treasury":treasury.duplicate(true),"settlements":settlements.duplicate(true),"armies":armies.duplicate(),"army_state":army_state.duplicate(true),"road_level":road_level,"chronicle":chronicle.duplicate(true)}
+ return {"seed":seed,"year":year,"turn":turn,"player_faction":player_faction,"treasury":treasury.duplicate(true),"settlements":settlements.duplicate(true),"armies":armies.duplicate(),"army_state":army_state.duplicate(true),"road_level":road_level,"wars":wars.duplicate(),"battles":battles,"chronicle":chronicle.duplicate(true)}
 
 # Slot list of a starting settlement: the main building (at the settlement's level) in slot 0, the
 # start file's other buildings ({chain, level[, name]}), then empty slots up to the slot count.

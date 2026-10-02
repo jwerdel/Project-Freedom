@@ -8,17 +8,18 @@ extends RefCounted
 #  - An order beyond this turn's range moves as far as the points allow; the rest of the path is
 #    kept on the army and continues automatically on End Turn. Orders can be cancelled.
 #  - Ending a move in one's own settlement garrisons the army there. Moving onto a foreign
-#    settlement or another faction's army is blocked: battles are not implemented.
-# OPEN (not designed, so not implemented): zone of control, attrition, movement after battle,
-# military access / trespass in foreign territory (currently free), naval movement.
+#    settlement or another faction's army is not a move: the map opens the battle flow (core/battles.gd).
+# OPEN (not designed, so not implemented): zone of control, attrition,
+# trespass penalties and military access (free until diplomacy, decision 2026-10-01), naval movement.
 
 const WorldMap = preload("res://core/world_map.gd")
 const UnitTypes = preload("res://core/unit_types.gd")
 const DATA = "res://data/movement.json"
 const GRID = "res://data/movement_grid.json"
-const BLOCKED_BATTLE = "Battles not implemented yet"
+const BLOCKED_BATTLE = "Enemy here: attacking means battle"
 const IMPASSABLE = "Impassable terrain"
 const NO_ROUTE = "No route"
+const NO_GENERAL = "No general: a captain cannot move the army"
 
 static var _data = null
 static var _grid = null
@@ -213,7 +214,10 @@ static func destination(state,army_id: String,target: Vector2) -> Dictionary:
 
 # Plan a move: {ok, reason, points (world x/z from the army to the destination), turns (turn index
 # of each point: 0 = this turn), reach (last point reachable this turn), total_turns, cost, settlement}.
-static func plan(state,army_id: String,target: Vector2) -> Dictionary:
+static func plan(state,army_id: String,target: Vector2,retreating := false) -> Dictionary:
+ # A captain (dead or wounded general) cannot order a move (core/battles.gd); a beaten army's
+ # retreat is not an order and needs no general.
+ if not retreating and army(state,army_id).get("commander",{}).get("status","ok") != "ok": return {"ok":false,"reason":NO_GENERAL}
  var dest = destination(state,army_id,target)
  if not dest.ok: return dest
  var me = army(state,army_id)

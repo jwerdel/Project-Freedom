@@ -161,6 +161,22 @@ func _ready():
    select_army()
    ui.open_recruitment(COMMANDER_ARMY)
  for arg in OS.get_cmdline_user_args():
+  if arg.begins_with("--attack="):
+   # Captures: stand the host next to a settlement, declare war, open the pre-battle panel.
+   var sid = arg.get_slice("=",1)
+   var sp = WorldMap.settlement_position(sid)
+   ui_data.state.army_state[COMMANDER_ARMY].position = [sp.x+8.0,sp.y+4.0]
+   ui_data.state.army_state[COMMANDER_ARMY].garrison = ""
+   place_commander()
+   select_army()
+   var t = ui_data.battle_target(COMMANDER_ARMY,sp)
+   ui_data.declare_war(t.faction)
+   t.needs_war = false
+   ui.open_battle_flow(COMMANDER_ARMY,sp,t)
+   if "--attack-resolve" in OS.get_cmdline_user_args():
+    ui.battle_box.find_child("QuickResolve",true,false).pressed.emit()
+    update_walk(1000.0)
+ for arg in OS.get_cmdline_user_args():
   if arg.begins_with("--view="):
    var v = arg.get_slice("=",1).split(",")
    target = ground(Vector2(float(v[0]),float(v[1])))
@@ -172,7 +188,9 @@ func _ready():
     ui_data.end_turn()
     update_walk(1000.0)
  for arg in OS.get_cmdline_user_args():
-  if arg.begins_with("--select-after="): select_settlement(arg.get_slice("=",1))
+  if arg.begins_with("--select-after="):
+   ui.close_report()
+   select_settlement(arg.get_slice("=",1))
  if "--chronicle" in OS.get_cmdline_user_args(): ui.toggle_chronicle()
  if "--self-test" in OS.get_cmdline_user_args():
   run_checks()
@@ -509,10 +527,26 @@ func make_ui():
  ui_data.changed.connect(refresh_army_overlays)
  ui.follow_toggled.connect(func(on): follow_army = on)
  ui.cancel_order_requested.connect(func(id): ui_data.cancel_army_order(id))
+ ui_data.changed.connect(sync_territory)
+ ui.battle_resolved.connect(func(_out): refresh_army_overlays())
  ui.army_raised.connect(func(id):
   refresh_army_overlays()
   select_army(id))
  refresh_army_overlays()
+
+# Territory colors follow settlement ownership (captures change them).
+var territory_owners := {}
+func sync_territory():
+ var owners = {}
+ for id in ui_data.settlement_ids(): owners[id] = ui_data.settlement(id).owner
+ if owners == territory_owners: return
+ var first = territory_owners.is_empty()
+ territory_owners = owners
+ TerritoryOverlay.live_owners = owners
+ if first and owners.keys().all(func(k): return owners[k] == WorldMap.owner_of(k)): return
+ terrain_material.set_shader_parameter("territory_tint",TerritoryOverlay.tint_texture())
+ terrain_material.set_shader_parameter("territory_border",TerritoryOverlay.border_texture())
+ if minimap: minimap.refresh()
 
 # Settlement visuals follow the campaign data: a finished main-building upgrade raises the level,
 # and the settlement switches to that growth stage (generic stages or its landmark's own).
@@ -667,6 +701,12 @@ func order_army(p: Vector2):
  var r = ui_data.order_move(selected_army_id(),p)
  movement_overlay.clear("preview")
  if not r.ok:
+  # An enemy army or settlement: the war / pre-battle flow (core/battles.gd).
+  if r.reason == Movement.BLOCKED_BATTLE:
+   var t = ui_data.battle_target(selected_army_id(),p)
+   if t.kind != "":
+    ui.open_battle_flow(selected_army_id(),p,t)
+    return
   ui.toast(r.reason)
   return
  if r.total_turns>1: ui.toast("Marching: %d turns to the destination. The order continues each End Turn." % r.total_turns)
@@ -1003,7 +1043,8 @@ func run_checks():
  assert(movement_overlay.has_content("preview") and preview_text.contains("3 turns"))
  var points_before = ui_data.army_movement(COMMANDER_ARMY).points
  order_army(WorldMap.settlement_position(CITY_ID))
- assert(ui.toast_label.text == "Battles not implemented yet")
+ assert(ui.battle_visible() and ui.battle_box.find_child("DeclareWar",true,false) != null) # not at war yet: confirmation first
+ ui.close_battle()
  assert(ui_data.army_movement(COMMANDER_ARMY).points == points_before)
  order_army(Vector2(80,-10))
  update_walk(1000.0)

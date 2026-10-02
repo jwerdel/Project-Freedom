@@ -10,5 +10,15 @@
   "richest_line": ["Of all the realms, {faction} holds the fullest treasury.", "None counted more gold this year than {faction}."],
   "building_title": ["{building} Completed at {settlement}", "{settlement} Raises the {building}"],
   "building_text": ["The builders of {faction} finished the {building} at {settlement} this year.", "Let it be recorded that {faction} completed the {building} at {settlement}."],
-  "upgrade_text": ["{settlement} grew in standing this year: {faction} raised it to {building}.", "Under {faction}, {settlement} became {building}, and its streets spread accordingly."]
+  "upgrade_text": ["{settlement} grew in standing this year: {faction} raised it to {building}.", "Under {faction}, {settlement} became {building}, and its streets spread accordingly."],
+  "war_title": ["{attacker} Declares War on {defender}", "War Between {attacker} and {defender}"],
+  "war_text": ["The Grey Scribes record that {attacker} took up arms against {defender}. The Oath of Stillwater binds them no longer.", "In this year {attacker} marched against {defender}, and the archive marks the two as at war."],
+  "battle_title": ["Battle at {place}", "The Field of {place}"],
+  "battle_text": ["{winner} defeated {loser} at {place}. {winner_men} men of the victors fell, and {loser_men} of the vanquished.", "At {place} the host of {winner} broke the army of {loser}; the dead were {winner_men} for the victors and {loser_men} for the beaten."],
+  "capture_title": ["{place} Falls to {faction}", "{faction} Takes {place}"],
+  "capture_text": ["{place} is now held by {faction}.", "The banners over {place} are now those of {faction}."],
+  "surrender_text": ["Starved after a long siege, {place} opened its gates to {faction}."],
+  "general_killed": ["{name} of {faction} fell in the battle.", "{name} of {faction} did not leave the field alive."],
+  "general_wounded": ["{name} of {faction} was carried wounded from the field."],
+  "captain_promoted": ["For the victory, {name} of {faction} was raised to command."]
 }

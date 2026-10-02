@@ -12,6 +12,13 @@ const BORDER_PER_M = 3
 const CORE = 0.45 # m, bright line half-width
 const GLOW = 2.2 # m, soft glow reach
 
+# Current owners (region id -> faction) when they differ from data/provinces.json, e.g. after a
+# settlement is captured. main.gd sets this from the campaign state and rebuilds the textures.
+static var live_owners := {}
+
+static func owner_of(id: String) -> String:
+ return live_owners.get(id,WorldMap.owner_of(id))
+
 static func rect_uniform() -> Vector4:
  return Vector4(RECT.position.x,RECT.position.y,RECT.size.x,RECT.size.y)
 
@@ -25,7 +32,7 @@ static func tint_texture() -> ImageTexture:
    var p = RECT.position+Vector2(x+0.5,y+0.5)/TINT_PER_M
    var id = WorldMap.region_at(p)
    if id == "": continue
-   var owner = regions[id].owner
+   var owner = owner_of(id)
    if owner == "":
     img.set_pixel(x,y,Color(0.55,0.55,0.55,0.0))
    else:
@@ -54,7 +61,7 @@ static func shared_edges() -> Array:
  return out
 
 static func _kind(r1: String,r2: String) -> int:
- if WorldMap.owner_of(r1) != WorldMap.owner_of(r2): return 0 # faction border
+ if owner_of(r1) != owner_of(r2): return 0 # faction border
  if WorldMap.province_of(r1) != WorldMap.province_of(r2): return 1 # province border
  return 2 # region border
 

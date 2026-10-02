@@ -436,7 +436,21 @@ func _movement_box(army_id: String) -> Control:
  v.add_child(row)
  var row2 = HBoxContainer.new()
  row2.add_theme_constant_override("separation",6)
- if not m.order.is_empty():
+ var gs = data.general_status(army_id)
+ if gs.status != "ok":
+  # A captain leads: the army cannot move until a general is appointed (or the wounded one returns).
+  var why = "General wounded (%d turns)" % int(gs.wounded_turns) if gs.status == "wounded" else "General fallen"
+  row2.add_child(UiKit.label("%s: a captain cannot move the army" % why,12,Color("ef8a6a")))
+  var appoint = Button.new()
+  appoint.name = "AppointGeneral"
+  appoint.text = "Appoint general"
+  appoint.focus_mode = Control.FOCUS_NONE
+  appoint.disabled = not m.player_owned
+  appoint.pressed.connect(func():
+   var r = data.appoint_general(army_id)
+   toast("%s takes command." % r.name if r.ok else ", ".join(r.reasons)))
+  row2.add_child(appoint)
+ elif not m.order.is_empty():
   row2.add_child(UiKit.label("Marching (order continues on End Turn)",12,Color("f1d79a")))
   var cancel = Button.new()
   cancel.name = "CancelOrder"
@@ -684,6 +698,256 @@ func _recruit_tile(o: Dictionary,faction_data: Dictionary) -> Control:
   toast("Recruiting %s (%d turn%s)." % [o.name,o.turns,"" if o.turns == 1 else "s"] if res.ok else ", ".join(res.reasons)))
  v.add_child(b)
  return tile
+
+# --- Battles: war confirmation, pre-battle panel, report window -------------------------------
+# Opened by the map when an order targets an enemy army or settlement (core/battles.gd via UiData).
+
+# Balance of power (decision 13): attacker share on the left in its colors, defender on the right.
+class BalanceBar extends Control:
+ var share := 0.5
+ var left := Color.RED
+ var right := Color.BLUE
+ func _init(s: float,l: Color,r: Color):
+  share = clampf(s,0,1)
+  left = l
+  right = r
+  custom_minimum_size = Vector2(420,18)
+ func _draw():
+  var w = size.x*share
+  draw_rect(Rect2(0,0,w,size.y),left)
+  draw_rect(Rect2(w,0,size.x-w,size.y),right)
+  draw_rect(Rect2(Vector2.ZERO,size),Color("c9a45a"),false,1.5)
+  draw_line(Vector2(size.x*0.5,-3),Vector2(size.x*0.5,size.y+3),Color(1,1,1,0.6),1.0)
+
+var battle_panel: Control
+var battle_box: VBoxContainer
+var battle_pb := {}
+var report_panel: Control
+var report_box: VBoxContainer
+signal battle_resolved(outcome: Dictionary)
+
+func battle_visible() -> bool:
+ return battle_panel != null and battle_panel.visible
+
+func report_visible() -> bool:
+ return report_panel != null and report_panel.visible
+
+func _center_panel(w: float,h: float) -> Array:
+ var p = _framed()
+ var v = VBoxContainer.new()
+ v.add_theme_constant_override("separation",6)
+ p.add_child(v)
+ p.visible = false
+ _anchor(p,0.5,0.5,0.5,0.5,Rect2(-w/2,-h/2,w/2,h/2))
+ return [p,v]
+
+func close_battle():
+ battle_pb = {}
+ if battle_panel: battle_panel.visible = false
+
+# Entry point: war confirmation if needed (temporary rule), then the pre-battle panel.
+func open_battle_flow(army_id: String,point: Vector2,target: Dictionary):
+ if battle_panel == null:
+  var pv = _center_panel(980,380)
+  battle_panel = pv[0]
+  battle_box = pv[1]
+ _clear(battle_box)
+ battle_panel.visible = true
+ if target.needs_war:
+  battle_box.add_child(UiKit.header("This means war with %s" % target.faction_name,22))
+  battle_box.add_child(UiKit.divider(colors.trim))
+  var t = UiKit.label("Diplomacy does not exist yet. Under the temporary rule, attacking another faction's army or settlement declares war on it, and there is no peace until diplomacy exists.",15)
+  t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+  t.custom_minimum_size = Vector2(900,0)
+  battle_box.add_child(t)
+  var row = HBoxContainer.new()
+  var yes = Button.new()
+  yes.name = "DeclareWar"
+  yes.text = "Declare war"
+  yes.focus_mode = Control.FOCUS_NONE
+  yes.pressed.connect(func():
+   data.declare_war(target.faction)
+   target.needs_war = false
+   open_battle_flow(army_id,point,target))
+  row.add_child(yes)
+  var no = Button.new()
+  no.text = "Cancel"
+  no.focus_mode = Control.FOCUS_NONE
+  no.pressed.connect(close_battle)
+  row.add_child(no)
+  battle_box.add_child(row)
+  return
+ battle_pb = data.prebattle(army_id,point)
+ _fill_prebattle()
+
+func _army_column(view: Dictionary,title: String) -> Control:
+ var v = VBoxContainer.new()
+ v.add_theme_constant_override("separation",2)
+ v.custom_minimum_size = Vector2(460,0)
+ var head = HBoxContainer.new()
+ head.add_theme_constant_override("separation",8)
+ head.add_child(Widgets.Emblem.new(view.faction,24))
+ head.add_child(UiKit.header("%s · %s" % [title,view.faction.name],16))
+ v.add_child(head)
+ v.add_child(UiKit.label("%s men" % UiKit.format_int(view.men),14,UiKit.TEXT_DIM))
+ for line in view.lines:
+  v.add_child(UiKit.label("%s%s (%s)" % [line.army,(", led by "+line.general) if line.general != "" else "",line.arrives],14,Color("f1d79a"),UiKit.FONT_BOLD))
+  var counts = {}
+  var order = []
+  for u in line.units:
+   var n = data.unit_type(u.unit).display_name
+   if not counts.has(n): order.append(n)
+   counts[n] = counts.get(n,0)+1
+  var parts = []
+  for n in order: parts.append("%d× %s" % [counts[n],n])
+  var l = UiKit.label(", ".join(parts) if not parts.is_empty() else "(no units)",13,UiKit.TEXT)
+  l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+  l.custom_minimum_size = Vector2(450,0)
+  v.add_child(l)
+ return v
+
+func _fill_prebattle():
+ _clear(battle_box)
+ var pb = battle_pb
+ var place = data.settlement(pb.settlement).name if pb.settlement != "" else "the field"
+ var head = HBoxContainer.new()
+ var title = UiKit.header(("Siege assault on %s" if pb.field.get("walls") != null else "Battle at %s") % place,22)
+ title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ head.add_child(title)
+ var close = Button.new()
+ close.text = "Close"
+ close.focus_mode = Control.FOCUS_NONE
+ close.pressed.connect(close_battle)
+ head.add_child(close)
+ battle_box.add_child(head)
+ battle_box.add_child(UiKit.divider(colors.trim))
+ var cols = HBoxContainer.new()
+ cols.add_theme_constant_override("separation",20)
+ cols.add_child(_army_column(pb.view.attacker,"Attacker"))
+ cols.add_child(_army_column(pb.view.defender,"Defender"))
+ battle_box.add_child(cols)
+ battle_box.add_child(UiKit.divider(colors.trim))
+ var walls = pb.field.get("walls")
+ var wtxt = ""
+ if walls != null: wtxt = " · walls and towers (defense %d)%s" % [int(walls.defense)," after %d turns of siege" % int(walls.siege_turns) if int(walls.siege_turns)>0 else ""]
+ battle_box.add_child(UiKit.label("Terrain: %s · Weather: %s%s" % [pb.field.summary,pb.weather,wtxt],14,UiKit.TEXT))
+ var bal = HBoxContainer.new()
+ bal.add_theme_constant_override("separation",10)
+ bal.add_child(UiKit.label("Balance of power",14,UiKit.TEXT_DIM))
+ var ac = UiKit.colors(pb.view.attacker.faction).primary.lightened(0.15)
+ var dc = UiKit.colors(pb.view.defender.faction).primary.lightened(0.15)
+ var bar = BalanceBar.new(pb.odds,ac,dc)
+ bar.name = "BalanceBar"
+ bar.tooltip_text = "Attacker wins %d of %d quick simulations with default deployments (placeholder balance)." % [int(round(pb.odds*data.battle_odds_runs())),data.battle_odds_runs()]
+ bar.mouse_filter = Control.MOUSE_FILTER_PASS
+ bal.add_child(bar)
+ var mine = pb.odds if not pb.player_is_defender else 1.0-pb.odds
+ var verdict = "Decisive victory likely" if mine>=0.85 else ("Victory likely" if mine>=0.6 else ("Close fight" if mine>=0.4 else ("Defeat likely" if mine>=0.15 else "Crushing defeat likely")))
+ bal.add_child(UiKit.label("%s (%d%%)" % [verdict,int(round(mine*100))],15,Color("f1d79a"),UiKit.FONT_BOLD))
+ battle_box.add_child(bal)
+ var row = HBoxContainer.new()
+ row.add_theme_constant_override("separation",8)
+ var deploy = Button.new()
+ deploy.text = "Deploy (coming next)"
+ deploy.disabled = true
+ deploy.focus_mode = Control.FOCUS_NONE
+ deploy.tooltip_text = "Deployment and orders come in the next block."
+ row.add_child(deploy)
+ var quick = Button.new()
+ quick.name = "QuickResolve"
+ quick.text = "Quick resolve"
+ quick.focus_mode = Control.FOCUS_NONE
+ quick.disabled = not pb.approach.ok
+ quick.tooltip_text = pb.approach.get("reason","") if not pb.approach.ok else "Fight now with default deployments for both sides."
+ quick.pressed.connect(func():
+  var out = data.quick_resolve(battle_pb)
+  var pbc = battle_pb
+  close_battle()
+  battle_resolved.emit(out)
+  open_battle_report(pbc,out))
+ row.add_child(quick)
+ if pb.player_is_defender:
+  var wd = Button.new()
+  wd.name = "Withdraw"
+  wd.text = "Withdraw"
+  wd.focus_mode = Control.FOCUS_NONE
+  wd.disabled = pb.kind == "settlement"
+  wd.tooltip_text = "Retreat before the battle, losing %d%% of your men (placeholder)." % int(round(data.battle_withdraw_share()*100))
+  wd.pressed.connect(func():
+   data.withdraw(battle_pb)
+   close_battle()
+   toast("Your army withdrew before the battle."))
+  row.add_child(wd)
+ if walls != null and not pb.player_is_defender and data.siege_of(pb.settlement).get("army","") != pb.attacker.army:
+  var bs = Button.new()
+  bs.name = "Besiege"
+  bs.text = "Besiege"
+  bs.focus_mode = Control.FOCUS_NONE
+  bs.disabled = not pb.approach.ok
+  bs.tooltip_text = "Surround the settlement. Each turn weakens its walls; after its supplies run out the garrison starves (placeholder)."
+  bs.pressed.connect(func():
+   var r = data.besiege(pb.attacker.army,pb.settlement)
+   close_battle()
+   toast("Siege laid: %s can hold out about %d turns." % [place,r.endurance] if r.ok else ", ".join(r.reasons)))
+  row.add_child(bs)
+ if not pb.approach.ok: row.add_child(UiKit.label(pb.approach.reason,14,Color("ef8a6a")))
+ battle_box.add_child(row)
+
+# Battle report (Phase C, minimal): headline, why you won/lost (3-5 lines), key numbers, units.
+func close_report():
+ if report_panel: report_panel.visible = false
+
+func open_battle_report(pb: Dictionary,out: Dictionary):
+ if report_panel == null:
+  var pv = _center_panel(820,600)
+  report_panel = pv[0]
+  report_box = pv[1]
+ _clear(report_box)
+ report_panel.visible = true
+ var rep = data.battle_report(pb,out)
+ var head = HBoxContainer.new()
+ var title = UiKit.header(rep.headline,19,Color("9fe08a") if rep.won else Color("ef8a6a"))
+ title.name = "Headline"
+ title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+ title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ head.add_child(title)
+ var close = Button.new()
+ close.text = "Close"
+ close.focus_mode = Control.FOCUS_NONE
+ close.pressed.connect(close_report)
+ head.add_child(close)
+ report_box.add_child(head)
+ report_box.add_child(UiKit.divider(colors.trim))
+ report_box.add_child(UiKit.header("Why you %s" % ("won" if rep.won else "lost"),16))
+ var why = VBoxContainer.new()
+ why.name = "Why"
+ for line in rep.why:
+  var l = UiKit.label("•  "+line,15,UiKit.TEXT if not line.begins_with("Lesson") else Color("f1d79a"))
+  l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+  l.custom_minimum_size = Vector2(760,0)
+  why.add_child(l)
+ report_box.add_child(why)
+ report_box.add_child(UiKit.divider(colors.trim))
+ var n = rep.numbers
+ report_box.add_child(UiKit.label("Your men: %s, lost %s · Theirs: %s, lost %s · Units destroyed: %d yours, %d theirs · %d ticks · %s" % [
+  UiKit.format_int(n.your_men),UiKit.format_int(n.your_losses),UiKit.format_int(n.their_men),UiKit.format_int(n.their_losses),n.your_destroyed,n.their_destroyed,n.ticks,n.weather],14,UiKit.TEXT_DIM))
+ for g in rep.generals: report_box.add_child(UiKit.label(g,14,Color("f1d79a")))
+ var grid = GridContainer.new()
+ grid.name = "Units"
+ grid.columns = 5
+ grid.add_theme_constant_override("h_separation",18)
+ for h in ["Unit","Men","Lost","Kills","Outcome"]: grid.add_child(UiKit.label(h,13,UiKit.TEXT_DIM,UiKit.FONT_BOLD))
+ for u in rep.units:
+  grid.add_child(UiKit.label(u.name,14))
+  grid.add_child(UiKit.label(str(u.men_start),14))
+  grid.add_child(UiKit.label(str(u.losses),14))
+  grid.add_child(UiKit.label(str(u.kills),14))
+  grid.add_child(UiKit.label(u.outcome,14,Color("ef8a6a") if u.outcome in ["routed","destroyed"] else UiKit.TEXT))
+ var scroll = ScrollContainer.new()
+ scroll.custom_minimum_size = Vector2(0,190)
+ scroll.add_child(grid)
+ report_box.add_child(scroll)
+ report_box.add_child(UiKit.label("Full timeline and top-down replay: next block.",12,Color(UiKit.TEXT_DIM,0.7)))
 
 # --- End turn (bottom-right), hover tooltip, toast, FPS --------------------------------
 

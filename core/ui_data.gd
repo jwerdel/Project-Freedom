@@ -16,6 +16,8 @@ const Buildings = preload("res://core/buildings.gd")
 const Construction = preload("res://core/construction.gd")
 const Movement = preload("res://core/movement.gd")
 const Armies = preload("res://core/armies.gd")
+const Battles = preload("res://core/battles.gd")
+const BattleReport = preload("res://core/battle_report.gd")
 const TurnLoop = preload("res://core/turn_loop.gd")
 const Chronicle = preload("res://core/chronicle.gd")
 const MOCK = "res://data/mock_ui.json"
@@ -321,3 +323,98 @@ func raise_army(settlement_id: String) -> Dictionary:
  var r = Armies.raise_army(state,state.player_faction,settlement_id)
  if r.ok: changed.emit()
  return r
+
+# --- Battles (core/battles.gd) ---------------------------------------------------------------
+
+# What an order onto `point` would attack, and whether war must be declared first.
+# {kind: army|settlement|"", id, faction, faction_name, needs_war, can_attack, reason}
+func battle_target(army_id: String,point: Vector2) -> Dictionary:
+ var t = Battles.target_at(state,army_id,point)
+ if t.kind == "": return t
+ var me = state.army_state[army_id].faction
+ t.faction_name = faction(t.faction).name
+ t.needs_war = not Battles.at_war(state,me,t.faction)
+ var a = Battles.approach(state,army_id,t)
+ t.can_attack = a.ok
+ t.reason = a.get("reason","")
+ return t
+
+# TEMPORARY war rule: the player's confirmation declares war (no peace until diplomacy).
+func declare_war(target_faction: String) -> Dictionary:
+ var e = Battles.declare_war(state,state.player_faction,target_faction)
+ if not e.is_empty(): event_added.emit(e)
+ changed.emit()
+ return e
+
+func at_war(other_faction: String) -> bool:
+ return Battles.at_war(state,state.player_faction,other_faction)
+
+# Pre-battle panel data (see Battles.prebattle) with readable army lists added.
+func prebattle(army_id: String,point: Vector2) -> Dictionary:
+ var t = Battles.target_at(state,army_id,point)
+ var a = Battles.approach(state,army_id,t)
+ var pb = Battles.prebattle(state,army_id,t)
+ pb.approach = a
+ pb.view = {"attacker":_side_view(pb,0),"defender":_side_view(pb,1)}
+ pb.player_is_defender = pb.defender.faction == state.player_faction
+ return pb
+
+func _side_view(pb: Dictionary,role: int) -> Dictionary:
+ var spec = pb.attacker if role == 0 else pb.defender
+ var armies = [spec.army] if role == 0 else spec.armies
+ var lines = []
+ var men = 0
+ for id in armies:
+  var a = army(id)
+  lines.append({"army":a.display_name,"general":a.commander.name,"units":a.units,"arrives":"in the battle"})
+  for u in a.units: men += int(u.men)
+ for r in spec.reinforcements:
+  var a = army(r.army)
+  lines.append({"army":a.display_name,"general":a.commander.name,"units":a.units,"arrives":"in reserve" if int(r.arrive_tick) == 0 else "after %d ticks" % int(r.arrive_tick)})
+  for u in a.units: men += int(u.men)
+ if role == 1 and pb.kind == "settlement":
+  var g = Battles.garrison_units(state,pb.settlement)
+  lines.append({"army":"Garrison of %s" % WorldMap.region(pb.settlement).settlement.name,"general":"","units":g,"arrives":"in the battle"})
+  for u in g: men += int(u.men)
+ return {"faction":faction(spec.faction),"lines":lines,"men":men}
+
+# Fight now with both sides' default deployments. Moves the attacker next to the target first.
+# Returns {result, aftermath} (see Battles.quick_resolve).
+func quick_resolve(pb: Dictionary) -> Dictionary:
+ if pb.approach.get("plan",{}).has("points"):
+  var r = Movement.order(state,pb.attacker.army,pb.approach.point)
+  if r.get("moved",[]).size()>1: army_moved.emit(pb.attacker.army,r.moved)
+ var out = Battles.quick_resolve(state,pb)
+ for e in out.aftermath.entries: event_added.emit(e)
+ changed.emit()
+ return out
+
+func withdraw(pb: Dictionary) -> Dictionary:
+ var r = Battles.withdraw(state,pb)
+ changed.emit()
+ return r
+
+func besiege(army_id: String,settlement_id: String) -> Dictionary:
+ var r = Battles.besiege(state,army_id,settlement_id)
+ changed.emit()
+ return r
+
+func siege_of(settlement_id: String) -> Dictionary:
+ return state.settlements[settlement_id].get("siege",{})
+
+func appoint_general(army_id: String) -> Dictionary:
+ var r = Battles.appoint_general(state,army_id)
+ changed.emit()
+ return r
+
+func general_status(army_id: String) -> Dictionary:
+ return Battles.commander(state,army_id)
+
+func battle_report(pb: Dictionary,out: Dictionary) -> Dictionary:
+ return BattleReport.build(pb,out.result,out.aftermath,state.player_faction)
+
+func battle_odds_runs() -> int:
+ return int(Battles.cfg().odds_runs)
+
+func battle_withdraw_share() -> float:
+ return float(Battles.cfg().withdraw_casualty_share)

@@ -72,3 +72,50 @@ static func _ordinal(n: int) -> String:
  var suffix = "th"
  if n%100<11 or n%100>13: suffix = {1:"st",2:"nd",3:"rd"}.get(n%10,"th")
  return "%d%s" % [n,suffix]
+
+# --- War and battles (core/battles.gd) ---------------------------------------------------------
+# Wording is chosen with a generator seeded by the year and the parties, like the yearly entries.
+
+static func _rng(parts: Array) -> RandomNumberGenerator:
+ var rng = RandomNumberGenerator.new()
+ rng.seed = hash(parts)
+ return rng
+
+static func war_entry(year: int,attacker: String,defender: String) -> Dictionary:
+ var rng = _rng([year,attacker,defender,"war"])
+ var vars = {"attacker":WorldMap.faction(attacker).name,"defender":WorldMap.faction(defender).name}
+ return entry(year,"war",_fill(_pick(data().war_title,rng),vars),_fill(_pick(data().war_text,rng),vars),attacker)
+
+static func _place(pb: Dictionary) -> String:
+ if pb.settlement != "": return WorldMap.region(pb.settlement).settlement.name
+ var region = WorldMap.region_at(Vector2(pb.position[0],pb.position[1]))
+ var r = WorldMap.region(region)
+ return r.get("name","the open field")
+
+# Battle, capture and generals' fates, for the Event Messages "war" category and the chronicle.
+static func battle_entries(year: int,pb: Dictionary,result: Dictionary,after: Dictionary) -> Array:
+ var d = data()
+ var rng = _rng([year,pb.seed,"battle"])
+ var winner = after.winner
+ var loser = after.loser
+ var losses = [0,0]
+ for side in 2:
+  for u in result.sides[side].units: losses[side] += int(u.losses)
+ var wside = result.winner
+ var vars = {"place":_place(pb),"winner":WorldMap.faction(winner).name,"loser":WorldMap.faction(loser).name,
+  "winner_men":_num(losses[wside]),"loser_men":_num(losses[1-wside])}
+ var out = [entry(year,"war",_fill(_pick(d.battle_title,rng),vars),_fill(_pick(d.battle_text,rng),vars),pb.attacker.faction)]
+ if after.captured != "": out.append(capture_entry(year,after.captured,winner,false))
+ for g in after.generals:
+  var key = "general_killed" if g.fate == "killed" else "general_wounded"
+  out.append(entry(year,"war",g.name,_fill(_pick(d[key],rng),{"name":g.name,"faction":WorldMap.faction(g.faction).name}),g.faction))
+ for p in after.promoted:
+  out.append(entry(year,"war",p.name,_fill(_pick(d.captain_promoted,rng),{"name":p.name,"faction":WorldMap.faction(p.faction).name}),p.faction))
+ return out
+
+static func capture_entry(year: int,sid: String,faction: String,surrender: bool) -> Dictionary:
+ var d = data()
+ var rng = _rng([year,sid,faction,"capture"])
+ var vars = {"place":WorldMap.region(sid).settlement.name,"faction":WorldMap.faction(faction).name}
+ var text = _pick(d.surrender_text if surrender else d.capture_text,rng)
+ return entry(year,"war",_fill(_pick(d.capture_title,rng),vars),_fill(text,vars),faction)

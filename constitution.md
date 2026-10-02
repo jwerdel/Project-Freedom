@@ -116,6 +116,7 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 
 - Before resolution, players deploy units and assign standing orders such as hold ground, act aggressively, or attempt to flank.
 - Battle design (approved direction, 2026-10-01): docs/battle-design.md. Its numbers are placeholders and its open questions (section 13) are not decided until the owner answers them.
+- Implementation note (2026-10-01): battles are quick-resolved from the campaign (deployment UI comes next). TEMPORARY war rule until diplomacy: attacking another faction's army or settlement declares war after a confirmation, and there is no peace yet. Captured settlements are occupied only; sack, raze and expel stay open. A dead or wounded general is replaced by a captain who cannot move the army (placeholder until the character system).
 - Resolve the battle through simulation without displaying animated combat in V1.
 - Detailed figures with minimal animation can be used in deployment; presentation specifics remain open.
 - Deployment and orders must have meaningful consequences. A useful explanation of results has been proposed; report format and simulation mechanics are not yet decided.

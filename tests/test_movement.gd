@@ -2,7 +2,7 @@ extends GutTest
 # Army movement (data/movement.json, data/movement_grid.json): points are spent by distance and
 # terrain, roads are cheaper the higher the road level, water and mountains are impassable except at
 # passes, orders beyond this turn continue on End Turn, points refill, armies garrison in their own
-# settlements, and foreign settlements or armies block with "Battles not implemented yet".
+# settlements, and foreign settlements or armies are not move targets (they start the battle flow).
 
 const GameState = preload("res://core/game_state.gd")
 const Movement = preload("res://core/movement.gd")
@@ -166,7 +166,7 @@ func test_foreign_settlements_and_armies_are_blocked():
  assert_ne(s.settlements.greyhaven.owner,"house_aurek")
  var r = data.order_move(ARMY,WorldMap.settlement_position("greyhaven"))
  assert_false(r.ok)
- assert_eq(r.reason,"Battles not implemented yet")
+ assert_eq(r.reason,Movement.BLOCKED_BATTLE)
  assert_eq(s.army_state[ARMY].points,Movement.max_points(),"nothing spent")
  # Another faction's army (a stand-in movement entry; there is no second army in the data yet).
  s.army_state["rival"] = {"faction":"house_lannet","position":[20.0,-10.0],"points":60.0,"max_points":60.0,"order":[],"order_settlement":"","garrison":""}
@@ -230,7 +230,7 @@ func test_blocked_orders_report_the_message_and_cost_nothing():
  for target in [WorldMap.settlement_position("greyhaven"),WorldMap.settlement_position("willowmere")+Vector2(1,0)]:
   var r = data.order_move(ARMY,target)
   assert_false(r.ok)
-  assert_eq(r.reason,"Battles not implemented yet")
+  assert_eq(r.reason,Movement.BLOCKED_BATTLE)
  var after = data.army_movement(ARMY)
  assert_eq(after.position,before.position)
  assert_eq(after.points,before.points)
