@@ -51,6 +51,7 @@ func setup(ui_data,rect: Rect2):
  world_rect = rect
  set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  mouse_filter = Control.MOUSE_FILTER_STOP
+ texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR # smooth terrain (one texel per grid cell)
  visible = false
  modulate.a = 0.0
  base_parchment = _bake(TERRAIN_PARCHMENT)
@@ -97,8 +98,8 @@ func _build_bar():
  h.add_child(close)
  frame.anchor_left = 0.5
  frame.anchor_right = 0.5
- frame.offset_left = -560
- frame.offset_right = 560
+ frame.offset_left = -580
+ frame.offset_right = 500 # clear of the minimap on the right
  frame.offset_top = 74
  frame.offset_bottom = 120
  add_child(frame)

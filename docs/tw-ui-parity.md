@@ -149,7 +149,7 @@ Debug keys (ours, behind the Settings switch): F5, F6, F7, L, and F8 (traffic pa
 - Whether recruiting should lock the lord's movement (A5: a rule, not UI).
 - **Layout (T2/T3):** move the mission, diplomacy and technology buttons to the End Turn cluster and use top-right dropdowns (WH3), or keep the constitution's described layout.
 
-## 12. Status after the parity pass (Phases B and C, 2026-10-02)
+## 12. Status (parity pass, Phases B and C; updated after the layout pass, 2026-10-02)
 
 Legend:
 - **Matched:** behaves as TW:WH3, or as the owner's explicit instruction where TW:WH3 is unknown.
@@ -183,12 +183,12 @@ Legend:
 | C6 | Edge scroll | Open | |
 | C7 | Home pans to the capital, End resets rotation | Matched | |
 | C8 | Tilt follows zoom | Matched | Our curve: about 35° close in |
-| C9 | Strategic map, Tab | Not yet possible | Tab hides the interface meanwhile |
+| C9 | Strategic map: Tab or zooming out | Matched | Flat parchment map with territory colours, borders, settlement and army icons; click or scroll in returns there (L11). Its visual style is ours |
 | C10 | `,` / `.` cycle armies or settlements at the current zoom | Matched | C removed |
 | C11 | Notification jumps | Matched (owner) | Pan at the current zoom |
 | C12 | Hold Space for overlays | Matched | Settlement banners at any zoom; debug traffic pause moved to F8 |
-| A1 | Army panel structure | Matched (close) | |
-| A2 | Recruit button below the cards, recruitment drawer | Matched | Local recruitment |
+| A1 | Army panel structure | Matched (close) | Three parts (L7): lord card, greyed equipment, traits and stances, movement; recruit buttons above the cards; upkeep, replenishment, greyed stance (right column ours) |
+| A2 | Recruit button above the cards, recruitment drawer | Matched | Moved above the cards in the layout pass (gamepressure); local recruitment |
 | A3 | Local recruitment from the province's buildings | Matched | Global recruitment: not yet possible |
 | A4 | Recruitment capacity | By design | Constitution open item |
 | A5 | Recruiting locks movement | By design | Owner decision 2026-10-02: no lock |
@@ -198,24 +198,30 @@ Legend:
 | A9 | Right-click on a unit card | Open | |
 | A10 | Ctrl+P disband | Matched | Ctrl+M merge: not yet possible |
 | A11 | Key 4 opens recruitment | Matched | |
-| P1 | Province panel | Matched | |
+| P1 | Province panel | Matched (close) | Three parts (L6): growth, income, public order; settlement tabs with building slots or garrison; resources, climate (terrain) and effects (right column ours) |
 | P2 | Cycling settlements | Matched | `,` / `.` |
 | P3 | Key 3 building browser | Matched | |
-| P4 | Keys 1 / 2 | Not yet possible | |
+| P4 | Keys 1 / 2 | Matched | Building slots / garrison of the selected settlement (or of the one the selected army stands in). 5 (heroes): not yet possible |
 | T1 | Top bar | Matched | |
-| T2 | Top-left buttons; WH3's End Turn cluster | By design (constitution layout) | Owner decision pending |
-| T3 | Top-right dropdowns | By design (constitution layout) | Owner decision pending |
-| T4 | Pop-up events | Not yet possible | |
+| T2 | Top-left buttons; WH3's round End Turn menu | Matched (owner: layout follows TW:WH3) | Menu, Advisor, Help, Unit browser, Camera settings (L1); round menu with hourglass, notification gear, Objectives, Diplomacy, Technology, culture slot (L5); greyed where no system exists. Ring positions are ours |
+| T3 | Top-right drop-downs | Matched | Tactical map, Events, Lords and heroes, Provinces, Missions (greyed), Known factions, Faction summary (L3, L4); row contents are ours |
+| T4 | Pop-up events | Matched (close) | War declared on you, a settlement lost, landless, destroyed; which events TW pops up is unverified (L8) |
 | T5 | Finance / clan keys | Not yet possible | |
 | E1 | Enter / Shift+Enter | Matched | |
 | E2 | End Turn button jumps through warnings; arrows cycle; Skip | Matched | |
 | E3 | Warning kinds | Matched for funds, construction, army can move | The others: not yet possible |
-| E4 | Warning settings | Partial | Checkboxes in Settings, not a gear beside End Turn |
+| E4 | Warning settings | Matched | Gear on the round menu (also in Settings) |
 | E5 | H jumps to the warning | Matched | |
-| E6 | AI turn controls | Partial | Top-centre ">> Skip" bar and Space/Esc; no pause button or per-faction tracking settings |
+| E6 | AI turn controls | Matched (owner) | Pause, 1x / 2x / 4x (owner; TW has none), ">> Skip", Space/Esc; following AI movements Off / Only near my territory / All, default Off (TW's per-faction-group camera settings: not yet) |
 | H1 | Tooltips | Partial | Title plus body, pinned beside the element, 0.45 s delay; not sticky |
 | H2 | Map hover | Matched | |
 | H3 | Help links | Not yet possible | |
+| K1 | K hides the interface, Alt+K with letterbox bars | Matched | Esc also brings it back. Whether Alt+K works on WH3's campaign map is unverified |
+| K2 | Ctrl+T labels | Matched | Settlement banners |
+| K3 | R move speed | Matched (close) | Your armies' map animation 1x / 2x (also in camera settings and Settings); WH3's exact behaviour unverified |
+| K4 | Tab | Matched | Was "hide interface"; now the strategic map |
+| L1 | Top-centre faction resources and effects | Matched | Two greyed resource slots; the effects icon lists debt, landless and wars. The Treasury panel is not yet possible |
+| L2 | Map layers | Matched (close) | Affiliation, Diplomatic status, Public order, Development, Climate and terrain; Attitude, Faith, Culture greyed; Winds of Magic and Corruption have no system |
 
 ## 13. Layout research (round 2, 2026-10-02) and decisions
 

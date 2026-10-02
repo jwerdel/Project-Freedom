@@ -11,7 +11,7 @@ WIN=(--resolution 1440x900 --position 1880,1040)
 for run in "$@"; do
  if [[ "$run" == SCRIPT:* ]]; then
   read -r -a parts <<< "${run#SCRIPT:}"
-  runtime/Godot.exe --path . "${WIN[@]}" -s "${parts[@]}" 2>&1 | grep -E "CAPTURE|GPU_MS|BENCH|SCRIPT ERROR|SELF_TEST"
+  runtime/Godot.exe --path . "${WIN[@]}" -s "${parts[@]}" 2>&1 | grep -E "CAPTURE|GPU_MS|BENCH|SCRIPT ERROR|SELF_TEST|Passing Tests|Failing Tests|All tests passed"
  else
   read -r -a parts <<< "$run"
   runtime/Godot.exe --path . "${WIN[@]}" -- "${parts[@]}" 2>&1 | grep -E "CAPTURE|GPU_MS|SCRIPT ERROR|SELF_TEST"

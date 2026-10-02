@@ -634,6 +634,92 @@ The self-test passes and now covers the same camera, preview, input and warning 
 - A strategic map.
 - With the drawer open, the taller army panel covers the bottom of Event Messages.
 
+## TW:WH3 campaign layout, AI turn speed and the strategic map (2026-10-02)
+
+Research and decisions: `docs/tw-ui-parity.md` section 13 (L1–L12, with sources and confidence). Checklist: section 12, updated.
+
+**Part 1:** skill-point notifications, early lords, threats and demands, and foreign cults recorded as confirmed (constitution, game design).
+
+**Part 2, layout:**
+- **Top bar.**
+  - Left: Menu, Advisor, Help, Unit browser, Camera settings.
+  - Centre: treasury with breakdown tooltip, income, population, two greyed faction-resource slots, faction effects.
+  - Right: tactical map, Events, Lords and heroes, Provinces, Missions, Known factions, Faction summary.
+  - Lords, Provinces and Known factions are drop-downs built from campaign data; clicking a lord or province selects it and pans there.
+  - Faction summary: Summary and Records (the chronicle); Statistics is greyed.
+- **Round End Turn menu** at the bottom right:
+  - End Turn in the centre, the hourglass turn counter below it, the notification gear beside it.
+  - Objectives, Diplomacy, Technology and a culture slot, greyed.
+  - The warning with `<` `>` and Skip sits above.
+- **Bottom panel in three parts:**
+  - Province: stats; settlement tabs with Buildings or Garrison; resources, climate (terrain shares) and effects.
+  - Army: lord card, greyed equipment, traits and stances, and movement; recruit buttons above the cards, then the drawer and the cards; upkeep, men, replenishment and a greyed stance.
+- **Drawer fix:** the panel ends left of the event feed and the round menu, and the feed ends above the menu, so the drawer no longer covers Event Messages (a test checks the geometry).
+- **Event pop-ups:** war declared on you, a settlement lost, landless, destroyed. They are found by comparing the state before and after End Turn.
+
+**Part 3, speeds:**
+- The AI turn bar has Pause, 1x / 2x / 4x and Skip; the speed is saved in Settings.
+- Following AI movements is Off / Only near my territory / All, default Off. It replaces the old on/off setting; old settings files fall back to Off.
+- Your armies' animation speed is 1x / 2x, set in the camera settings, in Settings, or with R.
+
+**Part 4, strategic map:**
+- Tab, or zooming out past the farthest zoom, fades (0.35 s) to a flat parchment map with territory colours, borders, settlement seals with level pips and names, and army shields.
+- Clicking a place or scrolling in returns there.
+- Layers: Affiliation, Diplomatic status, Public order, Development, Climate and terrain. Attitude, Faith and Culture are greyed.
+- Scaling:
+  - The terrain is baked once from the movement grid.
+  - Colours, icons and screen polygons are cached and rebuilt only when the state, the layer or the size changes. A refresh takes about 0.2 ms here; a test keeps it under 8 ms.
+  - 3D rendering is switched off while the map stands open.
+
+**Key conflicts resolved:**
+
+| Key | Before | Now |
+|---|---|---|
+| Tab | Hide interface | Strategic map (TW) |
+| K | – | Hide interface (TW); Alt+K adds letterbox bars |
+| R | – | Your armies' speed 1x / 2x (TW: character move speed) |
+| 1 / 2 / 5 | – | Building slots / garrison / heroes (coming later) |
+| Ctrl+T | – | Settlement labels |
+| Space | Hold for banners | Also skips during the AI turn (as before) |
+| F, G | Follow army, Goldspire bookmark | Unchanged (ours; no TW key) |
+
+**Tests:**
+- 208/208 GUT tests pass headless, and again in the windowed batch (real portrait pixels).
+- New files:
+  - `tests/test_layout.gd` (11 tests): top-bar order and greyed buttons, lists from data, camera settings, summary and records, round menu, three-part panels, drawer geometry, pop-ups.
+  - `tests/test_settings.gd` (8 tests): persistence, defaults, invalid values, follow modes, speed multipliers, the AI bar, camera settings, the Settings panel.
+  - `tests/test_strategic_map.gd` (8 tests): layers, colours from state, refresh on change, screen mapping and caching, fade, click and scroll-in, refresh cost, and on the real map scene Tab, zoom-out, choose a place, K, Alt+K, Esc, Ctrl+T, 1, 2 and R.
+- The self-test passes, headless and in the windowed batch.
+
+**Screenshots** (one windowed batch, 1440×900, parked off-screen; in `captures/`):
+
+| File | Shows |
+|---|---|
+| `province_selected.png` | Goldspire: three-part province panel, round menu, End Turn warning, top bar |
+| `army_selected.png` | The Host of Goldspire: lord column, cards with recruit and disband above, army info |
+| `round_menu.png` | The round End Turn menu with the warning (cropped from `army_selected.png`) |
+| `strategic_affiliation.png` | Strategic map, Affiliation layer, with legend and layer bar |
+| `strategic_development.png` | Strategic map, Development layer |
+
+The screenshots were taken before three small follow-ups, which have not been re-captured:
+- resource names in the province's right column were cut to four letters ("Ston", "Mine"); they now show in full in two columns;
+- the layer bar overlapped the minimap's left edge by a few pixels; it is now narrower;
+- the map terrain was drawn with nearest filtering; it is now linear.
+
+**Not done or unverified:**
+- TW positions on the round menu.
+- The bottom panel's right column (ours).
+- Which events TW pops up.
+- The strategic map's visual style.
+- Alt+K on WH3's campaign map.
+- R's exact WH3 behaviour.
+- Per-faction-group camera settings.
+- The Treasury panel.
+- Statistics.
+- Heroes.
+- The strategic map has no zoom of its own. At the big map's size it may need one, or region labels.
+- Small text (12–13 px) loses some word spacing in the current font (existing issue, visible in the lord column).
+
 ## Remaining limitations
 
 - Artwork is a prototype and has not been approved against the desired 2016 Total War campaign-map benchmark.
