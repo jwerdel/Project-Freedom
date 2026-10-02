@@ -32,7 +32,14 @@ Confirmed:
 - A small early performance test will validate that large armies are feasible: one soldier model duplicated into a large army, measured on the development PC.
 - All soldiers may share one placeholder model for now. Unit cards must still visually resemble their unit.
 - Art and gameplay data are separate: gameplay values live in data files, each visual is its own scene, and one asset manifest maps IDs to visual scenes, so the art pass swaps visuals without touching gameplay. CLAUDE.md holds the working rules.
-- Campaign UI direction: the campaign UI should heavily resemble Total War: Warhammer III's campaign UI: round menu buttons top-left, a resource bar top-center, minimap top-right, event messages on the right, province stats on the left, a bottom-center province panel with settlement tabs and building-slot cards (or the army panel with unit cards when an army is selected), and a large round End Turn button bottom-right. Dark panels with ornate gold-trimmed frames, tinted per faction. Placeholder UI art comes from Kenney's CC0 UI packs.
+- Campaign UI direction (updated 2026-10-02, owner: match TW:WH3's layout): the campaign UI follows Total War: Warhammer III's layout, recorded with sources in docs/tw-ui-parity.md.
+  - A three-part top bar: game buttons on the left, resources in the centre, map toggle and lists on the right.
+  - A bottom-right round menu: the End Turn button with its warnings, surrounded by the turn counter, notification settings and the objectives, diplomacy and technology buttons.
+  - A bottom-centre panel in three parts for the selected province or army.
+  - The event feed on the right.
+  - A strategic map.
+  - Buttons for systems that do not exist yet stand in their TW:WH3 position, greyed out with a "Coming later" tooltip, so the layout is final now.
+  - Dark panels with ornate gold-trimmed frames, tinted per faction. Placeholder UI art comes from Kenney's CC0 UI packs.
 - Placeholder packs: the Quaternius and Kenney packs listed in ASSETS.md are approved (2026-09-30).
 - Two scales:
   - Campaign map scale: stylized miniature scale. Generals and heroes are deliberately oversized relative to settlements for readability. The current prototype's proportions are the reference: the commander figure stands about 4.4 m to the helmet top (banner pole about 5.1 m) on a 1.1 m radius base; houses are about 1.3–2.5 m to the roof ridge; Greyhaven's wall ring has a radius of about 8.7 m with 1.6 m walls; towers are 2.35–5.2 m; roads are 1.0 / 1.3 / 1.6 m wide (dirt / gravel / stone); wagons are about 3.3 m long including the draft animal; ships are about 4 m long with a 3.4 m mast; fir trees are 3.5–6.8 m.
@@ -91,6 +98,7 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
   - A new ruler's first-impressions window (about 10 turns; exact length open): the ruler's actions move both reputations much faster than normal, in either direction.
   - Decrees: the ruler issues decrees, limited in number by Realm Standing. They have mechanical effects and shift reputation, amplified during the first-impressions window. Retiring a disgraced ruler for a better-reputed one changes how factions see you.
   - Proposed, not confirmed: the instability safeguard against frequent ruler swaps (§7.5), and the list of reputation traits (§7.3).
+- Confirmed (2026-10-02, game-design §8.9; build with diplomacy): threats and demands. The player can demand gold, a region, vassalage, the breaking of an alliance or a marriage under threat. Refusal gives a justified war (no unjustified-war penalty). Acceptance depends on relative power: small, weak factions mostly accept or face annihilation. Overuse feeds a Bully or Tyrant reputation.
 - Relationships form a web: an attack harms the victim's relationship strongly and can also harm relations with its allies to a lesser degree.
 - Alliances and dynastic marriages can improve relations.
 - Negotiations should support bundled offers using a faction's available means, including land, gold, resource tribute, troop transfers, marriage, alliances, and ceasefires. Eligibility and valuation are defined in docs/diplomacy-design.md §6 (approved 2026-10-02); captives and secrets are also tradable.
@@ -151,6 +159,8 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 - The player controls when new children are added to the main family tree. Rules for other families remain open.
 - At level 20 a character can become immortal and then ascend into a monster-like unit. An immortal defeated in battle returns after X turns; an assassinated immortal returns after Y turns, with Y substantially longer. Values, recovery location, and ascension details remain open.
 - The player controls the faction regardless of its current ruler; faction destruction is the loss condition. The test is confirmed (2026-10-01, Campaign and world): last settlement lost, then a grace period.
+- Confirmed (2026-10-02, game-design §4.4a; build with the character system): skill point notifications. When any lord or hero has unspent skill points, a TW-style alert appears on their card and in the notification list; clicking it opens that character's skill tree.
+- Confirmed (2026-10-02, game-design §4.13; build with the character system): early lords, boom or bust. During the formative years (12 to 16) a child can be made a lord early. It is a gamble between a legendary prodigy (great traits, fast leveling) and a broken failure (bad traits, low loyalty, early death risk), inspired by Aegon Targaryen versus Daemon Blackfyre. Probabilities are proposed later.
 - Confirmed (2026-10-02, game-design §4.5): there is no level cap. Level 20 is a great feat: leveling is slow, and most campaigns produce only a handful of level-20 characters. Legendary founders (Edric Varn, Lucan Varrenus, Kallias Aurekos, and AI legendary lords) are immortal from the start.
 - Confirmed (2026-10-02, game-design §4.3, §5.1, §5.5, §5.7), agents:
   - Agents are court and family members on a career path, shown on the map as TW-style heroes.
@@ -172,6 +182,7 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
   - **Elections:** the Throne Church's high priest is elected by senior prelates, with votes that can be swayed.
   - **Holy Wars:** crusade equivalents called by the Church against heretics, Destruction peoples or the excommunicated, which faithful factions can join.
   - **Anathema:** excommunication, which marks a faction as a target for the faithful.
+- Confirmed (2026-10-02, game-design §9.12; build with religion): foreign cults. Faiths can establish cults in other factions' settlements, TW-style. V1 cults include the Throne Church, ratmen clans, dark elves and Tomb-King mortuary cults; Chaos cults are post-V1. Their effects are proposed later.
 - Proposed, not confirmed (game-design §9.4 to §9.9): all details and numbers of the above. These include the hierarchy names (Voice of the Throne, Exarchs), candidates from the three most pious Exarchs, vote buying, the Holy War joining window and rewards, and Anathema's causes, effects and lifting. The Inquisition and the Radiant Seven's temples, omens and oracles are also proposals.
 
 ## Difficulty
@@ -196,6 +207,7 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
   - Outside its own territory an army cannot recruit, and the game says why ("Must be in your own territory").
   - Queued recruits appear in the army at once as greyed cards with their turns left; clicking one cancels it with a full refund.
   - Global recruitment and recruitment capacity remain open.
+  - Deliberate difference from TW:WH3 (owner, 2026-10-02): recruiting does not lock the lord's movement.
   This replaces the per-settlement part of the implementation note above.
 - Open (raised by recruitment): recruitment slots per settlement; disbanding a whole army or its general; who counts as an enemy for replenishment once diplomacy exists (now every region the faction does not own). The maximum number of lord armies is now capped by Realm Standing (Economy and settlements); its values are open, and the prototype placeholder is 3.
 - Confirmed (2026-10-02, game-design §12.2 and §12.3):

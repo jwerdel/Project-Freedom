@@ -173,6 +173,9 @@ Governors are not a separate career: any adult (most often politicians) can be a
 - **Traits and epithets (CK):** earned from life and events, not chosen. A lord who wins many battles and conquers territory becomes "**the Great**"; a just ruler becomes "**the Wise**"; one who razes cities becomes "**the Butcher**"; one who kills family "**the Kinslayer**."
 - Traits affect stats, AI opinions, loyalty, and event outcomes.
 
+### 4.4a Skill point notifications **(Confirmed 2026-10-02; build with the character system)**
+When any lord or hero has unspent skill points, a TW-style alert appears on their card and in the notification list (the End Turn warnings). Clicking it opens that character's skill tree.
+
 ### 4.5 Levels, immortality, and ascension **(Confirmed)**
 - **No level cap.**
 - **Level 20 is a great feat:** in practice most campaigns produce only a handful of level-20 characters. Leveling is slow (TW reference: a lord winning roughly 20 battles).
@@ -221,6 +224,12 @@ Because agents are family, capture is personal:
 
 ### 4.12 Renaming **(Confirmed)**
 Like TW:WH3, the player can rename any settlement and any character.
+
+### 4.13 Early lords: boom or bust **(Confirmed 2026-10-02; build with the character system)**
+- During the formative years (12 to 16) the player can make a child a lord (General) early.
+- It is a gamble with extreme outcomes. At one end, a legendary prodigy: great traits and fast leveling. At the other, a broken failure: bad traits, low loyalty, and a risk of early death.
+- Inspired by Aegon Targaryen versus Daemon Blackfyre.
+- Outcome probabilities are proposed later.
 
 ---
 
@@ -430,6 +439,12 @@ The constitution wants targets attackable without wider diplomatic repercussions
 ### 8.8 War declarations **(Proposed)**
 Retire the temporary "attacking declares war" rule. War requires a declaration (Diplomacy screen or attack confirmation). Declaring war without a **justification** (a grudge, a claim, a provocation, a Holy War, defending an ally) costs reputation. Schemes can manufacture justifications.
 
+### 8.9 Threats and demands **(Confirmed 2026-10-02; build with diplomacy)**
+- The player can demand things under threat: gold, a region, vassalage, breaking an alliance, a marriage.
+- **Refusal** gives a justified war: no unjustified-war penalty.
+- **Acceptance** depends on relative power. Small, weak factions mostly accept, or face annihilation.
+- **Overuse** feeds a Bully or Tyrant reputation.
+
 ---
 
 ## 9. Religion and the Throne City
@@ -497,6 +512,12 @@ Sent into realms that fall out of Church favor or harbor heresy and other faiths
 
 ### 9.11 Conversion and religious mix **(Proposed)**
 Regions have a faith mix that shifts over time (priests, temples, rulers, decrees). Faith mismatch with the ruler lowers public order. Forced conversion is possible and harsh.
+
+### 9.12 Foreign cults **(Confirmed 2026-10-02; build with religion)**
+- Faiths can establish cults in other factions' settlements, TW-style.
+- V1 cults: the Throne Church, ratmen clans, dark elves, Tomb-King mortuary cults, and others.
+- Chaos cults come post-V1.
+- Effects are proposed later (for example influence, unrest, intelligence, conversion).
 
 ---
 

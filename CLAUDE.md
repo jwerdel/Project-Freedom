@@ -85,6 +85,13 @@ Godot 4.7.2 fantasy strategy game. Personal project; free and local only.
 - When a change must not alter visuals, compare before/after captures.
 - Export preset "Windows Desktop" (`export_presets.cfg`) includes `*.json` so the manifest ships, and excludes `addons/gut/*` and `tests/*`. Keep non-resource data files covered by its include filter. A full `.exe` export needs Godot 4.7.2 export templates (not installed); `--export-pack "Windows Desktop" build/x.pck` works without them.
 
+## Godot windows
+
+- Run everything headless by default: GUT tests, logic checks and AI soaks (`--headless`). The self-test's checks run inside a capture run, so batch it with the others.
+- Only screenshots, GPU timing and renderer-specific tests open a real window, batched into ONE windowed batch at the end of each phase: `scripts/windowed_batch.sh "<args>" "<args>" ...`.
+- Each run is 1440×900 (comparable screenshots), parked almost entirely off-screen in the bottom-right corner of the 1920×1080 screen (`--resolution 1440x900 --position 1880,1040`). It still renders the full frame.
+- Godot 4.7.2 window flags (from `Godot.exe --help`): `--resolution WxH`, `--position X,Y`, `--screen N`, `-w` (windowed), `-m` (maximised), `-f` (fullscreen), `-t` (always on top). There is no minimise flag.
+
 ## Tests
 
 - Non-trivial logic needs tests.

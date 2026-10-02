@@ -66,7 +66,7 @@ This is a checklist of each interaction and UI element. For each it gives how TW
 | A2 | **Recruitment buttons below the unit cards** open the recruitment panel (global and local tabs) | C | A "Recruit" button in the header opens a large tiled window over the map | **Gap:** a recruit button at the end of the card row opens a **recruitment drawer**: a strip of unit cards above the army panel. Each shows its turns above the portrait and its cost and upkeep. Click a card to recruit |
 | A3 | Local recruitment = units allowed by your buildings in the **province the army stands in**; empty when not in controlled territory; global pool costs more and takes longer | C local and global; the exact territory rule is U | Required being inside or within 12 m of an own settlement; units from that one settlement | **Gap (owner rule, Phase B):** any own region of a province; units from your buildings in the province; reason shown when unavailable. Global recruitment: not yet (constitution open item) |
 | A4 | Recruitment capacity (slots per province) | C | No capacity | Different by design for now (constitution open: recruitment slots) |
-| A5 | Recruiting locks the lord's movement | C | Movement not locked | Rule difference (not UI). Open item for the owner |
+| A5 | Recruiting locks the lord's movement | C | Movement not locked | **Deliberate difference (owner, 2026-10-02):** recruiting does not lock movement |
 | A6 | Queued units shown on cards with a banner (green / blue / orange in older text) | U for WH3 | Veiled cards with turns, appended after all units (they fall off-screen in a full army) | **Owner:** greyed cards with a turn counter, always visible (cards shrink to fit up to 20); click to cancel |
 | A7 | Cancel a queued unit | ? | Click the queued card (full refund) | Keep (owner) |
 | A8 | Unit card hover tooltip (sticky, inspectable tooltips since Update 3.0) | C | Plain tooltip: name, men, upkeep, description | Partial. Sticky tooltips need a custom tooltip system: later |
@@ -191,7 +191,7 @@ Legend:
 | A2 | Recruit button below the cards, recruitment drawer | Matched | Local recruitment |
 | A3 | Local recruitment from the province's buildings | Matched | Global recruitment: not yet possible |
 | A4 | Recruitment capacity | By design | Constitution open item |
-| A5 | Recruiting locks movement | By design | Rule, not UI; open for the owner |
+| A5 | Recruiting locks movement | By design | Owner decision 2026-10-02: no lock |
 | A6 | Queued units greyed with turns, always visible | Matched (owner) | Cards narrow so 20 fit |
 | A7 | Click a queued card to cancel | Matched (owner) | |
 | A8 | Unit card tooltips | Partial | Rich styling (bold title); sticky or inspectable tooltips not yet |
