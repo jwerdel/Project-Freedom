@@ -18,6 +18,13 @@
   "capture_title": ["{place} Falls to {faction}", "{faction} Takes {place}"],
   "capture_text": ["{place} is now held by {faction}.", "The banners over {place} are now those of {faction}."],
   "surrender_text": ["Starved after a long siege, {place} opened its gates to {faction}."],
+  "realm": {
+    "landless": {"title": ["{faction} Holds No Land"], "text": ["{faction} has lost its last settlement. Its armies have {turns} to take one back, or the house is ended."]},
+    "grace": {"title": ["{turns} Left to {faction}"], "text": ["Without a hall to call its own, {faction} has {turns} to retake a settlement."]},
+    "survived": {"title": ["{faction} Endures"], "text": ["{faction} has taken a settlement again; the Grey Scribes strike out the line they had begun to write."]},
+    "destroyed": {"title": ["The End of {faction}", "{faction} Is No More"], "text": ["Landless and leaderless, the last banners of {faction} are furled. Its soldiers go home."]},
+    "desertion": {"title": ["Unpaid Soldiers Desert"], "text": ["With the treasury of {faction} in debt, {n} unpaid soldiers left the ranks this year."]}
+  },
   "siege_title": ["The Siege of {place}", "{faction} Lays Siege to {place}"],
   "siege_text": ["The host of {faction} has drawn its lines around {place}; the Grey Scribes count the granaries and wait.", "Before {place} the banners of {faction} are planted. None go in or out."],
   "withdraw_title": ["{faction} Will Not Give Battle", "A Retreat Before {place}"],

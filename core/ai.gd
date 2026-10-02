@@ -17,6 +17,7 @@ const Economy = preload("res://core/economy.gd")
 const UnitTypes = preload("res://core/unit_types.gd")
 const WorldMap = preload("res://core/world_map.gd")
 const Chronicle = preload("res://core/chronicle.gd")
+const Realm = preload("res://core/realm.gd")
 const DATA = "res://data/ai.json"
 
 static var _data = null
@@ -35,7 +36,7 @@ static func reset():
 # The product of the faction's trait multipliers (data/factions.json traits; data/ai.json).
 static func personality(faction: String) -> Dictionary:
  var p = {"aggression":1.0,"boldness":1.0,"reserve":1.0,"armies":1.0,"economy":1.0,"defense":1.0,"wariness":0.0,
-  "assault":0,"vengeful":0,"opportunist":0,"composition":data().recruitment.composition}
+  "assault":0,"vengeful":0,"opportunist":0,"landless":-1,"composition":data().recruitment.composition}
  var table = data().personalities
  for t in WorldMap.faction(faction).get("traits",[]):
   if not table.has(t): continue
@@ -150,6 +151,13 @@ static func faction_turn(state,f: String,report: Dictionary,opts := {},controlle
  var rng = RandomNumberGenerator.new()
  rng.seed = hash([state.seed,state.year,f,"ai"])
  var p = personality(f)
+ # Landless (grace period, core/realm.gd): everything turns to retaking a settlement in time.
+ var left = Realm.grace_left(state,f)
+ if left>=0:
+  p = p.duplicate()
+  p.landless = left
+  p.boldness = float(p.boldness)*float(data().grace.boldness)
+  p.aggression = maxf(float(p.aggression),1.0)
  var look = assess(state,f,p)
  _consider_war(state,f,p,look,rng,report)
  _balance_books(state,f,report)
@@ -228,13 +236,15 @@ static func field_armies(state,f: String) -> Array:
 
 static func _consider_war(state,f: String,p: Dictionary,look: Dictionary,rng: RandomNumberGenerator,report: Dictionary):
  var w = data().war
- if look.enemies.size()>=int(w.max_wars): return
+ var landless = int(p.landless)>=0
+ if look.enemies.size()>=int(w.max_wars) and not landless: return
  # The best target among factions at peace, from any army with enough units.
  var best = {}
  for id in field_armies(state,f):
-  if state.army_state[id].units.size()<int(data().recruitment.garrison_units): continue
+  if state.army_state[id].units.size()<int(data().recruitment.garrison_units) and not landless: continue
   for t in targets_for(state,id,float(data().reach.war_meters)):
    if t.faction in look.enemies or t.faction == "": continue
+   if landless and t.kind != "settlement": continue
    # The whole field force that could gather against it, not one army.
    var ratio = maxf(float(t.ratio),strategic_power(state,f,t.position)/maxf(1.0,float(t.defense)))
    var score = ratio
@@ -245,9 +255,9 @@ static func _consider_war(state,f: String,p: Dictionary,look: Dictionary,rng: Ra
    if best.is_empty() or score>best.score: best = {"score":score,"target":t,"army":id}
  if best.is_empty(): return
  var weakness = clampf(minf(2.0,best.score)-1.0,0.0,1.0)
- var chance = float(w.base_chance)*float(p.aggression)*weakness
+ var chance = 1.0 if landless else float(w.base_chance)*float(p.aggression)*weakness
  var roll = rng.randf()
- if roll>=chance: return
+ if roll>=chance: return # (a landless faction does not roll: it must take a settlement)
  # Only for a fight it expects to win (the curve estimate; the attack itself is re-checked by
  # simulation before it is made).
  if curve_odds(float(best.score))<float(data().attack.min_odds)/float(p.boldness): return
@@ -450,8 +460,10 @@ static func _try_attack(state,id: String,f: String,p: Dictionary,look: Dictionar
  # A home army keeps building up before it marches out.
  if a.units.size()<int(d.recruitment.garrison_units) and look.enemies.is_empty(): return false
  var tries = 0
+ var landless = int(p.landless)
  for t in targets_for(state,id):
   if not t.faction in look.enemies: continue
+  if landless>=0 and t.kind != "settlement": continue # only a settlement saves it
   if tries>=int(d.reach.plan_candidates): break
   tries += 1
   var appr = Battles.approach(state,id,t)
@@ -466,6 +478,8 @@ static func _try_attack(state,id: String,f: String,p: Dictionary,look: Dictionar
     # (it can hold the siege lines), though not for an assault.
     var open_ratio = float(t.ratio)*(1.0+float(d.power.wall_bonus))
     if open_ratio<float(d.attack.siege_ratio)/float(p.boldness) or state.settlements[t.id].has("siege"): continue
+    # A landless faction cannot wait out a siege longer than its grace period.
+    if landless>=0 and Battles.endurance(state,t.id)>=landless: continue
     _record(report,id,Battles.move_to_attack(state,id,appr))
     var r = Battles.besiege(state,id,t.id)
     if r.ok:
@@ -543,7 +557,7 @@ static func _flee(state,id: String,f: String,report: Dictionary) -> bool:
 static func _stage(state,id: String,f: String,p: Dictionary,look: Dictionary,report: Dictionary) -> bool:
  if look.enemies.is_empty() or float(p.aggression)<0.3: return false
  var a = state.army_state[id]
- if a.units.size()<int(data().recruitment.garrison_units): return false
+ if a.units.size()<int(data().recruitment.garrison_units) and int(p.landless)<0: return false
  var cap = Armies.capital(state,f)
  var last_home = a.garrison == cap and Movement.garrison_of(state,cap).size()<=1 and Armies.armies_of(state,f).size()<=1
  if not last_home:

@@ -54,6 +54,7 @@ Randomness in AI choices (war rolls, tie-breaks) comes only from a generator see
    - A faction with no army, or with hardly any units, digs into its reserve, keeping only `emergency_reserve_share` of it.
    - A rich faction (more than `rich_factor` × its reserve) fills its armies past `field_units`, up to the army cap.
    - **Books:** when next year would end in debt, it disbands its least efficient units, least power per upkeep first. It does this only if disbanding can balance the books; what a negative treasury does is open in the constitution.
+   - **Debt and survival** (constitution, confirmed 2026-10-01): in debt the faction cannot build or recruit (the same rule as the player). Landless in its grace period, it puts everything into retaking a settlement: it declares war on the owner of the best reachable settlement without a roll, attacks at worse odds (`grace.boldness`), targets only settlements, and besieges only when the siege would end inside its grace.
 5. **Armies** take one job each turn, in priority order:
    1. **Defend:** move into or next to a threatened settlement that can still be saved.
    2. **Attack:** an opportunity with odds ≥ `attack.min_odds` (personality-adjusted). A walled target is **besieged** instead, unless its assault odds reach `attack.assault_min_odds`. It is besieged only when the army could beat the defenders in the open (power ratio without walls at least `siege_ratio`).

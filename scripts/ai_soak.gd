@@ -35,7 +35,7 @@ func _initialize():
  for sd in seeds:
   var r = run(sd,turns,verbose)
   all_ms.append_array(r.ms)
-  print("SEED %d | wars %d | battles %d | sieges %d | captures %d | withdrawals %d | eliminated %s | treasury %s | armies %s | settlements %s | stuck %s | idle %s | ai ms avg %.1f max %.1f" % [sd,r.wars,r.battles,r.sieges,r.captures,r.withdrawals,str(r.eliminated),str(r.treasury),str(r.armies),str(r.owned),str(r.stuck),str(r.idle),_avg(r.ms),r.ms.max()])
+  print("SEED %d | wars %d | battles %d | sieges %d | captures %d | withdrawals %d | landless %d, survived %d, destroyed %s | deserted %d | min treasury %s | eliminated %s | treasury %s | armies %s | settlements %s | stuck %s | idle %s | ai ms avg %.1f max %.1f" % [sd,r.wars,r.battles,r.sieges,r.captures,r.withdrawals,r.graces,r.survived,str(r.destroyed),r.deserted,str(r.min_treasury),str(r.eliminated),str(r.treasury),str(r.armies),str(r.owned),str(r.stuck),str(r.idle),_avg(r.ms),r.ms.max()])
  var a = run(seeds[0],turns,false)
  var b = run(seeds[0],turns,false)
  print("DETERMINISTIC %s" % str(a.hash == b.hash))
@@ -52,7 +52,7 @@ func run(sd: int,turns: int,verbose: bool) -> Dictionary:
  var s = GameState.from_data(GameState.START,sd)
  var opts = {"factions":s.factions(),"resolve_player":true}
  var start_factions = s.factions().filter(func(f): return not s.settlements_of(f).is_empty())
- var out = {"wars":0,"battles":0,"sieges":0,"captures":0,"withdrawals":0,"ms":[],"eliminated":[],"stuck":[],"idle":[]}
+ var out = {"wars":0,"battles":0,"sieges":0,"captures":0,"withdrawals":0,"ms":[],"eliminated":[],"stuck":[],"idle":[],"graces":0,"survived":0,"deserted":0,"min_treasury":{}}
  var last_pos = {}
  var still = {}
  var last_act = {}
@@ -72,6 +72,12 @@ func run(sd: int,turns: int,verbose: bool) -> Dictionary:
    if verbose: print("  y%d %s" % [s.year,str(a)])
   for ev in rep.sieges:
    if ev.kind == "surrendered": out.captures += 1
+  for ev in rep.realm:
+   if ev.kind == "landless": out.graces += 1
+   if ev.kind == "survived": out.survived += 1
+  for ev in rep.debt:
+   if ev.kind == "desertion": out.deserted += int(ev.men)
+  for f in s.factions(): out.min_treasury[f] = mini(int(out.min_treasury.get(f,1<<30)),int(s.treasury[f]))
   # Stuck: an army at war that has not moved for 8 turns while outside its own settlement.
   for id in s.army_state:
    var a = s.army_state[id]
@@ -84,6 +90,7 @@ func run(sd: int,turns: int,verbose: bool) -> Dictionary:
    if t-last_act[f] == 10 and not f in out.idle and not s.settlements_of(f).is_empty(): out.idle.append(f)
  for f in start_factions:
   if s.settlements_of(f).is_empty(): out.eliminated.append(f)
+ out.destroyed = s.destroyed.duplicate()
  out.treasury = {}
  out.armies = {}
  out.owned = {}

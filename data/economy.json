@@ -28,6 +28,11 @@
     "popularity_factor": 0.0,
     "_popularity_note": "STUB: ruler popularity is open in the constitution; it stays neutral (0) and has no effect until designed."
   },
+  "debt": {
+    "_note": "Confirmed rule (constitution, 2026-10-01): a faction may go into debt (treasury below 0) down to limit. While in debt it cannot start construction, recruit or raise armies, and every unit loses desertion_share of its men each End Turn (at least one man, never below one). While below limit, its units with the highest upkeep disband (men return to the region's population) until its income covers its upkeep. Both numbers are PLACEHOLDERS.",
+    "limit": -4000,
+    "desertion_share": 0.06
+  },
   "upkeep": {
     "_note": "Army upkeep uses each unit type's placeholder_stats.upkeep times this multiplier. Building upkeep is per building level in data/buildings.json.",
     "army_upkeep_multiplier": 0.6

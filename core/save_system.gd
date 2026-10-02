@@ -11,7 +11,7 @@ extends RefCounted
 const SaveCodec = preload("res://core/save_codec.gd")
 const GameState = preload("res://core/game_state.gd")
 const WorldMap = preload("res://core/world_map.gd")
-const SCHEMA = 2
+const SCHEMA = 3
 const OLDEST = 1 # oldest schema a migration chain still reaches
 const DIR = "user://saves"
 const AUTOSAVES = 3
@@ -21,12 +21,20 @@ const BACKDROP = Vector2i(960,600)
 # Migration hook: migrations()[n] turns a schema-n save dictionary into schema n+1. Add one each
 # time SCHEMA rises (and keep OLDEST at the first version still convertible).
 static func migrations() -> Dictionary:
- return {1:_v1_to_v2}
+ return {1:_v1_to_v2,2:_v2_to_v3}
 
 # Schema 2 (campaign AI block): pending AI attacks on the player and the camera view are saved.
 # A schema-1 save has neither: no pending attacks, and the default camera.
 static func _v1_to_v2(d: Dictionary) -> Dictionary:
  if d.get("state") is Dictionary and not d.state.has("pending_battles"): d.state.pending_battles = []
+ return d
+
+# Schema 3 (debt and loss condition block): grace periods and destroyed factions are saved. A
+# schema-2 save has none in progress.
+static func _v2_to_v3(d: Dictionary) -> Dictionary:
+ if d.get("state") is Dictionary:
+  if not d.state.has("grace"): d.state.grace = {}
+  if not d.state.has("destroyed"): d.state.destroyed = []
  return d
 
 static var dir := DIR # tests and captures point this elsewhere

@@ -70,7 +70,8 @@ static func can_build(state,id: String,slot: int,chain_id: String) -> Dictionary
  if not in_progress(state,id).is_empty() and not "Already under construction here" in reasons:
   reasons.append("Another construction is in progress here")
  var cost = int(Buildings.level_data(chain_id,level).cost)
- if int(state.treasury.get(s.owner,0))<cost: reasons.append("Not enough gold (%d needed)" % cost)
+ if int(state.treasury.get(s.owner,0))<0: reasons.append("In debt: no construction until the treasury is out of debt")
+ elif int(state.treasury.get(s.owner,0))<cost: reasons.append("Not enough gold (%d needed)" % cost)
  return {"ok":reasons.is_empty(),"reasons":reasons,"level":level}
 
 # Pay and start construction. Returns {ok, reasons}.

@@ -38,6 +38,7 @@ Open:
 
 ## Campaign and world
 
+- Confirmed (2026-10-01), loss condition: a faction that loses its last settlement enters a grace period of N turns (data). If its armies retake a settlement in time it survives; otherwise it is destroyed and its armies disband. For the player, destruction is game over.
 - One campaign turn represents one year.
 - Three major landmasses: two relatively close and a third far away. Game of Thrones is a geographic reference, not the desired limit on fantasy.
 - Existing cultures, religions, and internal histories at campaign start, but no starting wars, alliances, or diplomatic relationship bonuses.
@@ -65,8 +66,9 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 - Alliances and dynastic marriages can improve relations.
 - Negotiations should support bundled offers using a faction's available means, including land, gold, resource tribute, troop transfers, marriage, alliances, and ceasefires. Eligibility and valuation remain open.
 - Army tribute means sending actual troops.
-- Attacking during a ceasefire/peace treaty or within its protected post-treaty period causes irreversible war with every faction and permanent loss of allies and trade partners; only loading an earlier save reverses it. Protection durations remain undecided. Cancelling trade is permitted at any time and does not trigger this punishment.
-- AI suffers the same betrayal penalty. The user is considering hardcoding AI to never commit the triggering violation; this is not yet decided.
+- Attacking during a ceasefire/peace treaty or within its protected post-treaty period causes irreversible war with every faction and permanent loss of allies and trade partners; only loading an earlier save reverses it. Cancelling trade is permitted at any time and does not trigger this punishment.
+- Confirmed (2026-10-01): after peace or a ceasefire the treaty is protected for 20 turns; attacking during the treaty or that protection triggers the betrayal rule above.
+- AI suffers the same betrayal penalty. Confirmed (2026-10-01): the AI never triggers the betrayal rule (hardcoded). Treacherous AI factions show treachery in other ways: breaking trade agreements, abandoning allies, refusing alliance calls.
 - Courts may contain multiple races, independently of reproduction. An orc faction rejected by other orcs can join a welcoming human faction. Latest clarification: reproduction is within the same race only; this supersedes the earlier crossbreeding-alliance idea.
 - Welcoming an outsider requires sustained commitment to earn trust; exclusion can produce distrust and rebellion. Integration may damage relations with prejudiced same-race friends while creating opportunities for cross-race alliances.
 - Some human/orc factions should always hate the other race; a small minority may pursue friendship. This qualifies or conflicts with the earlier universally neutral start: distinguish starting relations, permanent prejudice, and willingness to negotiate before implementation.
@@ -74,6 +76,7 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 
 ## Economy and settlements
 
+- Confirmed (2026-10-01), debt: a faction may go into debt down to a limit (data). While in debt it cannot start construction or recruit, and its units lose a share of their men to desertion each turn (data). Below the limit, its worst-upkeep units disband.
 - Gold is the currency. Income and expenses are calculated per turn; buildings, units, and upgrades cost gold.
 - Construction should not require manually managing material inventories. Resources such as stone increase economic potential rather than serving as direct construction requirements.
 - Candidate resources: wood, stone, food, and minerals; final categories and any exceptional uses remain open.
@@ -123,7 +126,7 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 - Troops, commanders, and casualties must relate back to the campaign; detailed persistence and replenishment rules remain open.
 - Replenishment is automatic in friendly regions and costs payment in enemy territory. It does not deduct regional population, but populous regions replenish faster. This is an explicit accessibility exception to the recruitment population model; replacement costs and disbanding must later be balanced to avoid unlimited population creation.
 - Implementation note (2026-10-01), placeholders in data/recruitment.json: recruitment is per settlement (men from that settlement's population, units unlocked by its buildings; every main building unlocks peasant levies), with a minimum population; gold and men are taken when a unit is queued and cancelling refunds both; disbanded men return to the population of the region the army stands in. Replenishment regains a share of each unit's max strength per turn, more in populous friendly regions, and costs gold per man anywhere the faction does not own. Army cap: 20 cards per army including the general, a Total War-style placeholder pending the army performance test (the earlier 6-10 cap stays rejected).
-- Open (raised by recruitment): recruitment slots per settlement; global recruitment; disbanding a whole army or its general; handling of a negative treasury; who counts as an enemy for replenishment once diplomacy exists (now every region the faction does not own); the maximum number of armies per faction (placeholder 3).
+- Open (raised by recruitment): recruitment slots per settlement; global recruitment; disbanding a whole army or its general; who counts as an enemy for replenishment once diplomacy exists (now every region the faction does not own); the maximum number of armies per faction (placeholder 3).
 - Ordinary monsters require special buildings. Unique legendary monsters exist in the world and can be recruited only by heroes of extraordinary stature; qualification and recruitment mechanics remain open.
 - Wars are centered on the opposing factions. Allies choose whether to join the war or support it through gold, resources, or troop tribute without themselves becoming belligerents. Supporting an ally does not automatically mean joining its war.
 - Campaign movement uses a per-turn movement allowance in the Total War style. An army may fight multiple battles while its allowance permits; no separate fixed battle count is intended.

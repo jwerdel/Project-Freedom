@@ -112,7 +112,8 @@ static func can_recruit(state,army_id: String,unit_id: String) -> Dictionary:
  var reasons = []
  if not unit_id in s.get("unlocks",[]): reasons.append("Requires %s" % unlocked_by(unit_id))
  if card_count(a)+1>max_units(): reasons.append("Army is full (%d units)" % max_units())
- if int(state.treasury.get(a.faction,0))<int(u.recruitment.cost): reasons.append("Not enough gold (%d needed)" % int(u.recruitment.cost))
+ if int(state.treasury.get(a.faction,0))<0: reasons.append("In debt: no recruitment until the treasury is out of debt")
+ elif int(state.treasury.get(a.faction,0))<int(u.recruitment.cost): reasons.append("Not enough gold (%d needed)" % int(u.recruitment.cost))
  if float(s.population)-int(u.size)<float(data().recruitment.min_population):
   reasons.append("Too few people in %s (keeps at least %d)" % [WorldMap.region(sid).settlement.name,int(data().recruitment.min_population)])
  return {"ok":reasons.is_empty(),"reasons":reasons,"settlement":sid}
@@ -252,7 +253,8 @@ static func can_raise(state,faction: String,settlement_id: String) -> Dictionary
  if not state.settlements.has(settlement_id) or state.settlements[settlement_id].owner != faction: return {"ok":false,"reasons":["Not your settlement"]}
  if armies_of(state,faction).size()>=int(r.max_per_faction): reasons.append("Army limit reached (%d, placeholder)" % int(r.max_per_faction))
  if not Movement.garrison_of(state,settlement_id).is_empty(): reasons.append("An army is already garrisoned here")
- if int(state.treasury.get(faction,0))<int(r.general_cost): reasons.append("Not enough gold (%d needed)" % int(r.general_cost))
+ if int(state.treasury.get(faction,0))<0: reasons.append("In debt: no new armies until the treasury is out of debt")
+ elif int(state.treasury.get(faction,0))<int(r.general_cost): reasons.append("Not enough gold (%d needed)" % int(r.general_cost))
  return {"ok":reasons.is_empty(),"reasons":reasons}
 
 # Hire a general at a settlement: a new army, garrisoned there with no units yet.

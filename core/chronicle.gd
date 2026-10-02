@@ -134,3 +134,11 @@ static func withdraw_entry(year: int,pb: Dictionary) -> Dictionary:
  var rng = _rng([year,pb.seed,"withdraw"])
  var vars = {"place":_place(pb),"faction":WorldMap.faction(pb.defender.faction).name,"attacker":WorldMap.faction(pb.attacker.faction).name}
  return entry(year,"war",_fill(_pick(d.withdraw_title,rng),vars),_fill(_pick(d.withdraw_text,rng),vars),pb.defender.faction)
+
+# A faction's fortunes (core/realm.gd): landless (grace starts), grace (turns left, the player's
+# own), survived, destroyed, desertion (men lost, the player's own).
+static func realm_entry(year: int,kind: String,faction: String,n := 0) -> Dictionary:
+ var d = data().realm[kind]
+ var rng = _rng([year,faction,kind])
+ var vars = {"faction":WorldMap.faction(faction).name,"n":str(n),"turns":"%d turn%s" % [n,"" if n == 1 else "s"]}
+ return entry(year,"war",_fill(_pick(d.title,rng),vars),_fill(_pick(d.text,rng),vars),faction)

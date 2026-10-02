@@ -55,6 +55,8 @@ var follow_on := false
 var follow_button: Button
 var movement_bar: Control
 var browser_panel: Control
+var grace_tag: Label # landless countdown in the resource bar
+var debt_tag: Label # "IN DEBT" next to the treasury
 var browser_box: VBoxContainer
 var browser_target := {}
 
@@ -132,6 +134,20 @@ func _build_resources():
   group.add_child(value)
   resource_labels[item[0]] = value
   row.add_child(group)
+ # In debt: a red tag (the treasury tooltip explains desertion and the limit).
+ debt_tag = UiKit.label(" IN DEBT ",14,Color("ffe3c8"),UiKit.FONT_BOLD)
+ debt_tag.name = "DebtTag"
+ debt_tag.add_theme_stylebox_override("normal",UiKit.flat(Color("7a1c1c",0.95),6))
+ debt_tag.mouse_filter = Control.MOUSE_FILTER_PASS
+ debt_tag.visible = false
+ resource_groups.treasury.add_child(debt_tag)
+ # Landless (grace period): a red countdown tag, hidden otherwise.
+ grace_tag = UiKit.label("",15,Color("ffe3c8"),UiKit.FONT_BOLD)
+ grace_tag.name = "GraceTag"
+ grace_tag.add_theme_stylebox_override("normal",UiKit.flat(Color("7a1c1c",0.95),6))
+ grace_tag.mouse_filter = Control.MOUSE_FILTER_PASS
+ grace_tag.visible = false
+ row.add_child(grace_tag)
  _anchor(bar,0.5,0,0.5,0,Rect2(-360,8,360,64))
 
 func _build_minimap():
@@ -1120,10 +1136,26 @@ func set_fps(text: String):
 func refresh():
  var r = data.resources()
  resource_labels.treasury.text = UiKit.format_int(r.treasury)
+ # Debt: the treasury turns red, with what it means in the tooltip.
+ resource_labels.treasury.add_theme_color_override("font_color",Color("ff7a6a") if r.in_debt else UiKit.TEXT)
  resource_labels.income.text = UiKit.signed(r.income)
  resource_labels.population.text = UiKit.format_int(r.population)
  resource_labels.year.text = "Year %d · Turn %d" % [r.year,r.turn]
  resource_groups.treasury.tooltip_text = _ledger_text()
+ if r.in_debt:
+  resource_groups.treasury.tooltip_text = ("IN DEBT
+No construction, recruitment or new armies until the treasury is out of debt.
+Unpaid soldiers desert: every unit loses %d%% of its men each turn.
+%s
+
+" % [r.desertion_pct,
+   "BELOW THE DEBT LIMIT (%s): your most expensive units disband each turn until income covers upkeep." % UiKit.format_int(r.debt_limit) if r.below_limit else "Below %s gold, your most expensive units start to disband." % UiKit.format_int(r.debt_limit)])+_ledger_text()
+ debt_tag.visible = r.in_debt
+ debt_tag.tooltip_text = resource_groups.treasury.tooltip_text
+ grace_tag.visible = int(r.grace)>=0
+ if grace_tag.visible:
+  grace_tag.text = " LANDLESS · %d turn%s " % [r.grace,"" if r.grace == 1 else "s"]
+  grace_tag.tooltip_text = "Your house holds no settlement. Retake one within %d turn%s or it is destroyed (game over)." % [r.grace,"" if r.grace == 1 else "s"]
  resource_groups.income.tooltip_text = _ledger_text()
  resource_groups.population.tooltip_text = "Population of your settlements: %s\nGrows each year with settlement type, resources and wealth." % UiKit.format_int(r.population)
  resource_groups.year.tooltip_text = "Year %d, turn %d. One turn is one year." % [r.year,r.turn]

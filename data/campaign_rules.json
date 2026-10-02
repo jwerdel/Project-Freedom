@@ -1,0 +1,7 @@
+{
+  "_note": "Campaign-wide rules not owned by one system. PLACEHOLDER numbers; the rules themselves are confirmed in constitution.md.",
+  "loss": {
+    "_note": "Confirmed rule (2026-10-01): a faction that loses its last settlement enters a grace period of grace_turns End Turns. If its armies retake a settlement in time it survives; otherwise it is destroyed and its armies disband. A faction with no army left when it loses its last settlement cannot retake anything and is destroyed at once. For the player, destruction is game over.",
+    "grace_turns": 5
+  }
+}

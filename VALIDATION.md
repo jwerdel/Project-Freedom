@@ -511,6 +511,64 @@ V1 estimate (about 30 settlements, about 15 factions, 45–60 armies): about 60�
 | `chronicle_ai_wars.png` | The Grey Scribes recording Lannet's war on Verrin, the Field of Willowmere and its capture |
 | `ai_follow.png` | The camera following "The Silverfall Guard marches" during End Turn |
 
+## Debt and the loss condition (2026-10-01)
+
+Rules confirmed in constitution.md, implemented in `core/realm.gd`.
+
+**Debt:**
+- A faction may go below 0 gold down to `data/economy.json` debt.limit (placeholder −4,000).
+- In debt, construction, recruitment and new armies are refused, with an "In debt" reason.
+- Each End Turn in debt, every unit loses 6% of its men (placeholder; at least 1 man, never below 1).
+- Below the limit, the units with the highest upkeep disband until income covers upkeep. Disbanding cannot raise the treasury, so the faction climbs back out through income.
+- Buying can never create debt: every purchase still needs the gold.
+- UI: the treasury turns red with an "IN DEBT" tag, and its tooltip explains the purchase ban, desertion and the limit.
+
+**Loss condition:**
+- Losing the last settlement starts a grace period of `data/campaign_rules.json` loss.grace_turns (placeholder 5).
+- Retaking a settlement ends it ("Endures"). Otherwise, at 0 the faction is destroyed and its armies disband (men return to the region they stand in).
+- A faction with no army left when it loses its last settlement is destroyed at once.
+- UI: the grace countdown shows as a red "LANDLESS · n turns" tag in the player's resource bar, as "LANDLESS · n" over the faction's armies on the map, and as chronicle and Event Messages entries every turn for the player. Start, survival and destruction are recorded for every faction.
+- The player's destruction opens the defeat screen (Load a save, or Main menu).
+- Grace periods and destroyed factions are saved (save schema 3, with a 2 → 3 migration).
+
+**AI:**
+- It avoids debt: it disbands as before, and the purchase ban applies to it.
+- A landless AI declares war on the owner of its best reachable settlement without a roll, attacks at 1.5× boldness, targets only settlements, and besieges only if the siege would end inside its grace.
+
+**Tests:** 173/173 GUT tests pass, including 11 new in `tests/test_realm.gd`:
+- the purchase ban in debt
+- desertion amounts and the one-man floor
+- highest-upkeep disbanding below the limit until income covers upkeep
+- debt recorded in the turn and the chronicle
+- the grace countdown and destruction
+- survival by retaking
+- immediate destruction with no army
+- player game over and grace surviving a save
+- the 2 → 3 migration
+- a landless AI declaring war and going for a settlement
+- an AI in debt not building or recruiting
+
+The self-test passes.
+
+**Soak test** (8 seeds × 50 turns, all AI, same seeds as Phase D, deterministic). Wars, battles, sieges and captures are unchanged in every seed. Differences:
+
+| Seed | Before (Phase D) | Now |
+|---|---|---|
+| 11 | Lannet landless with a 10-unit army, treasury −1,036 at the end | Landless, deserted 173 men, destroyed after its grace (lowest treasury −1,036) |
+| 22 | Lannet landless | Destroyed at once (no army left) |
+| 33 | Lannet with 2 empty armies | Lost its last settlement, retook one in time and survived |
+| 88 | Lannet landless at −6,024 | Deserted 195 men, destroyed; its lowest treasury was −1,074 instead of −6,024 |
+
+House Verrin is destroyed in every seed, usually at once because its army fell with Willowmere. No faction went below the debt limit. AI time is unchanged: average 7.7 ms, median 4.6 ms, 95th percentile 30 ms, max 71 ms (the first turn of a session and battle turns).
+
+**Screenshots** (generated, in `captures/`):
+
+| File | Shows |
+|---|---|
+| `debt_warning.png` | Treasury −2,600 in red with the IN DEBT tag and its tooltip |
+| `landless_grace.png` | The player landless: "LANDLESS · 5 turns" in the bar and over the army |
+| `game_over.png` | The defeat screen |
+
 ## Remaining limitations
 
 - Artwork is a prototype and has not been approved against the desired 2016 Total War campaign-map benchmark.

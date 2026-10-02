@@ -23,6 +23,7 @@ const BattleDeploy = preload("res://core/battle_deploy.gd")
 const TurnLoop = preload("res://core/turn_loop.gd")
 const Chronicle = preload("res://core/chronicle.gd")
 const Ai = preload("res://core/ai.gd")
+const Realm = preload("res://core/realm.gd")
 const MOCK = "res://data/mock_ui.json"
 const CATEGORIES = [{"id":"turn","name":"Turn Summary"},{"id":"buildings","name":"Buildings Constructed"},{"id":"war","name":"Wars and Battles"},{"id":"world","name":"World Events"}]
 
@@ -53,7 +54,15 @@ func player_faction() -> Dictionary:
 # Treasury now, projected net income for the coming turn, population, calendar.
 func resources() -> Dictionary:
  var f = player_faction_id()
- return {"treasury":int(state.treasury[f]),"income":int(Economy.faction_ledger(state,f).net),"population":state.population_of(f),"year":state.year,"turn":state.turn}
+ # Debt (core/realm.gd): in_debt below 0, below_limit under the debt limit; grace: End Turns left to
+ # retake a settlement (-1 when not landless).
+ return {"treasury":int(state.treasury[f]),"income":int(Economy.faction_ledger(state,f).net),"population":state.population_of(f),"year":state.year,"turn":state.turn,
+  "in_debt":Realm.in_debt(state,f),"below_limit":Realm.below_limit(state,f),"debt_limit":int(Realm.debt().limit),"desertion_pct":int(round(float(Realm.debt().desertion_share)*100)),
+  "grace":Realm.grace_left(state,f),"destroyed":Realm.destroyed(state,f)}
+
+# A faction's grace period (-1 when it is not landless), for map banners.
+func grace_left(faction_id: String) -> int:
+ return Realm.grace_left(state,faction_id)
 
 # Per-turn income sources and expenses of the player faction, with readable labels.
 func income_breakdown(faction_id := "") -> Dictionary:

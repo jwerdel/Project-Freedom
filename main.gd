@@ -19,6 +19,8 @@ const SaveSystem = preload("res://core/save_system.gd")
 const Session = preload("res://core/session.gd")
 const Settings = preload("res://core/settings.gd")
 const PauseMenu = preload("res://ui/pause_menu.gd")
+const GameOver = preload("res://ui/game_over.gd")
+const Realm = preload("res://core/realm.gd")
 const Ai = preload("res://core/ai.gd")
 const TurnLoop = preload("res://core/turn_loop.gd")
 const BattleSim = preload("res://core/battle_sim.gd")
@@ -95,6 +97,7 @@ var forced_preview = null # capture flag --preview=x,z: preview this point inste
 var loaded_from := ""    # "" prototype start, "new" campaign from the menu, or the save file loaded
 var unsaved := false     # campaign changed since the last save or load
 var pause_menu: Control
+var game_over: Control
 
 func _ready():
  rng.seed = 87231
@@ -195,6 +198,25 @@ func _ready():
    if "--attack-resolve" in OS.get_cmdline_user_args():
     ui.battle_box.find_child("QuickResolve",true,false).pressed.emit()
     update_walk(1000.0)
+ # Debt and loss captures: --set-treasury=N; --lose-lands gives the player's settlements to House
+ # Lannet (armies kept) and ends the turn, so the grace period starts; --game-over destroys the
+ # player's house.
+ for arg in OS.get_cmdline_user_args():
+  if arg.begins_with("--set-treasury="):
+   ui_data.state.treasury[ui_data.player_faction_id()] = int(arg.get_slice("=",1))
+   ui_data.changed.emit()
+  if arg == "--lose-lands":
+   for sid in ui_data.state.settlements_of(ui_data.player_faction_id()):
+    Battles.occupy(ui_data.state,sid,"house_lannet","")
+   for id in ui_data.state.army_state:
+    if ui_data.state.army_state[id].faction == ui_data.player_faction_id(): ui_data.state.army_state[id].garrison = ""
+   end_turn()
+   update_walk(1000.0)
+  if arg == "--game-over":
+   Realm.destroy(ui_data.state,ui_data.player_faction_id())
+   ui_data.changed.emit()
+   refresh_army_overlays()
+   show_game_over()
  # AI captures: --scenario=siege|attacked puts House Lannet at war with the player and its army
  # (reinforced for the setup) near Crownwatch, then runs a real End Turn: a weaker army besieges,
  # a stronger one attacks and the player must answer (--defense opens the panel).
@@ -634,6 +656,7 @@ func make_ui():
   sync_settlement_visuals()
   sync_territory()
   apply_camera_view(Session.take_view())
+  if ui_data.resources().destroyed: show_game_over.call_deferred()
   if loaded_from != "new": ui.toast("Loaded: %s" % loaded_from)
   if capture_mode: print("LOAD_TO_CAMPAIGN_MS %d (scene rebuilt from the save)" % (Time.get_ticks_msec()-Session.started_at))
 
@@ -738,6 +761,7 @@ func place_commander():
 func refresh_army_overlays():
  if movement_overlay == null: return
  sync_army_figures()
+ update_grace_labels()
  # Standing orders of the player's armies stay visible on the map.
  for id in army_figures:
   var path = ui_data.order_path(id)
@@ -879,6 +903,9 @@ func end_turn():
  collecting_moves = false
  var r = ui_data.resources()
  ui.toast("Year %d begins. Treasury %s gold." % [r.year,UiKit.format_int(r.treasury)])
+ if r.destroyed:
+  show_game_over()
+  return
  play_moves(collected_moves)
 
 func set_overlay(overlay: String,on: bool):
@@ -967,7 +994,7 @@ func hover_text(hit: String) -> String:
  return "%s\n%s\n%s" % [s.name,s.faction.name,s.province_name]
 
 func _unhandled_input(event):
- if pause_menu != null: return
+ if pause_menu != null or game_over != null: return
  if spectating_now() and event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_SPACE,KEY_ESCAPE]:
   skip_spectating()
   get_viewport().set_input_as_handled()
@@ -1073,6 +1100,7 @@ func _process(delta):
  var mouse = get_viewport().get_mouse_position()
  var hit = "" if get_viewport().gui_get_hovered_control() != null else pick(mouse)
  if "--ledger" in OS.get_cmdline_user_args(): ui.show_hover(ui._ledger_text(),Vector2(560,70))
+ elif "--treasury-tip" in OS.get_cmdline_user_args(): ui.show_hover(ui.resource_groups.treasury.tooltip_text,Vector2(560,70))
  elif forced_preview != null and army_selected() and not walks.has(selected_army_id()):
   ui.show_hover(preview_move(forced_preview),camera.unproject_position(army_ground(forced_preview,1.0)))
  elif army_selected() and ui.visible and not walks.has(selected_army_id()) and not capture_mode and get_viewport().gui_get_hovered_control() == null and not hit.begins_with("army:"):
@@ -1510,3 +1538,41 @@ func apply_camera_view(v: Dictionary):
  desired_distance = float(v.distance)
  distance = desired_distance
  camera_update(1.0)
+
+# A landless faction's armies carry its countdown above their banners (turns left to retake a
+# settlement, core/realm.gd).
+func update_grace_labels():
+ for id in army_figures:
+  var fig = army_figures[id]
+  if not is_instance_valid(fig) or not ui_data.state.army_state.has(id): continue
+  var left = ui_data.grace_left(ui_data.state.army_state[id].faction)
+  var label: Label3D = fig.get_node_or_null("GraceLabel")
+  if left<0:
+   if label: label.visible = false
+   continue
+  if label == null:
+   label = Label3D.new()
+   label.name = "GraceLabel"
+   label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+   label.no_depth_test = true
+   label.fixed_size = true
+   label.pixel_size = 0.0007
+   label.font = UiKit.FONT_BOLD
+   label.font_size = 26
+   label.outline_size = 10
+   label.modulate = Color("ffd2c4")
+   label.outline_modulate = Color("5a1010")
+   label.position = Vector3(0,4.6,0)
+   fig.add_child(label)
+  label.visible = true
+  label.text = "LANDLESS · %d" % left
+
+# The player's house is destroyed (core/realm.gd): the defeat screen; the map stays behind it.
+func show_game_over():
+ if game_over != null: return
+ ui.hide_hover()
+ close_pause_menu()
+ game_over = GameOver.new()
+ game_over.name = "GameOver"
+ ui.add_child(game_over)
+ game_over.setup(self,ui_data.player_faction(),ui_data.state.year)
