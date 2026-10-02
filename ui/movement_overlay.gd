@@ -39,7 +39,7 @@ func clear(kind: String):
   # Detach at once (not at the end of the frame), so has_content() is right immediately.
   for c in _layers[kind].get_children():
    _layers[kind].remove_child(c)
-   c.queue_free()
+   c.free()
 
 func has_content(kind: String) -> bool:
  return _layers.has(kind) and _layers[kind].get_child_count()>0

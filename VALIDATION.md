@@ -569,6 +569,71 @@ House Verrin is destroyed in every seed, usually at once because its army fell w
 | `landless_grace.png` | The player landless: "LANDLESS · 5 turns" in the bar and over the army |
 | `game_over.png` | The defeat screen |
 
+## TW:WH3 parity pass (2026-10-02)
+
+Spec and checklist: `docs/tw-ui-parity.md`, researched with sources and confidence levels. Section 12 gives each item's status: matched, by design, not yet possible, or open.
+
+**Recruitment bug from playtest.** Two causes:
+1. The old rule required the army inside or within 12 m of an own settlement. The host starts in open country in Greyhaven's region, which belongs to House Lannet, so Recruit was disabled; the reason only showed on hover.
+2. Queued recruits were appended after the general and all units in a fixed-width scrolling row, so they were clipped or off-screen until they joined at End Turn.
+
+Fixed:
+- Province-wide recruitment (constitution).
+- A TW-style recruitment drawer.
+- Queued units shown at once as greyed cards with their turns left; clicking one cancels it.
+- Cards narrow so 20 always fit.
+- An inline reason when recruiting is impossible.
+
+**Parity changes:**
+- **Movement:**
+  - Hold right-click to preview the move, release to give it; left click or Esc cancels.
+  - No numbers anywhere on the map or path.
+  - Gold range boundary.
+  - The movement bar shows what a previewed move would spend.
+- **Camera:**
+  - Q/E rotate, middle-drag orbits, and the tilt follows the zoom.
+  - Selection never moves the camera.
+  - `,` / `.` cycling pans at the current zoom.
+- **End Turn:** warnings (low funds, construction available, army can still move) with jump, cycle and skip; Enter, Shift+Enter and H.
+- **Hotkeys:** Home, End, Backspace, Ctrl+P, 3, 4, and hold Space for banners.
+- **Other:** an AI-turn skip bar, and rich tooltips (bold title, pinned beside the element).
+
+**Tests:** 181/181 GUT tests pass headless, including 8 new in `tests/test_parity.gd`:
+- the drawer queues greyed cards that cancel on click with a full refund
+- the "own territory" reason
+- recruiting anywhere in a province from its buildings
+- a full 20-card army fits
+- paths and blocked markers carry no numbers
+- the attack preview
+- warnings follow state and settings
+- on the real map scene:
+  - selection does not move the camera
+  - cycling keeps the zoom
+  - a held right click previews and its release orders; Esc cancels the hold and keeps the selection
+  - End Turn jumps to a warning first; Shift+Enter ends the turn
+
+The self-test passes and now covers the same camera, preview, input and warning behaviour.
+
+**Found by the new tests:**
+- The card-scale formula shrank the gaps as well as the cards (a full army was 29 px too wide).
+- The overlay's `clear()` left nodes counted until the end of the frame.
+
+**Screenshots** (generated, in `captures/`):
+
+| File | Shows |
+|---|---|
+| `path_preview.png` | A held preview: green this turn, then yellow, no numbers; the gold range boundary; a red (multi-turn) spend on the movement bar; "Cannot recruit: Must be in your own territory" |
+| `recruit_drawer.png` | The drawer in Goldspire, with two queued units as greyed "1 turn" cards |
+| `end_turn_warnings.png` | "Construction available (1 of 2) · Crownwatch" with `<` `>` and Skip above End Turn |
+
+**Not done:**
+- Sticky tooltips.
+- An attack cursor, double-click and edge scroll (TW:WH3 behaviour unverified).
+- The WH3 End Turn button cluster and top-right dropdowns (the constitution's layout; owner decision).
+- Global recruitment and capacity (open rules).
+- A strategic map.
+- With the drawer open, the taller army panel covers the bottom of Event Messages.
+
 ## Remaining limitations
 
 - Artwork is a prototype and has not been approved against the desired 2016 Total War campaign-map benchmark.

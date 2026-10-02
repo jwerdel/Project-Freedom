@@ -451,9 +451,9 @@ const ARMY_PANEL_WIDTH = 1080.0 # leaves room for the End Turn cluster on the ri
 
 # Card scale so `count` cards (the general counts 1.12) fit the army panel; at most 1.
 func _card_scale(count: int) -> float:
- var avail = ARMY_PANEL_WIDTH-40.0
- var need = (count+0.12)*Cards.UNIT_CARD.x+(count-1)*CARD_GAP
- return clampf(avail/need,0.55,1.0)
+ # Only the cards shrink; the gaps between them stay.
+ var avail = ARMY_PANEL_WIDTH-40.0-(count-1)*CARD_GAP
+ return clampf(avail/((count+0.12)*Cards.UNIT_CARD.x),0.4,1.0)
 
 # Disband the selected unit of the selected army (button or Ctrl+P).
 func disband_selected():

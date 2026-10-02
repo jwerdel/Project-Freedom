@@ -1,6 +1,6 @@
 # TW:WH3 UI parity spec
 
-Status: Phase A of the parity pass (2026-10-02). It applies the constitution's TW:WH3 parity principle: everything the player touches matches Total War: Warhammer III; only game rules differ.
+Status: written in Phase A of the parity pass (2026-10-02); section 12 gives each item's status after Phases B-C. It applies the constitution's TW:WH3 parity principle: everything the player touches matches Total War: Warhammer III; only game rules differ.
 
 This is a checklist of each interaction and UI element. For each it gives how TW:WH3 does it (with source and confidence), how Project Freedom does it now, and the gap. The **Status** column is filled in Phase D.
 
@@ -148,3 +148,71 @@ Debug keys (ours, behind the Settings switch): F5, F6, F7, L, and F8 (traffic pa
 - Range boundary colour (M5: we use the WH2 Academy's yellow-gold).
 - Whether recruiting should lock the lord's movement (A5: a rule, not UI).
 - **Layout (T2/T3):** move the mission, diplomacy and technology buttons to the End Turn cluster and use top-right dropdowns (WH3), or keep the constitution's described layout.
+
+## 12. Status after the parity pass (Phases B and C, 2026-10-02)
+
+Legend:
+- **Matched:** behaves as TW:WH3, or as the owner's explicit instruction where TW:WH3 is unknown.
+- **By design:** deliberately different (an owner or constitution decision).
+- **Not yet possible:** the underlying system doesn't exist.
+- **Open:** TW:WH3 behaviour unverified.
+
+| ID | Item | Status | Notes |
+|---|---|---|---|
+| S1 | Left-click select | Matched | |
+| S2 | Left-click empty ground deselects | Matched | |
+| S3 | Selection never moves or zooms the camera | Matched (owner) | |
+| S4 | Double-click | Open | |
+| S5 | List and panel jumps pan at the current zoom | Matched (owner) | |
+| S6 | Esc | By design | Closes the top panel first, then pause |
+| M1 | Right-click order | Matched | |
+| M2 | Hold right-click preview, release commits, Esc or left-click cancels | Matched | |
+| M3 | Path colours (green this turn) | Matched | Later-turn colours are ours: yellow, orange, red |
+| M4 | No numbers on the map or path | Matched (owner) | Plain discs at turn ends; a blocked destination is a red X, with the reason in the cursor tooltip |
+| M5 | Range boundary | Matched | Gold-yellow line (WH2 Academy colour; WH3 colour unverified) |
+| M6 | Attack cursor | Open | The preview tooltip says "Attack Greyhaven" meanwhile |
+| M7 | Movement bar without numbers, with the preview spend | Matched (owner) | |
+| M8 | Backspace cancels the selected army's order | Matched | Fixed: it used to cancel the commander army whatever was selected |
+| M9 | Standing orders without numbers | Matched | |
+| M10 | Zone of control | Not yet possible | |
+| C1 | WASD pan, Shift faster | Matched | |
+| C2 | Q / E rotate | Matched | |
+| C3 | Wheel zoom | Matched | |
+| C4 | Middle-drag | By design (owner) | Orbits |
+| C5 | Right-drag | Matched | No camera move (it is the preview) |
+| C6 | Edge scroll | Open | |
+| C7 | Home pans to the capital, End resets rotation | Matched | |
+| C8 | Tilt follows zoom | Matched | Our curve: about 35° close in |
+| C9 | Strategic map, Tab | Not yet possible | Tab hides the interface meanwhile |
+| C10 | `,` / `.` cycle armies or settlements at the current zoom | Matched | C removed |
+| C11 | Notification jumps | Matched (owner) | Pan at the current zoom |
+| C12 | Hold Space for overlays | Matched | Settlement banners at any zoom; debug traffic pause moved to F8 |
+| A1 | Army panel structure | Matched (close) | |
+| A2 | Recruit button below the cards, recruitment drawer | Matched | Local recruitment |
+| A3 | Local recruitment from the province's buildings | Matched | Global recruitment: not yet possible |
+| A4 | Recruitment capacity | By design | Constitution open item |
+| A5 | Recruiting locks movement | By design | Rule, not UI; open for the owner |
+| A6 | Queued units greyed with turns, always visible | Matched (owner) | Cards narrow so 20 fit |
+| A7 | Click a queued card to cancel | Matched (owner) | |
+| A8 | Unit card tooltips | Partial | Rich styling (bold title); sticky or inspectable tooltips not yet |
+| A9 | Right-click on a unit card | Open | |
+| A10 | Ctrl+P disband | Matched | Ctrl+M merge: not yet possible |
+| A11 | Key 4 opens recruitment | Matched | |
+| P1 | Province panel | Matched | |
+| P2 | Cycling settlements | Matched | `,` / `.` |
+| P3 | Key 3 building browser | Matched | |
+| P4 | Keys 1 / 2 | Not yet possible | |
+| T1 | Top bar | Matched | |
+| T2 | Top-left buttons; WH3's End Turn cluster | By design (constitution layout) | Owner decision pending |
+| T3 | Top-right dropdowns | By design (constitution layout) | Owner decision pending |
+| T4 | Pop-up events | Not yet possible | |
+| T5 | Finance / clan keys | Not yet possible | |
+| E1 | Enter / Shift+Enter | Matched | |
+| E2 | End Turn button jumps through warnings; arrows cycle; Skip | Matched | |
+| E3 | Warning kinds | Matched for funds, construction, army can move | The others: not yet possible |
+| E4 | Warning settings | Partial | Checkboxes in Settings, not a gear beside End Turn |
+| E5 | H jumps to the warning | Matched | |
+| E6 | AI turn controls | Partial | Top-centre ">> Skip" bar and Space/Esc; no pause button or per-faction tracking settings |
+| H1 | Tooltips | Partial | Title plus body, pinned beside the element, 0.45 s delay; not sticky |
+| H2 | Map hover | Matched | |
+| H3 | Help links | Not yet possible | |

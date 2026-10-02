@@ -1229,7 +1229,7 @@ func save_capture():
   if arg.begins_with("--goldspire-stage="): name_v+="_goldspire_stage_%d" % goldspire_level if name_v!="goldspire" else "_stage_%d" % goldspire_level
   if arg.begins_with("--select="): name_v = "selected_"+arg.get_slice("=",1)
   if arg.begins_with("--name="): name_v = arg.get_slice("=",1)
- if "--army" in args: name_v = "army"
+ if "--army" in args and not Array(args).any(func(x): return x.begins_with("--name=")): name_v = "army"
  if not capture_mode: name_v="view_"+Time.get_datetime_string_from_system().replace(":","-")
  var path = folder+"/"+name_v+".png"
  var result = get_viewport().get_texture().get_image().save_png(path)
