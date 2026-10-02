@@ -77,7 +77,14 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 ## Faction behavior and diplomacy
 
 - Factions have recognizable tendencies such as passive, income-focused, generous, kind, expansionist, cruel, or treacherous.
-- Other factions should account for those tendencies: cruel or treacherous neighbors cause more concern than kind or generous ones, despite neutral starting relationships. How this differs from numerical relationship bonuses must be defined.
+- Other factions should account for those tendencies: cruel or treacherous neighbors cause more concern than kind or generous ones, despite neutral starting relationships. Defined (2026-10-02, docs/diplomacy-design.md §3.1): tendencies seed House reputation and drive AI behaviour; perception then follows deeds through reputation (trust and threat), not through relationship bonuses.
+- Confirmed (2026-10-02): the diplomacy design docs/diplomacy-design.md is APPROVED, including:
+  - war weariness as the way wars end
+  - explicit declarations of war, with a reputation cost for unjustified wars and a heavier penalty from the victim's allies; this replaces the temporary war rule once implemented
+  - military access and trespass (game-design §12.1)
+  - embassies requiring prior contact
+  - commandable allies (defend themselves first) and vassals (put the overlord's orders first)
+  Its numbers are placeholders.
 - Confirmed (2026-10-02, game-design §7.1, §7.2, §7.4, §7.6), reputation:
   - Each faction has two reputations. The ruler's moves relatively quickly and weighs more overall. The House's is the world's long memory of the dynasty, and grows and fades slowly.
   - Distance weighting: nearby factions care more about the ruler, distant factions more about the House.
@@ -86,7 +93,7 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
   - Proposed, not confirmed: the instability safeguard against frequent ruler swaps (§7.5), and the list of reputation traits (§7.3).
 - Relationships form a web: an attack harms the victim's relationship strongly and can also harm relations with its allies to a lesser degree.
 - Alliances and dynastic marriages can improve relations.
-- Negotiations should support bundled offers using a faction's available means, including land, gold, resource tribute, troop transfers, marriage, alliances, and ceasefires. Eligibility and valuation remain open.
+- Negotiations should support bundled offers using a faction's available means, including land, gold, resource tribute, troop transfers, marriage, alliances, and ceasefires. Eligibility and valuation are defined in docs/diplomacy-design.md §6 (approved 2026-10-02); captives and secrets are also tradable.
 - Army tribute means sending actual troops.
 - Attacking during a ceasefire/peace treaty or within its protected post-treaty period causes irreversible war with every faction and permanent loss of allies and trade partners; only loading an earlier save reverses it. Cancelling trade is permitted at any time and does not trigger this punishment.
 - Confirmed (2026-10-01): after peace or a ceasefire the treaty is protected for 20 turns; attacking during the treaty or that protection triggers the betrayal rule above.
@@ -94,7 +101,7 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 - Courts may contain multiple races, independently of reproduction. An orc faction rejected by other orcs can join a welcoming human faction.
 - Confirmed (2026-10-02, game-design §4.9): cross-race marriage is allowed, and children take the father's race (orc father + human mother = orc children). This supersedes the earlier "reproduction within the same race only" clarification. Cross-race marriages have political consequences: prejudiced factions and faiths disapprove.
 - Welcoming an outsider requires sustained commitment to earn trust; exclusion can produce distrust and rebellion. Integration may damage relations with prejudiced same-race friends while creating opportunities for cross-race alliances.
-- Some human/orc factions should always hate the other race; a small minority may pursue friendship. This qualifies or conflicts with the earlier universally neutral start: distinguish starting relations, permanent prejudice, and willingness to negotiate before implementation.
+- Some human/orc factions should always hate the other race; a small minority may pursue friendship. Resolved (2026-10-02, docs/diplomacy-design.md §3.5 and §3.6): starting attitude is neutral, permanent prejudice is a fixed attitude modifier between peoples, and willingness to negotiate is a separate hard gate on proposal types.
 - Expelling conquered peoples is an intended player option, described by the user as the easy choice; retaining/integrating them is harder but potentially rewarding. Mechanical consequences, migration destinations, and the meaning of race destruction remain open.
 
 ## Economy and settlements
@@ -161,7 +168,11 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
   - Romans and Greeks revere it as the root of their faith, though they worship the Seven.
   - Influence is gained through Throne Church missions, religious buildings, tribute, marriage into Church-aligned families, and joining Holy Wars. It buys trade privileges in Caeloth, a voice in calling and targeting Holy Wars, legitimacy for the ruler, and the right to host or sway elections.
 - Confirmed (2026-10-02, game-design §9.2): no scheming against the Throne City itself in V1. Scheming within its politics (its elections) is allowed.
-- Proposed, not confirmed (game-design §9.4 to §9.9): the hierarchy names (Voice of the Throne, Exarchs); elections of the Voice from the three most pious Exarchs, with purchasable votes; Holy Wars with a joining window and rewards; Anathema (excommunication) with its causes, effects and lifting; the Inquisition; and the Radiant Seven's temples, omens and oracles. Section 20 of the design lists elections, Holy Wars and Anathema as constitution changes, but their sections are marked Proposed, so they stay proposals until approved.
+- Confirmed (2026-10-02), concepts in the Medieval II style:
+  - **Elections:** the Throne Church's high priest is elected by senior prelates, with votes that can be swayed.
+  - **Holy Wars:** crusade equivalents called by the Church against heretics, Destruction peoples or the excommunicated, which faithful factions can join.
+  - **Anathema:** excommunication, which marks a faction as a target for the faithful.
+- Proposed, not confirmed (game-design §9.4 to §9.9): all details and numbers of the above. These include the hierarchy names (Voice of the Throne, Exarchs), candidates from the three most pious Exarchs, vote buying, the Holy War joining window and rewards, and Anathema's causes, effects and lifting. The Inquisition and the Radiant Seven's temples, omens and oracles are also proposals.
 
 ## Difficulty
 
@@ -205,7 +216,7 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 ## Minor factions
 
 - Include weaker minor factions that provide early expansion and consolidation opportunities. The user's intended model is a crowded starting map that consolidates quickly; their example counts are illustrative, not an agreed roster or historical claim about Total War.
-- The user wants targets that can be attacked without wider diplomatic repercussions. Exact exceptions to relationship webs, starting neutrality, and protected treaties remain unresolved. Do not assume every minor faction in Total War hates everyone or is consequence-free to attack.
+- The user wants targets that can be attacked without wider diplomatic repercussions. Confirmed (2026-10-02): minor factions start with no allies, and attacking an unprotected minor carries no relationship penalty beyond the minor itself. A major's explicit protection pact makes the attack count against the protector, with the full web. Treaties with minors stay protected by the betrayal rule. Whether Throne City edicts can protect minors is decided with the religion design.
 - Whether these minor factions are playable exceptions to the earlier 'all factions playable' requirement remains open.
 
 ## Required visual experience and validation

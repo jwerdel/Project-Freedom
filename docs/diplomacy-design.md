@@ -1,13 +1,15 @@
-# Diplomacy design (revision 2, awaiting approval)
+# Diplomacy design (revision 2)
 
-Status: proposal, revised 2026-10-02 to fit `docs/game-design.md` §7 (Reputation, decrees and suspicion) and §8 (Diplomacy, allies, vassals and puppets). No game code. Confirmed rules come from `constitution.md`; game-design items marked Proposed stay proposals here. Every number is a placeholder for `data/diplomacy.json`. Lore names follow `docs/world-bible-v2.md`.
+**STATUS: APPROVED (2026-10-02).** All conflicts in section 17 and all open questions in section 18 were decided by the owner as recommended. Numbers remain placeholders for `data/diplomacy.json`.
+
+History: revised 2026-10-02 to fit `docs/game-design.md` §7 (Reputation, decrees and suspicion) and §8 (Diplomacy, allies, vassals and puppets). No game code. Confirmed rules come from `constitution.md`; game-design items marked Proposed stay proposals here. Every number is a placeholder for `data/diplomacy.json`. Lore names follow `docs/world-bible-v2.md`.
 
 **Approved 2026-10-02 (treaty question 1):** treaty protection is 20 turns counted from signing.
 - A treaty cannot be cancelled during its first 20 turns.
 - Attacking while a treaty stands is betrayal.
 - After a treaty ends or is cancelled, an ordinary declaration of war applies.
 
-Section 17 lists where this design conflicts with game-design.md, for your decision.
+Section 17 records how its conflicts with game-design.md were resolved; section 18 the adopted answers to its open questions.
 
 ## 1. Principles
 
@@ -324,31 +326,35 @@ This is aligned with game-design §12.1: full movement at home and in allied lan
 | Commanded orders | ≥ 90% of accepted orders produce a real attack or siege within 5 turns |
 | Performance | ≤ 10 ms per AI faction per turn for diplomacy in the debug build, with staggered re-evaluation (game-design §17) |
 
-## 17. Conflicts with game-design.md (for your decision)
+## 17. Conflicts with game-design.md (resolved 2026-10-02)
 
-1. **"No opinion-modifier spreadsheets"** (game-design §1.3). My design keeps numeric attitude events with decay. Proposal: they stay internal, and the screen shows only TW-style faces and three to five short reasons, which is what TW:WH3 itself shows. *Please confirm that is acceptable.*
-2. **Tendencies vs earned reputation.** Game-design §3.4 and §8.1 say fixed tendencies "shape how others perceive them". §7.3 adds earned reputation traits. I reconcile them by having tendencies *seed* the House reputation and drive the AI's own behaviour, after which perception follows deeds. *A faction's tendency label could therefore stop matching its reputation: is that intended?*
-3. **Military access timing.** Game-design §8.1 repeats the old rule "armies move freely until diplomacy adds trespass penalties". §12.1 makes reduced foreign movement a baseline. I follow §12.1: access gives home movement, and trespass applies on top.
-4. **Marriage.** Revision 1 treated marriage as a greyed-out hook. Game-design §4.9 confirms it, and the characters core comes before diplomacy in the §21 roadmap. Here marriage is a real item that depends on that system.
-5. **Minor factions.** Game-design §8.6 says a "reduced" web penalty. I propose **none** beyond the minor itself, unless it is protected. *Reduced or none?*
-6. **War weariness** is my addition. Game-design does not mention how wars end. *Approve it as the mechanism?*
-7. **Unjustified war cost** (game-design §8.8, Proposed). I propose −15 Peaceful/Expansionist, −10 Honorable, plus a heavier ally penalty. *Approve the mechanism?* The values stay placeholders.
-8. **Dwarf grudges** are modelled as specific Book-of-Grudges entries rather than a racial prejudice. Game-design §3.4 says "dwarves remember grudges", which fits either reading.
-9. **Contact requirement.** Game-design §8.2 says any faction with no reason to refuse accepts an embassy. I add that you must have met them first (shroud), in line with game-design §12.6.
-10. **Secrets as tradable items** are marked a "Proposed addition" in game-design §8.1, and captives are Proposed (§4.11). Both are included here as proposals.
-11. **Commandable-order hook.** Allies' orders rank below their own defence, vassals' above. Game-design §8.4 does not set a priority. *Approve?*
+| # | Topic | Decision |
+|---|---|---|
+| 1 | Modifier spreadsheets (game-design §1.3) | Attitude is numeric internally; the screen shows TW-style faces and three to five short reasons. Approved. |
+| 2 | Tendencies vs earned reputation | Tendencies seed the House reputation and drive AI behaviour; perception then follows deeds, so labels can drift. Intended. |
+| 3 | Military access | Follows game-design §12.1: movement is reduced abroad, and access agreements restore home movement. game-design §8.1 is corrected. |
+| 4 | Marriage | A real tradable item. Approved. |
+| 5 | Minor factions | No relationship penalty beyond the minor itself unless a major protects it. game-design §8.6 is updated. |
+| 6 | War weariness | Approved as the mechanism that ends wars. |
+| 7 | Unjustified wars | A reputation cost plus a heavier penalty from the victim's allies. Approved. |
+| 8 | Dwarf grudges | Named entries in the Book of Grudges. Approved. |
+| 9 | Embassies | Require prior contact. Approved. |
+| 10 | Secrets and captives | Tradable items. Approved. |
+| 11 | Orders to allies and vassals | Allies defend themselves first; vassals put the player's orders first. Approved. |
 
-## 18. Open questions (batched, each with my recommended answer)
+## 18. Former open questions (adopted 2026-10-02 as recommended)
 
-1. **Ceasefire length.** *Recommended: a ceasefire lasts until its 20-turn protection ends, then reverts to Neutral unless peace is signed.*
-2. **Reputation scale and label thresholds.** *Recommended: axes −100 … +100, labels at ±30, distance weights 0.75 near → 0.3 far, first-impressions × 3. Tune by soak.*
-3. **Attitude event values and decay** (§3.3). *Recommended: adopt as placeholders.*
-4. **Prejudice pairs.** *Recommended: §3.5 (orc haters ↔ men, elves ↔ dark elves, lizardmen ↔ ratmen; dwarf grudges as named entries; the Redhand friendly to men).*
-5. **Land in deals.** *Recommended: never the last settlement, the capital or a landmark seat.*
-6. **Troop transfers.** *Recommended: they travel as detachments (captain-led, game-design §12.3) instead of appearing instantly.*
-7. **Player betrayal.** *Recommended: allowed, behind a dialog that spells out the consequences.*
-8. **AI proposals to the player.** *Recommended: yes, at most one per AI faction per turn, and the player can mute them per faction.*
-9. **Tribute and debt.** *Recommended: tribute pauses while the payer is in debt. That is not betrayal, but costs −20 attitude.*
-10. **Puppet skim size.** *Recommended: 5% for a paid ruler, up to 15% for a raised ward.*
-11. **Vassal obligations** (game-design §8.5, Proposed). *Recommended: tribute 10% of income, troops on request, follows your wars, no independent alliances. Loyalty below 30 makes each obligation a chance rather than a certainty.*
-12. **Throne City edicts protecting minors.** *Recommended: decide with the religion design (roadmap item 10). Until then, only major factions' protection pacts protect minors.*
+| # | Question | Adopted answer |
+|---|---|---|
+| 1 | Ceasefire length | Lasts until its 20-turn protection ends, then reverts to Neutral unless peace is signed. |
+| 2 | Reputation scale | Axes −100 … +100, labels at ±30, distance weights 0.75 near → 0.3 far, first impressions × 3 (tuned by soak). |
+| 3 | Attitude events and decay | The section 3.3 values, as placeholders. |
+| 4 | Prejudice pairs | Orc haters ↔ men −60, the Redhand friendly to men (−20 from other orcs), elves ↔ dark elves −60, lizardmen ↔ ratmen −60, dwarf grudges as named entries. |
+| 5 | Land in deals | Never the last settlement, the capital or a landmark seat. |
+| 6 | Troop transfers | Travel as captain-led detachments rather than appearing instantly. |
+| 7 | Player betrayal | Allowed, behind a dialog that spells out the consequences. |
+| 8 | AI proposals to the player | Yes, at most one per AI faction per turn; the player can mute them per faction. |
+| 9 | Tribute and debt | Tribute pauses while the payer is in debt; not betrayal, but −20 attitude. |
+| 10 | Puppet skim | 5% for a paid ruler, up to 15% for a raised ward. |
+| 11 | Vassal obligations | Tribute 10% of income, troops on request, follows your wars, no independent alliances; loyalty below 30 makes each obligation a chance. |
+| 12 | Throne City edicts protecting minors | Decided with the religion design; until then only major factions' protection pacts protect minors. |

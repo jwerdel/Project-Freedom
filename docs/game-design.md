@@ -1,6 +1,6 @@
 # Project Freedom: Game Design Document
 
-**Status:** Draft for owner review. After approval it becomes `docs/game-design.md` and the constitution is updated per Section 20.
+**Status:** Approved direction. Items marked Proposed still need owner approval before implementation.
 **Companion:** `world-bible-v2.md` (lore, geography, factions, landmarks).
 **Precedence:** `constitution.md` remains the source of truth for confirmed mechanics. This document records owner decisions from the design brainstorm (marked **Confirmed**) and design proposals that still need approval (marked **Proposed**). Numbers are placeholders unless stated.
 **Already built (prototype):** economy with population taxes, construction, recruitment, movement, lane-based battles with deployment and replay, campaign AI, save/load, TW-style UI shell.
@@ -397,7 +397,7 @@ Decrees have mechanical effects and shift reputation; during the first-impressio
 - **Allies choose** whether to join a war or only support it (gold, resources, troops) without becoming belligerents.
 - **Treaty protection: 20 turns** after peace or ceasefire.
 - **Betrayal rule:** attacking during a ceasefire/peace or its 20-turn protection causes irreversible war with every faction and permanent loss of allies and trade partners. Cancelling trade is allowed anytime. **AI never triggers it** (hardcoded); treacherous AI shows treachery in other ways (breaking trade, abandoning allies, refusing calls).
-- **Military access:** armies move freely through others' land until diplomacy adds trespass penalties and access agreements.
+- **Military access (Confirmed 2026-10-02):** movement is drastically reduced in foreign territory (§12.1); a military access agreement (or an alliance) restores home-territory movement in the partner's land, and entering foreign land without one at peace is trespass (attitude penalty, no automatic war). See docs/diplomacy-design.md §11.
 
 ### 8.2 Embassies **(Confirmed)**
 - Sending an **embassy** is a diplomatic action. Any faction with no reason to refuse will accept.
@@ -420,8 +420,8 @@ TW's "request help attacking" done right:
 Ways to make a vassal: war and surrender, diplomacy, debt, marriage, protection from a bigger threat.
 Vassals owe (Proposed): tribute, troops on request, obeying war calls, following your diplomatic lead. Loyalty and dependence decide how reliably.
 
-### 8.6 Minor factions **(Open from constitution; Proposed)**
-The constitution wants targets attackable without wider diplomatic repercussions. Proposal: minor factions have **no allies at start** and a **reduced relationship-web penalty** (attacking them barely bothers others), except when they are under a major faction's explicit protection or a Throne City edict.
+### 8.6 Minor factions **(Confirmed 2026-10-02)**
+The constitution wants targets attackable without wider diplomatic repercussions. Minor factions have **no allies at start**, and attacking an unprotected minor carries **no relationship penalty beyond the minor itself** (no web penalty with anyone else, no war justification needed). The exception is a minor under a major faction's explicit **protection pact**: attacking it then counts against the protector and the full web applies. Whether a Throne City edict can protect a minor is decided with the religion design. See docs/diplomacy-design.md §13.
 
 ### 8.7 Order and Destruction in diplomacy **(Confirmed)**
 - Same-bloc deals are easier; cross-bloc deals cost more and carry reputation consequences with your own bloc.

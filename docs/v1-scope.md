@@ -40,6 +40,7 @@ Everything already built (economy, construction, recruitment, movement, battles 
 - **Realm:**
   - public order, culture and faith mix
   - capture options
+  - refugees, basic version: produced by expelling populations
 - **Map:**
   - outposts, captains, trade routes and raiding, naval transport, the shroud, the Greywall
   - legendary monsters (basic), campaign magic (basic)
@@ -59,6 +60,7 @@ Everything already built (economy, construction, recruitment, movement, battles 
 - Ascension details
 - Schemes against the Throne City itself
 - The Hollow Dynasty transformation event
+- Dynamic markets (prices by scarcity; constitution, Economy and settlements)
 
 ## Changes from the 2026-10-01 scope
 
