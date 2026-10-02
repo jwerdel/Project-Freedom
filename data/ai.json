@@ -26,11 +26,11 @@
     "hopeless_ratio": 0.45
   },
   "attack": {
-    "_note": "Attack an army or settlement when the estimated win chance is at least min_odds (divided by the personality's boldness). An army at war with nothing in reach marches on the best target within war_meters whose power ratio is at least march_ratio (divided by boldness). A walled settlement is besieged instead unless the assault odds reach assault_min_odds. Besieging armies hold the siege while their odds against the garrison stay above hold_siege_odds.",
+    "_note": "Attack an army or settlement when the estimated win chance is at least min_odds (divided by the personality's boldness). An army at war with nothing in reach marches on the best target within war_meters whose power ratio is at least march_ratio (divided by boldness). A walled settlement is besieged instead unless the assault odds reach assault_min_odds; it is besieged only when the army's power is at least siege_ratio (divided by boldness) of the defenders' power without the wall bonus, i.e. when it could beat them in the open and hold the siege lines. Besieging armies hold their siege.",
     "min_odds": 0.65,
     "march_ratio": 1.2,
     "assault_min_odds": 0.8,
-    "hold_siege_odds": 0.35
+    "siege_ratio": 0.9
   },
   "defend": {
     "_note": "A settlement is threatened when the power of enemy (and wary-of) armies within threat_meters exceeds its defence x threatened_ratio. Armies within reach move in to defend if together they reach save_ratio of the threat; otherwise they do not sacrifice themselves. In a field battle the defender withdraws when its odds are below withdraw_below (garrisons cannot withdraw). An army facing a threat above flee_ratio x its own power with no help falls back to its nearest own settlement.",
@@ -62,6 +62,12 @@
     "rich_factor": 3.0,
     "emergency_reserve_share": 0.25,
     "composition": {"spear": 0.3, "infantry": 0.25, "missile": 0.25, "cavalry": 0.1, "levy": 0.1}
+  },
+  "presentation": {
+    "_note": "End Turn on the map (main.gd): AI armies whose path comes within watch_meters of the player's settlements or armies are shown one at a time, the camera following at most camera_distance away and holding hold_seconds after each arrives (Settings: follow AI moves; Space or Esc skips). Presentation only: it never changes what the AI did.",
+    "watch_meters": 60.0,
+    "hold_seconds": 0.7,
+    "camera_distance": 90.0
   },
   "personalities": {
     "_note": "Multipliers per trait (faction traits in data/factions.json, from docs/world.md); a faction's value is the product over its traits. aggression scales the war chance; boldness divides attack.min_odds (bolder = attacks at worse odds); reserve scales the gold reserve; armies scales the army target; economy scales the weight of economic buildings; defense scales defense/military building weight; wariness = how much other factions treat this one's armies as threats before war (AI-internal; not a relationship value, which stays open); assault: 1 prefers assault to siege; vengeful: always at war with whoever attacked it; opportunist: prefers targets already at war with someone else; composition overrides the recruitment shares.",

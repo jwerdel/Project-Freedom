@@ -37,6 +37,8 @@ static func year_entries(state,ended: int,ledgers: Dictionary,growth: Dictionary
  var lines = [_pick(d.summary_open,rng)]
  var richest = ""
  for f in state.factions():
+  # A faction with no settlements and no armies is gone from the map: the scribes stop counting it.
+  if state.settlements_of(f).is_empty() and not state.army_state.values().any(func(a): return a.faction == f): continue
   if richest == "" or state.treasury[f]>state.treasury[richest]: richest = f
   var change = 0.0
   for id in state.settlements_of(f): change += growth[id].delta

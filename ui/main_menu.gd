@@ -153,7 +153,7 @@ func _load(file: String):
   if overlay: overlay.queue_free()
   overlay = null
   return
- Session.start(get_tree(),r.state,r.meta.get("name",file))
+ Session.start(get_tree(),r.state,r.meta.get("name",file),r.get("view",{}))
 
 func _show_load():
  _open(LoadScreen.new())

@@ -1,11 +1,12 @@
 extends RefCounted
-# Player settings (placeholder set): window resolution, fullscreen, UI scale, and the debug keys
-# switch. Stored in user://settings.json; applied at startup by the main menu and the campaign.
+# Player settings (placeholder set): window resolution, fullscreen, UI scale, following AI moves
+# at End Turn, and the debug keys switch. Stored in user://settings.json; applied at startup by
+# the main menu and the campaign.
 
 const PATH = "user://settings.json"
 const RESOLUTIONS = [Vector2i(1280,720),Vector2i(1440,900),Vector2i(1600,1000),Vector2i(1920,1080)]
 const UI_SCALES = [0.8,1.0,1.25,1.5]
-const DEFAULTS = {"resolution":[1440,900],"fullscreen":false,"ui_scale":1.0,"debug_keys":true}
+const DEFAULTS = {"resolution":[1440,900],"fullscreen":false,"ui_scale":1.0,"debug_keys":true,"follow_ai_moves":true}
 
 static var _current = null
 
@@ -29,6 +30,10 @@ static func set_value(key: String,value):
 
 static func debug_keys() -> bool:
  return bool(get_value("debug_keys"))
+
+# End Turn: the camera follows AI armies moving near your lands (Space or Esc skips).
+static func follow_ai_moves() -> bool:
+ return bool(get_value("follow_ai_moves"))
 
 # Apply window mode, size and UI scale. Headless runs and captures keep the project defaults so
 # screenshots stay comparable.

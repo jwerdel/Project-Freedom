@@ -51,7 +51,7 @@ static func end_turn(state,opts := {}) -> Dictionary:
  entries.append_array(Chronicle.year_entries(state,ended,ledgers,growth,rng))
  state.chronicle.append_array(entries)
  # 10. The AI phase.
- var ai = {"actions":[],"pending":[],"entries":[],"ms":0.0}
+ var ai = {"actions":[],"pending":[],"entries":[],"moves":{},"ms":0.0}
  if opts.get("ai",true):
   ai = Ai.take_turns(state,opts)
   state.pending_battles = []

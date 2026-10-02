@@ -24,7 +24,7 @@ const TurnLoop = preload("res://core/turn_loop.gd")
 const Chronicle = preload("res://core/chronicle.gd")
 const Ai = preload("res://core/ai.gd")
 const MOCK = "res://data/mock_ui.json"
-const CATEGORIES = [{"id":"turn","name":"Turn Summary"},{"id":"buildings","name":"Buildings Constructed"},{"id":"war","name":"War Declared"},{"id":"world","name":"World Events"}]
+const CATEGORIES = [{"id":"turn","name":"Turn Summary"},{"id":"buildings","name":"Buildings Constructed"},{"id":"war","name":"Wars and Battles"},{"id":"world","name":"World Events"}]
 
 var state
 var mock: Dictionary
@@ -72,9 +72,48 @@ func end_turn():
  var report = TurnLoop.end_turn(state)
  last_turn_ms = (Time.get_ticks_usec()-t0)/1000.0
  for e in report.entries: event_added.emit(e)
- for id in report.moves: army_moved.emit(id,report.moves[id])
+ # Standing orders walked first, then the AI phase: one path per army for the map to replay.
+ var moves = {}
+ for src in [report.moves,report.ai.moves]:
+  for id in src:
+   if not moves.has(id): moves[id] = src[id].duplicate()
+   else: moves[id].append_array(src[id].slice(1))
+ report.all_moves = moves
+ for id in moves: army_moved.emit(id,moves[id])
  changed.emit()
  return report
+
+# --- AI attacks on the player (state.pending_battles) ------------------------------------------
+
+# The next attack the player must answer, rebuilt from the current state as a pre-battle panel
+# with the player defending ({} if none). Attacks that no longer make sense are dropped.
+func pending_battle() -> Dictionary:
+ while not state.pending_battles.is_empty():
+  var p = state.pending_battles[0]
+  var army = p.attacker.army
+  var target = {}
+  if state.army_state.has(army) and Battles.can_move(state,army):
+   if p.kind == "settlement" and state.settlements[p.settlement].owner == state.player_faction:
+    target = {"kind":"settlement","id":p.settlement,"faction":state.player_faction,"position":WorldMap.settlement_position(p.settlement)}
+   elif p.kind == "army" and not p.defender.armies.is_empty() and state.army_state.has(p.defender.armies[0]):
+    var d = p.defender.armies[0]
+    target = {"kind":"army","id":d,"faction":state.army_state[d].faction,"position":Movement.position(state,d)}
+  if not target.is_empty() and Movement.position(state,army).distance_to(target.position)<=float(Ai.data().reach.reach_meters):
+   var pb = Battles.prebattle(state,army,target)
+   pb.approach = {"ok":true,"point":Movement.position(state,army),"plan":{}}
+   pb.view = {"attacker":_side_view(pb,0),"defender":_side_view(pb,1)}
+   pb.player_is_defender = true
+   pb.forced = true # the player must answer: no Close button
+   return pb
+  state.pending_battles.pop_front()
+ return {}
+
+func has_pending_battle() -> bool:
+ return not state.pending_battles.is_empty()
+
+# The front attack has been answered (fought, withdrawn from).
+func _answered(pb: Dictionary):
+ if pb.get("forced",false) and not state.pending_battles.is_empty(): state.pending_battles.pop_front()
 
 # --- Event messages and chronicle ------------------------------------------------
 
@@ -85,7 +124,9 @@ func event_categories() -> Array:
 func events(category: String) -> Array:
  var out = []
  for e in state.chronicle:
-  if e.category == category and e.get("faction",state.player_faction) == state.player_faction: out.append(e)
+  # Wars, battles and captures are news from the whole map (AI wars included); other categories
+  # are the player's own.
+  if e.category == category and (category == "war" or e.get("faction",state.player_faction) == state.player_faction): out.append(e)
  out.reverse() # newest first
  return out
 
@@ -121,6 +162,9 @@ func settlement(id: String) -> Dictionary:
  s.garrison = []
  for a in Movement.garrison_of(state,id): s.garrison.append(state.army_state[a].display_name)
  s.player_owned = live.owner == state.player_faction
+ # Under siege: who besieges it and how long it has held ({} if not).
+ var sg = live.get("siege",{})
+ s.siege = {} if sg.is_empty() or not state.army_state.has(sg.army) else {"faction":faction(state.army_state[sg.army].faction),"turns":int(sg.turns),"endurance":int(sg.endurance)}
  return s
 
 # Developer override (prototype keys, capture flags): sets the main building level directly.
@@ -397,12 +441,18 @@ func quick_resolve(pb: Dictionary) -> Dictionary:
    changed.emit()
    return {"withdrew":true,"entry":e}
  var out = Battles.quick_resolve(state,pb)
+ _answered(pb)
  for e in out.aftermath.entries: event_added.emit(e)
  changed.emit()
  return out
 
 func withdraw(pb: Dictionary) -> Dictionary:
  var r = Battles.withdraw(state,pb)
+ if r.ok:
+  _answered(pb)
+  var e = Chronicle.withdraw_entry(state.year,pb)
+  state.chronicle.append(e)
+  event_added.emit(e)
  changed.emit()
  return r
 

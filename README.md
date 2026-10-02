@@ -30,6 +30,7 @@ The launcher imports project assets automatically on the first run.
 | Tab | Hide/show the interface |
 | Escape | Close the open panel (or show a hidden interface); with nothing open, open the pause menu |
 | Ctrl+S / Ctrl+L | Quicksave / quickload |
+| Space / Escape (End Turn) | Skip following the AI armies that move near your lands (Settings: Follow AI armies) |
 | Left click | Select a settlement (province panel) or the commander (army panel) |
 | Hover | Tooltip with name, faction and province for settlements, the commander and unit cards |
 | C | Select the commander and open the army panel |

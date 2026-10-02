@@ -782,6 +782,17 @@ func open_battle_flow(army_id: String,point: Vector2,target: Dictionary):
  battle_pb = data.prebattle(army_id,point)
  _fill_prebattle()
 
+# An AI army attacks the player (UiData.pending_battle): the pre-battle panel with the player
+# defending.
+func open_defense(pb: Dictionary):
+ if battle_panel == null:
+  var pv = _center_panel(980,380)
+  battle_panel = pv[0]
+  battle_box = pv[1]
+ battle_panel.visible = true
+ battle_pb = pb
+ _fill_prebattle()
+
 func _army_column(view: Dictionary,title: String) -> Control:
  var v = VBoxContainer.new()
  v.add_theme_constant_override("separation",2)
@@ -813,14 +824,19 @@ func _fill_prebattle():
  var pb = battle_pb
  var place = data.settlement(pb.settlement).name if pb.settlement != "" else "the field"
  var head = HBoxContainer.new()
- var title = UiKit.header(("Siege assault on %s" if pb.field.get("walls") != null else "Battle at %s") % place,22)
+ var heading = ("Siege assault on %s" % place) if pb.field.get("walls") != null else ("Battle at %s" % place if pb.settlement != "" else "Battle in the field")
+ if pb.get("forced",false): heading = "%s attacks! %s" % [data.faction(pb.attacker.faction).name,heading]
+ var title = UiKit.header(heading,22,Color("ef8a6a") if pb.get("forced",false) else Color("f1d79a"))
+ title.name = "BattleTitle"
  title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  head.add_child(title)
- var close = Button.new()
- close.text = "Close"
- close.focus_mode = Control.FOCUS_NONE
- close.pressed.connect(close_battle)
- head.add_child(close)
+ # An AI attack must be answered (Deploy, Quick resolve or Withdraw): no Close.
+ if not pb.get("forced",false):
+  var close = Button.new()
+  close.text = "Close"
+  close.focus_mode = Control.FOCUS_NONE
+  close.pressed.connect(close_battle)
+  head.add_child(close)
  battle_box.add_child(head)
  battle_box.add_child(UiKit.divider(colors.trim))
  var cols = HBoxContainer.new()
@@ -1206,7 +1222,7 @@ func close_top_panel() -> bool:
   close_report()
   return true
  if battle_visible():
-  close_battle()
+  if not battle_pb.get("forced",false): close_battle() # an attack on you must be answered
   return true
  if recruitment_visible():
   close_recruitment()

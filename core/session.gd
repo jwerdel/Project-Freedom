@@ -10,9 +10,11 @@ static var pending_state = null
 static var pending_name := ""   # the save it came from ("" for a new campaign)
 static var message := ""
 static var started_at := 0  # Time.get_ticks_msec() when the hand-over began (load timing)
+static var pending_view := {}  # the loaded save's camera (main.gd applies it once)
 
-static func start(tree: SceneTree,state,from_save := ""):
+static func start(tree: SceneTree,state,from_save := "",view := {}):
  started_at = Time.get_ticks_msec()
+ pending_view = view
  load("res://core/save_system.gd").wait_for_images()
  pending_state = state
  pending_name = from_save
@@ -22,3 +24,8 @@ static func to_menu(tree: SceneTree,notice := ""):
  message = notice
  load("res://core/save_system.gd").wait_for_images()
  tree.change_scene_to_file(MENU_SCENE)
+
+static func take_view() -> Dictionary:
+ var v = pending_view
+ pending_view = {}
+ return v

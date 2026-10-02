@@ -11,16 +11,23 @@ extends RefCounted
 const SaveCodec = preload("res://core/save_codec.gd")
 const GameState = preload("res://core/game_state.gd")
 const WorldMap = preload("res://core/world_map.gd")
-const SCHEMA = 1
+const SCHEMA = 2
 const OLDEST = 1 # oldest schema a migration chain still reaches
 const DIR = "user://saves"
 const AUTOSAVES = 3
 const QUICKSAVE = "quicksave"
 const THUMB = Vector2i(320,200)
 const BACKDROP = Vector2i(960,600)
-# Migration hook: MIGRATIONS[n] turns a schema-n save dictionary into schema n+1. Add one each
+# Migration hook: migrations()[n] turns a schema-n save dictionary into schema n+1. Add one each
 # time SCHEMA rises (and keep OLDEST at the first version still convertible).
-const MIGRATIONS = {}
+static func migrations() -> Dictionary:
+ return {1:_v1_to_v2}
+
+# Schema 2 (campaign AI block): pending AI attacks on the player and the camera view are saved.
+# A schema-1 save has neither: no pending attacks, and the default camera.
+static func _v1_to_v2(d: Dictionary) -> Dictionary:
+ if d.get("state") is Dictionary and not d.state.has("pending_battles"): d.state.pending_battles = []
+ return d
 
 static var dir := DIR # tests and captures point this elsewhere
 static var _pending: Array = [] # worker tasks writing thumbnails
@@ -45,14 +52,15 @@ static func file_for(name: String) -> String:
 
 # Save the state. kind: manual, auto or quick. thumbnail: an Image (scaled down here) or null.
 # _interrupt (tests only): stop after writing the temp file, as a crash would.
-static func save(state,file: String,name: String,kind := "manual",thumbnail: Image = null,_interrupt := false) -> Dictionary:
+# view: the camera ({target: [x,y,z], yaw, pitch, distance}), restored on load.
+static func save(state,file: String,name: String,kind := "manual",thumbnail: Image = null,_interrupt := false,view := {}) -> Dictionary:
  DirAccess.make_dir_recursive_absolute(dir)
  var t0 = Time.get_ticks_usec()
  var now = Time.get_datetime_dict_from_system()
  var meta = {"name":name,"kind":kind,"faction":state.player_faction,"faction_name":WorldMap.faction(state.player_faction).get("name",state.player_faction),
   "year":state.year,"turn":state.turn,"seed":state.seed,"saved_at":Time.get_unix_time_from_system(),
   "saved_text":"%04d-%02d-%02d %02d:%02d" % [now.year,now.month,now.day,now.hour,now.minute],"seq":_next_seq()}
- var text = JSON.stringify({"schema":SCHEMA,"meta":meta,"state":SaveCodec.encode(state.to_dict())},"",false,true)
+ var text = JSON.stringify({"schema":SCHEMA,"meta":meta,"view":SaveCodec.encode(view),"state":SaveCodec.encode(state.to_dict())},"",false,true)
  var path = path_of(file)
  var err = _write_atomic(path,text.to_utf8_buffer(),_interrupt)
  if err != OK: return {"ok":false,"error":"Could not write the save (%s)." % error_string(err)}
@@ -97,17 +105,19 @@ static func load_save(file: String) -> Dictionary:
  # References the current world data must still know (a save from another map cannot load).
  for id in state.settlements:
   if not id in WorldMap.settlement_ids(): return {"ok":false,"error":"The save \"%s\" was made for a different map (unknown settlement %s)." % [file,id]}
- return {"ok":true,"state":state,"meta":SaveCodec.decode(data.get("meta",{})),"ms":(Time.get_ticks_usec()-t0)/1000.0}
+ var view = SaveCodec.decode(data.get("view",{}))
+ return {"ok":true,"state":state,"meta":SaveCodec.decode(data.get("meta",{})),"view":view if view is Dictionary else {},"ms":(Time.get_ticks_usec()-t0)/1000.0}
 
 # Bring a parsed save up to SCHEMA, or explain why it cannot be.
-static func migrate(data: Dictionary,migrations := MIGRATIONS,current := SCHEMA,oldest := OLDEST) -> Dictionary:
+static func migrate(data: Dictionary,table = null,current := SCHEMA,oldest := OLDEST) -> Dictionary:
+ var steps: Dictionary = table if table != null else migrations()
  if not data.has("schema"): return {"ok":false,"error":"This file is not a Project Freedom save."}
  var v = int(data.schema)
  if v>current: return {"ok":false,"error":"This save was made by a newer version of the game (save format %d, this version reads up to %d)." % [v,current]}
  if v<oldest: return {"ok":false,"error":"This save is from an old version of the game that can no longer be loaded (save format %d, oldest supported %d)." % [v,oldest]}
  while v<current:
-  if not migrations.has(v): return {"ok":false,"error":"No upgrade path for save format %d." % v}
-  data = migrations[v].call(data)
+  if not steps.has(v): return {"ok":false,"error":"No upgrade path for save format %d." % v}
+  data = steps[v].call(data)
   v += 1
   data.schema = v
  return {"ok":true,"data":data}
@@ -160,7 +170,7 @@ static func _next_seq() -> int:
  return n+1
 
 # Autosave at the start of End Turn into the oldest of AUTOSAVES rotating slots.
-static func autosave(state,thumbnail: Image = null) -> Dictionary:
+static func autosave(state,thumbnail: Image = null,view := {}) -> Dictionary:
  var slot = 1
  var oldest = 1<<62
  for i in range(1,AUTOSAVES+1):
@@ -171,10 +181,10 @@ static func autosave(state,thumbnail: Image = null) -> Dictionary:
   if int(m.get("seq",0))<oldest:
    oldest = int(m.get("seq",0))
    slot = i
- return save(state,"autosave_%d" % slot,"Autosave, year %d" % state.year,"auto",thumbnail)
+ return save(state,"autosave_%d" % slot,"Autosave, year %d" % state.year,"auto",thumbnail,false,view)
 
-static func quicksave(state,thumbnail: Image = null) -> Dictionary:
- return save(state,QUICKSAVE,"Quicksave","quick",thumbnail)
+static func quicksave(state,thumbnail: Image = null,view := {}) -> Dictionary:
+ return save(state,QUICKSAVE,"Quicksave","quick",thumbnail,false,view)
 
 # Thumbnail (load screen) and the main menu's backdrop (the latest saved view, larger).
 static func _write_images(thumb_path: String,backdrop: String,source: Image):

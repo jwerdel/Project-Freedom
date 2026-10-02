@@ -197,7 +197,8 @@ func test_incompatible_or_damaged_saves_fail_with_a_message():
  var s = GameState.from_data()
  assert_true(SaveSystem.save(s,"good","Good").ok)
  var text = FileAccess.get_file_as_string(SaveSystem.path_of("good"))
- var cases = {"newer":text.replace("\"schema\":1","\"schema\":999"),"old":text.replace("\"schema\":1","\"schema\":0"),
+ var cur = "\"schema\":%d" % SaveSystem.SCHEMA
+ var cases = {"newer":text.replace(cur,"\"schema\":999"),"old":text.replace(cur,"\"schema\":0"),
   "damaged":text.substr(0,text.length()/2),"Project Freedom save":"{\"hello\":1}"}
  for want in cases:
   var f = FileAccess.open(SaveSystem.path_of("bad"),FileAccess.WRITE)
@@ -278,3 +279,30 @@ func test_load_screen_lists_saves_and_confirms_delete():
  await get_tree().process_frame
  (screen.list.get_child(screen.list.get_child_count()-1).find_child("Load",true,false) as Button).pressed.emit()
  assert_eq(loaded,["a"])
+
+func test_a_schema_1_save_loads_through_the_migration():
+ var s = GameState.from_data()
+ TurnLoop.end_turn(s)
+ assert_true(SaveSystem.save(s,"old","Old",manual(),null,false,{"target":[1.0,2.0,3.0],"yaw":0.5,"pitch":0.7,"distance":80.0}).ok)
+ # Turn it into what the previous version wrote: schema 1, no view, no pending battles.
+ var d = JSON.parse_string(FileAccess.get_file_as_string(SaveSystem.path_of("old")))
+ d.schema = 1
+ d.erase("view")
+ d.state.erase("pending_battles")
+ var f = FileAccess.open(SaveSystem.path_of("old"),FileAccess.WRITE)
+ f.store_string(JSON.stringify(d,"",false,true))
+ f.close()
+ var l = SaveSystem.load_save("old")
+ assert_true(l.ok,l.get("error",""))
+ assert_eq(l.state.pending_battles,[])
+ assert_eq(l.view,{},"old saves have no camera: the default view is used")
+ assert_eq(l.state.state_hash(),s.state_hash())
+
+func test_the_camera_view_is_saved():
+ var s = GameState.from_data()
+ var view = {"target":[10.0,3.0,-20.0],"yaw":0.42,"pitch":0.36,"distance":64.0}
+ assert_true(SaveSystem.save(s,"cam","Camera",manual(),null,false,view).ok)
+ assert_eq(SaveSystem.load_save("cam").view,view)
+
+func manual() -> String:
+ return "manual"

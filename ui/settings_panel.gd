@@ -24,8 +24,8 @@ func _ready():
  frame.anchor_bottom = 0.5
  frame.offset_left = -260
  frame.offset_right = 260
- frame.offset_top = -200
- frame.offset_bottom = 200
+ frame.offset_top = -225
+ frame.offset_bottom = 225
  add_child(frame)
  var v = VBoxContainer.new()
  v.add_theme_constant_override("separation",10)
@@ -71,6 +71,13 @@ func _ready():
   Settings.set_value("ui_scale",Settings.UI_SCALES[i])
   Settings.apply(get_tree()))
  grid.add_child(scale_opt)
+ grid.add_child(UiKit.label("Follow AI armies at End Turn",16))
+ var fol = CheckBox.new()
+ fol.name = "FollowAi"
+ fol.focus_mode = Control.FOCUS_NONE
+ fol.button_pressed = Settings.follow_ai_moves()
+ fol.toggled.connect(func(on): Settings.set_value("follow_ai_moves",on))
+ grid.add_child(fol)
  grid.add_child(UiKit.label("Debug keys (F5-F7, L, Space)",16))
  var dbg = CheckBox.new()
  dbg.name = "DebugKeys"

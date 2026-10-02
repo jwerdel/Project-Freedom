@@ -126,7 +126,7 @@ static func _reinforcements(state,faction: String,at: Vector2,exclude: Array) ->
  var out = []
  for id in state.army_state:
   var a = state.army_state[id]
-  if a.faction != faction or id in exclude: continue
+  if a.faction != faction or id in exclude or a.units.is_empty(): continue # an army with no units brings nothing
   var d = Movement.position(state,id).distance_to(at)
   if d>float(cfg().reinforcement_radius): continue
   var tick = 0 if d<=float(cfg().reinforcement_reserve_radius) else int(ceil(d*float(cfg().reinforcement_ticks_per_meter)))

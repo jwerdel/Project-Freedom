@@ -19,6 +19,8 @@ const SaveSystem = preload("res://core/save_system.gd")
 const Session = preload("res://core/session.gd")
 const Settings = preload("res://core/settings.gd")
 const PauseMenu = preload("res://ui/pause_menu.gd")
+const Ai = preload("res://core/ai.gd")
+const TurnLoop = preload("res://core/turn_loop.gd")
 const BattleSim = preload("res://core/battle_sim.gd")
 const WALK_SPEED = 12.0 # map meters per second while the figure walks (presentation only)
 # Overview camera (Home). Framed so the coast and Goldspire's sea face sit above the bottom panel.
@@ -82,6 +84,10 @@ var movement_overlay
 var walks = {}           # army id -> figure walking a path: {points, dist, total}
 var army_figures = {}    # army id -> map figure (the commander visual, banner in faction colors)
 var follow_army = false   # camera follows the selected army
+var collecting_moves = false # End Turn: moves are gathered, then replayed (AI armies near you followed)
+var collected_moves = {}
+var spectate_queue: Array = [] # [[army id, path]] still to show, camera following
+var spectating := {}           # {id, hold}: the AI army the camera follows now
 var right_press_pos = Vector2.ZERO
 var preview_key = Vector2i(1<<20,0)
 var preview_text = ""
@@ -189,6 +195,35 @@ func _ready():
    if "--attack-resolve" in OS.get_cmdline_user_args():
     ui.battle_box.find_child("QuickResolve",true,false).pressed.emit()
     update_walk(1000.0)
+ # AI captures: --scenario=siege|attacked puts House Lannet at war with the player and its army
+ # (reinforced for the setup) near Crownwatch, then runs a real End Turn: a weaker army besieges,
+ # a stronger one attacks and the player must answer (--defense opens the panel).
+ # --ai-turns=N plays N turns with every faction AI-controlled (chronicle captures).
+ for arg in OS.get_cmdline_user_args():
+  if arg.begins_with("--scenario="):
+   var kind = arg.get_slice("=",1)
+   var st = ui_data.state
+   var g = st.army_state.silverfall_guard
+   var kinds = ["spearmen","swordsmen","archers","heavy_infantry","spearmen","archers","cavalry"]
+   for i in (2 if kind == "siege" else 9): g.units.append({"unit":kinds[i%kinds.size()],"men":100,"max_men":100})
+   var cw = WorldMap.settlement_position("crownwatch")
+   g.position = [cw.x-14.0,cw.y+6.0]
+   g.garrison = ""
+   var gp = WorldMap.settlement_position(GOLDSPIRE_ID)
+   if kind == "siege":
+    st.army_state[COMMANDER_ARMY].position = [gp.x,gp.y]
+    st.army_state[COMMANDER_ARMY].garrison = GOLDSPIRE_ID
+   Battles.declare_war(st,"house_lannet",st.player_faction)
+   place_commander()
+   end_turn()
+   update_walk(1000.0)
+   focus_at(ground(cw,4.0),70.0)
+  if arg.begins_with("--ai-turns="):
+   var opts = {"factions":ui_data.state.factions(),"resolve_player":true}
+   for i in int(arg.get_slice("=",1)): TurnLoop.end_turn(ui_data.state,opts)
+   ui_data.changed.emit()
+   ui._rebuild_events()
+   refresh_army_overlays()
  # Deployment captures: --deploy opens the screen, --deploy-2d shows the board, --deploy-template=
  # applies a template, --deploy-orders=i:order[:arg],... gives orders (arg: left/right or a unit)
  # and --deploy-fight fights with that deployment.
@@ -598,6 +633,7 @@ func make_ui():
  if loaded_from != "":
   sync_settlement_visuals()
   sync_territory()
+  apply_camera_view(Session.take_view())
   if loaded_from != "new": ui.toast("Loaded: %s" % loaded_from)
   if capture_mode: print("LOAD_TO_CAMPAIGN_MS %d (scene rebuilt from the save)" % (Time.get_ticks_msec()-Session.started_at))
 
@@ -786,6 +822,9 @@ func toggle_follow():
 
 func _on_army_moved(id: String,walked: Array):
  if walked.size()<2: return
+ if collecting_moves:
+  collected_moves[id] = walked
+  return
  sync_army_figures()
  if not army_figures.has(id): return
  var total = 0.0
@@ -823,14 +862,24 @@ func update_walk(delta: float):
    if id == selected_army_id(): ui.show_army(id,army_location(id))
 
 func end_turn():
+ if spectating_now():
+  return
+ if ui_data.has_pending_battle():
+  ui.toast("An enemy army is attacking: answer it first.")
+  open_pending_battle()
+  return
  # Autosave at the start of End Turn (3 rotating slots), before anything changes.
  var t0 = Time.get_ticks_usec()
- var a = SaveSystem.autosave(ui_data.state,thumbnail())
+ var a = SaveSystem.autosave(ui_data.state,thumbnail(),camera_view())
  if capture_mode: print("AUTOSAVE_MS %.2f (with thumbnail) BYTES %d" % [(Time.get_ticks_usec()-t0)/1000.0,a.get("bytes",0)])
  if not a.ok: ui.toast("Autosave failed: %s" % a.error)
+ collecting_moves = true
+ collected_moves = {}
  ui_data.end_turn()
+ collecting_moves = false
  var r = ui_data.resources()
  ui.toast("Year %d begins. Treasury %s gold." % [r.year,UiKit.format_int(r.treasury)])
+ play_moves(collected_moves)
 
 func set_overlay(overlay: String,on: bool):
  overlays[overlay] = on
@@ -919,6 +968,10 @@ func hover_text(hit: String) -> String:
 
 func _unhandled_input(event):
  if pause_menu != null: return
+ if spectating_now() and event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_SPACE,KEY_ESCAPE]:
+  skip_spectating()
+  get_viewport().set_input_as_handled()
+  return
  if event is InputEventMouseButton:
   if event.pressed:
    if event.button_index == MOUSE_BUTTON_WHEEL_UP: desired_distance = clampf(desired_distance*0.88,10,210)
@@ -983,6 +1036,9 @@ func camera_update(delta: float):
  camera.look_at(target)
 
 func _process(delta):
+ _update_spectate(delta)
+ # Answer AI attacks once nothing else is on screen (captures only with --defense).
+ if not spectating_now() and (not capture_mode or "--defense" in OS.get_cmdline_user_args()) and ui_data.has_pending_battle(): open_pending_battle()
  if not paused:
   time += delta
   for rotor in flags: rotor.rotation.z += delta*0.3
@@ -1123,9 +1179,10 @@ func run_checks():
  print("END_TURN_MS %.3f" % ui_data.last_turn_ms)
  # Saves: End Turn autosaved; a manual save loads back to the identical state.
  assert(FileAccess.file_exists(SaveSystem.path_of("autosave_1")))
- var sv = SaveSystem.save(ui_data.state,"self_test","Self-test","manual",thumbnail())
+ var sv = SaveSystem.save(ui_data.state,"self_test","Self-test","manual",thumbnail(),false,camera_view())
  var ld = SaveSystem.load_save("self_test")
  assert(sv.ok and ld.ok and ld.state.state_hash() == ui_data.state.state_hash())
+ assert(ld.view == camera_view()) # the camera comes back with the save
  print("SAVE_MS %.2f LOAD_MS %.2f SAVE_BYTES %d" % [sv.ms,ld.ms,sv.bytes])
  # Esc order: panels close first; with nothing open the pause menu opens. Exiting with unsaved
  # progress asks first.
@@ -1329,14 +1386,14 @@ func thumbnail() -> Image:
  return img if img != null and not img.is_empty() else null
 
 func quicksave():
- var r = SaveSystem.quicksave(ui_data.state,thumbnail())
+ var r = SaveSystem.quicksave(ui_data.state,thumbnail(),camera_view())
  if r.ok: unsaved = false
  ui.toast("Quicksaved (year %d)." % ui_data.state.year if r.ok else "Quicksave failed: %s" % r.error)
  return r
 
 func save_named(name: String) -> Dictionary:
  var t0 = Time.get_ticks_usec()
- var r = SaveSystem.save(ui_data.state,SaveSystem.file_for(name),name,"manual",thumbnail())
+ var r = SaveSystem.save(ui_data.state,SaveSystem.file_for(name),name,"manual",thumbnail(),false,camera_view())
  if capture_mode: print("SAVE_NAMED_MS %.2f (with thumbnail) BYTES %d" % [(Time.get_ticks_usec()-t0)/1000.0,r.get("bytes",0)])
  if r.ok: unsaved = false
  ui.toast("Saved \"%s\"." % name if r.ok else "Save failed: %s" % r.error)
@@ -1348,7 +1405,7 @@ func load_file(file: String) -> Dictionary:
  if not r.ok:
   ui.toast(r.error)
   return r
- Session.start(get_tree(),r.state,r.meta.get("name",file))
+ Session.start(get_tree(),r.state,r.meta.get("name",file),r.get("view",{}))
  return r
 
 func quickload():
@@ -1373,3 +1430,83 @@ func close_pause_menu():
 func _notification(what):
  # Let thumbnails still being written finish before the window closes.
  if what == NOTIFICATION_WM_CLOSE_REQUEST: SaveSystem.wait_for_images()
+
+# --- AI turn presentation -------------------------------------------------------------------
+# After End Turn every army walks its path. AI armies whose path comes near the player's
+# settlements or armies (data/ai.json presentation.watch_meters) are shown one at a time with the
+# camera following (Settings: follow AI moves); Space or Esc skips. Then any AI attack on the
+# player opens the pre-battle panel with the player defending.
+
+func play_moves(moves: Dictionary):
+ var ids = moves.keys()
+ ids.sort()
+ var watch = float(Ai.data().presentation.watch_meters)
+ var mine = []
+ for sid in ui_data.state.settlements_of(ui_data.player_faction_id()): mine.append(WorldMap.settlement_position(sid))
+ for id in ui_data.army_ids():
+  if ui_data.army(id).player_owned: mine.append(ui_data.army_movement(id).position)
+ for id in ids:
+  var follow = Settings.follow_ai_moves() and (not capture_mode or "--follow-ai" in OS.get_cmdline_user_args()) and ui_data.state.army_state.has(id) and not ui_data.army(id).player_owned and _near(moves[id],mine,watch)
+  if follow: spectate_queue.append([id,moves[id]])
+  else: _on_army_moved(id,moves[id])
+ _next_spectate()
+
+func _near(path: Array,points: Array,radius: float) -> bool:
+ for p in path:
+  for q in points:
+   if p.distance_to(q)<=radius: return true
+ return false
+
+func spectating_now() -> bool:
+ return not spectating.is_empty() or not spectate_queue.is_empty()
+
+func _next_spectate():
+ if spectate_queue.is_empty():
+  spectating = {}
+  open_pending_battle()
+  return
+ var next = spectate_queue.pop_front()
+ _on_army_moved(next[0],next[1])
+ spectating = {"id":next[0],"hold":float(Ai.data().presentation.hold_seconds)}
+ ui.toast("%s marches." % ui_data.army(next[0]).display_name if ui_data.state.army_state.has(next[0]) else "An army marches.")
+
+# Skip the rest of the AI moves: everything jumps to where it ended.
+func skip_spectating():
+ for q in spectate_queue: _on_army_moved(q[0],q[1])
+ spectate_queue.clear()
+ for id in walks: walks[id].dist = walks[id].total
+ update_walk(0.0)
+ spectating = {}
+ open_pending_battle()
+
+func _update_spectate(delta: float):
+ if spectating.is_empty(): return
+ var id = spectating.id
+ if army_figures.has(id) and is_instance_valid(army_figures[id]):
+  var c = army_figures[id].position
+  target = target.lerp(Vector3(c.x,c.y+2.2,c.z),minf(1,delta*3))
+  desired_distance = minf(desired_distance,float(Ai.data().presentation.camera_distance))
+ if walks.has(id): return
+ spectating.hold -= delta
+ if spectating.hold<=0.0: _next_spectate()
+
+func open_pending_battle():
+ if ui.battle_visible() or ui.report_visible() or ui.deployment_visible(): return
+ var pb = ui_data.pending_battle()
+ if pb.is_empty(): return
+ var p = Vector2(pb.position[0],pb.position[1])
+ focus_at(ground(p,2.0),70.0)
+ ui.open_defense(pb)
+
+# The camera as saved with a campaign, and restored when it loads.
+func camera_view() -> Dictionary:
+ return {"target":[target.x,target.y,target.z],"yaw":yaw,"pitch":pitch,"distance":desired_distance}
+
+func apply_camera_view(v: Dictionary):
+ if v.is_empty() or not v.has("target"): return
+ target = Vector3(float(v.target[0]),float(v.target[1]),float(v.target[2]))
+ yaw = float(v.yaw)
+ pitch = float(v.pitch)
+ desired_distance = float(v.distance)
+ distance = desired_distance
+ camera_update(1.0)

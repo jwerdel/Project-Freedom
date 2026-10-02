@@ -101,10 +101,10 @@ static func alive(state,f: String) -> bool:
 # Run every AI faction's turn. opts: factions (which factions the AI controls; default all but
 # the player), resolve_player (true: battles the AI starts against a human player are resolved at
 # once with the default defender choice instead of being returned as pending).
-# Returns {actions, pending: [battle], entries, ms}.
+# Returns {actions, pending: [battle], entries, moves (army id -> points walked, for the map), ms}.
 static func take_turns(state,opts := {}) -> Dictionary:
  var t0 = Time.get_ticks_usec()
- var report = {"actions":[],"pending":[],"entries":[],"ms":0.0,"faction_ms":{}}
+ var report = {"actions":[],"pending":[],"entries":[],"moves":{},"ms":0.0,"faction_ms":{}}
  var controlled = opts.get("factions",state.factions().filter(func(f): return f != state.player_faction))
  _odds_cache = {}
  for f in _sorted(controlled):
@@ -302,7 +302,7 @@ static func _recruit(state,f: String,p: Dictionary,report: Dictionary):
 # --- Armies -------------------------------------------------------------------------------------
 
 # Win chance for an attack: decided by the power ratio when clear, else by seeded quick simulations.
-static var _odds_cache = {} # (year, battle counter, army, target) -> odds, within one AI phase
+static var _odds_cache = {} # odds by (year, battle counter, army, target, position, both strengths), reset each AI phase
 static var _odds_spent := 0 # simulated odds estimates this faction has used this turn
 
 static func attack_odds(state,army_id: String,target: Dictionary) -> float:
@@ -310,7 +310,7 @@ static func attack_odds(state,army_id: String,target: Dictionary) -> float:
  var ratio = army_power(state,army_id)/maxf(1.0,float(target.defense))
  if ratio>=float(o.sure_ratio): return 0.95
  if ratio<=float(o.hopeless_ratio): return 0.05
- var key = "%d:%d:%s:%s:%s" % [state.year,state.battles,army_id,target.id,str(state.army_state[army_id].position)]
+ var key = "%d:%d:%s:%s:%s:%.3f:%.3f" % [state.year,state.battles,army_id,target.id,str(state.army_state[army_id].position),army_power(state,army_id),float(target.defense)]
  if _odds_cache.has(key): return _odds_cache[key]
  # Over this turn's simulation budget: a logistic curve of the power ratio stands in.
  if _odds_spent>=int(o.odds_budget): return curve_odds(ratio)
@@ -353,7 +353,7 @@ static func _command(state,f: String,p: Dictionary,look: Dictionary,report: Dict
   if have<need: continue # cannot be saved: do not throw armies away
   for id in helpers:
    if busy.has(id): continue
-   var r = Movement.order(state,id,WorldMap.settlement_position(sid))
+   var r = _move(state,report,id,WorldMap.settlement_position(sid))
    if r.ok:
     busy[id] = true
     report.actions.append({"action":"defend","faction":f,"army":id,"settlement":sid})
@@ -383,9 +383,11 @@ static func _try_attack(state,id: String,f: String,p: Dictionary,look: Dictionar
   if t.kind == "settlement" and walled(state,t.id):
    var assault = int(p.assault) == 1 and odds>=min_odds
    if odds<float(d.attack.assault_min_odds) and not assault:
-    # Starve it out: besiege when the army could hold its ground against the garrison.
-    if odds<float(d.attack.hold_siege_odds) or state.settlements[t.id].has("siege"): continue
-    Battles.move_to_attack(state,id,appr)
+    # Starve it out: besiege when the army is a match for the defenders without their walls
+    # (it can hold the siege lines), though not for an assault.
+    var open_ratio = float(t.ratio)*(1.0+float(d.power.wall_bonus))
+    if open_ratio<float(d.attack.siege_ratio)/float(p.boldness) or state.settlements[t.id].has("siege"): continue
+    _record(report,id,Battles.move_to_attack(state,id,appr))
     var r = Battles.besiege(state,id,t.id)
     if r.ok:
      var e = Chronicle.siege_entry(state.year,t.id,f)
@@ -403,7 +405,7 @@ static func _try_attack(state,id: String,f: String,p: Dictionary,look: Dictionar
 static func _attack(state,id: String,t: Dictionary,appr: Dictionary,report: Dictionary,opts: Dictionary,controlled: Array):
  var pb = Battles.prebattle(state,id,t,false)
  pb.approach = appr
- Battles.move_to_attack(state,id,appr)
+ _record(report,id,Battles.move_to_attack(state,id,appr))
  var human = t.faction == state.player_faction and not state.player_faction in controlled
  report.actions.append({"action":"attack","faction":state.army_state[id].faction,"army":id,"target":t.id,"kind":t.kind,"against":t.faction})
  if human and not opts.get("resolve_player",false):
@@ -450,7 +452,7 @@ static func _flee(state,id: String,f: String,report: Dictionary) -> bool:
  if t<=army_power(state,id)*float(data().defend.flee_ratio): return false
  var home = _nearest_own(state,f,at)
  if home == "": return false
- var r = Movement.order(state,id,WorldMap.settlement_position(home))
+ var r = _move(state,report,id,WorldMap.settlement_position(home))
  if r.ok: report.actions.append({"action":"flee","faction":f,"army":id,"to":home})
  return r.ok
 
@@ -471,7 +473,7 @@ static func _stage(state,id: String,f: String,p: Dictionary,look: Dictionary,rep
    if float(t.ratio)<float(data().attack.march_ratio)/float(p.boldness): break
    var appr = Battles.approach(state,id,t)
    if appr.ok or not appr.has("point"): continue # in reach (attack declined) or unreachable
-   var m = Movement.order(state,id,appr.point)
+   var m = _move(state,report,id,appr.point)
    if m.ok:
     report.actions.append({"action":"march","faction":f,"army":id,"target":t.id})
     return true
@@ -489,7 +491,7 @@ static func _stage(state,id: String,f: String,p: Dictionary,look: Dictionary,rep
  # Keep the capital defended: the last army at the capital stays.
  if a.garrison == cap and Movement.garrison_of(state,cap).size()<=1 and not cap in look.threatened and best != cap:
   if Armies.armies_of(state,f).size()<=1: return false
- var r = Movement.order(state,id,WorldMap.settlement_position(best))
+ var r = _move(state,report,id,WorldMap.settlement_position(best))
  if r.ok: report.actions.append({"action":"stage","faction":f,"army":id,"to":best})
  return r.ok
 
@@ -499,7 +501,7 @@ static func _rest(state,id: String,f: String,report: Dictionary):
  if a.garrison != "" or not a.order.is_empty(): return
  var home = _nearest_own(state,f,Movement.position(state,id))
  if home == "": return
- if Movement.order(state,id,WorldMap.settlement_position(home)).ok: report.actions.append({"action":"rest","faction":f,"army":id,"to":home})
+ if _move(state,report,id,WorldMap.settlement_position(home)).ok: report.actions.append({"action":"rest","faction":f,"army":id,"to":home})
 
 static func _nearest_own(state,f: String,at: Vector2) -> String:
  var best = ""
@@ -510,3 +512,14 @@ static func _nearest_own(state,f: String,at: Vector2) -> String:
    best_d = dd
    best = sid
  return best
+
+# Every AI move goes through here so the map can replay it (report.moves: army -> points walked).
+static func _move(state,report: Dictionary,id: String,point: Vector2) -> Dictionary:
+ var r = Movement.order(state,id,point)
+ if r.ok: _record(report,id,r.get("moved",[]))
+ return r
+
+static func _record(report: Dictionary,id: String,walked: Array):
+ if walked.size()<2: return
+ if not report.moves.has(id): report.moves[id] = walked.duplicate()
+ else: report.moves[id].append_array(walked.slice(1))

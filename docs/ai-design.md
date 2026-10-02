@@ -54,7 +54,7 @@ Randomness in AI choices (war rolls, tie-breaks) comes only from a generator see
    - A rich faction (more than `rich_factor` × its reserve) fills its armies past `field_units`, up to the army cap.
 5. **Armies** take one job each turn, in priority order:
    1. **Defend:** move into or next to a threatened settlement that can still be saved.
-   2. **Attack:** an opportunity with odds ≥ `attack.min_odds` (personality-adjusted). A walled target is **besieged** instead, unless its assault odds reach `attack.assault_min_odds`.
+   2. **Attack:** an opportunity with odds ≥ `attack.min_odds` (personality-adjusted). A walled target is **besieged** instead, unless its assault odds reach `attack.assault_min_odds`. It is besieged only when the army could beat the defenders in the open (power ratio without walls at least `siege_ratio`).
    3. **Retreat/garrison:** an army facing a stronger threat it cannot beat moves into its nearest own settlement.
    4. **Stage:** at war with nothing in reach, march on the best enemy target within `war_meters` (power ratio at least `march_ratio`), with a multi-turn order to its approach point. Otherwise move to the own settlement nearest the enemy. The last army at the capital stays.
    5. **Rest:** stay garrisoned to replenish.

@@ -8,6 +8,7 @@ const Icons = preload("res://ui/icons.gd")
 const PENNANT = Vector2(34,44)
 const PLATE_H = 26.0
 const MAX_LEVEL = 3
+const SIEGE_H = 20.0
 
 var settlement_id := ""
 var settlement := {}
@@ -27,7 +28,7 @@ func update_settlement(s: Dictionary):
  settlement = s
  tooltip_text = "%s\n%s\n%s\n%s · level %d" % [s.name,s.faction.name,s.province_name,s.type.capitalize(),s.level]
  var w = maxf(PENNANT.x+12,UiKit.head_font().get_string_size(s.name.to_upper(),HORIZONTAL_ALIGNMENT_LEFT,-1,15).x+28)
- custom_minimum_size = Vector2(w,PENNANT.y+PLATE_H+12)
+ custom_minimum_size = Vector2(w,PENNANT.y+PLATE_H+12+(SIEGE_H if not s.get("siege",{}).is_empty() else 0.0))
  size = custom_minimum_size
  queue_redraw()
 
@@ -67,3 +68,12 @@ func _draw():
   var p = Vector2(cx+(i-1)*12,plate.end.y+6)
   draw_circle(p,4.2,Color(0,0,0,0.75))
   draw_circle(p,3.0,Color("f2cf6a") if i<int(settlement.level) else Color(0.35,0.3,0.25))
+ # Under siege: a red tag under the pips with the besieger and the turns held.
+ var sg = settlement.get("siege",{})
+ if not sg.is_empty():
+  var txt = "BESIEGED %d/%d" % [sg.turns,sg.endurance]
+  var tag = Rect2(Vector2(cx-46,plate.end.y+12),Vector2(92,SIEGE_H-4))
+  draw_rect(tag,Color("7a1c1c",0.92))
+  draw_rect(tag,UiKit.colors(sg.faction).primary.lightened(0.3),false,1.5)
+  var sw = UiKit.FONT_BOLD.get_string_size(txt,HORIZONTAL_ALIGNMENT_LEFT,-1,12).x
+  draw_string(UiKit.FONT_BOLD,Vector2(cx-sw*0.5,tag.position.y+12),txt,HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("ffe3c8"))
