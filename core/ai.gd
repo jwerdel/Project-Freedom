@@ -56,10 +56,16 @@ static func unit_power(u: Dictionary) -> float:
  if m != null: s += float(m.damage)*float(m.volleys)*float(c.missile_weight)
  return float(u.men)*s/float(c.divisor)*(1.0+int(u.get("rank",0))*float(c.rank_bonus))
 
+# Cached within an AI phase: units change only through battles (the counter) or disbanding.
+static var _power_cache = {}
+
 static func army_power(state,army_id: String) -> float:
  var a = state.army_state[army_id]
+ var key = "%s:%d:%d" % [army_id,state.battles,a.units.size()]
+ if _power_cache.has(key): return _power_cache[key]
  var p = 0.0
  for u in a.units: p += unit_power(u)
+ _power_cache[key] = p
  return p
 
 static func walled(state,sid: String) -> bool:
@@ -73,13 +79,31 @@ static func settlement_defense(state,sid: String) -> float:
  var p = 0.0
  for u in Battles.garrison_units(state,sid): p += unit_power(u)
  var at = WorldMap.settlement_position(sid)
- for id in _sorted(state.army_state.keys()):
-  var a = state.army_state[id]
-  if a.faction != owner: continue
-  if a.garrison == sid: p += army_power(state,id)
-  elif Movement.position(state,id).distance_to(at)<=float(Battles.cfg().reinforcement_radius): p += army_power(state,id)*float(c.reinforce_share)
+ var rr = float(Battles.cfg().reinforcement_radius)
+ for e in _armies(state):
+  if e.faction != owner: continue
+  if e.garrison == sid: p += army_power(state,e.id)
+  elif e.pos.distance_to(at)<=rr: p += army_power(state,e.id)*float(c.reinforce_share)
  if walled(state,sid): p *= 1.0+float(c.wall_bonus)
  return p
+
+# Every army as {id, faction, pos, garrison}, sorted by id. During an AI phase the list is kept and
+# rebuilt only after something moves, fights or is raised (_invalidate); outside a phase (direct
+# calls, tests) it is built fresh each time.
+static var _snap = null
+static var _in_phase := false
+
+static func _armies(state) -> Array:
+ if _in_phase and _snap != null: return _snap
+ var out = []
+ for id in _sorted(state.army_state.keys()):
+  var a = state.army_state[id]
+  out.append({"id":id,"faction":a.faction,"pos":Vector2(a.position[0],a.position[1]),"garrison":a.garrison})
+ if _in_phase: _snap = out
+ return out
+
+static func _invalidate():
+ _snap = null
 
 static func _sorted(a: Array) -> Array:
  var out = a.duplicate()
@@ -107,21 +131,28 @@ static func take_turns(state,opts := {}) -> Dictionary:
  var report = {"actions":[],"pending":[],"entries":[],"moves":{},"ms":0.0,"faction_ms":{}}
  var controlled = opts.get("factions",state.factions().filter(func(f): return f != state.player_faction))
  _odds_cache = {}
+ _power_cache = {}
+ _in_phase = true
+ _snap = null
  for f in _sorted(controlled):
   if not alive(state,f): continue
   var tf = Time.get_ticks_usec()
   faction_turn(state,f,report,opts,controlled)
   report.faction_ms[f] = (Time.get_ticks_usec()-tf)/1000.0
+ _in_phase = false
+ _snap = null
  report.ms = (Time.get_ticks_usec()-t0)/1000.0
  return report
 
 static func faction_turn(state,f: String,report: Dictionary,opts := {},controlled := []):
  _odds_spent = 0
+ _invalidate()
  var rng = RandomNumberGenerator.new()
  rng.seed = hash([state.seed,state.year,f,"ai"])
  var p = personality(f)
  var look = assess(state,f,p)
  _consider_war(state,f,p,look,rng,report)
+ _balance_books(state,f,report)
  _build(state,f,p,look,report)
  _raise(state,f,p,report)
  _recruit(state,f,p,report)
@@ -136,12 +167,11 @@ static func assess(state,f: String,p: Dictionary) -> Dictionary:
  for sid in state.settlements_of(f):
   var at = WorldMap.settlement_position(sid)
   var t = 0.0
-  for id in _sorted(state.army_state.keys()):
-   var a = state.army_state[id]
-   if a.faction == f: continue
-   var w = 1.0 if a.faction in enemies else float(personality(a.faction).wariness)
-   if w<=0.0: continue
-   if Movement.position(state,id).distance_to(at)<=float(d.reach.threat_meters): t += army_power(state,id)*w
+  for e in _armies(state):
+   if e.faction == f: continue
+   if e.pos.distance_to(at)>float(d.reach.threat_meters): continue
+   var w = 1.0 if e.faction in enemies else float(personality(e.faction).wariness)
+   if w>0.0: t += army_power(state,e.id)*w
   var def = settlement_defense(state,sid)
   threats[sid] = {"threat":t,"defense":def}
   if t>def*float(d.defend.threatened_ratio): threatened.append(sid)
@@ -160,21 +190,34 @@ static func targets_for(state,army_id: String,reach := -1.0) -> Array:
   var pos = WorldMap.settlement_position(sid)
   if pos.distance_to(from)>reach: continue
   out.append({"kind":"settlement","id":sid,"faction":s.owner,"position":pos,"defense":settlement_defense(state,sid)})
- for id in _sorted(state.army_state.keys()):
-  var o = state.army_state[id]
-  if o.faction == me.faction or o.garrison != "": continue
-  var pos = Movement.position(state,id)
-  if pos.distance_to(from)>reach: continue
+ var all = _armies(state)
+ var rr = float(Battles.cfg().reinforcement_radius)
+ var share = float(data().power.reinforce_share)
+ for e in all:
+  if e.faction == me.faction or e.garrison != "": continue
+  if e.pos.distance_to(from)>reach: continue
   # A field army is joined by its friends nearby.
-  var def = army_power(state,id)
-  for other in _sorted(state.army_state.keys()):
-   if other != id and state.army_state[other].faction == o.faction and Movement.position(state,other).distance_to(pos)<=float(Battles.cfg().reinforcement_radius):
-    def += army_power(state,other)*float(data().power.reinforce_share)
-  out.append({"kind":"army","id":id,"faction":o.faction,"position":pos,"defense":def})
+  var def = army_power(state,e.id)
+  for o in all:
+   if o.id != e.id and o.faction == e.faction and o.pos.distance_to(e.pos)<=rr: def += army_power(state,o.id)*share
+  out.append({"kind":"army","id":e.id,"faction":e.faction,"position":e.pos,"defense":def})
+ # Own armies close enough to the target join the battle as reinforcements (Battles), so they count.
  var mine = army_power(state,army_id)
- for t in out: t.ratio = mine/maxf(1.0,float(t.defense))
+ for t in out:
+  var help = 0.0
+  for o in all:
+   if o.id != army_id and o.faction == me.faction and o.pos.distance_to(t.position)<=rr: help += army_power(state,o.id)*share
+  t.ratio = (mine+help)/maxf(1.0,float(t.defense))
  out.sort_custom(func(a,b): return a.ratio>b.ratio or (a.ratio == b.ratio and a.id<b.id))
  return out
+
+# What the faction could bring against a target over a few turns: its field armies within
+# war_meters of it, times gather_share (not all of them will arrive or be spared).
+static func strategic_power(state,f: String,at: Vector2) -> float:
+ var p = 0.0
+ for id in field_armies(state,f):
+  if state.army_state[id].units.size()>=int(data().recruitment.garrison_units) and Movement.position(state,id).distance_to(at)<=float(data().reach.war_meters): p += army_power(state,id)
+ return p*float(data().war.gather_share)
 
 static func field_armies(state,f: String) -> Array:
  return Armies.armies_of(state,f).filter(func(id):
@@ -192,7 +235,12 @@ static func _consider_war(state,f: String,p: Dictionary,look: Dictionary,rng: Ra
   if state.army_state[id].units.size()<int(data().recruitment.garrison_units): continue
   for t in targets_for(state,id,float(data().reach.war_meters)):
    if t.faction in look.enemies or t.faction == "": continue
-   var score = float(t.ratio)
+   # The whole field force that could gather against it, not one army.
+   var ratio = maxf(float(t.ratio),strategic_power(state,f,t.position)/maxf(1.0,float(t.defense)))
+   var score = ratio
+   # A walled target the force could besiege (a match for it without the walls) counts as weak
+   # enough to start a war over, at siege_weight.
+   if t.kind == "settlement" and walled(state,t.id): score = maxf(score,ratio*(1.0+float(data().power.wall_bonus))*float(w.siege_weight))
    if int(p.opportunist) == 1 and not at_war_with(state,t.faction).is_empty(): score *= 1.5
    if best.is_empty() or score>best.score: best = {"score":score,"target":t,"army":id}
  if best.is_empty(): return
@@ -243,6 +291,36 @@ static func _build(state,f: String,p: Dictionary,look: Dictionary,report: Dictio
   if Construction.start(state,best.id,best.slot,best.chain).ok:
    report.actions.append({"action":"build","faction":f,"settlement":best.id,"chain":best.chain})
 
+# Upkeep the faction cannot carry: when next year would end in debt (treasury + net income < 0),
+# disband units, least power per upkeep first, until income covers upkeep, when disbanding can do
+# that at all (the player can do the same;
+# what a negative treasury does is OPEN in the constitution, so the AI avoids it).
+static func _balance_books(state,f: String,report: Dictionary):
+ # Pointless if even an army-less faction would be in deficit (buildings, generals): keep the troops.
+ var unit_upkeep = 0.0
+ for id in Armies.armies_of(state,f):
+  for u in state.army_state[id].units: unit_upkeep += float(UnitTypes.get_type(u.unit).placeholder_stats.upkeep)*float(Economy.data().upkeep.army_upkeep_multiplier)
+ if float(Economy.faction_ledger(state,f).net)+unit_upkeep<0.0: return
+ var guard = 0
+ while guard<40:
+  var net = int(Economy.faction_ledger(state,f).net)
+  # Stop once income covers upkeep, or the treasury can carry the shortfall another year.
+  if net>=0 or int(state.treasury[f])+net>=0: return
+  guard += 1
+  var worst = {}
+  for id in Armies.armies_of(state,f):
+   var a = state.army_state[id]
+   for i in a.units.size():
+    var u = a.units[i]
+    var t = UnitTypes.get_type(u.unit)
+    var upkeep = float(t.placeholder_stats.upkeep)
+    var key = [unit_power(u)/maxf(1.0,upkeep),id,i]
+    if worst.is_empty() or key<worst.key: worst = {"key":key,"army":id,"index":i,"unit":u.unit}
+  if worst.is_empty(): return
+  Armies.disband(state,worst.army,worst.index)
+  report.actions.append({"action":"disband","faction":f,"army":worst.army,"unit":worst.unit})
+  _power_cache.clear()
+
 # Raise a new army when under the faction's army target and it can pay a general plus a margin.
 static func _raise(state,f: String,p: Dictionary,report: Dictionary):
  var r = data().recruitment
@@ -259,6 +337,7 @@ static func _raise(state,f: String,p: Dictionary,report: Dictionary):
   if best == "" or float(state.settlements[sid].population)>float(state.settlements[best].population): best = sid
  if best == "": return
  var res = Armies.raise_army(state,f,best)
+ _invalidate()
  if res.ok: report.actions.append({"action":"raise","faction":f,"army":res.army,"settlement":best})
 
 static func role_of(unit_id: String) -> String:
@@ -425,6 +504,8 @@ static func resolve_as_defender(state,pb: Dictionary,report: Dictionary,controll
  if pb.kind == "army":
   if defender_withdraws(state,pb):
    var w = Battles.withdraw(state,pb)
+   _power_cache.clear() # the withdrawal cost men
+   _invalidate()
    if w.ok:
     var e = Chronicle.withdraw_entry(state.year,pb)
     state.chronicle.append(e)
@@ -436,6 +517,7 @@ static func resolve_as_defender(state,pb: Dictionary,report: Dictionary,controll
  var human = state.player_faction != "" and not state.player_faction in controlled
  var fast = not human or (pb.attacker.faction != state.player_faction and pb.defender.faction != state.player_faction)
  var out = Battles.quick_resolve(state,pb,fast)
+ _invalidate()
  report.entries.append_array(out.aftermath.entries)
  report.actions.append({"action":"battle","attacker":pb.attacker.faction,"defender":pb.defender.faction,"winner":out.result.winner,"captured":out.aftermath.captured})
  return out
@@ -447,8 +529,8 @@ static func _flee(state,id: String,f: String,report: Dictionary) -> bool:
  var at = Movement.position(state,id)
  var enemies = at_war_with(state,f)
  var t = 0.0
- for o in _sorted(state.army_state.keys()):
-  if state.army_state[o].faction in enemies and Movement.position(state,o).distance_to(at)<=float(data().reach.threat_meters): t += army_power(state,o)
+ for e in _armies(state):
+  if e.faction in enemies and e.pos.distance_to(at)<=float(data().reach.threat_meters): t += army_power(state,e.id)
  if t<=army_power(state,id)*float(data().defend.flee_ratio): return false
  var home = _nearest_own(state,f,at)
  if home == "": return false
@@ -470,7 +552,9 @@ static func _stage(state,id: String,f: String,p: Dictionary,look: Dictionary,rep
    if not t.faction in look.enemies: continue
    if tries>=int(data().reach.plan_candidates): break
    tries += 1
-   if float(t.ratio)<float(data().attack.march_ratio)/float(p.boldness): break
+   var force = maxf(float(t.ratio),strategic_power(state,f,t.position)/maxf(1.0,float(t.defense)))
+   if t.kind == "settlement" and walled(state,t.id): force *= (1.0+float(data().power.wall_bonus))*float(data().war.siege_weight)
+   if force<float(data().attack.march_ratio)/float(p.boldness): continue
    var appr = Battles.approach(state,id,t)
    if appr.ok or not appr.has("point"): continue # in reach (attack declined) or unreachable
    var m = _move(state,report,id,appr.point)
@@ -516,10 +600,12 @@ static func _nearest_own(state,f: String,at: Vector2) -> String:
 # Every AI move goes through here so the map can replay it (report.moves: army -> points walked).
 static func _move(state,report: Dictionary,id: String,point: Vector2) -> Dictionary:
  var r = Movement.order(state,id,point)
+ _invalidate()
  if r.ok: _record(report,id,r.get("moved",[]))
  return r
 
 static func _record(report: Dictionary,id: String,walked: Array):
+ _invalidate()
  if walked.size()<2: return
  if not report.moves.has(id): report.moves[id] = walked.duplicate()
  else: report.moves[id].append_array(walked.slice(1))

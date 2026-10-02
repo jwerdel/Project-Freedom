@@ -19,8 +19,8 @@
   },
   "odds": {
     "_note": "Battle odds. A power ratio (own / enemy) above sure_ratio or below hopeless_ratio decides without simulating; between them the AI runs odds_runs seeded fast simulations (Battles.odds, the same estimate the player's balance bar uses, with fewer runs; about 3 ms each in the debug build). At most odds_budget such estimates per faction per turn; beyond that the win chance is read off a logistic curve 1 / (1 + exp(-curve_k x (ratio - 1))).",
-    "odds_runs": 6,
-    "odds_budget": 2,
+    "odds_runs": 5,
+    "odds_budget": 1,
     "curve_k": 3.0,
     "sure_ratio": 2.2,
     "hopeless_ratio": 0.45
@@ -40,8 +40,10 @@
     "flee_ratio": 1.6
   },
   "war": {
-    "_note": "Declaring war on a faction not yet at war (temporary rule: attacking declares war). Each turn, for its best opportunity against a faction it is at peace with, a faction declares with chance base_chance x aggression x weakness, where weakness = min(2, own power / target defence) - 1 (0 when not stronger). max_wars caps simultaneous wars it starts (wars never end yet: no peace exists). The faction must also pass the attack odds test for the target itself.",
+    "_note": "Declaring war on a faction not yet at war (temporary rule: attacking declares war). Each turn, for its best opportunity against a faction it is at peace with, a faction declares with chance base_chance x aggression x weakness, where weakness = min(2, score) - 1 (0 when not stronger); score = the power of its field armies within war_meters x gather_share (or the attacking army's own ratio, if higher) / target defence; for a walled settlement siege_weight x that ratio without walls when higher (a target it could besiege). The same force ratio decides whether armies march on a target. max_wars caps simultaneous wars it starts (wars never end yet: no peace exists). The faction must also pass the attack odds test for the target itself.",
     "base_chance": 0.12,
+    "siege_weight": 0.8,
+    "gather_share": 0.8,
     "max_wars": 2
   },
   "economy": {

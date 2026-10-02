@@ -379,6 +379,138 @@ Screenshots (generated, in `captures/`):
 - `pause_menu.png`
 - `loaded_goldspire.png` (a save loaded through the menu)
 
+## Campaign AI (2026-10-01)
+
+Design: `docs/ai-design.md`. Code: `core/ai.gd`. Weights: `data/ai.json`. Faction traits: `data/factions.json`, from docs/world.md:
+- Aurek: income-focused, cruel when crossed
+- Verrin: generous, income-focused, levy-heavy
+- Lannet: none listed
+
+End Turn runs the yearly processing, then the AI phase, where every AI faction acts with full movement through the player's own functions. AI attacks on the player wait in `state.pending_battles`, and the pre-battle panel opens with the player defending (no Close). The camera follows AI armies that move near the player's lands; Space or Esc skips, and Settings has a "Follow AI armies" switch. Wars, battles and captures between AI factions appear in Event Messages ("Wars and Battles") and the chronicle. Besieged settlements show a "BESIEGED n/m" tag on the map. The camera is saved with each save (save schema 2, with a migration from schema 1).
+
+**Main data values (placeholders):**
+
+| Area | Values |
+|---|---|
+| Reach | 55 m (one turn of 60 points); threat radius 70 m; strategic range 160 m |
+| Odds screen | ratio ≥ 2.2 counts as sure, ≤ 0.45 as hopeless; between, 5 fast simulations, at most 1 per faction per turn, else a logistic curve (k = 3) |
+| Attack | win chance ≥ 0.65; assault walls only at ≥ 0.8, else besiege when the no-walls ratio ≥ 0.9; march on targets at force ratio ≥ 1.2 |
+| Defence | threatened at threat > 0.8 × defence; help only if it reaches 0.75 of the threat; flee when facing more than 1.6 × own power; withdraw from field battles below 0.25 |
+| War | chance 0.12 × aggression × weakness; at most 2 wars at once; field force counted at 0.8 |
+| Economy | reserve 1,200 gold × personality; net income never below 50 after new upkeep; 1 build per turn; separate weights for safe and threatened settlements |
+| Recruitment | composition spear 0.3, infantry 0.25, missile 0.25, cavalry 0.1, levy 0.1 (Verrin levy-heavy); 10 units per army, up to the cap when treasury > 3 × reserve; 2 recruits per army per turn; emergency floor 0.25 × reserve with no army or under 6 units |
+| Personality | expansionist aggression × 2.5; cruel × 1.5; treacherous × 1.3 and opportunist; income-focused × 0.8, reserve × 1.6; generous and kind × 0.3; passive × 0.15 |
+
+**Fixes found along the way:**
+- The player's Besiege did not march to the settlement first, so the siege lifted at the next End Turn. Besiege now moves along the approach, as Quick Resolve does.
+- The chronicle's yearly ledger kept listing eliminated factions, even naming one "the fullest treasury". Factions gone from the map are now skipped.
+- GUT exits 0 when a test file fails to parse; it silently skipped `test_recruitment.gd` once. Test runs now check the log for parse errors.
+- `Movement.plan` re-marked every foreign army's cells on the A* grid for each path, costing O(armies) per plan. The blocked cells now stay applied until armies move or owners change: plans are 3–8× faster, with identical paths.
+
+**Tests:** 162/162 GUT tests pass (13 new in `tests/test_ai.gd`, 2 new in `tests/test_saves.gd`). `tests/test_ai.gd` covers:
+- exact gold accounting over 25 all-AI turns
+- no debt from spending, the army and unit caps, movement within allowance, and no recruiting or building into negative income
+- captain-led armies stay put
+- defending a threatened settlement
+- refusing bad odds (it falls back instead)
+- besieging walls it cannot storm and assaulting when it can
+- attacks on a human player waiting for the player, the panel as defender, and pending attacks surviving a save or being dropped when stale
+- a hopeless AI army withdrawing when the player attacks
+- recruiting a unit mix
+- personality: over 6 seeded 25-turn campaigns, expansionist factions started 4 wars and passive or kind factions started 0
+- determinism
+
+The placeholder AI stubs and their 5 tests were removed. The self-test passes.
+
+**Soak test** (`scripts/ai_soak.gd`): 50 turns, all factions AI, 8 seeds, world.md traits. The first seed was run twice and gave identical results.
+
+| Seed | Wars | Battles | Sieges | Captures | Withdrawals | Eliminated | Final settlements (Aurek / Lannet / Verrin) | Final treasury (Aurek / Lannet / Verrin) |
+|---|---|---|---|---|---|---|---|---|
+| 11 | 2 | 2 | 2 | 3 | 2 | Lannet, Verrin | 4 / 0 / 0 | 5,643 / −1,036 / 3,156 |
+| 22 | 2 | 3 | 2 | 3 | 0 | Lannet, Verrin | 4 / 0 / 0 | 8,633 / 2,799 / 3,446 |
+| 33 | 2 | 4 | 4 | 7 | 0 | Verrin | 2 / 2 / 0 | 5,707 / 684 / 3,077 |
+| 44 | 2 | 3 | 1 | 2 | 0 | Verrin | 2 / 2 / 0 | 2,651 / 2,055 / 3,489 |
+| 55 | 1 | 1 | 0 | 1 | 0 | Verrin | 3 / 1 / 0 | 2,309 / 4,590 / 3,116 |
+| 66 | 2 | 3 | 1 | 3 | 0 | Verrin | 1 / 3 / 0 | 746 / 2,835 / 3,446 |
+| 77 | 2 | 2 | 1 | 2 | 0 | Verrin | 2 / 2 / 0 | 2,046 / 2,696 / 3,319 |
+| 88 | 2 | 2 | 2 | 3 | 1 | Lannet, Verrin | 4 / 0 / 0 | 6,898 / −6,024 / 3,237 |
+
+Armies at the end, Aurek / Lannet:
+
+| Seed | Aurek | Lannet |
+|---|---|---|
+| 11 | 2 armies, 20 units | 1 army, 10 units |
+| 22 | 2, 37 | 0, 0 |
+| 33 | 2, 26 | 2, 0 |
+| 44 | 1, 8 | 2, 26 |
+| 55 | 2, 20 | 1, 19 |
+| 66 | 1, 1 | 2, 24 |
+| 77 | 2, 13 | 2, 26 |
+| 88 | 2, 36 | 1, 4 |
+
+No crashes. No stuck armies. Seed 44 reports Verrin idle for 10 turns before it fell.
+
+An expansionist variant (all three factions expansionist) produced 1–3 wars per seed and eliminations of both other houses in 2 of 8 seeds. It is calmer than the default, because three factions building big armies deter each other (AI time per turn: average 6.5 ms, 95th percentile 15 ms).
+
+**AI time per turn** (debug build, all factions, this map):
+
+| Statistic | ms |
+|---|---|
+| Average | 7.6 |
+| Median | 4.6 |
+| 95th percentile | 31 |
+| Max | 66 |
+
+- The 66 ms maximum is the first turn of a session, a one-time A* grid build.
+- War turns run 30–55 ms: one 5-run odds simulation, a battle, aftermath and retreat plans.
+- Quiet turns run 2–7 ms.
+
+So the 50 ms target is met except on the first turn and some battle turns.
+
+**Scaling** (synthetic: K armies per settlement, everyone at war, median of 3 runs):
+
+| Armies | AI phase |
+|---|---|
+| 9 | 14 ms |
+| 17 | 19 ms |
+| 30 | 38 ms |
+| 59 | 67 ms |
+
+Before the snapshot and A* changes the same runs took 21 / 39 / 98 / 294 ms. Cost is now about linear in armies.
+
+V1 estimate (about 30 settlements, about 15 factions, 45–60 armies): about 60–90 ms for the assessment and movement part. On top of that come up to 15 odds simulations (about 15 ms each) and the battles fought that turn, so a busy war turn could reach about 150–300 ms in the debug build. Before V1, I'd recommend:
+- a per-phase rather than per-faction odds budget
+- a faster fast-mode simulation or a learned odds table
+- spreading factions over frames
+
+**What the AI does poorly:**
+- Every seed opens the same way. House Verrin (weakest economy) falls between years 5 and 13; the seed only changes rolls, so variety is low. After that, wars stall unless one side clearly outgrows the other.
+- With the world.md traits nobody is expansionist on this map, so AI-started wars are rare.
+- Armies coordinate only through the reinforcement radius and gathering; the first army to arrive may besiege alone.
+- Target choice weighs only weakness, not value (rich or strategic settlements).
+- Reach is straight-line, so a target behind a mountain can look reachable while its approach is multi-turn (the attack is then skipped).
+- Besieged AI defenders never sally, and relief comes only from armies already within reach.
+- A faction whose income collapses can end with empty armies (Lannet in seed 33). A faction with no settlements left keeps its army and runs into debt (Lannet in seeds 11 and 88).
+- Odds beyond one simulation per faction-turn come from a curve, which is coarse near even odds.
+
+**Design gaps hit:**
+- No peace exists, so wars never end and accumulate until diplomacy.
+- No relationship web, alliances or treaties: the betrayal rules are moot, and "wariness" is AI-internal only.
+- What a negative treasury does is open, so the AI only avoids it.
+- Disbanding a whole army or its general is open, so empty armies and homeless armies linger.
+- The maximum number of armies (placeholder 3) and one army per settlement for raising limit rich factions.
+- AI factions have no fog of war, but neither does the player.
+- Sack, raze and expel stay open, so captures occupy only.
+
+**Screenshots** (generated, in `captures/`):
+
+| File | Shows |
+|---|---|
+| `ai_siege.png` | House Lannet besieging Crownwatch; the banner reads "BESIEGED 0/3" |
+| `ai_attacks_player.png` | "House Lannet of Silverfall attacks! Battle in the field": the pre-battle panel with the player defending (Deploy, Quick resolve, Withdraw; no Close) |
+| `chronicle_ai_wars.png` | The Grey Scribes recording Lannet's war on Verrin, the Field of Willowmere and its capture |
+| `ai_follow.png` | The camera following "The Silverfall Guard marches" during End Turn |
+
 ## Remaining limitations
 
 - Artwork is a prototype and has not been approved against the desired 2016 Total War campaign-map benchmark.

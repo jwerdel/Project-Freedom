@@ -37,6 +37,7 @@ static func reset():
  _grid = null
  _astar = {}
  _costs = {}
+ _applied = {}
 
 # The baked grid: {cell, origin, cols, rows, terrain (PackedByteArray of terrain indices), names,
 # road (PackedByteArray, 1 where a road crosses the cell)}.
@@ -182,6 +183,44 @@ static func garrison_of(state,settlement_id: String) -> Array:
  return out
 
 # Cells the army may not enter: foreign settlements and other factions' armies (battle).
+# Foreign armies and settlements are solid for a faction's paths. They stay applied on the shared
+# A* grid between plans and are re-applied only when the faction, road level, foreign armies'
+# positions or settlement owners change (each application costs O(armies x cells), and the AI
+# plans many paths in a row).
+static var _applied = {} # road level -> {key, cells}
+
+static func _apply_blocks(state,a: AStarGrid2D,faction: String):
+ var parts = [faction,str(state.road_level)]
+ var ids = state.army_state.keys()
+ ids.sort()
+ for id in ids:
+  var o = state.army_state[id]
+  if o.faction != faction: parts.append("%s@%s" % [id,str(o.position)])
+ for sid in WorldMap.settlement_ids(): parts.append(state.settlements[sid].owner)
+ var key = "|".join(parts)
+ var ap = _applied.get(state.road_level,{})
+ if ap.get("key","") == key: return
+ for c in ap.get("cells",[]): a.set_point_solid(c,cell_cost(c,state.road_level)<0)
+ var cells = _faction_blocked_cells(state,faction)
+ for c in cells: a.set_point_solid(c,true)
+ _applied[state.road_level] = {"key":key,"cells":cells}
+
+static func _faction_blocked_cells(state,faction: String) -> Array:
+ var out = []
+ var areas = []
+ for id in WorldMap.settlement_ids():
+  if state.settlements[id].owner != faction: areas.append([WorldMap.settlement_position(id),float(data().settlements.radius)])
+ for other in state.army_state:
+  if state.army_state[other].faction != faction: areas.append([position(state,other),float(data().armies.block_radius)])
+ for a in areas:
+  var lo = cell_of(a[0]-Vector2.ONE*a[1])
+  var hi = cell_of(a[0]+Vector2.ONE*a[1])
+  for z in range(lo.y,hi.y+1):
+   for x in range(lo.x,hi.x+1):
+    var c = Vector2i(x,z)
+    if in_grid(c) and center_of(c).distance_to(a[0])<=a[1]: out.append(c)
+ return out
+
 static func _blocked_cells(state,army_id: String) -> Array:
  var me = army(state,army_id)
  var out = []
@@ -223,17 +262,13 @@ static func plan(state,army_id: String,target: Vector2,retreating := false) -> D
  var me = army(state,army_id)
  var start = position(state,army_id)
  var a = _astar_for(state.road_level)
- var blocked = _blocked_cells(state,army_id)
+ _apply_blocks(state,a,me.faction)
  var from = cell_of(start)
  var to = cell_of(dest.point)
- for c in blocked:
-  if c != from: a.set_point_solid(c,true)
  var was_solid = a.is_point_solid(from)
  a.set_point_solid(from,false)
  var cells = a.get_id_path(from,to) if not a.is_point_solid(to) else []
  a.set_point_solid(from,was_solid)
- for c in blocked:
-  if c != from: a.set_point_solid(c,cell_cost(c,state.road_level)<0)
  if cells.is_empty(): return {"ok":false,"reason":NO_ROUTE}
  var points = [start]
  for i in range(1,cells.size()-1): points.append(center_of(cells[i]))

@@ -2,6 +2,7 @@ extends SceneTree
 # Headless AI-only campaign soak test (docs/ai-design.md): every faction, the player's included,
 # is AI-controlled. Usage:
 #   runtime\Godot.exe --headless --path . -s scripts/ai_soak.gd -- [turns] [seed,seed,...] [--verbose]
+#     [--traits=faction:trait+trait;...] [--armies=N]
 # Per seed: wars declared, battles, captures, factions eliminated, final treasuries and armies,
 # stuck armies (never moved while their faction was at war) and idle factions (no action for 10
 # turns), AI time per turn; then a determinism check (the first seed played twice).
@@ -12,6 +13,7 @@ const SaveCodec = preload("res://core/save_codec.gd")
 const Armies = preload("res://core/armies.gd")
 const Battles = preload("res://core/battles.gd")
 const Ai = preload("res://core/ai.gd")
+const WorldMap = preload("res://core/world_map.gd")
 
 func _initialize():
  var args = Array(OS.get_cmdline_user_args())
@@ -19,6 +21,16 @@ func _initialize():
  var seeds = [11,22,33,44,55]
  if args.size()>1 and not args[1].begins_with("--"): seeds = Array(args[1].split(",")).map(func(x): return int(x))
  var verbose = "--verbose" in args
+ # --traits=house_lannet:expansionist+cruel;house_verrin:passive overrides faction traits (variants).
+ # --armies=N lets every faction keep up to N armies (scaling measurements).
+ for a in args:
+  if a.begins_with("--traits="):
+   for part in a.get_slice("=",1).split(";"):
+    WorldMap.faction(part.get_slice(":",0)).traits = Array(part.get_slice(":",1).split("+"))
+  if a.begins_with("--armies="):
+   Armies.data().armies.max_per_faction = int(a.get_slice("=",1))
+   Ai.data().recruitment.base_armies = int(a.get_slice("=",1))
+   print("ARMIES up to %d per faction" % int(a.get_slice("=",1)))
  var all_ms = []
  for sd in seeds:
   var r = run(sd,turns,verbose)

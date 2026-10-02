@@ -34,6 +34,7 @@ Randomness in AI choices (war rolls, tie-breaks) comes only from a generator see
    - *Reach* is straight-line distance up to `reach_meters` (one turn's allowance at average terrain cost). Movement.plan confirms it only for the actions finally chosen.
    - **Threats** are enemy armies within reach of an own settlement, plus wary neighbours' armies (cruel or treacherous factions not yet at war).
    - **Opportunities** are enemy settlements and armies within reach whose defence is low compared with an own army's power.
+   - An attacking army counts its own armies within reinforcement range of the target, as the battle will. War and march decisions count the whole field force within `war_meters` × `gather_share`, so separate armies converge on one target.
    - The power ratio screens everything cheaply. The simulation-based odds estimate (`Battles.odds`, with `odds_runs` seeded runs) is used only for an actual attack decision whose ratio sits in the uncertain band, at most `odds_budget` times per faction per turn. Otherwise a logistic curve of the ratio stands in, and war declarations always use the curve.
 2. **War.**
    - At war already: opportunities against those enemies are taken on merit.
@@ -52,6 +53,7 @@ Randomness in AI choices (war rolls, tie-breaks) comes only from a generator see
    - A new army is raised when the faction can afford its general and some units, is under its personality's army target, and stays under the faction cap.
    - A faction with no army, or with hardly any units, digs into its reserve, keeping only `emergency_reserve_share` of it.
    - A rich faction (more than `rich_factor` × its reserve) fills its armies past `field_units`, up to the army cap.
+   - **Books:** when next year would end in debt, it disbands its least efficient units, least power per upkeep first. It does this only if disbanding can balance the books; what a negative treasury does is open in the constitution.
 5. **Armies** take one job each turn, in priority order:
    1. **Defend:** move into or next to a threatened settlement that can still be saved.
    2. **Attack:** an opportunity with odds ≥ `attack.min_odds` (personality-adjusted). A walled target is **besieged** instead, unless its assault odds reach `attack.assault_min_odds`. It is besieged only when the army could beat the defenders in the open (power ratio without walls at least `siege_ratio`).
@@ -98,7 +100,7 @@ Target: **under 50 ms for all AI factions per turn** on this map (4 settlements,
 - battle odds run only for attack decisions in the uncertain band (`odds_runs` fast simulations, about 3 ms each)
 - the battles themselves cost about 5 ms each
 
-The V1 map has about 30 settlements and about 15 factions. Assessment scales with armies × settlements, roughly 40 × 30 = 1,200 cheap checks; plans and odds scale with the number of armies acting. The estimate is about 15× today's cost, so the budget may need a per-faction time slice or cached reachability. This is measured and reported in the AI block's validation.
+The V1 map has about 30 settlements and about 15 factions. Assessment scales with armies × settlements, roughly 40 × 30 = 1,200 cheap checks; plans and odds scale with the number of armies acting. Measured: the per-phase army snapshot and keeping A* blocked cells applied between plans made the cost about linear in armies (VALIDATION.md, "Campaign AI").
 
 ## 7. Gaps and open questions
 
