@@ -24,11 +24,19 @@ var road_level := 0   # road network level: 0 dirt, 1 gravel, 2 stone
 var chronicle = []    # {year, category, title, text}
 var last_ledgers = {} # faction id -> ledger of the last processed turn
 
-static func from_data(path := START) -> RefCounted:
+# A new campaign with a random campaign seed (stored in the state; every later random draw is
+# seeded from it, so a campaign replays exactly from its seed).
+static func new_campaign(path := START) -> RefCounted:
+ var rng = RandomNumberGenerator.new()
+ rng.randomize()
+ return from_data(path,rng.randi_range(1,2147483646))
+
+# The starting state. campaign_seed 0 uses the start file's fixed seed (tests, self-test, captures).
+static func from_data(path := START,campaign_seed := 0) -> RefCounted:
  var data = JSON.parse_string(FileAccess.get_file_as_string(path))
  assert(data is Dictionary and data.has("settlements"),"Invalid campaign start: "+path)
  var s = load("res://core/game_state.gd").new()
- s.seed = int(data.seed)
+ s.seed = campaign_seed if campaign_seed != 0 else int(data.seed)
  s.year = int(data.year)
  s.turn = 1
  s.player_faction = data.player_faction

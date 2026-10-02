@@ -194,7 +194,7 @@ func _ready():
  if "--chronicle" in OS.get_cmdline_user_args(): ui.toggle_chronicle()
  if "--self-test" in OS.get_cmdline_user_args():
   run_checks()
- print("FREEDOM_READY | city=%s road=%s traffic=%s" % [city_level,road_level,traffic.size()])
+ print("FREEDOM_READY | city=%s road=%s traffic=%s seed=%d" % [city_level,road_level,traffic.size(),ui_data.state.seed])
 
 func make_environment():
  environment = Environment.new()
@@ -490,12 +490,21 @@ func make_commander():
 # --- Campaign UI ---------------------------------------------------------------
 # The TW:WH3-style shell lives in ui/campaign_ui.gd and reads only from UiData (core/ui_data.gd).
 
+# A new campaign gets a random seed; captures and the self-test use the start file's fixed seed,
+# and --seed=N replays a given campaign.
+func _campaign():
+ var GameState = load("res://core/game_state.gd")
+ for arg in OS.get_cmdline_user_args():
+  if arg.begins_with("--seed="): return GameState.from_data(GameState.START,int(arg.get_slice("=",1)))
+ if capture_mode or "--self-test" in OS.get_cmdline_user_args(): return GameState.from_data()
+ return GameState.new_campaign()
+
 func make_ui():
  var layer = CanvasLayer.new()
  add_child(layer)
  studio = PortraitStudio.new()
  add_child(studio)
- ui_data = UiData.new()
+ ui_data = UiData.new(_campaign())
  ui_data.set_settlement_level(CITY_ID,city_level)
  ui_data.set_settlement_level(GOLDSPIRE_ID,goldspire_level)
  pins_root = Control.new()

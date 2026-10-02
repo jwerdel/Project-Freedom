@@ -128,7 +128,7 @@ New battle stats go into `data/units/*.json` next to the existing placeholder st
 
 ## 5. Simulation
 
-A deterministic, seeded, tick-based model. The seed is hash(campaign seed, year, battle index); the same inputs always give the same battle and the same report. At most 30 ticks. Each tick runs these phases in a fixed order (side, lane, line, slot):
+A deterministic, seeded, tick-based model. The seed is hash(campaign seed, year, the campaign's battle counter, both sides' army IDs); each new campaign gets a random campaign seed. The same inputs always give the same battle and the same report. At most 30 ticks. Each tick runs these phases in a fixed order (side, lane, line, slot):
 
 1. **Missiles:** units with ammunition fire at the nearest visible enemy in range (own lane first, then adjacent). Kills = men x 0.04 x missile damage x accuracy (0.6, x weather) x armour factor x (1 - shield if frontal) x forest cover.
 2. **Movement:** aggressive units advance; flankers count down their delay; reserves commit if triggered.

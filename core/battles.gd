@@ -159,10 +159,17 @@ static func prebattle(state,army_id: String,target: Dictionary) -> Dictionary:
  var pb = {"kind":target.kind,"settlement":sid,"siege_turns":siege_turns,"position":[at.x,at.y],
   "attacker":{"faction":me.faction,"army":army_id,"reinforcements":_reinforcements(state,me.faction,at,[army_id])},
   "defender":{"faction":target.faction,"armies":defenders,"reinforcements":_reinforcements(state,target.faction,at,defenders)},
-  "field":field,"seed":hash([state.seed,state.year,state.battles]),"lanes":field.lanes}
+  "field":field,"seed":battle_seed(state,army_id,defenders,sid),"lanes":field.lanes}
  pb.weather = BattleSim.roll_weather(pb.seed)
  pb.odds = odds(state,pb)
  return pb
+
+# Seed of a battle: the campaign seed, the year, the campaign's battle counter and both sides'
+# army IDs, so two battles in the same year differ while every battle stays reproducible.
+static func battle_seed(state,attacker: String,defenders: Array,settlement := "") -> int:
+ var d = defenders.duplicate()
+ d.sort()
+ return hash([state.seed,state.year,state.battles,attacker,d,settlement])
 
 # Battle setup for the simulation, with the factions' default templates (quick resolve).
 static func setup(state,pb: Dictionary,seed: int,fast := false) -> Dictionary:
