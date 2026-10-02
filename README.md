@@ -20,23 +20,35 @@ The launcher imports project assets automatically on the first run.
 
 ## Explore
 
+Controls follow Total War: Warhammer III (see `docs/tw-ui-parity.md`).
+
 | Control | Action |
 |---|---|
-| WASD / arrow keys | Move across the map |
-| Right mouse drag | Orbit and tilt |
-| Middle mouse drag | Pan |
-| Mouse wheel | Zoom |
-| Home | Return to the overview |
-| Tab | Hide/show the interface |
-| Escape | Close the open panel (or show a hidden interface); with nothing open, open the pause menu |
+| Left click | Select an army, settlement or unit card; on empty ground, cancel the selection. Selecting never moves the camera |
+| Right click (hold) | Preview the move: a coloured path (green = this turn, then a colour per later turn), with no numbers. The movement bar shows in green what it would spend (red if it takes longer). Release to give the order; left click or Escape while holding cancels |
+| Right click on an enemy | Move to it and open the attack (pre-battle) panel |
+| WASD / arrow keys | Pan (hold Shift to pan faster) |
+| Q / E | Rotate the camera |
+| Middle mouse drag | Orbit and tilt |
+| Mouse wheel | Zoom (the tilt follows the zoom) |
+| Home / End | Pan to your capital / reset the rotation |
+| , / . | Previous / next army (or settlement, when one is selected); the camera pans at the current zoom |
+| Backspace | Cancel the selected army's order |
+| Ctrl+P | Disband the selected unit |
+| 3 / 4 | Building browser of the selected settlement / recruitment drawer of the selected army |
+| Hold Space | Show settlement banners at any zoom |
+| Enter | End turn. While End Turn warnings are pending (low funds, construction available, army can still move) it jumps to the next one instead |
+| Shift+Enter | End turn, skipping the warnings |
+| H | Jump to the current End Turn warning |
 | Ctrl+S / Ctrl+L | Quicksave / quickload |
-| Space / Escape (End Turn) | Skip following the AI armies that move near your lands (Settings: Follow AI armies) |
-| Left click | Select a settlement (province panel) or the commander (army panel) |
-| Hover | Tooltip with name, faction and province for settlements, the commander and unit cards |
-| C | Select the commander and open the army panel |
-| F12 | Save a real in-engine screenshot in captures |
+| Escape | Cancel a held move; else close the open panel (or show a hidden interface); with nothing open, open the pause menu |
+| Space / Escape (AI turn) | Skip following the AI armies (also the ">> Skip" button; Settings: Follow AI armies) |
+| Tab | Hide or show the interface |
+| F | Camera follows the selected army |
 | G | Jump the camera to Goldspire Rock (bookmark) |
-| End Turn button | Advance the year by one (adds "Year X begins" to Event Messages) |
+| F12 | Save a real in-engine screenshot in captures |
+| End Turn button | Same as Enter: jumps through the warnings, then advances the year |
+| Hover | TW-style tooltip: bold title, details below, pinned beside the element |
 
 The game opens on the main menu (Continue, New Campaign, Load, Settings, Quit). End Turn autosaves first (three rotating slots); saves live in `.local` via `user://saves`. Add `-- --campaign` to the Godot command line to skip the menu and start the prototype campaign directly.
 
@@ -50,7 +62,7 @@ On by default for now; switch them off in Settings (Debug keys).
 | F6 | Cycle Goldspire Rock through its three stages |
 | F7 | Cycle roads (dirt, gravel, stone) |
 | L | Toggle daylight / late afternoon |
-| Space | Pause/resume trade traffic and mill |
+| F8 | Pause/resume trade traffic and mill |
 
 The campaign UI is modeled on Total War: Warhammer III (see constitution.md). Click a settlement to open its province stats and the province panel (settlement tabs with building slot cards); click the commander for the army panel with unit cards. Economy, events, province stats and buildings are mock values from `data/mock_ui.json`, read through `core/ui_data.gd`. Greyhaven and road stages (F5, F7) alter the actual 3D geometry. Pause affects traffic and the windmill; ambient water and cloth continue moving.
 

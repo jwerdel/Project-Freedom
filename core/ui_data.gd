@@ -551,3 +551,50 @@ func fight(pb: Dictionary,dep: Dictionary) -> Dictionary:
  var p = pb.duplicate()
  p.deployment = dep
  return quick_resolve(p)
+
+# What a held right click on an enemy army or settlement would do: {ok, reason, name, plan (the
+# march to the attack position, as Movement.plan returns it)}. No odds (that is the pre-battle panel).
+func attack_preview(army_id: String,point: Vector2) -> Dictionary:
+ var t = Battles.target_at(state,army_id,point)
+ if t.kind == "": return {"ok":false,"reason":"Blocked","name":"","plan":{}}
+ var name = settlement(t.id).name if t.kind == "settlement" else state.army_state[t.id].display_name
+ var a = Battles.approach(state,army_id,t)
+ var plan = a.get("plan",{})
+ if plan.is_empty() and a.ok:
+  var here = Movement.position(state,army_id)
+  plan = {"ok":true,"points":[here,here],"turns":[0,0],"total_turns":1,"cost":0.0}
+ return {"ok":a.ok,"reason":a.get("reason",""),"name":name,"plan":plan}
+
+# --- End Turn warnings (TW:WH3 end-turn notifications, docs/tw-ui-parity.md E2-E4) ------------
+# The kinds that apply to systems we have; each can be switched off in Settings:
+#   construction: an own settlement with nothing being built and something it can build now
+#   army_moves:   an own army (led by a general, with units) that can still move and has no order
+#   funds:        the treasury is in debt or will be after this turn's income and upkeep
+# Returns [{kind, label, items: [{type: settlement|army, id, name}]}], in this order.
+const WARNINGS = [["funds","Low funds"],["construction","Construction available"],["army_moves","Army can still move"]]
+
+func end_turn_warnings(enabled := {}) -> Array:
+ var out = []
+ var f = player_faction_id()
+ for w in WARNINGS:
+  if not enabled.get(w[0],true): continue
+  var items = []
+  match w[0]:
+   "funds":
+    if Realm.in_debt(state,f) or int(state.treasury[f])+int(Economy.faction_ledger(state,f).net)<0:
+     items.append({"type":"faction","id":f,"name":"Treasury"})
+   "construction":
+    for sid in state.settlements_of(f):
+     if not Construction.in_progress(state,sid).is_empty(): continue
+     var can = false
+     for i in state.settlements[sid].buildings.size():
+      for o in Construction.options(state,sid,i):
+       if o.available: can = true
+     if can: items.append({"type":"settlement","id":sid,"name":settlement(sid).name})
+   "army_moves":
+    for id in Armies.armies_of(state,f):
+     var a = state.army_state[id]
+     if a.units.is_empty() or not a.order.is_empty() or not Battles.can_move(state,id): continue
+     if float(a.points)>=float(a.max_points)*0.25: items.append({"type":"army","id":id,"name":a.display_name})
+  if not items.is_empty(): out.append({"kind":w[0],"label":w[1],"items":items})
+ return out

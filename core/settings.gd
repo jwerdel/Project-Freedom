@@ -6,7 +6,8 @@ extends RefCounted
 const PATH = "user://settings.json"
 const RESOLUTIONS = [Vector2i(1280,720),Vector2i(1440,900),Vector2i(1600,1000),Vector2i(1920,1080)]
 const UI_SCALES = [0.8,1.0,1.25,1.5]
-const DEFAULTS = {"resolution":[1440,900],"fullscreen":false,"ui_scale":1.0,"debug_keys":true,"follow_ai_moves":true}
+const DEFAULTS = {"resolution":[1440,900],"fullscreen":false,"ui_scale":1.0,"debug_keys":true,"follow_ai_moves":true,
+ "warn_funds":true,"warn_construction":true,"warn_army_moves":true}
 
 static var _current = null
 
@@ -51,3 +52,7 @@ static func apply(tree: SceneTree):
    DisplayServer.window_set_size(size)
    var screen = DisplayServer.screen_get_usable_rect()
    DisplayServer.window_set_position(screen.position+(screen.size-size)/2)
+
+# Which End Turn warnings show (TW:WH3's notification settings), keyed like UiData.WARNINGS.
+static func end_turn_warnings() -> Dictionary:
+ return {"funds":bool(get_value("warn_funds")),"construction":bool(get_value("warn_construction")),"army_moves":bool(get_value("warn_army_moves"))}

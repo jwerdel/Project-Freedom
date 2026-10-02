@@ -24,8 +24,8 @@ func _ready():
  frame.anchor_bottom = 0.5
  frame.offset_left = -260
  frame.offset_right = 260
- frame.offset_top = -225
- frame.offset_bottom = 225
+ frame.offset_top = -275
+ frame.offset_bottom = 275
  add_child(frame)
  var v = VBoxContainer.new()
  v.add_theme_constant_override("separation",10)
@@ -78,7 +78,15 @@ func _ready():
  fol.button_pressed = Settings.follow_ai_moves()
  fol.toggled.connect(func(on): Settings.set_value("follow_ai_moves",on))
  grid.add_child(fol)
- grid.add_child(UiKit.label("Debug keys (F5-F7, L, Space)",16))
+ for wk in [["warn_funds","End Turn warning: low funds"],["warn_construction","End Turn warning: construction available"],["warn_army_moves","End Turn warning: army can still move"]]:
+  grid.add_child(UiKit.label(wk[1],16))
+  var cb = CheckBox.new()
+  cb.name = wk[0]
+  cb.focus_mode = Control.FOCUS_NONE
+  cb.button_pressed = bool(Settings.get_value(wk[0]))
+  cb.toggled.connect(func(on): Settings.set_value(wk[0],on))
+  grid.add_child(cb)
+ grid.add_child(UiKit.label("Debug keys (F5-F8, L)",16))
  var dbg = CheckBox.new()
  dbg.name = "DebugKeys"
  dbg.focus_mode = Control.FOCUS_NONE

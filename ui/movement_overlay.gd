@@ -1,6 +1,6 @@
 extends Node3D
 # Map overlays for army movement, TW:WH3-style: the planned path (this turn's reachable part in
-# green, later turns in yellow, orange and red) with turn-count markers, the standing order of an
+# green, later turns in yellow, orange and red) with plain discs where each turn ends (no numbers), the standing order of an
 # army, a blocked-destination marker, and the subtle reachable-area overlay of the selected army.
 # Draws only; all movement rules live in core/movement.gd and reach here through UiData.
 
@@ -26,7 +26,7 @@ func setup(height_fn: Callable):
 
 func _layer(kind: String) -> Node3D:
  if _layers.has(kind):
-  for c in _layers[kind].get_children(): c.queue_free()
+  clear(kind)
   return _layers[kind]
  var n = Node3D.new()
  n.name = kind
@@ -36,7 +36,10 @@ func _layer(kind: String) -> Node3D:
 
 func clear(kind: String):
  if _layers.has(kind):
-  for c in _layers[kind].get_children(): c.queue_free()
+  # Detach at once (not at the end of the frame), so has_content() is right immediately.
+  for c in _layers[kind].get_children():
+   _layers[kind].remove_child(c)
+   c.queue_free()
 
 func has_content(kind: String) -> bool:
  return _layers.has(kind) and _layers[kind].get_child_count()>0
@@ -73,32 +76,34 @@ func show_path(kind: String,points: Array,turns: Array,dim := false):
  mesh.material_override = _path_mat
  mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
  layer.add_child(mesh)
- # Turn-count markers where each turn's walk ends (Total War style), and at the destination.
+ # A plain disc where each turn's walk ends and at the destination: no numbers on the map (TW:WH3
+ # parity; the colour already says which turn).
  for i in range(1,points.size()):
   var last = i == points.size()-1
   if last or turns[i+1] != turns[i]:
-   _marker(layer,points[i],str(turns[i]+1),TURN_COLORS[mini(turns[i],TURN_COLORS.size()-1)],dim)
+   _disc(layer,points[i],TURN_COLORS[mini(turns[i],TURN_COLORS.size()-1)],dim)
 
-func _marker(layer: Node3D,p: Vector2,text: String,col: Color,dim: bool):
- var l = Label3D.new()
- l.text = text
- l.font = UiKit.FONT_BOLD
- l.font_size = 44
- l.outline_size = 14
- l.modulate = col if not dim else col.darkened(0.15)
- l.outline_modulate = Color(0.08,0.06,0.04)
- l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
- l.fixed_size = true
- l.pixel_size = 0.0011
- l.no_depth_test = true
- l.render_priority = 2
- l.position = _ground(p,1.6)
- layer.add_child(l)
+func _disc(layer: Node3D,p: Vector2,col: Color,dim: bool):
+ var m = MeshInstance3D.new()
+ var c = CylinderMesh.new()
+ c.top_radius = 0.9
+ c.bottom_radius = 0.9
+ c.height = 0.12
+ c.radial_segments = 20
+ m.mesh = c
+ var mat = StandardMaterial3D.new()
+ mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+ mat.albedo_color = col if not dim else col.darkened(0.15)
+ m.material_override = mat
+ m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+ m.position = _ground(p,LIFT+0.05)
+ layer.add_child(m)
 
-func show_blocked(p: Vector2,reason: String):
+# A blocked destination: a red cross only; the reason is shown in the cursor tooltip, not on the map.
+func show_blocked(p: Vector2,_reason: String):
  var layer = _layer("preview")
  var l = Label3D.new()
- l.text = "X  "+reason
+ l.text = "X"
  l.font = UiKit.FONT_BOLD
  l.font_size = 34
  l.outline_size = 12
@@ -111,9 +116,10 @@ func show_blocked(p: Vector2,reason: String):
  l.position = _ground(p,1.8)
  layer.add_child(l)
 
-# Reachable cells this turn: a faint cool tint following the ground, with a brighter edge line.
-const REACH_FILL = Color(0.55,0.85,1.0,0.05)
-const REACH_EDGE = Color(0.8,0.96,1.0,0.6)
+# Reachable area this turn, TW-style: a highlighted boundary (gold-yellow, the WH2 Academy colour)
+# with barely any fill.
+const REACH_FILL = Color(1.0,0.85,0.35,0.03)
+const REACH_EDGE = Color(1.0,0.83,0.29,0.85)
 func show_reachable(centers: Array,cell: float):
  var layer = _layer("reach")
  if centers.is_empty(): return
@@ -132,7 +138,7 @@ func show_reachable(centers: Array,cell: float):
    if inside.has(k+side[0]): continue
    var a = c+side[1]
    var b = c+side[2]
-   var inward = -Vector2(side[0])*0.35
+   var inward = -Vector2(side[0])*0.5
    var e = [_ground(a,0.2),_ground(b,0.2),_ground(a+inward,0.2),_ground(b+inward,0.2)]
    for idx in [0,1,2,2,1,3]:
     st.set_color(REACH_EDGE)

@@ -10,6 +10,8 @@ signal overlay_toggled(overlay: String,on: bool)
 signal follow_toggled(on: bool)
 signal cancel_order_requested(army_id: String)
 signal army_raised(army_id: String)
+signal warning_step(dir: int)
+signal warning_skip
 
 const UiKit = preload("res://ui/ui_kit.gd")
 const Widgets = preload("res://ui/widgets.gd")
@@ -17,6 +19,7 @@ const Cards = preload("res://ui/cards.gd")
 const Minimap = preload("res://ui/minimap.gd")
 const DeploymentScreen = preload("res://ui/deployment_screen.gd")
 const BattleReplay = preload("res://ui/battle_replay.gd")
+const RichTooltip = preload("res://ui/rich_tooltip.gd")
 
 const MENU = [["faction","Faction overview"],["diplomacy","Diplomacy"],["tech","Technology"],["lords","Lords and heroes"],["finance","Finance"],["objectives","Objectives"]]
 const OVERLAYS = [["borders","Territory borders"],["settlements","Settlement banners"],["armies","Armies"]]
@@ -38,6 +41,7 @@ var end_turn_button: Button
 var end_turn_year: Label
 var hover_tip: PanelContainer
 var hover_label: Label
+var hover_title: Label
 var toast_label: Label
 var fps_label: Label
 var minimap_slot: Control
@@ -74,6 +78,7 @@ func setup(ui_data,portrait_studio):
  _build_bottom()
  _build_end_turn()
  _build_overlays()
+ add_child(RichTooltip.new()) # TW-style tooltips for every control
  data.changed.connect(refresh)
  data.event_added.connect(func(_e): _rebuild_events())
  refresh()
@@ -442,7 +447,7 @@ func show_army(army_id: String,location: String):
  _fit_bottom.call_deferred()
 
 const CARD_GAP = 4
-const ARMY_PANEL_WIDTH = 1180.0
+const ARMY_PANEL_WIDTH = 1080.0 # leaves room for the End Turn cluster on the right
 
 # Card scale so `count` cards (the general counts 1.12) fit the army panel; at most 1.
 func _card_scale(count: int) -> float:
@@ -463,6 +468,8 @@ func disband_selected():
 # (with cancel) or the garrison, and the camera-follow toggle.
 class MovementBar extends Control:
  var fraction := 1.0
+ var spend := 0.0      # share of the full allowance a previewed move would spend this turn
+ var overflow := false # the previewed move needs more than this turn
  func _init(f: float):
   fraction = clampf(f,0,1)
   custom_minimum_size = Vector2(150,12)
@@ -471,6 +478,11 @@ class MovementBar extends Control:
   var r = Rect2(Vector2(0,1),size-Vector2(0,2))
   draw_rect(r,Color(0,0,0,0.7))
   draw_rect(Rect2(r.position+Vector2(2,2),Vector2((r.size.x-4)*fraction,r.size.y-4)),Color("e9c46a") if fraction>0.15 else Color("d77a4a"))
+  # TW:WH3: the part a held right-click preview would spend shows green (red when it reaches past
+  # this turn).
+  if spend>0.0:
+   var w = (r.size.x-4)*minf(spend,fraction)
+   draw_rect(Rect2(r.position+Vector2(2+(r.size.x-4)*fraction-w,2),Vector2(w,r.size.y-4)),Color("d74a3a") if overflow else Color("5fd34a"))
   draw_rect(r,Color("c9a45a"),false,1.0)
 
 func _movement_box(army_id: String) -> Control:
@@ -482,9 +494,9 @@ func _movement_box(army_id: String) -> Control:
  row.add_child(UiKit.label("Movement",13,UiKit.TEXT_DIM))
  movement_bar = MovementBar.new(m.points/maxf(1.0,m.max_points))
  movement_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
- movement_bar.tooltip_text = "Movement points: %d of %d this turn.\nRefilled on End Turn. Open ground costs 1 per meter; forest, hills and passes cost more, roads less.\n(Placeholder numbers: data/movement.json)" % [int(m.points),int(m.max_points)]
+ movement_bar.name = "MovementBar"
+ movement_bar.tooltip_text = "Movement left this turn\nRefilled on End Turn. Forest, hills and passes cost more, roads less.\nHold right click on the map to preview a move: the part it would spend shows green, red if it takes more than this turn."
  row.add_child(movement_bar)
- row.add_child(UiKit.label("%d / %d" % [int(m.points),int(m.max_points)],13,UiKit.TEXT))
  v.add_child(row)
  var row2 = HBoxContainer.new()
  row2.add_theme_constant_override("separation",6)
@@ -1101,8 +1113,37 @@ func _build_end_turn():
  var v = VBoxContainer.new()
  v.alignment = BoxContainer.ALIGNMENT_END
  v.add_theme_constant_override("separation",2)
+ # End Turn warnings (TW:WH3): the pending kind and item; arrows cycle its items, Skip moves on to
+ # the next kind. While one is shown, the End Turn button jumps to it instead of ending the turn.
+ warning_box = Widgets.Framed.new("main",colors.trim,Color(colors.panel,0.95))
+ warning_box.name = "EndTurnWarning"
+ warning_box.visible = false
+ var wv = VBoxContainer.new()
+ wv.add_theme_constant_override("separation",2)
+ warning_box.add_child(wv)
+ warning_kind = UiKit.label("",14,Color("f1d79a"),UiKit.FONT_BOLD)
+ warning_kind.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+ wv.add_child(warning_kind)
+ warning_item = UiKit.label("",13,UiKit.TEXT)
+ warning_item.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+ warning_item.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+ warning_item.custom_minimum_size = Vector2(190,0)
+ wv.add_child(warning_item)
+ var wr = HBoxContainer.new()
+ wr.alignment = BoxContainer.ALIGNMENT_CENTER
+ for b in [["<","WarnPrev",func(): warning_step.emit(-1),"Previous"],[">","WarnNext",func(): warning_step.emit(1),"Next"],["Skip","WarnSkip",func(): warning_skip.emit(),"Skip these warnings"]]:
+  var btn = Button.new()
+  btn.name = b[1]
+  btn.text = b[0]
+  btn.tooltip_text = b[3]
+  btn.focus_mode = Control.FOCUS_NONE
+  btn.pressed.connect(b[2])
+  wr.add_child(btn)
+ wv.add_child(wr)
+ v.add_child(warning_box)
  end_turn_button = Widgets.RoundButton.new("year","End turn\nAdvances the year: income, upkeep, construction and growth.",112,Color("e2b955"))
  end_turn_button.pressed.connect(func(): end_turn_requested.emit())
+ end_turn_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
  v.add_child(end_turn_button)
  var l = UiKit.header("End Turn",15)
  l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1110,12 +1151,18 @@ func _build_end_turn():
  end_turn_year = UiKit.label("",14,UiKit.TEXT_DIM)
  end_turn_year.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
  v.add_child(end_turn_year)
- _anchor(v,1,1,1,1,Rect2(-140,-178,-14,-10))
+ _anchor(v,1,1,1,1,Rect2(-226,-178,-14,-10))
+ v.grow_vertical = Control.GROW_DIRECTION_BEGIN # the warning box stacks above the button
  hover_tip = PanelContainer.new()
  hover_tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
  hover_tip.add_theme_stylebox_override("panel",UiKit.textured(UiKit.PARCHMENT,12,10))
- hover_label = UiKit.label("",16,UiKit.INK)
- hover_tip.add_child(hover_label)
+ var hv = VBoxContainer.new()
+ hv.add_theme_constant_override("separation",2)
+ hover_tip.add_child(hv)
+ hover_title = UiKit.label("",17,UiKit.INK,UiKit.FONT_BOLD)
+ hv.add_child(hover_title)
+ hover_label = UiKit.label("",15,UiKit.INK)
+ hv.add_child(hover_label)
  hover_tip.visible = false
  hover_tip.top_level = true
  add_child(hover_tip)
@@ -1125,8 +1172,12 @@ func _build_end_turn():
  fps_label = UiKit.label("",12,Color(UiKit.TEXT_DIM,0.8))
  _anchor(fps_label,0,1,0,1,Rect2(14,-26,400,-8))
 
+# Map hover info, styled like every tooltip (first line bold as the title).
 func show_hover(text: String,screen_pos: Vector2):
- hover_label.text = text
+ var parts = RichTooltip.split(text)
+ hover_title.text = parts[0]
+ hover_label.text = parts[1]
+ hover_label.visible = parts[1] != ""
  hover_tip.reset_size()
  var vp = get_viewport_rect().size
  hover_tip.position = (screen_pos+Vector2(18,18)).clamp(Vector2.ZERO,vp-hover_tip.size)
@@ -1281,3 +1332,59 @@ func close_top_panel() -> bool:
   clear_selection()
   return true
  return false
+
+# Show on the selected army's movement bar what a previewed move would spend this turn (main.gd
+# during a held right click); spend 0 clears it.
+func preview_movement(spend: float,overflow: bool):
+ if movement_bar == null or not is_instance_valid(movement_bar): return
+ if is_equal_approx(movement_bar.spend,spend) and movement_bar.overflow == overflow: return
+ movement_bar.spend = spend
+ movement_bar.overflow = overflow
+ movement_bar.queue_redraw()
+
+var warning_box: Control
+var warning_kind: Label
+var warning_item: Label
+
+# Show the pending End Turn warning ({} hides it): {label, name, index, count}.
+func show_end_turn_warning(w: Dictionary):
+ warning_box.visible = not w.is_empty()
+ if w.is_empty():
+  end_turn_button.tooltip_text = "End turn (Enter)\nAdvances the year: income, upkeep, construction and growth."
+  return
+ warning_kind.text = w.label if int(w.count) == 1 else "%s (%d of %d)" % [w.label,int(w.index)+1,int(w.count)]
+ warning_item.text = w.name
+ end_turn_button.tooltip_text = "%s: %s\nClick (or Enter) to go there. Shift+Enter ends the turn anyway.\nWhich warnings show: Settings." % [w.label,w.name]
+
+# Key 3 (TW:WH3 building browser): open the browser on the first empty slot of a settlement, or
+# on the main building when every slot is built.
+func open_first_empty_slot(settlement_id: String):
+ var slots = data.building_slots(settlement_id)
+ var slot = 0
+ for i in slots.size():
+  if slots[i].get("empty",false):
+   slot = i
+   break
+ open_building_browser(settlement_id,slot)
+
+# During the AI's turn (camera following its armies): a top-centre bar with a skip button (TW:WH3's
+# ">>"). Space or Esc also skips.
+signal ai_skip
+var ai_bar: Control
+func show_ai_turn_bar(on: bool):
+ if ai_bar == null:
+  ai_bar = Widgets.Framed.new("main",colors.trim,Color(colors.panel,0.95))
+  ai_bar.name = "AiTurnBar"
+  var h = HBoxContainer.new()
+  h.add_theme_constant_override("separation",10)
+  ai_bar.add_child(h)
+  h.add_child(UiKit.header("Enemy movements",15))
+  var skip = Button.new()
+  skip.name = "AiSkip"
+  skip.text = ">>  Skip"
+  skip.tooltip_text = "Skip the rest of the AI movements (Space or Esc)"
+  skip.focus_mode = Control.FOCUS_NONE
+  skip.pressed.connect(func(): ai_skip.emit())
+  h.add_child(skip)
+  _anchor(ai_bar,0.5,0,0.5,0,Rect2(-140,104,140,150))
+ ai_bar.visible = on

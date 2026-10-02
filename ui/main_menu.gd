@@ -34,6 +34,7 @@ func _ready():
  trim = UiKit.colors(faction).trim
  set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  _build()
+ add_child(load("res://ui/rich_tooltip.gd").new())
  if args.has("--load-screen"): _show_load()
  if args.has("--settings"): _show_settings()
  for a in args:

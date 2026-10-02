@@ -90,7 +90,8 @@ var collecting_moves = false # End Turn: moves are gathered, then replayed (AI a
 var collected_moves = {}
 var spectate_queue: Array = [] # [[army id, path]] still to show, camera following
 var spectating := {}           # {id, hold}: the AI army the camera follows now
-var right_press_pos = Vector2.ZERO
+var rmb_held := false       # right mouse held with an army selected: path preview (TW:WH3)
+var pitch_offset := 0.0     # middle-drag tilt on top of the zoom-dependent tilt
 var preview_key = Vector2i(1<<20,0)
 var preview_text = ""
 var forced_preview = null # capture flag --preview=x,z: preview this point instead of the mouse
@@ -111,6 +112,7 @@ func _ready():
  # Captures and the self-test never touch the player's saves.
  if capture_mode or "--self-test" in OS.get_cmdline_user_args(): SaveSystem.dir = "user://capture_saves"
  kit = ProtoKit.shared()
+ set_pitch(OVERVIEW_PITCH) # the overview's tilt at its zoom
  Settings.apply(get_tree())
  make_environment()
  make_terrain()
@@ -147,12 +149,13 @@ func _ready():
   distance = 42
   desired_distance = 42
   yaw = -0.5
+  set_pitch(OVERVIEW_PITCH)
  if "--hero" in OS.get_cmdline_user_args():
   target = commander.position + Vector3(0,2.8,0)
   distance = 15
   desired_distance = 15
   yaw = 0.35
-  pitch = 0.23
+  set_pitch(0.23)
  if "--goldspire" in OS.get_cmdline_user_args():
   focus_goldspire()
   distance = desired_distance
@@ -562,7 +565,7 @@ func focus_goldspire():
  target = Vector3(GOLDSPIRE.x,9,GOLDSPIRE.y)
  desired_distance = 64
  yaw = 0.42
- pitch = 0.36
+ set_pitch(0.36)
 
 func make_harbor():
  var harbor = AssetManifest.instantiate("settlement.harbor")
@@ -624,7 +627,11 @@ func make_ui():
  layer.add_child(ui)
  ui.setup(ui_data,studio)
  pins_root.theme = ui.theme
- ui.end_turn_requested.connect(end_turn)
+ ui.end_turn_requested.connect(end_turn_pressed)
+ ui.warning_step.connect(step_warning)
+ ui.warning_skip.connect(skip_warning)
+ ui.ai_skip.connect(skip_spectating)
+ ui_data.changed.connect(refresh_warnings)
  ui.settlement_selected.connect(focus_settlement)
  ui.overlay_toggled.connect(set_overlay)
  settlement_anchors = {CITY_ID:ground(CITY,6),"crownwatch":ground(KEEP,6),"willowmere":ground(VILLAGE,5),GOLDSPIRE_ID:Vector3(GOLDSPIRE.x,27,GOLDSPIRE.y)}
@@ -651,6 +658,7 @@ func make_ui():
   refresh_army_overlays()
   select_army(id))
  refresh_army_overlays()
+ refresh_warnings()
  ui_data.changed.connect(func(): unsaved = true)
  if loaded_from != "":
   sync_settlement_visuals()
@@ -687,31 +695,60 @@ func sync_settlement_visuals():
   make_goldspire()
  if minimap: minimap.refresh()
 
-func select_settlement(id: String):
+# Selecting on the map never moves the camera (TW:WH3, owner). focus: jumps from lists, cycling
+# and bookmarks pan there at the current zoom (G keeps its Goldspire view).
+func select_settlement(id: String,focus := false):
  ui.show_settlement(id)
- focus_settlement(id)
+ if focus: focus_settlement(id)
 
 func focus_settlement(id: String):
- if id == GOLDSPIRE_ID:
-  focus_goldspire()
-  return
  var a = settlement_anchors[id]
- focus_at(ground(Vector2(a.x,a.z)),48)
+ pan_to(ground(Vector2(a.x,a.z)))
+
+# Move the camera's target at the current zoom (no zoom change).
+func pan_to(p: Vector3):
+ target = p
+
+func pan_to_capital():
+ var cap = load("res://core/armies.gd").capital(ui_data.state,ui_data.player_faction_id())
+ if cap != "" and settlement_anchors.has(cap): pan_to(ground(Vector2(settlement_anchors[cap].x,settlement_anchors[cap].z)))
+
+# Left click on empty ground: cancel the selection (TW:WH3).
+func deselect():
+ if ui.selected_settlement == "" and ui.selected_army == "": return
+ ui.clear_selection()
+ refresh_army_overlays()
+
+func cancel_move_preview():
+ rmb_held = false
+ ui.preview_movement(0.0,false)
+ ui.hide_hover()
+ if movement_overlay: movement_overlay.clear("preview")
+ preview_key = Vector2i(1<<20,0)
+
+# , and . : previous / next own army, or own settlement when a settlement is selected; the camera
+# pans there at the current zoom.
+func cycle_selection(step: int):
+ if ui.selected_settlement != "":
+  var own = ui_data.state.settlements_of(ui_data.player_faction_id()).filter(func(s): return settlement_anchors.has(s))
+  if own.is_empty(): return
+  var i = own.find(ui.selected_settlement)
+  select_settlement(own[posmod(i+step,own.size())],true)
+  return
+ var armies = []
+ for id in ui_data.army_ids():
+  if ui_data.army(id).player_owned: armies.append(id)
+ if armies.is_empty(): return
+ var j = armies.find(selected_army_id())
+ var next = armies[posmod(j+step,armies.size()) if j>=0 else 0]
+ select_army(next)
+ if army_figures.has(next): pan_to(army_figures[next].position+Vector3(0,2.2,0))
 
 func select_army(id := COMMANDER_ARMY):
  if not army_figures.has(id): return
  ui.show_army(id,army_location(id))
- focus_at(army_figures[id].position+Vector3(0,2.2,0),26.0)
  refresh_army_overlays()
 
-# C: select the next of the player's armies.
-func cycle_player_army():
- var own = []
- for id in ui_data.army_ids():
-  if ui_data.army(id).player_owned: own.append(id)
- if own.is_empty(): return
- var i = own.find(selected_army_id())
- select_army(own[(i+1)%own.size()])
 
 func army_location(id := "") -> String:
  if id == "": id = selected_army_id() if selected_army_id() != "" else COMMANDER_ARMY
@@ -810,18 +847,34 @@ func move_target(screen: Vector2) -> Vector2:
 
 # Preview the path to `p` (Total War style: this turn green, later turns in warmer colors, turn
 # numbers where each turn's walk ends). Returns the hover text.
+# The held-right-click preview (TW:WH3): the coloured path (green this turn) and, on the movement
+# bar, what it would spend. No numbers: the returned tooltip text is only for an impossible move
+# ("" when the move is fine) or an attack ("Attack Greyhaven").
 func preview_move(p: Vector2) -> String:
  var key = Vector2i(floori(p.x),floori(p.y))
  if key == preview_key: return preview_text
  preview_key = key
- var plan = ui_data.plan_move(selected_army_id(),p)
- if not plan.ok:
+ var id = selected_army_id()
+ var plan = ui_data.plan_move(id,p)
+ preview_text = ""
+ if not plan.ok and plan.reason == Movement.BLOCKED_BATTLE:
+  var atk = ui_data.attack_preview(id,p)
+  if atk.plan.get("ok",false):
+   plan = atk.plan
+   preview_text = "Attack %s" % atk.name if atk.ok else "%s: %s" % [atk.name,atk.reason]
+  else:
+   movement_overlay.show_blocked(p,atk.reason)
+   ui.preview_movement(0.0,false)
+   preview_text = atk.reason if atk.reason != "" else plan.reason
+   return preview_text
+ elif not plan.ok:
   movement_overlay.show_blocked(p,plan.reason)
+  ui.preview_movement(0.0,false)
   preview_text = plan.reason
- else:
-  movement_overlay.show_path("preview",plan.points,plan.turns)
-  var where = " to "+ui_data.settlement(plan.settlement).name if plan.settlement != "" else ""
-  preview_text = "Move%s: %s\nRight click to order" % [where,"this turn" if plan.total_turns == 1 else "%d turns" % plan.total_turns]
+  return preview_text
+ movement_overlay.show_path("preview",plan.points,plan.turns)
+ var m = ui_data.army_movement(id)
+ ui.preview_movement(minf(float(plan.cost),m.points)/maxf(1.0,m.max_points),int(plan.total_turns)>1)
  return preview_text
 
 func order_army(p: Vector2):
@@ -885,9 +938,11 @@ func update_walk(delta: float):
    refresh_army_overlays()
    if id == selected_army_id(): ui.show_army(id,army_location(id))
 
-func end_turn():
+func end_turn(_skip_warnings := false):
  if spectating_now():
   return
+ warn_skipped.clear()
+ warn_index.clear()
  if ui_data.has_pending_battle():
   ui.toast("An enemy army is attacking: answer it first.")
   open_pending_battle()
@@ -955,8 +1010,8 @@ func toggle_light():
 func reset_camera():
  target = OVERVIEW_TARGET
  yaw = OVERVIEW_YAW
- pitch = OVERVIEW_PITCH
  desired_distance = OVERVIEW_DISTANCE
+ set_pitch(OVERVIEW_PITCH)
 
 func focus_at(p: Vector3,d: float):
  target = p
@@ -999,48 +1054,72 @@ func _unhandled_input(event):
   skip_spectating()
   get_viewport().set_input_as_handled()
   return
+ # Mouse (TW:WH3, docs/tw-ui-parity.md): left click selects (empty ground deselects); hold right
+ # click previews a move and releasing gives the order (left click or Esc during the hold cancels
+ # it); middle drag orbits; the wheel zooms. Selecting never moves the camera.
  if event is InputEventMouseButton:
   if event.pressed:
    if event.button_index == MOUSE_BUTTON_WHEEL_UP: desired_distance = clampf(desired_distance*0.88,10,210)
    if event.button_index == MOUSE_BUTTON_WHEEL_DOWN: desired_distance = clampf(desired_distance*1.13,10,210)
-   if event.button_index == MOUSE_BUTTON_LEFT: press_pos = event.position
-   if event.button_index == MOUSE_BUTTON_RIGHT: right_press_pos = event.position
+   if event.button_index == MOUSE_BUTTON_LEFT:
+    press_pos = event.position
+    if rmb_held: cancel_move_preview()
+   if event.button_index == MOUSE_BUTTON_RIGHT and army_selected():
+    rmb_held = true
+    preview_key = Vector2i(1<<20,0)
   elif event.button_index == MOUSE_BUTTON_LEFT and event.position.distance_to(press_pos)<6:
    var hit = pick(event.position)
    if hit.begins_with("army:"): select_army(hit.get_slice(":",1))
    elif hit != "": select_settlement(hit)
-  elif event.button_index == MOUSE_BUTTON_RIGHT and event.position.distance_to(right_press_pos)<6 and army_selected():
-   order_army(move_target(event.position))
- if event is InputEventMouseMotion:
-  if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
-   yaw -= event.relative.x*0.005
-   pitch = clampf(pitch+event.relative.y*0.004,0.15,1.25)
-  if Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE):
-   target += (-camera.global_basis.x*event.relative.x+Vector3(camera.global_basis.z.x,0,camera.global_basis.z.z).normalized()*-event.relative.y)*distance*0.0015
+   else: deselect()
+  elif event.button_index == MOUSE_BUTTON_RIGHT:
+   var held = rmb_held
+   rmb_held = false
+   ui.preview_movement(0.0,false)
+   if movement_overlay: movement_overlay.clear("preview")
+   if held and army_selected(): order_army(move_target(event.position))
+ if event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE):
+  yaw -= event.relative.x*0.005
+  pitch_offset = clampf(pitch_offset+event.relative.y*0.004,-0.6,0.6)
  if event is InputEventKey and event.pressed and not event.echo and event.ctrl_pressed:
   if event.keycode == KEY_S: quicksave()
   if event.keycode == KEY_L: quickload()
+  if event.keycode == KEY_P: ui.disband_selected()
   return
  if event is InputEventKey and event.pressed and not event.echo:
-  if event.keycode == KEY_HOME: reset_camera()
+  if event.keycode == KEY_HOME: pan_to_capital()
+  if event.keycode == KEY_END:
+   yaw = OVERVIEW_YAW
+   pitch_offset = 0.0
   if event.keycode == KEY_F12: request_capture()
   if event.keycode == KEY_TAB:
    ui.visible = not ui.visible
    pins_root.visible = ui.visible
   if event.keycode == KEY_ESCAPE:
-   # Esc closes panels first (and shows a hidden interface); with nothing open it pauses.
-   if not ui.visible:
+   # Esc cancels a held move preview, then closes panels (and shows a hidden interface); with
+   # nothing open it pauses.
+   if rmb_held: cancel_move_preview()
+   elif not ui.visible:
     ui.visible = true
     pins_root.visible = true
    elif ui.close_top_panel(): refresh_army_overlays()
    else: open_pause_menu()
-  if event.keycode == KEY_G: select_settlement(GOLDSPIRE_ID)
-  if event.keycode == KEY_C: cycle_player_army()
+  if event.keycode == KEY_COMMA: cycle_selection(-1)
+  if event.keycode == KEY_PERIOD: cycle_selection(1)
+  if event.keycode == KEY_G:
+   ui.show_settlement(GOLDSPIRE_ID)
+   focus_goldspire()
   if event.keycode == KEY_F: toggle_follow()
-  if event.keycode == KEY_BACKSPACE and army_selected(): ui_data.cancel_army_order(COMMANDER_ARMY)
+  if event.keycode == KEY_BACKSPACE and army_selected(): ui_data.cancel_army_order(selected_army_id())
+  if event.keycode == KEY_3 and ui.selected_settlement != "": ui.open_first_empty_slot(ui.selected_settlement)
+  if event.keycode == KEY_4 and army_selected(): ui.open_recruitment(selected_army_id())
+  if event.keycode in [KEY_ENTER,KEY_KP_ENTER]:
+   if event.shift_pressed: end_turn(true)
+   else: end_turn_pressed()
+  if event.keycode == KEY_H: jump_to_notification()
   # Debug keys (Settings: on by default for now; listed in README).
   if Settings.debug_keys():
-   if event.keycode == KEY_SPACE: toggle_pause()
+   if event.keycode == KEY_F8: toggle_pause()
    if event.keycode == KEY_F5: upgrade_city()
    if event.keycode == KEY_F6: cycle_goldspire()
    if event.keycode == KEY_F7: upgrade_roads()
@@ -1053,10 +1132,17 @@ func camera_update(delta: float):
  if Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT): dir.x-=1
  if Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT): dir.x+=1
  if Input.is_key_pressed(KEY_CTRL) or pause_menu != null: dir = Vector3.ZERO # Ctrl+S is quicksave; paused means paused
- target += dir.rotated(Vector3.UP,yaw)*delta*distance*0.30
+ target += dir.rotated(Vector3.UP,yaw)*delta*distance*(0.75 if Input.is_key_pressed(KEY_SHIFT) else 0.30)
  target.x = clampf(target.x,-105,105)
  target.z = clampf(target.z,-90,65)
+ # Q / E rotate (TW:WH3); Shift pans faster.
+ if pause_menu == null and not Input.is_key_pressed(KEY_CTRL):
+  if Input.is_physical_key_pressed(KEY_Q): yaw += delta*1.6
+  if Input.is_physical_key_pressed(KEY_E): yaw -= delta*1.6
  distance = lerpf(distance,desired_distance,minf(1,delta*9))
+ # The tilt follows the zoom (steeper high up, flatter close in, as in TW:WH3); middle drag adds an
+ # offset.
+ pitch = clampf(tilt_for(distance)+pitch_offset,0.15,1.25)
  var offset = Vector3(sin(yaw)*cos(pitch),sin(pitch),cos(yaw)*cos(pitch))*distance
  camera.position = target+offset
  camera.position.y = maxf(camera.position.y,height_at(camera.position.x,camera.position.z)+2.0)
@@ -1094,23 +1180,28 @@ func _process(delta):
  camera_update(delta)
  for p in pins:
   var b = p.button
-  b.visible = overlays.settlements and not camera.is_position_behind(p.world) and distance>18
+  # Hold Space (TW:WH3 overlays): settlement banners at any zoom.
+  b.visible = overlays.settlements and not camera.is_position_behind(p.world) and (distance>18 or (Input.is_physical_key_pressed(KEY_SPACE) and not spectating_now()))
   if b.visible: b.position = camera.unproject_position(p.world)-b.anchor_offset()
   b.set_selected(ui.selected_settlement == p.id)
  var mouse = get_viewport().get_mouse_position()
  var hit = "" if get_viewport().gui_get_hovered_control() != null else pick(mouse)
+ # Path preview only while right click is held (TW:WH3); --preview captures force it.
+ var previewing = army_selected() and not walks.has(selected_army_id()) and (forced_preview != null or (rmb_held and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)))
+ if rmb_held and not Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT): rmb_held = false
  if "--ledger" in OS.get_cmdline_user_args(): ui.show_hover(ui._ledger_text(),Vector2(560,70))
  elif "--treasury-tip" in OS.get_cmdline_user_args(): ui.show_hover(ui.resource_groups.treasury.tooltip_text,Vector2(560,70))
- elif forced_preview != null and army_selected() and not walks.has(selected_army_id()):
-  ui.show_hover(preview_move(forced_preview),camera.unproject_position(army_ground(forced_preview,1.0)))
- elif army_selected() and ui.visible and not walks.has(selected_army_id()) and not capture_mode and get_viewport().gui_get_hovered_control() == null and not hit.begins_with("army:"):
-  var text = preview_move(move_target(mouse))
-  ui.show_hover(hover_text(hit)+"
-"+text if hit != "" else text,mouse)
+ elif previewing:
+  var at = forced_preview if forced_preview != null else move_target(mouse)
+  var text = preview_move(at)
+  # No numbers: a tooltip only says why a move is impossible, or what it attacks.
+  if text != "": ui.show_hover(text,camera.unproject_position(army_ground(at,1.0)) if forced_preview != null else mouse)
+  else: ui.hide_hover()
  elif hit != "" and ui.visible: ui.show_hover(hover_text(hit),mouse)
  else: ui.hide_hover()
- if movement_overlay and forced_preview == null and movement_overlay.has_content("preview") and not (army_selected() and not walks.has(selected_army_id()) and get_viewport().gui_get_hovered_control() == null and not hit.begins_with("army:")):
+ if movement_overlay and not previewing and movement_overlay.has_content("preview"):
   movement_overlay.clear("preview")
+  ui.preview_movement(0.0,false)
   preview_key = Vector2i(1<<20,0)
  ui.set_fps("%d FPS" % Engine.get_frames_per_second())
  if capture_mode:
@@ -1233,10 +1324,45 @@ func run_checks():
  # Army movement: preview, blocked order, multi-turn order continuing on End Turn, garrison, cancel.
  # The army's state is restored afterwards so the capture is unchanged.
  var saved_army = ui_data.state.army_state[COMMANDER_ARMY].duplicate(true)
+ # TW parity: selecting never moves or zooms the camera.
+ var cam_before = [target,desired_distance,yaw]
  select_army()
+ assert([target,desired_distance,yaw] == cam_before)
  assert(movement_overlay.has_content("reach"))
+ # The preview: a coloured path, no numbers or text on the map, the spend on the movement bar.
  preview_move(Vector2(-118,-30))
- assert(movement_overlay.has_content("preview") and preview_text.contains("3 turns"))
+ assert(movement_overlay.has_content("preview") and preview_text == "")
+ for n in movement_overlay.get_node("preview").get_children(): assert(not n is Label3D)
+ assert(ui.movement_bar.spend>0.0 and ui.movement_bar.overflow)
+ cancel_move_preview()
+ assert(not movement_overlay.has_content("preview") and ui.movement_bar.spend == 0.0)
+ # A held right click previews; releasing it gives the order (simulated input).
+ var mid_screen = camera.unproject_position(ground(Vector2(-20,-10)))
+ var press = InputEventMouseButton.new()
+ press.button_index = MOUSE_BUTTON_RIGHT
+ press.pressed = true
+ press.position = mid_screen
+ _unhandled_input(press)
+ assert(rmb_held)
+ var esc = InputEventKey.new()
+ esc.keycode = KEY_ESCAPE
+ esc.pressed = true
+ _unhandled_input(esc)
+ assert(not rmb_held and selected_army_id() == COMMANDER_ARMY) # Esc cancels the hold only
+ # Cycling armies pans at the current zoom.
+ desired_distance = 90.0
+ cycle_selection(1)
+ assert(desired_distance == 90.0 and selected_army_id() != "")
+ # End Turn warnings: the button jumps to the first warning before it ends the turn.
+ refresh_warnings()
+ var warns = current_warnings()
+ if not warns.is_empty():
+  var year_before = ui_data.state.year
+  end_turn_pressed()
+  assert(ui_data.state.year == year_before)
+ warn_skipped.clear()
+ warn_index.clear()
+ select_army()
  var points_before = ui_data.army_movement(COMMANDER_ARMY).points
  order_army(WorldMap.settlement_position(CITY_ID))
  assert(ui.battle_visible() and ui.battle_box.find_child("DeclareWar",true,false) != null) # not at war yet: confirmation first
@@ -1334,7 +1460,7 @@ func run_checks():
   assert(goldspire_level==level_now)
  ui.clear_selection()
  reset_camera()
- print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn; construction upgrades goldspire's stage; army movement preview, orders, blocking and garrison; deployment screen place, orders, view and back; battle report replay, timeline and jump; autosave and save/load round trip; esc order and pause menu; recruitment queue and refund")
+ print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn; construction upgrades goldspire's stage; army movement preview (hold right click, no numbers), selection without camera moves, cycling at the current zoom, End Turn warnings, orders, blocking and garrison; deployment screen place, orders, view and back; battle report replay, timeline and jump; autosave and save/load round trip; esc order and pause menu; recruitment queue and refund")
 
 # --- Movement grid bake ------------------------------------------------------------
 # Writes data/movement_grid.json, the terrain grid army movement reads (core/movement.gd), by
@@ -1489,6 +1615,7 @@ func spectating_now() -> bool:
  return not spectating.is_empty() or not spectate_queue.is_empty()
 
 func _next_spectate():
+ ui.show_ai_turn_bar(not spectate_queue.is_empty())
  if spectate_queue.is_empty():
   spectating = {}
   open_pending_battle()
@@ -1502,6 +1629,7 @@ func _next_spectate():
 func skip_spectating():
  for q in spectate_queue: _on_army_moved(q[0],q[1])
  spectate_queue.clear()
+ ui.show_ai_turn_bar(false)
  for id in walks: walks[id].dist = walks[id].total
  update_walk(0.0)
  spectating = {}
@@ -1534,9 +1662,9 @@ func apply_camera_view(v: Dictionary):
  if v.is_empty() or not v.has("target"): return
  target = Vector3(float(v.target[0]),float(v.target[1]),float(v.target[2]))
  yaw = float(v.yaw)
- pitch = float(v.pitch)
  desired_distance = float(v.distance)
  distance = desired_distance
+ set_pitch(float(v.pitch))
  camera_update(1.0)
 
 # A landless faction's armies carry its countdown above their banners (turns left to retake a
@@ -1576,3 +1704,78 @@ func show_game_over():
  game_over.name = "GameOver"
  ui.add_child(game_over)
  game_over.setup(self,ui_data.player_faction(),ui_data.state.year)
+
+# Camera tilt for a zoom distance: about 35 degrees close in, steeper when high (TW:WH3's
+# zoom-linked pitch; docs/tw-ui-parity.md C8).
+func tilt_for(d: float) -> float:
+ return lerpf(0.61,1.0,clampf((d-10.0)/200.0,0.0,1.0))
+
+# Set the camera tilt for the current zoom target (views, captures, loaded saves).
+func set_pitch(p: float):
+ pitch_offset = p-tilt_for(desired_distance)
+ pitch = p
+
+# --- End Turn warnings (TW:WH3) --------------------------------------------------------------
+# While warnings are pending the End Turn button (and Enter) jumps to the current one and moves on
+# to the next; once every kind has been visited or skipped, it ends the turn. Shift+Enter ends the
+# turn anyway; H jumps without moving on. Kinds and items: UiData.end_turn_warnings.
+var warn_skipped: Array = []  # kinds visited or skipped this turn
+var warn_index := {}          # kind -> item shown next
+
+func current_warnings() -> Array:
+ return ui_data.end_turn_warnings(Settings.end_turn_warnings()).filter(func(w): return not w.kind in warn_skipped)
+
+func refresh_warnings():
+ if ui == null: return
+ var w = current_warnings()
+ if w.is_empty():
+  ui.show_end_turn_warning({})
+  return
+ var c = w[0]
+ var i = clampi(int(warn_index.get(c.kind,0)),0,c.items.size()-1)
+ ui.show_end_turn_warning({"label":c.label,"name":c.items[i].name,"index":i,"count":c.items.size()})
+
+func end_turn_pressed():
+ if spectating_now(): return
+ var w = current_warnings()
+ if w.is_empty():
+  end_turn()
+  return
+ var c = w[0]
+ var i = clampi(int(warn_index.get(c.kind,0)),0,c.items.size()-1)
+ _jump_to(c.items[i])
+ if i+1>=c.items.size():
+  warn_skipped.append(c.kind)
+  warn_index.erase(c.kind)
+ else: warn_index[c.kind] = i+1
+ refresh_warnings()
+
+func jump_to_notification():
+ var w = current_warnings()
+ if w.is_empty(): return
+ var c = w[0]
+ _jump_to(c.items[clampi(int(warn_index.get(c.kind,0)),0,c.items.size()-1)])
+
+func step_warning(dir: int):
+ var w = current_warnings()
+ if w.is_empty(): return
+ var c = w[0]
+ var i = posmod(int(warn_index.get(c.kind,0))+dir,c.items.size())
+ warn_index[c.kind] = i
+ _jump_to(c.items[i])
+ refresh_warnings()
+
+func skip_warning():
+ var w = current_warnings()
+ if w.is_empty(): return
+ warn_skipped.append(w[0].kind)
+ refresh_warnings()
+
+# Go to a warning's subject: select it and pan there at the current zoom.
+func _jump_to(item: Dictionary):
+ match item.type:
+  "settlement": select_settlement(item.id,true)
+  "army":
+   select_army(item.id)
+   if army_figures.has(item.id): pan_to(army_figures[item.id].position+Vector3(0,2.2,0))
+  "faction": ui.toast("Low funds: hover the treasury for the ledger.")
