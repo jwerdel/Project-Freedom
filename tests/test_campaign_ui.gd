@@ -86,7 +86,7 @@ func test_end_turn_runs_the_turn_loop_and_updates_the_ui():
  assert_eq(data.events("turn")[0].year,41)
  assert_eq(ui.resource_labels.year.text,"Year 41 · Turn 2")
  assert_eq(ui.resource_labels.treasury.text,UiKit.format_int(123456+net))
- assert_eq(ui.end_turn_year.text,"Year 41")
+ assert_eq(ui.end_turn_year,ui.resource_labels.year,"the hourglass counter under End Turn shows the year")
 
 func test_chronicle_window_lists_the_log():
  var data = fixture_data()

@@ -20,9 +20,8 @@ const Minimap = preload("res://ui/minimap.gd")
 const DeploymentScreen = preload("res://ui/deployment_screen.gd")
 const BattleReplay = preload("res://ui/battle_replay.gd")
 const RichTooltip = preload("res://ui/rich_tooltip.gd")
+const Settings = preload("res://core/settings.gd")
 
-const MENU = [["faction","Faction overview"],["diplomacy","Diplomacy"],["tech","Technology"],["lords","Lords and heroes"],["finance","Finance"],["objectives","Objectives"]]
-const OVERLAYS = [["borders","Territory borders"],["settlements","Settlement banners"],["armies","Armies"]]
 
 var data
 var studio
@@ -46,7 +45,6 @@ var toast_label: Label
 var fps_label: Label
 var minimap_slot: Control
 var minimap
-var overlay_buttons = {}
 var selected_settlement := ""
 var selected_army := ""
 var army_location := ""
@@ -81,6 +79,7 @@ func setup(ui_data,portrait_studio):
  add_child(RichTooltip.new()) # TW-style tooltips for every control
  data.changed.connect(refresh)
  data.event_added.connect(func(_e): _rebuild_events())
+ data.alert.connect(show_alert)
  refresh()
  _rebuild_events()
 
@@ -105,19 +104,51 @@ func _clear(box: Node):
   box.remove_child(c)
   c.queue_free()
 
-# --- Top-left menu, top-center resources, top-right minimap ---------------------
+# --- Top bar (TW:WH3, docs/tw-ui-parity.md L1-L4) ---------------------------------------------
+# Left: Menu, Advisor, Help, Unit browser, Camera settings. Centre: treasury, income, population,
+# faction-resource slots, faction effects. Right: tactical map (minimap) toggle, Events, Lords and
+# heroes, Provinces, Missions, Known factions, Faction summary. Buttons for systems that do not
+# exist yet stand in their TW place, greyed, with "Coming later".
+
+const COMING = "\nComing later."
+signal menu_requested
+signal camera_setting_changed(key: String,value)
+signal army_chosen(army_id: String)       # from the Lords and heroes list
+signal settlement_chosen(settlement_id: String)
+
+var top_buttons := {}
+var dropdown: Control
+var dropdown_kind := ""
+var events_frame: Control
+var minimap_frame: Control
+var popup_panel: Control
+var effects_icon: Control
+
+func _round(icon: String,tip: String,size: float,enabled := true) -> Button:
+ var b = Widgets.RoundButton.new(icon,tip+("" if enabled else COMING),size,colors.trim)
+ b.disabled = not enabled
+ if not enabled: b.modulate = Color(0.55,0.55,0.55)
+ return b
 
 func _build_menu():
  var row = HBoxContainer.new()
+ row.name = "TopLeft"
  row.add_theme_constant_override("separation",6)
- for m in MENU: row.add_child(Widgets.RoundButton.new(m[0],"%s\n(placeholder: not implemented yet)" % m[1],46,colors.trim))
- var chronicle_button = Widgets.RoundButton.new("chronicle","The Chronicle\nThe Grey Scribes' record of every year",46,colors.trim)
- chronicle_button.pressed.connect(toggle_chronicle)
- row.add_child(chronicle_button)
+ var items = [["menu","faction","Menu (Esc)\nSave, load, settings, quit",true],["advisor","objectives","Advisor",false],
+  ["help","finance","Help pages\nThe encyclopedia",false],["units","lords","Unit and spell browser",false],
+  ["camera","year","Camera settings\nFollowing AI armies, AI turn speed, your armies' speed, map labels",true]]
+ for it in items:
+  var b = _round(it[1],it[2],44,it[3])
+  b.name = "Top_"+it[0]
+  top_buttons[it[0]] = b
+  row.add_child(b)
+ top_buttons.menu.pressed.connect(func(): menu_requested.emit())
+ top_buttons.camera.pressed.connect(func(): open_camera_settings())
  _anchor(row,0,0,0,0,Rect2(14,10,0,0))
 
 func _build_resources():
  var bar = _framed()
+ bar.name = "TopCentre"
  var row = HBoxContainer.new()
  row.add_theme_constant_override("separation",14)
  row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -127,7 +158,7 @@ func _build_resources():
  name_label.tooltip_text = "%s\n%s" % [data.player_faction().name,data.player_faction().realm]
  name_label.mouse_filter = Control.MOUSE_FILTER_PASS
  row.add_child(name_label)
- for item in [["treasury","coin","Treasury"],["income","income","Income per turn"],["population","population","Population"],["year","year","Year and turn"]]:
+ for item in [["treasury","coin","Treasury"],["income","income","Income per turn"],["population","population","Population"]]:
   var group = HBoxContainer.new()
   group.add_theme_constant_override("separation",5)
   group.tooltip_text = item[2]
@@ -145,6 +176,13 @@ func _build_resources():
  debt_tag.mouse_filter = Control.MOUSE_FILTER_PASS
  debt_tag.visible = false
  resource_groups.treasury.add_child(debt_tag)
+ # Faction-specific resources (TW: they differ by race): slots stand ready, greyed.
+ for i in 2:
+  var slot = Widgets.Icon.new("objectives",Color(0.45,0.42,0.38),20)
+  slot.name = "FactionResource%d" % i
+  slot.tooltip_text = "Faction resource"+COMING
+  slot.mouse_filter = Control.MOUSE_FILTER_STOP
+  row.add_child(slot)
  # Landless (grace period): a red countdown tag, hidden otherwise.
  grace_tag = UiKit.label("",15,Color("ffe3c8"),UiKit.FONT_BOLD)
  grace_tag.name = "GraceTag"
@@ -152,39 +190,74 @@ func _build_resources():
  grace_tag.mouse_filter = Control.MOUSE_FILTER_PASS
  grace_tag.visible = false
  row.add_child(grace_tag)
- _anchor(bar,0.5,0,0.5,0,Rect2(-360,8,360,64))
+ # Faction effects (TW: at the right end of the centre bar).
+ effects_icon = Widgets.Icon.new("chronicle",Color("e9c46a"),22)
+ effects_icon.name = "FactionEffects"
+ effects_icon.mouse_filter = Control.MOUSE_FILTER_STOP
+ row.add_child(effects_icon)
+ _anchor(bar,0.5,0,0.5,0,Rect2(-400,8,400,64))
+
+# Everything affecting your faction now, for the effects icon's tooltip.
+func _effects_text() -> String:
+ var r = data.resources()
+ var lines = ["Faction effects"]
+ if r.in_debt: lines.append("In debt: no construction, recruitment or new armies; units lose %d%% of their men each turn." % r.desertion_pct)
+ if int(r.grace)>=0: lines.append("Landless: %d turn%s to retake a settlement." % [r.grace,"" if r.grace == 1 else "s"])
+ var wars = data.state.factions().filter(func(f): return f != data.player_faction_id() and data.at_war(f))
+ if not wars.is_empty(): lines.append("At war with %s." % ", ".join(wars.map(func(f): return data.faction(f).name)))
+ if lines.size() == 1: lines.append("Nothing affects your faction right now.")
+ return "\n".join(lines)
 
 func _build_minimap():
- var frame = _framed()
+ # Right side of the top bar: map toggle, lists and the faction summary (left to right).
+ var row = HBoxContainer.new()
+ row.name = "TopRight"
+ row.add_theme_constant_override("separation",5)
+ var items = [["tactical","borders","Tactical map\nShow or hide the small map (Tab opens the strategic map)",true],
+  ["events","chronicle","Events\nShow or hide the event messages",true],
+  ["lords","lords","Lords and heroes\nYour armies and their generals",true],
+  ["provinces","settlements","Provinces\nYour provinces: income, growth and public order",true],
+  ["missions","objectives","Missions",false],
+  ["factions","diplomacy","Known factions\nWar and peace with you",true]]
+ for it in items:
+  var b = _round(it[1],it[2],36,it[3])
+  b.name = "Top_"+it[0]
+  top_buttons[it[0]] = b
+  row.add_child(b)
+ var summary = _round("faction","Faction summary\nSummary, records (the Grey Scribes' chronicle) and statistics",44)
+ summary.name = "Top_summary"
+ top_buttons.summary = summary
+ row.add_child(summary)
+ top_buttons.tactical.pressed.connect(func(): minimap_frame.visible = not minimap_frame.visible)
+ top_buttons.events.pressed.connect(func(): events_frame.visible = not events_frame.visible)
+ for k in ["lords","provinces","factions"]: top_buttons[k].pressed.connect(toggle_dropdown.bind(k))
+ summary.pressed.connect(open_faction_summary)
+ _anchor(row,1,0,1,0,Rect2(-300,10,-14,56))
+ row.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+ # The small map under the bar (TW's tactical map toggle).
+ minimap_frame = _framed()
+ minimap_frame.name = "Minimap"
  minimap_slot = Control.new()
  minimap_slot.custom_minimum_size = Vector2(206,206)
  minimap_slot.clip_contents = true
- frame.add_child(minimap_slot)
+ minimap_frame.add_child(minimap_slot)
  var placeholder = UiKit.label("Minimap",14,UiKit.TEXT_DIM)
  placeholder.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
  placeholder.name = "Placeholder"
  minimap_slot.add_child(placeholder)
- _anchor(frame,1,0,1,0,Rect2(-250,10,-14,246))
+ _anchor(minimap_frame,1,0,1,0,Rect2(-250,62,-14,298))
 
 func _build_overlays():
- var row = HBoxContainer.new()
- row.add_theme_constant_override("separation",4)
- for o in OVERLAYS:
-  var b = Widgets.RoundButton.new(o[0],"Show "+o[1].to_lower(),32,colors.trim)
-  b.toggle_mode = true
-  b.button_pressed = true
-  b.toggled.connect(func(on): overlay_toggled.emit(o[0],on))
-  overlay_buttons[o[0]] = b
-  row.add_child(b)
- _anchor(row,1,0,1,0,Rect2(-250,250,-14,282))
+ pass # display toggles live in the camera settings (TW: Ctrl+T toggles labels)
 
-# --- Event messages (right) ------------------------------------------------------
+# --- Event messages (right, under the small map; toggled by Events) ---------------------------
 
 func _build_events():
- var frame = _framed()
+ events_frame = _framed()
+ events_frame.name = "EventFeed"
  var v = VBoxContainer.new()
  v.add_theme_constant_override("separation",4)
- frame.add_child(v)
+ events_frame.add_child(v)
  v.add_child(UiKit.header("Event Messages",16))
  v.add_child(UiKit.divider(colors.trim))
  var scroll = ScrollContainer.new()
@@ -195,7 +268,8 @@ func _build_events():
  event_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  event_box.add_theme_constant_override("separation",3)
  scroll.add_child(event_box)
- _anchor(frame,1,0,1,0,Rect2(-326,290,-14,640))
+ # Ends above the round End Turn menu and its warning; the bottom panel ends left of it.
+ _anchor(events_frame,1,0,1,1,Rect2(-326,304,-14,EVENTS_BOTTOM))
 
 func _rebuild_events():
  _clear(event_box)
@@ -227,16 +301,66 @@ func _rebuild_events():
    m.add_child(row)
    event_box.add_child(m)
 
-# --- Province stats (left) ----------------------------------------------------------
+# --- Bottom panel (TW:WH3, docs/tw-ui-parity.md L6-L7): three parts ---------------------------
+# Province: left = growth, income, public order; middle = settlement tabs with building slots or the
+# garrison; right = resources, climate (terrain) and effects. Army: left = lord card, equipment and
+# traits (greyed), movement; middle = recruit buttons, the recruitment drawer, unit cards; right =
+# upkeep, replenishment, stance (greyed). The panel ends left of the round End Turn menu and the
+# event feed, so the drawer never covers them.
+
+const BOTTOM_WIDTH = 1256.0 # left edge to the round menu (1600-wide viewport)
+const BOTTOM_LEFT_W = 210.0
+const BOTTOM_RIGHT_W = 190.0
+const CARD_GAP = 4
+const ARMY_PANEL_WIDTH = BOTTOM_WIDTH-BOTTOM_LEFT_W-BOTTOM_RIGHT_W-60.0 # the middle column
+const SETTLEMENT_TABS = [["buildings","Buildings","Building slots (1 overview, 3 building browser)"],["garrison","Garrison","Who defends the settlement (2)"]]
+
+var lord_box: VBoxContainer   # army: left column
+var info_box: VBoxContainer   # right column (province or army)
+var settlement_tab := "buildings"
+
+func _column(w: float) -> VBoxContainer:
+ var v = VBoxContainer.new()
+ v.custom_minimum_size = Vector2(w,0)
+ v.add_theme_constant_override("separation",5)
+ return v
+
+func _rule() -> Control:
+ var r = ColorRect.new()
+ r.color = Color(colors.trim,0.45)
+ r.custom_minimum_size = Vector2(1,0)
+ r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ return r
 
 func _build_stats():
- stats_panel = _framed()
- stats_panel.custom_minimum_size = Vector2(300,0)
- stats_box = VBoxContainer.new()
- stats_box.add_theme_constant_override("separation",6)
- stats_panel.add_child(stats_box)
- stats_panel.visible = false
- _anchor(stats_panel,0,0,0,0,Rect2(14,70,314,70))
+ pass # the province stats are the bottom panel's left column (see _build_bottom)
+
+func _build_bottom():
+ bottom_panel = _framed()
+ bottom_panel.name = "BottomPanel"
+ var h = HBoxContainer.new()
+ h.add_theme_constant_override("separation",12)
+ bottom_panel.add_child(h)
+ stats_panel = _column(BOTTOM_LEFT_W)
+ stats_panel.name = "ProvinceLeft"
+ stats_box = stats_panel
+ h.add_child(stats_panel)
+ lord_box = _column(BOTTOM_LEFT_W)
+ lord_box.name = "ArmyLeft"
+ h.add_child(lord_box)
+ h.add_child(_rule())
+ bottom_box = VBoxContainer.new()
+ bottom_box.name = "Middle"
+ bottom_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ bottom_box.custom_minimum_size = Vector2(ARMY_PANEL_WIDTH,0)
+ bottom_box.add_theme_constant_override("separation",6)
+ h.add_child(bottom_box)
+ h.add_child(_rule())
+ info_box = _column(BOTTOM_RIGHT_W)
+ info_box.name = "Right"
+ h.add_child(info_box)
+ bottom_panel.visible = false
+ _anchor(bottom_panel,0,1,0,1,Rect2(14,-262,14+BOTTOM_WIDTH,-10))
 
 func _stat_row(icon: String,label: String,value: String,tip: String) -> Control:
  var row = HBoxContainer.new()
@@ -249,20 +373,24 @@ func _stat_row(icon: String,label: String,value: String,tip: String) -> Control:
  row.add_child(UiKit.label(value,16,Color("f1d79a"),UiKit.FONT_BOLD))
  return row
 
+func _small(text: String,color := UiKit.TEXT_DIM,size := 13) -> Label:
+ var l = UiKit.label(text,size,color)
+ l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+ return l
+
 func _show_stats(s: Dictionary):
  _clear(stats_box)
  var p = data.province(s.province)
  var st = data.province_stats(s.province)
  province_title = p.name
- stats_box.add_child(UiKit.header(p.name,20))
+ stats_box.add_child(UiKit.header(p.name,18))
  var owner_row = HBoxContainer.new()
  owner_row.add_theme_constant_override("separation",8)
  owner_row.add_child(Widgets.Emblem.new(s.faction,22))
- owner_row.add_child(UiKit.label("%s\n%s" % [s.name,s.faction.name],14,UiKit.TEXT_DIM))
+ owner_row.add_child(UiKit.label(s.faction.name,14,UiKit.TEXT_DIM))
  stats_box.add_child(owner_row)
- stats_box.add_child(UiKit.divider(colors.trim))
+ stats_box.add_child(_stat_row("coin","Income",UiKit.signed(st.income),"Province income per turn (before upkeep): base by type and level plus taxes on population, raised by resource endowments and buildings."))
  stats_box.add_child(_stat_row("population","Growth","%+d / year" % st.growth,"Population growth per year, from settlement type, resource endowments, buildings and wealth.\nRuler popularity is not designed yet and counts as neutral."))
- stats_box.add_child(_stat_row("coin","Income",UiKit.signed(st.income),"Settlement income per turn (before upkeep): base by type and level plus taxes on population, raised by resource endowments and buildings."))
  stats_box.add_child(_stat_row("population","Population",UiKit.format_int(st.population),"People living in the province's settlements."))
  var order = HBoxContainer.new()
  order.add_child(UiKit.label("Public order",15))
@@ -272,20 +400,55 @@ func _show_stats(s: Dictionary):
  order.add_child(UiKit.label("%+d" % st.public_order,16,Color("9fe08a") if st.public_order>=0 else Color("ef8a6a"),UiKit.FONT_BOLD))
  stats_box.add_child(order)
  var bar = Widgets.OrderBar.new(st.public_order/100.0)
- bar.tooltip_text = "Public order, -100 to +100 (placeholder: no public order system yet)"
+ bar.tooltip_text = "Public order, -100 to +100 (placeholder: no public order system yet, data/mock_ui.json)"
  bar.mouse_filter = Control.MOUSE_FILTER_PASS
  stats_box.add_child(bar)
- stats_box.add_child(UiKit.label("Public order: placeholder (data/mock_ui.json)",12,Color(UiKit.TEXT_DIM,0.7)))
 
-# --- Bottom panel: province (settlement tabs + building slots) or army ------------------
+# Right column of the province panel.
+func _show_region_info(id: String):
+ _clear(info_box)
+ var d = data.region_details(id)
+ info_box.add_child(UiKit.header("Resources",15))
+ var res = HBoxContainer.new()
+ res.add_theme_constant_override("separation",8)
+ for k in ["food","wood","stone","minerals"]:
+  var n = int(d.resources.get(k,0))
+  var l = UiKit.label("%s %d" % [k.capitalize().left(4),n],13,UiKit.TEXT if n>0 else Color(UiKit.TEXT_DIM,0.6))
+  l.tooltip_text = "%s endowment %d (raises income and growth; data/provinces.json)" % [k.capitalize(),n]
+  l.mouse_filter = Control.MOUSE_FILTER_PASS
+  res.add_child(l)
+ info_box.add_child(res)
+ info_box.add_child(UiKit.header("Climate",15))
+ var terr = d.terrain.slice(0,3).map(func(t): return "%s %d%%" % [String(t[0]).capitalize(),int(round(t[1]*100))])
+ var tl = _small(", ".join(terr) if not terr.is_empty() else "Unknown")
+ tl.tooltip_text = "The region's terrain (from the movement grid). Climates are not designed yet; terrain stands in."
+ tl.mouse_filter = Control.MOUSE_FILTER_PASS
+ info_box.add_child(tl)
+ info_box.add_child(UiKit.header("Effects",15))
+ if d.effects.is_empty(): info_box.add_child(_small("No building effects."))
+ for i in mini(d.effects.size(),4): info_box.add_child(_small(d.effects[i],UiKit.TEXT,12))
+ if d.effects.size()>4:
+  var more = _small("+%d more" % (d.effects.size()-4))
+  more.tooltip_text = "\n".join(d.effects)
+  more.mouse_filter = Control.MOUSE_FILTER_PASS
+  info_box.add_child(more)
 
-func _build_bottom():
- bottom_panel = _framed()
- bottom_box = VBoxContainer.new()
- bottom_box.add_theme_constant_override("separation",6)
- bottom_panel.add_child(bottom_box)
- bottom_panel.visible = false
- _anchor(bottom_panel,0.5,1,0.5,1,Rect2(-ARMY_PANEL_WIDTH/2,-262,ARMY_PANEL_WIDTH/2,-10))
+func _tab_button(text: String,on: bool) -> Button:
+ var tab = Button.new()
+ tab.text = text
+ tab.focus_mode = Control.FOCUS_NONE
+ tab.custom_minimum_size = Vector2(110,32)
+ if on:
+  tab.add_theme_stylebox_override("normal",UiKit.textured(UiKit.BUTTON_LONG_SELECTED,10,8))
+  tab.add_theme_stylebox_override("hover",UiKit.textured(UiKit.BUTTON_LONG_SELECTED,10,8))
+  tab.add_theme_color_override("font_color",UiKit.INK)
+  tab.add_theme_color_override("font_hover_color",UiKit.INK)
+ return tab
+
+# Keys 1 and 2 (TW:WH3): the settlement's overview (building slots) or its garrison.
+func set_settlement_tab(tab: String):
+ settlement_tab = tab
+ if selected_settlement != "": show_settlement(selected_settlement)
 
 func show_settlement(id: String):
  close_recruitment()
@@ -295,15 +458,33 @@ func show_settlement(id: String):
  selected_army = ""
  _show_stats(s)
  stats_panel.visible = true
+ lord_box.visible = false
+ _show_region_info(id)
  _clear(bottom_box)
  var head = HBoxContainer.new()
- head.add_theme_constant_override("separation",10)
- head.add_child(Widgets.Emblem.new(s.faction,24))
- var title = VBoxContainer.new()
- title.add_theme_constant_override("separation",-2)
- title.add_child(UiKit.header(s.province_name,18))
- title.add_child(UiKit.label("%s · %s · level %d · defense %d · %s" % [s.name,s.type.capitalize(),s.level,s.defense,s.faction.name],14,UiKit.TEXT_DIM))
- if not s.garrison.is_empty(): title.add_child(UiKit.label("Garrison: %s" % ", ".join(s.garrison),14,Color("f1d79a"),UiKit.FONT_BOLD))
+ head.add_theme_constant_override("separation",8)
+ # Settlement tabs of the province (TW: one header per settlement).
+ for sid in data.settlements_in_province(s.province):
+  var tab = _tab_button(data.settlement(sid).name,sid == id)
+  tab.pressed.connect(func():
+   show_settlement(sid)
+   settlement_selected.emit(sid))
+  head.add_child(tab)
+ var spacer = Control.new()
+ spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ head.add_child(spacer)
+ for t in SETTLEMENT_TABS:
+  var b = _tab_button(t[1],settlement_tab == t[0])
+  b.name = "Tab_"+t[0]
+  b.tooltip_text = t[2]
+  b.pressed.connect(set_settlement_tab.bind(t[0]))
+  head.add_child(b)
+ bottom_box.add_child(head)
+ var sub = HBoxContainer.new()
+ sub.add_theme_constant_override("separation",10)
+ var info = UiKit.label("%s · %s · level %d · defense %d" % [s.name,s.type.capitalize(),s.level,s.defense],14,UiKit.TEXT_DIM)
+ info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ sub.add_child(info)
  if s.player_owned:
   var check = data.raise_army_check(id)
   var hire = Button.new()
@@ -318,33 +499,76 @@ func show_settlement(id: String):
     toast("%s takes command of a new army at %s." % [r.name,s.name])
     army_raised.emit(r.army)
    else: toast(", ".join(r.reasons)))
-  title.add_child(hire)
- head.add_child(title)
- var spacer = Control.new()
- spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
- head.add_child(spacer)
- for sid in data.settlements_in_province(s.province):
-  var tab = Button.new()
-  tab.text = data.settlement(sid).name
-  tab.focus_mode = Control.FOCUS_NONE
-  tab.custom_minimum_size = Vector2(130,36)
-  if sid == id:
-   tab.add_theme_stylebox_override("normal",UiKit.textured(UiKit.BUTTON_LONG_SELECTED,10,8))
-   tab.add_theme_stylebox_override("hover",UiKit.textured(UiKit.BUTTON_LONG_SELECTED,10,8))
-   tab.add_theme_color_override("font_color",UiKit.INK)
-   tab.add_theme_color_override("font_hover_color",UiKit.INK)
-  tab.pressed.connect(func():
-   show_settlement(sid)
-   settlement_selected.emit(sid))
-  head.add_child(tab)
- bottom_box.add_child(head)
+  sub.add_child(hire)
+ bottom_box.add_child(sub)
  bottom_box.add_child(UiKit.divider(colors.trim))
  var row = HBoxContainer.new()
  row.add_theme_constant_override("separation",8)
- for slot in data.building_slots(id): row.add_child(Cards.building_card(slot,colors.trim,studio,open_building_browser.bind(id,int(slot.get("slot",-1)))))
+ if settlement_tab == "garrison":
+  row.name = "GarrisonCards"
+  var g = data.garrison(id)
+  for u in g.units:
+   var t = data.unit_type(u.unit)
+   row.add_child(Cards.unit_card(t,u,s.faction,studio,"%s\nGarrison of %s\nRaised from the settlement's level and walls when it is attacked (placeholder: data/battle.json)." % [t.display_name,s.name]))
+  if g.units.is_empty(): row.add_child(_small("No garrison."))
+  if not g.armies.is_empty():
+   var armies = _small("Armies inside: %s" % ", ".join(g.armies),Color("f1d79a"),14)
+   armies.custom_minimum_size = Vector2(160,0)
+   row.add_child(armies)
+ else:
+  row.name = "BuildingCards"
+  for slot in data.building_slots(id): row.add_child(Cards.building_card(slot,colors.trim,studio,open_building_browser.bind(id,int(slot.get("slot",-1)))))
  bottom_box.add_child(_scroller(row))
  bottom_panel.visible = true
  _fit_bottom.call_deferred()
+
+# Left column of the army panel: the lord's card, greyed equipment, trait and stance slots,
+# movement.
+func _show_lord(army_id: String,a: Dictionary,location: String):
+ _clear(lord_box)
+ var top = HBoxContainer.new()
+ top.add_theme_constant_override("separation",8)
+ var lord_card = Cards.unit_card(data.unit_type("commander"),a.commander,a.faction_data,studio,"%s\n%s · %s\nGeneral of %s" % [a.commander.name,a.faction_data.name,location,a.display_name])
+ lord_card.name = "LordCard"
+ top.add_child(lord_card)
+ var side = VBoxContainer.new()
+ side.add_theme_constant_override("separation",4)
+ var lord_name = _small(a.commander.name,Color("f1d79a"),15)
+ lord_name.custom_minimum_size = Vector2(110,0)
+ side.add_child(lord_name)
+ side.add_child(_small("Rank %d" % a.commander.rank))
+ for slot in [["finance","Equipment"],["objectives","Traits"],["armies","Stances"]]:
+  var r = HBoxContainer.new()
+  r.add_theme_constant_override("separation",4)
+  r.tooltip_text = slot[1]+COMING
+  r.mouse_filter = Control.MOUSE_FILTER_STOP
+  for i in (2 if slot[0] == "armies" else 3): r.add_child(Widgets.Icon.new(slot[0],Color(0.45,0.42,0.38),18))
+  r.name = "Lord"+slot[1]
+  side.add_child(r)
+ top.add_child(side)
+ lord_box.add_child(top)
+ lord_box.add_child(_movement_box(army_id))
+
+# Right column of the army panel.
+func _show_army_info(army_id: String,a: Dictionary):
+ _clear(info_box)
+ var d = data.army_info(army_id)
+ info_box.add_child(UiKit.header("Army",15))
+ info_box.add_child(_stat_row("coin","Upkeep","%d" % d.upkeep,"Gold paid each turn for this army: the general and every unit (placeholder: data/units, data/economy.json)."))
+ var men = 0
+ for u in a.units: men += int(u.men)
+ info_box.add_child(_stat_row("population","Men",UiKit.format_int(men),"Soldiers in the army's units."))
+ var rep = _stat_row("income","Replenish","%d%%" % d.replenish_pct,"Share of each unit's missing men regained per turn.\nFull rate in your own territory, low (and paid in gold) elsewhere (data/recruitment.json).")
+ info_box.add_child(rep)
+ info_box.add_child(_small({"own":"In your territory","foreign":"In %s territory" % d.region_owner,"unclaimed":"In unclaimed land"}[d.territory]))
+ var stance = HBoxContainer.new()
+ stance.name = "Stance"
+ stance.add_theme_constant_override("separation",6)
+ stance.tooltip_text = "Stances (march, ambush, raid, encamp)"+COMING
+ stance.mouse_filter = Control.MOUSE_FILTER_STOP
+ stance.add_child(UiKit.label("Stance",14,Color(UiKit.TEXT_DIM,0.6)))
+ for i in 3: stance.add_child(Widgets.Icon.new("armies",Color(0.45,0.42,0.38),18))
+ info_box.add_child(stance)
 
 # location: province name where the army stands (for tooltips).
 func show_army(army_id: String,location: String):
@@ -354,42 +578,69 @@ func show_army(army_id: String,location: String):
  selected_settlement = ""
  army_location = location
  stats_panel.visible = false
+ lord_box.visible = true
+ _show_lord(army_id,a,location)
+ _show_army_info(army_id,a)
  _clear(bottom_box)
+ if selected_unit>=a.units.size(): selected_unit = -1
+ # TW:WH3 recruitment drawer: opens above the army's cards (inside the middle column).
+ if a.player_owned and recruit_army == army_id: bottom_box.add_child(_recruitment_drawer(army_id))
  var head = HBoxContainer.new()
  head.add_theme_constant_override("separation",10)
  head.add_child(Widgets.Emblem.new(a.faction_data,24))
  var title = VBoxContainer.new()
  title.add_theme_constant_override("separation",-2)
- title.add_child(UiKit.header(a.display_name,18))
- title.add_child(UiKit.label("Led by %s · %s · %s" % [a.commander.name,a.faction_data.name,location],14,UiKit.TEXT_DIM))
+ title.add_child(UiKit.header(a.display_name,17))
+ title.add_child(UiKit.label("%s · %s" % [a.faction_data.name,location],13,UiKit.TEXT_DIM))
+ title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  head.add_child(title)
- var spacer = Control.new()
- spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
- head.add_child(spacer)
- head.add_child(_movement_box(army_id))
- if selected_unit>=a.units.size(): selected_unit = -1
- var side = VBoxContainer.new()
- side.add_theme_constant_override("separation",2)
- var count = UiKit.label("Units %d / %d" % [1+a.units.size()+a.queue.size(),a.max_units],15,UiKit.TEXT_DIM)
+ # Recruit buttons above the cards (TW:WH3), with the reason when recruiting is impossible.
+ if a.player_owned:
+  var actions = HBoxContainer.new()
+  actions.name = "ArmyActions"
+  actions.add_theme_constant_override("separation",8)
+  var where = data.recruitment(army_id)
+  if not where.ok:
+   var why = UiKit.label("Cannot recruit: %s" % where.reason,13,Color("ef8a6a"))
+   why.name = "RecruitReason"
+   why.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+   why.custom_minimum_size = Vector2(160,0)
+   why.tooltip_text = why.text
+   why.mouse_filter = Control.MOUSE_FILTER_PASS
+   actions.add_child(why)
+  var recruit = Button.new()
+  recruit.name = "Recruit"
+  recruit.text = "Hide recruitment" if recruit_army == army_id else "Recruit units"
+  recruit.focus_mode = Control.FOCUS_NONE
+  recruit.disabled = not where.ok
+  recruit.tooltip_text = ("Recruit units from your buildings in %s (4)" % where.province_name) if where.ok else "Cannot recruit: %s." % where.reason
+  recruit.pressed.connect(func():
+   if recruit_army == army_id: close_recruitment()
+   else: open_recruitment(army_id))
+  actions.add_child(recruit)
+  var disband = Button.new()
+  disband.name = "Disband"
+  disband.text = "Disband"
+  disband.focus_mode = Control.FOCUS_NONE
+  disband.disabled = selected_unit<0
+  disband.tooltip_text = "Disband the selected unit (Ctrl+P); its men return to the population of this region." if selected_unit>=0 else "Click a unit card to select it."
+  disband.pressed.connect(disband_selected)
+  actions.add_child(disband)
+  head.add_child(actions)
+ var count = UiKit.label("Units %d / %d" % [1+a.units.size()+a.queue.size(),a.max_units],14,UiKit.TEXT_DIM)
  count.name = "UnitCount"
  count.tooltip_text = "General, units and queued recruits. The %d-unit cap is a placeholder (data/recruitment.json)." % a.max_units
  count.mouse_filter = Control.MOUSE_FILTER_PASS
- side.add_child(count)
- head.add_child(side)
- # TW:WH3 recruitment drawer: opens above the army's cards (inside this panel).
- if a.player_owned and recruit_army == army_id: bottom_box.add_child(_recruitment_drawer(army_id))
+ head.add_child(count)
  bottom_box.add_child(head)
  bottom_box.add_child(UiKit.divider(colors.trim))
  var row = HBoxContainer.new()
  row.name = "ArmyCards"
  row.alignment = BoxContainer.ALIGNMENT_BEGIN
  row.add_theme_constant_override("separation",CARD_GAP)
- # Cards narrow so a full army (general, units and queued recruits) always fits the panel.
- var card_scale = _card_scale(1+a.units.size()+a.queue.size())
- var lord = data.unit_type("commander")
- var lord_card = Cards.unit_card(lord,a.commander,a.faction_data,studio,"%s\n%s · %s\nGeneral of %s" % [a.commander.name,a.faction_data.name,location,a.display_name])
- lord_card.set_card_scale(card_scale)
- row.add_child(lord_card)
+ # Cards narrow so a full army (general, units and queued recruits) always fits the column. The
+ # general's card is in the left column; it still counts against the cap.
+ var card_scale = _card_scale(a.units.size()+a.queue.size())
  for i in a.units.size():
   var entry = a.units[i]
   var u = data.unit_type(entry.unit)
@@ -414,46 +665,15 @@ func show_army(army_id: String,location: String):
   qc.set_card_scale(card_scale)
   row.add_child(qc)
  bottom_box.add_child(_scroller(row))
- # Below the cards (TW:WH3): recruitment and disband, with the reason when recruiting is impossible.
- if a.player_owned:
-  var actions = HBoxContainer.new()
-  actions.name = "ArmyActions"
-  actions.add_theme_constant_override("separation",8)
-  var where = data.recruitment(army_id)
-  var recruit = Button.new()
-  recruit.name = "Recruit"
-  recruit.text = "Hide recruitment" if recruit_army == army_id else "Recruit units"
-  recruit.focus_mode = Control.FOCUS_NONE
-  recruit.disabled = not where.ok
-  recruit.tooltip_text = ("Recruit units from your buildings in %s (4)" % where.province_name) if where.ok else "Cannot recruit: %s." % where.reason
-  recruit.pressed.connect(func():
-   if recruit_army == army_id: close_recruitment()
-   else: open_recruitment(army_id))
-  actions.add_child(recruit)
-  var disband = Button.new()
-  disband.name = "Disband"
-  disband.text = "Disband"
-  disband.focus_mode = Control.FOCUS_NONE
-  disband.disabled = selected_unit<0
-  disband.tooltip_text = "Disband the selected unit (Ctrl+P); its men return to the population of this region." if selected_unit>=0 else "Click a unit card to select it."
-  disband.pressed.connect(disband_selected)
-  actions.add_child(disband)
-  if not where.ok:
-   var why = UiKit.label("Cannot recruit: %s" % where.reason,14,Color("ef8a6a"))
-   why.name = "RecruitReason"
-   actions.add_child(why)
-  bottom_box.add_child(actions)
  bottom_panel.visible = true
  _fit_bottom.call_deferred()
 
-const CARD_GAP = 4
-const ARMY_PANEL_WIDTH = 1080.0 # leaves room for the End Turn cluster on the right
-
-# Card scale so `count` cards (the general counts 1.12) fit the army panel; at most 1.
+# Card scale so `count` unit cards fit the middle column; at most 1.
 func _card_scale(count: int) -> float:
  # Only the cards shrink; the gaps between them stay.
+ count = maxi(count,1)
  var avail = ARMY_PANEL_WIDTH-40.0-(count-1)*CARD_GAP
- return clampf(avail/((count+0.12)*Cards.UNIT_CARD.x),0.4,1.0)
+ return clampf(avail/(count*Cards.UNIT_CARD.x),0.4,1.0)
 
 # Disband the selected unit of the selected army (button or Ctrl+P).
 func disband_selected():
@@ -493,6 +713,7 @@ func _movement_box(army_id: String) -> Control:
  row.add_theme_constant_override("separation",6)
  row.add_child(UiKit.label("Movement",13,UiKit.TEXT_DIM))
  movement_bar = MovementBar.new(m.points/maxf(1.0,m.max_points))
+ movement_bar.custom_minimum_size.x = 130
  movement_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
  movement_bar.name = "MovementBar"
  movement_bar.tooltip_text = "Movement left this turn\nRefilled on End Turn. Forest, hills and passes cost more, roads less.\nHold right click on the map to preview a move: the part it would spend shows green, red if it takes more than this turn."
@@ -504,7 +725,7 @@ func _movement_box(army_id: String) -> Control:
  if gs.status != "ok":
   # A captain leads: the army cannot move until a general is appointed (or the wounded one returns).
   var why = "General wounded (%d turns)" % int(gs.wounded_turns) if gs.status == "wounded" else "General fallen"
-  row2.add_child(UiKit.label("%s: a captain cannot move the army" % why,12,Color("ef8a6a")))
+  v.add_child(_small("%s: a captain cannot move the army" % why,Color("ef8a6a"),12))
   var appoint = Button.new()
   appoint.name = "AppointGeneral"
   appoint.text = "Appoint general"
@@ -515,7 +736,7 @@ func _movement_box(army_id: String) -> Control:
    toast("%s takes command." % r.name if r.ok else ", ".join(r.reasons)))
   row2.add_child(appoint)
  elif not m.order.is_empty():
-  row2.add_child(UiKit.label("Marching (order continues on End Turn)",12,Color("f1d79a")))
+  v.add_child(_small("Marching (order continues on End Turn)",Color("f1d79a"),12))
   var cancel = Button.new()
   cancel.name = "CancelOrder"
   cancel.text = "Cancel order"
@@ -523,8 +744,8 @@ func _movement_box(army_id: String) -> Control:
   cancel.disabled = not m.player_owned
   cancel.pressed.connect(func(): cancel_order_requested.emit(army_id))
   row2.add_child(cancel)
- elif m.garrison != "": row2.add_child(UiKit.label("Garrisoned in %s" % m.garrison_name,12,Color("f1d79a")))
- else: row2.add_child(UiKit.label("Right click the map to move",12,UiKit.TEXT_DIM))
+ elif m.garrison != "": v.add_child(_small("Garrisoned in %s" % m.garrison_name,Color("f1d79a"),12))
+ else: v.add_child(_small("Right click the map to move",UiKit.TEXT_DIM,12))
  follow_button = Button.new()
  follow_button.name = "Follow"
  follow_button.text = "Follow"
@@ -1109,10 +1330,57 @@ func _unit_table(title: String,units: Array,name: String) -> Control:
 
 # --- End turn (bottom-right), hover tooltip, toast, FPS --------------------------------
 
+# --- Round End Turn menu (TW:WH3, docs/tw-ui-parity.md L5) ------------------------------------
+# End Turn in the centre; the hourglass turn counter below it with the notification gear beside;
+# Objectives, Diplomacy, Technology and a culture slot (Senate / League / Vassals) around it, greyed
+# until those systems exist. Positions on the ring are ours (TW's are unverified). The End Turn
+# warning sits above the menu with its arrows and skip.
+
+const ROUND_MENU = Vector2(300,214)
+const ROUND_CENTRE = Vector2(176,110)
+const EVENTS_BOTTOM = -336.0 # the event feed ends above the round menu and its warning
+var round_buttons := {}
+
 func _build_end_turn():
- var v = VBoxContainer.new()
- v.alignment = BoxContainer.ALIGNMENT_END
- v.add_theme_constant_override("separation",2)
+ var ring = Control.new()
+ ring.name = "RoundMenu"
+ ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ ring.draw.connect(func():
+  ring.draw_circle(ROUND_CENTRE,100,Color(colors.panel,0.92))
+  ring.draw_arc(ROUND_CENTRE,100,0,TAU,64,colors.trim,2.0,true)
+  ring.draw_arc(ROUND_CENTRE,64,0,TAU,48,Color(colors.trim,0.5),1.0,true))
+ _anchor(ring,1,1,1,1,Rect2(-14-ROUND_MENU.x,-10-ROUND_MENU.y,-14,-10))
+ end_turn_button = Widgets.RoundButton.new("year","End turn (Enter)\nAdvances the year: income, upkeep, construction and growth.",112,Color("e2b955"))
+ end_turn_button.name = "EndTurn"
+ end_turn_button.pressed.connect(func(): end_turn_requested.emit())
+ end_turn_button.position = ROUND_CENTRE-Vector2(56,56)
+ ring.add_child(end_turn_button)
+ # Around the ring: [key, icon, tooltip, angle in degrees (0 = right, 90 = down), enabled].
+ var items = [["notifications","finance","Notification settings\nWhich End Turn warnings show",135,true],
+  ["objectives","objectives","Objectives",180,false],["diplomacy","diplomacy","Diplomacy",218,false],
+  ["technology","tech","Technology",256,false],["culture","faction","Senate, League or Vassals (by culture)",294,false]]
+ for it in items:
+  var b = _round(it[1],it[2],38,it[4])
+  b.name = "Round_"+it[0]
+  b.position = ROUND_CENTRE+Vector2.from_angle(deg_to_rad(it[3]))*82.0-Vector2(19,19)
+  round_buttons[it[0]] = b
+  ring.add_child(b)
+ round_buttons.notifications.pressed.connect(open_notification_settings)
+ # Hourglass turn counter under the button.
+ var counter = HBoxContainer.new()
+ counter.name = "TurnCounter"
+ counter.add_theme_constant_override("separation",4)
+ counter.mouse_filter = Control.MOUSE_FILTER_PASS
+ counter.add_child(Widgets.Icon.new("year",Color("e9c46a"),18))
+ var year = UiKit.label("",14,UiKit.TEXT,UiKit.FONT_BOLD)
+ counter.add_child(year)
+ resource_labels.year = year
+ resource_groups.year = counter
+ end_turn_year = year
+ counter.position = ROUND_CENTRE+Vector2(-60,66)
+ counter.size = Vector2(120,22)
+ counter.alignment = BoxContainer.ALIGNMENT_CENTER
+ ring.add_child(counter)
  # End Turn warnings (TW:WH3): the pending kind and item; arrows cycle its items, Skip moves on to
  # the next kind. While one is shown, the End Turn button jumps to it instead of ending the turn.
  warning_box = Widgets.Framed.new("main",colors.trim,Color(colors.panel,0.95))
@@ -1131,7 +1399,7 @@ func _build_end_turn():
  wv.add_child(warning_item)
  var wr = HBoxContainer.new()
  wr.alignment = BoxContainer.ALIGNMENT_CENTER
- for b in [["<","WarnPrev",func(): warning_step.emit(-1),"Previous"],[">","WarnNext",func(): warning_step.emit(1),"Next"],["Skip","WarnSkip",func(): warning_skip.emit(),"Skip these warnings"]]:
+ for b in [["<","WarnPrev",func(): warning_step.emit(-1),"Previous"],[">","WarnNext",func(): warning_step.emit(1),"Next"],["Skip >>","WarnSkip",func(): warning_skip.emit(),"Skip these warnings"]]:
   var btn = Button.new()
   btn.name = b[1]
   btn.text = b[0]
@@ -1140,19 +1408,8 @@ func _build_end_turn():
   btn.pressed.connect(b[2])
   wr.add_child(btn)
  wv.add_child(wr)
- v.add_child(warning_box)
- end_turn_button = Widgets.RoundButton.new("year","End turn\nAdvances the year: income, upkeep, construction and growth.",112,Color("e2b955"))
- end_turn_button.pressed.connect(func(): end_turn_requested.emit())
- end_turn_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
- v.add_child(end_turn_button)
- var l = UiKit.header("End Turn",15)
- l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
- v.add_child(l)
- end_turn_year = UiKit.label("",14,UiKit.TEXT_DIM)
- end_turn_year.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
- v.add_child(end_turn_year)
- _anchor(v,1,1,1,1,Rect2(-226,-178,-14,-10))
- v.grow_vertical = Control.GROW_DIRECTION_BEGIN # the warning box stacks above the button
+ _anchor(warning_box,1,1,1,1,Rect2(-14-ROUND_MENU.x+40,-10-ROUND_MENU.y-110,-54,-10-ROUND_MENU.y-4))
+ warning_box.grow_vertical = Control.GROW_DIRECTION_BEGIN
  hover_tip = PanelContainer.new()
  hover_tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
  hover_tip.add_theme_stylebox_override("panel",UiKit.textured(UiKit.PARCHMENT,12,10))
@@ -1222,8 +1479,9 @@ Unpaid soldiers desert: every unit loses %d%% of its men each turn.
  resource_groups.income.tooltip_text = _ledger_text()
  resource_groups.population.tooltip_text = "Population of your settlements: %s\nGrows each year with settlement type, resources and wealth." % UiKit.format_int(r.population)
  resource_groups.year.tooltip_text = "Year %d, turn %d. One turn is one year." % [r.year,r.turn]
- if chronicle_panel and chronicle_panel.visible: _fill_chronicle()
- end_turn_year.text = "Year %d" % r.year
+ if chronicle_panel and chronicle_panel.visible: _fill_summary()
+ effects_icon.tooltip_text = _effects_text()
+ if dropdown and dropdown.visible and dropdown_kind in LISTS: _fill_dropdown()
  if selected_settlement != "": show_settlement(selected_settlement)
  if selected_army != "": show_army(selected_army,army_location)
  if recruitment_visible(): _fill_recruitment()
@@ -1256,38 +1514,307 @@ func _ledger_text() -> String:
  lines.append("(placeholder numbers: data/economy.json)")
  return "\n".join(lines)
 
-# --- Chronicle window -------------------------------------------------------------
+# --- Small pop-ups under the top bar: camera and notification settings, and the lists ---------
+# One at a time; pressing the same button again closes it (TW:WH3 drop-downs).
 
-func toggle_chronicle():
+const LISTS = ["lords","provinces","factions"]
+var overlay_state := {"borders":true,"settlements":true,"armies":true}
+
+func _toggle_dropdown(kind: String,rect: Rect2,anchor_right: bool):
+ if dropdown and dropdown.visible and dropdown_kind == kind:
+  close_dropdown()
+  return
+ if dropdown == null:
+  dropdown = _framed()
+  dropdown.name = "Dropdown"
+  add_child(dropdown)
+ dropdown_kind = kind
+ var a = 1.0 if anchor_right else 0.0
+ dropdown.grow_vertical = Control.GROW_DIRECTION_END
+ dropdown.grow_horizontal = Control.GROW_DIRECTION_BEGIN if anchor_right else Control.GROW_DIRECTION_END
+ dropdown.anchor_left = a
+ dropdown.anchor_right = a
+ dropdown.anchor_top = 0
+ dropdown.anchor_bottom = 0
+ dropdown.offset_left = rect.position.x
+ dropdown.offset_top = rect.position.y
+ dropdown.offset_right = rect.size.x
+ dropdown.offset_bottom = rect.position.y
+ _fill_dropdown()
+ dropdown.visible = true
+
+func close_dropdown():
+ if dropdown: dropdown.visible = false
+ dropdown_kind = ""
+
+func dropdown_visible() -> bool:
+ return dropdown != null and dropdown.visible
+
+func _fill_dropdown():
+ _clear(dropdown)
+ var v = VBoxContainer.new()
+ v.add_theme_constant_override("separation",4)
+ dropdown.add_child(v)
+ match dropdown_kind:
+  "camera": _fill_camera_settings(v)
+  "notifications": _fill_notification_settings(v)
+  "lords": _fill_lords(v)
+  "provinces": _fill_provinces(v)
+  "factions": _fill_factions(v)
+ dropdown.reset_size()
+
+func toggle_dropdown(kind: String):
+ _toggle_dropdown(kind,Rect2(-470,62,-14,0),true)
+
+func open_camera_settings():
+ _toggle_dropdown("camera",Rect2(14,62,334,0),false)
+
+func open_notification_settings():
+ if dropdown and dropdown.visible and dropdown_kind == "notifications":
+  close_dropdown()
+  return
+ _toggle_dropdown("notifications",Rect2(-14-ROUND_MENU.x-250,0,-14-ROUND_MENU.x-10,0),true)
+ # Above the round menu, from the bottom.
+ dropdown.anchor_top = 1
+ dropdown.anchor_bottom = 1
+ dropdown.offset_bottom = -20
+ dropdown.offset_top = -20-dropdown.get_combined_minimum_size().y
+ dropdown.grow_vertical = Control.GROW_DIRECTION_BEGIN
+
+func _check(text: String,on: bool,tip: String,changed: Callable) -> CheckBox:
+ var c = CheckBox.new()
+ c.text = text
+ c.button_pressed = on
+ c.tooltip_text = tip
+ c.focus_mode = Control.FOCUS_NONE
+ c.toggled.connect(changed)
+ return c
+
+# Camera settings (TW:WH3 top-left): what the map shows and how the camera behaves. AI speed,
+# following AI movements and your armies' speed are the camera settings of docs/tw-ui-parity.md L10.
+func _fill_camera_settings(v: VBoxContainer):
+ v.add_child(UiKit.header("Camera settings",16))
+ v.add_child(UiKit.divider(colors.trim))
+ v.add_child(UiKit.label("Show on the map (Ctrl+T: labels)",13,UiKit.TEXT_DIM))
+ for o in [["borders","Territory borders"],["settlements","Settlement banners"],["armies","Armies"]]:
+  var c = _check(o[1],overlay_state[o[0]],"Show or hide %s on the map" % o[1].to_lower(),func(on):
+   overlay_state[o[0]] = on
+   overlay_toggled.emit(o[0],on))
+  c.name = "Overlay_"+o[0]
+  v.add_child(c)
+ _fill_camera_extra(v)
+
+# Filled in by the AI turn and animation speed settings (Part 3 of this block).
+func _fill_camera_extra(_v: VBoxContainer):
+ pass
+
+func set_overlay_state(overlay: String,on: bool):
+ overlay_state[overlay] = on
+ if dropdown_visible() and dropdown_kind == "camera": _fill_dropdown()
+
+func _fill_notification_settings(v: VBoxContainer):
+ v.add_child(UiKit.header("Notification settings",16))
+ v.add_child(UiKit.label("Warnings on the End Turn button",13,UiKit.TEXT_DIM))
+ for w in data.WARNINGS:
+  var key = "warn_"+w[0]
+  var c = _check(w[1],bool(Settings.get_value(key)),"Warn before ending the turn: %s" % w[1].to_lower(),func(on): Settings.set_value(key,on))
+  c.name = "Warn_"+w[0]
+  v.add_child(c)
+
+func _list_row(cells: Array,widths: Array,on_press: Callable,tip := "") -> Control:
+ var b = Button.new()
+ b.focus_mode = Control.FOCUS_NONE
+ b.flat = not on_press.is_valid()
+ b.tooltip_text = tip
+ b.custom_minimum_size = Vector2(0,26)
+ var h = HBoxContainer.new()
+ h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ h.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+ h.offset_left = 6
+ h.add_theme_constant_override("separation",6)
+ for i in cells.size():
+  var l = UiKit.label(str(cells[i]),13,UiKit.TEXT)
+  l.custom_minimum_size = Vector2(widths[i],0)
+  l.clip_text = true
+  l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+  h.add_child(l)
+ b.add_child(h)
+ if on_press.is_valid(): b.pressed.connect(on_press)
+ return b
+
+func _list_head(cells: Array,widths: Array) -> Control:
+ var h = HBoxContainer.new()
+ h.add_theme_constant_override("separation",6)
+ for i in cells.size():
+  var l = UiKit.label(cells[i],12,UiKit.TEXT_DIM)
+  l.custom_minimum_size = Vector2(widths[i],0)
+  h.add_child(l)
+ var m = MarginContainer.new()
+ m.add_theme_constant_override("margin_left",6)
+ m.add_child(h)
+ return m
+
+func _fill_lords(v: VBoxContainer):
+ v.add_child(UiKit.header("Lords and heroes",16))
+ var w = [130,120,46,100]
+ v.add_child(_list_head(["General","Location","Units","Movement"],w))
+ var rows = data.lords_list()
+ for r in rows:
+  var row = _list_row([r.general,r.where,r.units,"%d%%" % int(round(r.movement*100))],w,func():
+   close_dropdown()
+   army_chosen.emit(r.id),"%s\n%s · %s men" % [r.army,r.general,UiKit.format_int(r.men)])
+  row.name = "Lord_"+r.id
+  v.add_child(row)
+ if rows.is_empty(): v.add_child(UiKit.label("No armies.",13,UiKit.TEXT_DIM))
+ v.add_child(UiKit.label("Heroes"+COMING.replace("\n"," "),12,Color(UiKit.TEXT_DIM,0.6)))
+
+func _fill_provinces(v: VBoxContainer):
+ v.add_child(UiKit.header("Provinces",16))
+ var w = [170,70,70,70]
+ v.add_child(_list_head(["Province","Income","Growth","Order"],w))
+ for r in data.provinces_list():
+  var row = _list_row([r.name,UiKit.signed(r.income),"%+d" % r.growth,"%+d" % r.public_order],w,func():
+   close_dropdown()
+   settlement_chosen.emit(r.settlement),"%s\nClick to go there" % r.name)
+  row.name = "Province_"+r.id
+  v.add_child(row)
+
+func _fill_factions(v: VBoxContainer):
+ v.add_child(UiKit.header("Known factions",16))
+ var w = [170,60,70,80]
+ v.add_child(_list_head(["Faction","With you","Holdings","Attitude"],w))
+ for r in data.factions_list():
+  var row = _list_row([r.name,"War" if r.at_war else "Peace","%d / %d" % [r.settlements,r.armies],"—"],w,Callable(),
+   "%s\n%s with you · %d settlements, %d armies\nAttitude comes with diplomacy." % [r.name,"At war" if r.at_war else "At peace",r.settlements,r.armies])
+  row.name = "Faction_"+r.id
+  v.add_child(row)
+
+# --- Faction summary (TW:WH3 top-right round button): Summary, Records, Statistics ------------
+
+var summary_tab := "summary"
+var summary_box: VBoxContainer
+
+func open_faction_summary(tab := "summary"):
  if chronicle_panel == null:
   chronicle_panel = _framed()
+  chronicle_panel.name = "FactionSummary"
   var v = VBoxContainer.new()
   v.add_theme_constant_override("separation",6)
   chronicle_panel.add_child(v)
-  var head = HBoxContainer.new()
-  var title = UiKit.header("The Chronicle of the Grey Scribes",20)
-  title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-  head.add_child(title)
-  var close = Button.new()
-  close.text = "Close"
-  close.focus_mode = Control.FOCUS_NONE
-  close.pressed.connect(func(): chronicle_panel.visible = false)
-  head.add_child(close)
-  v.add_child(head)
-  v.add_child(UiKit.label("Kept in the archive at Crownhaven, without favour to any realm.",14,UiKit.TEXT_DIM))
-  v.add_child(UiKit.divider(colors.trim))
+  summary_box = VBoxContainer.new()
+  summary_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+  v.add_child(summary_box)
+  chronicle_panel.visible = false
+  _anchor(chronicle_panel,0.5,0.5,0.5,0.5,Rect2(-340,-300,340,300))
+ if chronicle_panel.visible and summary_tab == tab:
+  chronicle_panel.visible = false
+  return
+ summary_tab = tab
+ chronicle_panel.visible = true
+ _fill_summary()
+
+func close_faction_summary():
+ if chronicle_panel: chronicle_panel.visible = false
+
+func summary_visible() -> bool:
+ return chronicle_panel != null and chronicle_panel.visible
+
+# The Records tab is the Grey Scribes' chronicle.
+func toggle_chronicle():
+ open_faction_summary("records")
+
+func chronicle_visible() -> bool:
+ return summary_visible() and summary_tab == "records"
+
+func _fill_summary():
+ _clear(summary_box)
+ var head = HBoxContainer.new()
+ head.add_theme_constant_override("separation",6)
+ head.add_child(Widgets.Emblem.new(data.player_faction(),26))
+ var title = UiKit.header(data.player_faction().name,20)
+ title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ head.add_child(title)
+ for t in [["summary","Summary",true],["records","Records",true],["statistics","Statistics",false]]:
+  var b = _tab_button(t[1],summary_tab == t[0])
+  b.name = "Summary_"+t[0]
+  b.custom_minimum_size.x = 96
+  b.disabled = not t[2]
+  if not t[2]: b.tooltip_text = t[1]+COMING
+  b.pressed.connect(func():
+   summary_tab = t[0]
+   _fill_summary())
+  head.add_child(b)
+ var close = Button.new()
+ close.text = "Close"
+ close.focus_mode = Control.FOCUS_NONE
+ close.pressed.connect(close_faction_summary)
+ head.add_child(close)
+ summary_box.add_child(head)
+ summary_box.add_child(UiKit.divider(colors.trim))
+ if summary_tab == "records":
+  summary_box.add_child(UiKit.label("The Chronicle of the Grey Scribes. Kept in the archive at Crownhaven, without favour to any realm.",14,UiKit.TEXT_DIM))
   var scroll = ScrollContainer.new()
   scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
   scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-  v.add_child(scroll)
+  summary_box.add_child(scroll)
   chronicle_box = VBoxContainer.new()
   chronicle_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
   chronicle_box.add_theme_constant_override("separation",10)
   scroll.add_child(chronicle_box)
-  chronicle_panel.visible = false
-  _anchor(chronicle_panel,0.5,0.5,0.5,0.5,Rect2(-320,-300,320,300))
- chronicle_panel.visible = not chronicle_panel.visible
- if chronicle_panel.visible: _fill_chronicle()
+  _fill_chronicle()
+  return
+ var r = data.resources()
+ var f = data.player_faction()
+ summary_box.add_child(UiKit.label(f.get("realm",""),15,UiKit.TEXT_DIM))
+ var lines = [["coin","Treasury",UiKit.format_int(r.treasury)],["income","Income per turn",UiKit.signed(r.income)],["population","Population",UiKit.format_int(r.population)],
+  ["settlements","Settlements","%d" % data.state.settlements_of(data.player_faction_id()).size()],["settlements","Provinces","%d" % data.provinces_list().size()],
+  ["lords","Armies","%d" % data.lords_list().size()],["year","Year","%d (turn %d)" % [r.year,r.turn]]]
+ for l in lines: summary_box.add_child(_stat_row(l[0],l[1],l[2],""))
+ var wars = data.factions_list().filter(func(x): return x.at_war).map(func(x): return x.name)
+ summary_box.add_child(UiKit.divider(colors.trim))
+ summary_box.add_child(_small("At war with: %s" % (", ".join(wars) if not wars.is_empty() else "nobody"),UiKit.TEXT,15))
+ summary_box.add_child(_small(_effects_text(),UiKit.TEXT_DIM,14))
+
+# --- Event pop-ups (TW:WH3 notifications for important events) --------------------------------
+
+var popup_queue := []
+
+func show_alert(a: Dictionary):
+ popup_queue.append(a)
+ if popup_panel == null or not popup_panel.visible: _next_alert()
+ else: popup_panel.find_child("PopupOk",true,false).text = "Next (%d more)" % popup_queue.size()
+
+func _next_alert():
+ if popup_queue.is_empty():
+  if popup_panel: popup_panel.visible = false
+  return
+ var a = popup_queue.pop_front()
+ if popup_panel == null:
+  popup_panel = _framed()
+  popup_panel.name = "EventPopup"
+  _anchor(popup_panel,0.5,0.5,0.5,0.5,Rect2(-220,-140,220,40))
+ _clear(popup_panel)
+ var v = VBoxContainer.new()
+ v.add_theme_constant_override("separation",8)
+ popup_panel.add_child(v)
+ var t = UiKit.header(a.title,20)
+ t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+ v.add_child(t)
+ v.add_child(UiKit.divider(colors.trim))
+ var text = _small(a.text,UiKit.TEXT,15)
+ text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+ v.add_child(text)
+ var ok = Button.new()
+ ok.name = "PopupOk"
+ ok.text = "Close" if popup_queue.is_empty() else "Next (%d more)" % popup_queue.size()
+ ok.focus_mode = Control.FOCUS_NONE
+ ok.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+ ok.pressed.connect(_next_alert)
+ v.add_child(ok)
+ popup_panel.visible = true
+
+func alert_visible() -> bool:
+ return popup_panel != null and popup_panel.visible
 
 func _fill_chronicle():
  _clear(chronicle_box)
@@ -1304,12 +1831,15 @@ func _fill_chronicle():
    row.add_child(text)
   chronicle_box.add_child(row)
 
-func chronicle_visible() -> bool:
- return chronicle_panel != null and chronicle_panel.visible
-
 # Esc: close the topmost open panel. Returns false when nothing was open (the map then opens
 # the pause menu).
 func close_top_panel() -> bool:
+ if alert_visible():
+  _next_alert()
+  return true
+ if dropdown_visible():
+  close_dropdown()
+  return true
  if deployment_visible():
   deployment_screen.closed.emit()
   return true
@@ -1325,8 +1855,8 @@ func close_top_panel() -> bool:
  if browser_visible():
   close_building_browser()
   return true
- if chronicle_visible():
-  toggle_chronicle()
+ if summary_visible():
+  close_faction_summary()
   return true
  if selected_settlement != "" or selected_army != "":
   clear_selection()

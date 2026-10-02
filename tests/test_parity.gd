@@ -99,7 +99,7 @@ func test_a_full_army_fits_the_panel():
  var width = 0.0
  for c in row.get_children(): width += c.custom_minimum_size.x
  width += (row.get_child_count()-1)*CampaignUI.CARD_GAP
- assert_eq(row.get_child_count(),Armies.max_units())
+ assert_eq(row.get_child_count(),Armies.max_units()-1,"the general's card is in the left column")
  assert_lte(width,CampaignUI.ARMY_PANEL_WIDTH-40.0+0.5,"every card is visible without scrolling")
 
 # --- Movement preview and map overlays (Phase C) -------------------------------------------------

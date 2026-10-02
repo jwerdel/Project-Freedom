@@ -35,7 +35,9 @@ Controls follow Total War: Warhammer III (see `docs/tw-ui-parity.md`).
 | , / . | Previous / next army (or settlement, when one is selected); the camera pans at the current zoom |
 | Backspace | Cancel the selected army's order |
 | Ctrl+P | Disband the selected unit |
+| 1 / 2 | Settlement panel: building slots / garrison (with an army in a settlement selected, that settlement) |
 | 3 / 4 | Building browser of the selected settlement / recruitment drawer of the selected army |
+| 5 | Recruit heroes (coming later) |
 | Hold Space | Show settlement banners at any zoom |
 | Enter | End turn. While End Turn warnings are pending (low funds, construction available, army can still move) it jumps to the next one instead |
 | Shift+Enter | End turn, skipping the warnings |
@@ -43,7 +45,9 @@ Controls follow Total War: Warhammer III (see `docs/tw-ui-parity.md`).
 | Ctrl+S / Ctrl+L | Quicksave / quickload |
 | Escape | Cancel a held move; else close the open panel (or show a hidden interface); with nothing open, open the pause menu |
 | Space / Escape (AI turn) | Skip following the AI armies (also the ">> Skip" button; Settings: Follow AI armies) |
-| Tab | Hide or show the interface |
+| Tab | Strategic map |
+| K / Alt+K | Hide or show the interface / the same with cinematic letterbox bars (Escape also brings it back) |
+| Ctrl+T | Settlement labels (banners) on or off |
 | F | Camera follows the selected army |
 | G | Jump the camera to Goldspire Rock (bookmark) |
 | F12 | Save a real in-engine screenshot in captures |

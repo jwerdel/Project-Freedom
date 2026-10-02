@@ -634,6 +634,11 @@ func make_ui():
  ui_data.changed.connect(refresh_warnings)
  ui.settlement_selected.connect(focus_settlement)
  ui.overlay_toggled.connect(set_overlay)
+ ui.menu_requested.connect(open_pause_menu)
+ ui.army_chosen.connect(func(id):
+  select_army(id)
+  if army_figures.has(id): pan_to(army_figures[id].position+Vector3(0,2.2,0)))
+ ui.settlement_chosen.connect(func(id): if settlement_anchors.has(id): select_settlement(id,true))
  settlement_anchors = {CITY_ID:ground(CITY,6),"crownwatch":ground(KEEP,6),"willowmere":ground(VILLAGE,5),GOLDSPIRE_ID:Vector3(GOLDSPIRE.x,27,GOLDSPIRE.y)}
  for id in settlement_anchors:
   var b = SettlementBanner.new(ui_data.settlement(id))
@@ -718,6 +723,47 @@ func deselect():
  if ui.selected_settlement == "" and ui.selected_army == "": return
  ui.clear_selection()
  refresh_army_overlays()
+
+# K hides or shows the interface (TW:WH3); Alt+K also adds cinematic letterbox bars. Esc brings
+# the interface back.
+var letterbox: CanvasLayer
+func toggle_interface(cinematic := false):
+ var show = not ui.visible
+ ui.visible = show
+ pins_root.visible = show and overlays.get("settlements",true)
+ if letterbox == null:
+  letterbox = CanvasLayer.new()
+  letterbox.layer = 5
+  for top in [true,false]:
+   var bar = ColorRect.new()
+   bar.color = Color.BLACK
+   bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+   bar.anchor_right = 1.0
+   bar.anchor_top = 0.0 if top else 1.0
+   bar.anchor_bottom = 0.0 if top else 1.0
+   bar.offset_top = 0.0 if top else -90.0
+   bar.offset_bottom = 90.0 if top else 0.0
+   letterbox.add_child(bar)
+  add_child(letterbox)
+ letterbox.visible = cinematic and not show
+
+# Ctrl+T (TW:WH3): settlement labels (the banners) on or off.
+func toggle_labels():
+ var on = not overlays.get("settlements",true)
+ set_overlay("settlements",on)
+ ui.set_overlay_state("settlements",on)
+
+# Keys 1 and 2 (TW:WH3 overview and garrison): the selected settlement's building slots or its
+# garrison; with an army selected that stands in a settlement, that settlement.
+func panel_tab(tab: String):
+ if ui.selected_settlement == "" and army_selected():
+  var g = ui_data.army_movement(selected_army_id()).garrison
+  if g != "" and settlement_anchors.has(g): ui.show_settlement(g)
+ if ui.selected_settlement != "": ui.set_settlement_tab(tab)
+
+# Tab: the strategic map (filled in by the strategic map part of this block).
+func toggle_strategic_map():
+ pass
 
 func cancel_move_preview():
  rmb_held = false
@@ -968,7 +1014,9 @@ func set_overlay(overlay: String,on: bool):
  if overlay == "armies":
   for id in army_figures: army_figures[id].visible = on
  if overlay == "borders": terrain_material.set_shader_parameter("territory_on",1.0 if on else 0.0)
- if overlay == "settlements": minimap.show_settlements = on
+ if overlay == "settlements":
+  minimap.show_settlements = on
+  pins_root.visible = on and ui.visible
  minimap.refresh()
 
 # Where the camera's view meets the ground (world x/z), for the minimap's view outline.
@@ -1085,6 +1133,7 @@ func _unhandled_input(event):
   if event.keycode == KEY_S: quicksave()
   if event.keycode == KEY_L: quickload()
   if event.keycode == KEY_P: ui.disband_selected()
+  if event.keycode == KEY_T: toggle_labels()
   return
  if event is InputEventKey and event.pressed and not event.echo:
   if event.keycode == KEY_HOME: pan_to_capital()
@@ -1092,16 +1141,13 @@ func _unhandled_input(event):
    yaw = OVERVIEW_YAW
    pitch_offset = 0.0
   if event.keycode == KEY_F12: request_capture()
-  if event.keycode == KEY_TAB:
-   ui.visible = not ui.visible
-   pins_root.visible = ui.visible
+  if event.keycode == KEY_TAB: toggle_strategic_map()
+  if event.keycode == KEY_K: toggle_interface(event.alt_pressed)
   if event.keycode == KEY_ESCAPE:
    # Esc cancels a held move preview, then closes panels (and shows a hidden interface); with
    # nothing open it pauses.
    if rmb_held: cancel_move_preview()
-   elif not ui.visible:
-    ui.visible = true
-    pins_root.visible = true
+   elif not ui.visible: toggle_interface(false)
    elif ui.close_top_panel(): refresh_army_overlays()
    else: open_pause_menu()
   if event.keycode == KEY_COMMA: cycle_selection(-1)
@@ -1112,7 +1158,10 @@ func _unhandled_input(event):
   if event.keycode == KEY_F: toggle_follow()
   if event.keycode == KEY_BACKSPACE and army_selected(): ui_data.cancel_army_order(selected_army_id())
   if event.keycode == KEY_3 and ui.selected_settlement != "": ui.open_first_empty_slot(ui.selected_settlement)
+  if event.keycode == KEY_1: panel_tab("buildings")
+  if event.keycode == KEY_2: panel_tab("garrison")
   if event.keycode == KEY_4 and army_selected(): ui.open_recruitment(selected_army_id())
+  if event.keycode == KEY_5: ui.toast("Recruit heroes: coming later.")
   if event.keycode in [KEY_ENTER,KEY_KP_ENTER]:
    if event.shift_pressed: end_turn(true)
    else: end_turn_pressed()

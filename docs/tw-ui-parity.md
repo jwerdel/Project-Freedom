@@ -216,3 +216,37 @@ Legend:
 | H1 | Tooltips | Partial | Title plus body, pinned beside the element, 0.45 s delay; not sticky |
 | H2 | Map hover | Matched | |
 | H3 | Help links | Not yet possible | |
+
+## 13. Layout research (round 2, 2026-10-02) and decisions
+
+Sources, beyond section 0:
+- gamepressure's WH3 UI walkthrough (https://www.gamepressure.com/total-war-warhammer-3/user-interface/z9f67f, plus its provinces, movement and recruiting pages)
+- CA's WH3 campaign UI script docs (https://chadvandy.github.io/tw_modding_resources/WH3/campaign/campaign_ui_manager.html)
+- Steam threads cited inline in the research notes
+- the official Xbox Wire hotkey list
+
+Confidence uses the same labels as section 0.
+
+| # | TW:WH3 | Conf. | Ours (this pass) |
+|---|---|---|---|
+| L1 | Top-left buttons, left to right: Menu, Advisor, Help pages (encyclopedia), Unit and spell browser, Camera settings | C | Same order. Menu opens the game menu; Camera settings opens our camera and speed settings. Advisor, Help and the unit browser are greyed ("Coming later") |
+| L2 | Top centre: treasury (click opens a Treasury panel with Summary, Details and Trade tabs), income projection, faction-specific resources, then faction-wide effects at the right end | S (order), C (parts) | Treasury and income (breakdown tooltip), population, two greyed faction-resource slots, and an effects icon listing what affects your faction (debt, landless countdown, wars). The Treasury panel is greyed |
+| L3 | Top right, left to right: tactical-map toggle (a small map under the bar), Events, Lords and heroes ("forces"), Provinces, Known factions, round Faction Summary (tabs Summary, Records, Statistics). Lists are drop-downs. Missions is also a list | S (order), C (drop-downs) | Same order. Tactical map toggles our minimap under the bar (the strategic map is Tab or zooming out). Events shows or hides the feed. Lords and heroes, Provinces and Known factions are drop-downs built from existing data. Missions is greyed. Faction Summary has Summary, Records (the Grey Scribes' chronicle) and Statistics (greyed) |
+| L4 | Row contents of those lists | ? | Lords: general, army, units, location, movement. Provinces: income, growth, public order. Factions: war or peace with you, attitude (greyed until diplomacy) |
+| L5 | Round menu: End Turn in the centre, the warning on the button with a skip arrow to its right; hourglass turn counter below it; notification gear beside the hourglass; Objectives, Diplomacy and Technology around it. Faction-specific buttons vary | S | Same. Objectives, Diplomacy and Technology are greyed; a greyed culture slot (Senate / League / Vassals) stands for the culture buttons. Button positions on the ring are ours (positions unknown) |
+| L6 | Bottom panel, province selected: left = province info (growth, income with tax toggle, control, corruption, effects); middle = settlements of the province with headers and building slots, Recruit Lord and Hero below | S | Left = growth, income, public order (and population); middle = settlement tabs with building slots and a garrison tab; right = resources, climate and effects (owner; TW right column unknown) |
+| L7 | Bottom panel, army selected: left = lord portrait and info, stances rollout, movement bar; middle = unit cards with recruit buttons above them (local and global pools) | S | Left = lord card, greyed equipment and trait slots, greyed stance buttons, movement bar; middle = recruit button above the cards, drawer, cards; right = army info (upkeep, replenishment, stance placeholder; owner) |
+| L8 | Events: a drop-down list under the top-right bar; pop-up windows for dilemmas, missions and notifications (war declared, faction destroyed…) | C / S | The feed sits under the minimap, toggled by Events, with collapsible categories. Important events (war declared on you, a settlement of yours lost, your house landless or destroyed) also open a pop-up |
+| L9 | AI turn: top-centre Pause / Play and fast-forward (">>"); fast-forward skips the enemy-turn camera | C | Pause, 1×, 2×, 4× and Skip (owner: speed steps; TW has none) |
+| L10 | Camera settings: per faction group (yours, allied, enemy, neutral) × lords / heroes: animation speed (slow → fastest) and camera (off / cinematic / low / medium / high / strategic) | C (community) | Our first version: follow AI movements (Off / Only near my territory / All; default Off), AI turn speed, own-army animation speed (1× / 2×), display toggles (borders, banners, armies) |
+| L11 | Strategic (tactical) map: Tab or zooming far out; layers Affiliation, Diplomatic status, Attitude, Control, Development, Winds of Magic, Climate, Corruption; markers for armies | C | Tab or zooming out; layers Affiliation, Diplomatic status, Attitude (greyed), Public order (= Control), Development, Climate and terrain, Faith (greyed, owner), Culture (greyed, owner). Clicking or scrolling in returns there. Winds of Magic and Corruption have no system |
+| L12 | Hotkeys: K = toggle UI; Alt+K = toggle UI with letterbox borders (cinematic); 1–5 = overview, garrison, building browser, recruit units, recruit agents; R = toggle character move speed; Ctrl+T = toggle labels | C / S | K, Alt+K (hide UI and add letterbox bars), 1–5, R (own-army animation 1× / 2×), Ctrl+T (settlement and army labels) |
+
+Still unverified: the treasury tooltip contents; the button positions on the ring; a right-hand column in the bottom panel; which events pop up; the strategic map's visual style and whether clicking it jumps the camera; whether Alt+K works on the campaign map; R's exact WH3 behaviour.
+
+Key changes this pass:
+- Tab was "hide UI"; it is now the strategic map, and K hides the UI.
+- C (cycle armies) was already replaced by `,` / `.`.
+- F (follow army) and G (Goldspire bookmark) are ours, with no TW key.
+- Space: hold for overlays on the map, and skip during the AI turn.
+- R is TW's character move speed.

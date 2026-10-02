@@ -7,6 +7,7 @@ extends RefCounted
 signal changed
 signal event_added(event: Dictionary)
 signal army_moved(army_id: String,walked: Array) # points walked (world x/z), for the map figure
+signal alert(alert: Dictionary) # an important event for a pop-up (TW:WH3 notifications)
 
 const WorldMap = preload("res://core/world_map.gd")
 const UnitTypes = preload("res://core/unit_types.gd")
@@ -78,6 +79,7 @@ func income_breakdown(faction_id := "") -> Dictionary:
 # Advance one year through the turn loop; new chronicle entries go to Event Messages.
 func end_turn():
  var t0 = Time.get_ticks_usec()
+ var before = _alert_snapshot()
  var report = TurnLoop.end_turn(state)
  last_turn_ms = (Time.get_ticks_usec()-t0)/1000.0
  for e in report.entries: event_added.emit(e)
@@ -90,6 +92,8 @@ func end_turn():
  report.all_moves = moves
  for id in moves: army_moved.emit(id,moves[id])
  changed.emit()
+ report.alerts = alerts_since(before)
+ for a in report.alerts: alert.emit(a)
  return report
 
 # --- AI attacks on the player (state.pending_battles) ------------------------------------------
@@ -597,4 +601,104 @@ func end_turn_warnings(enabled := {}) -> Array:
      if a.units.is_empty() or not a.order.is_empty() or not Battles.can_move(state,id): continue
      if float(a.points)>=float(a.max_points)*0.25: items.append({"type":"army","id":id,"name":a.display_name})
   if not items.is_empty(): out.append({"kind":w[0],"label":w[1],"items":items})
+ return out
+
+# --- Panels and lists of the TW:WH3 layout (docs/tw-ui-parity.md L2-L7) -------------------------
+
+# Right column of the army panel: {upkeep, replenish_pct, territory (own / foreign), paid_gold}.
+func army_info(army_id: String) -> Dictionary:
+ var r = Armies.replenish_rate(state,army_id)
+ var a = state.army_state[army_id]
+ var owner = Armies.region_owner(state,army_id)
+ return {"upkeep":Economy.army_upkeep(state,army_id),"replenish_pct":int(round(float(r.get("rate",0.0))*100)),
+  "territory":"own" if owner == a.faction else ("unclaimed" if owner == "" else "foreign"),"region_owner":faction(owner).get("name","") if owner != "" else ""}
+
+# The garrison a settlement would fight with: its automatic garrison units plus armies inside.
+func garrison(settlement_id: String) -> Dictionary:
+ var units = []
+ for u in Battles.garrison_units(state,settlement_id): units.append({"unit":u.unit,"men":int(u.men),"max_men":int(u.max_men)})
+ return {"units":units,"armies":Movement.garrison_of(state,settlement_id).map(func(id): return state.army_state[id].display_name)}
+
+# Right column of the province panel: resource endowments, the terrain of the region (as its
+# climate until climates exist) and the effects of its buildings.
+func region_details(settlement_id: String) -> Dictionary:
+ var effects = []
+ for slot in building_slots(settlement_id):
+  for line in slot.get("effects",[]): if not line in effects: effects.append(line)
+ return {"resources":state.settlements[settlement_id].get("resources",{}),"terrain":region_terrain(settlement_id),"effects":effects}
+
+var _terrain_cache := {}
+# Share of each terrain in a region (from the movement grid, cached): [[name, share], ...] largest first.
+func region_terrain(region_id: String) -> Array:
+ if _terrain_cache.has(region_id): return _terrain_cache[region_id]
+ var g = Movement.grid()
+ var counts = {}
+ var total = 0
+ var poly = WorldMap.region(region_id).points
+ for z in range(0,g.rows,2):
+  for x in range(0,g.cols,2):
+   var p = g.origin+Vector2(x+0.5,z+0.5)*g.cell
+   if not Geometry2D.is_point_in_polygon(p,poly): continue
+   var n = g.names[g.terrain[z*g.cols+x]]
+   counts[n] = counts.get(n,0)+1
+   total += 1
+ var out = []
+ for n in counts: out.append([n,float(counts[n])/maxi(1,total)])
+ out.sort_custom(func(a,b): return a[1]>b[1])
+ _terrain_cache[region_id] = out
+ return out
+
+# Lords and heroes list: the player's armies.
+func lords_list() -> Array:
+ var out = []
+ for id in Armies.armies_of(state,player_faction_id()):
+  var a = army(id)
+  var m = army_movement(id)
+  out.append({"id":id,"general":a.commander.name,"army":a.display_name,"units":a.units.size(),"men":Armies.men(state.army_state[id]),
+   "where":m.garrison_name if m.garrison != "" else WorldMap.region(WorldMap.region_at(m.position)).get("name","the wilds") if WorldMap.region_at(m.position) != "" else "the wilds",
+   "movement":m.points/maxf(1.0,m.max_points)})
+ return out
+
+# Provinces list: the player's provinces with income, growth and public order.
+func provinces_list() -> Array:
+ var out = []
+ var seen = {}
+ for sid in state.settlements_of(player_faction_id()):
+  var p = WorldMap.province_of(sid)
+  if seen.has(p): continue
+  seen[p] = true
+  var st = province_stats(p)
+  out.append({"id":p,"name":province(p).name,"settlement":sid,"income":int(st.income),"growth":int(st.growth),"public_order":int(st.public_order)})
+ return out
+
+# Known factions list: every other faction still in the game, with war or peace (attitude comes
+# with diplomacy).
+func factions_list() -> Array:
+ var out = []
+ for f in state.factions():
+  if f == player_faction_id() or f in state.destroyed: continue
+  out.append({"id":f,"name":faction(f).name,"at_war":at_war(f),"settlements":state.settlements_of(f).size(),"armies":Armies.armies_of(state,f).size()})
+ return out
+
+# --- Important events (pop-ups, docs/tw-ui-parity.md L8) ----------------------------------------
+# Found by comparing the state before and after End Turn: a war declared on you, a settlement of
+# yours lost, your house landless, your house destroyed. Which events TW pops up is unverified;
+# these are ours.
+
+func _alert_snapshot() -> Dictionary:
+ var me = player_faction_id()
+ return {"settlements":state.settlements_of(me),"wars":state.factions().filter(func(f): return f != me and at_war(f)),
+  "grace":int(state.grace.get(me,-1)),"destroyed":me in state.destroyed}
+
+func alerts_since(before: Dictionary) -> Array:
+ var now = _alert_snapshot()
+ var out = []
+ for f in now.wars:
+  if not f in before.wars: out.append({"kind":"war","title":"War declared","text":"%s has declared war on your house." % faction(f).name,"faction":f})
+ for sid in before.settlements:
+  if not sid in now.settlements:
+   var owner = state.settlements[sid].owner
+   out.append({"kind":"settlement_lost","title":"Settlement lost","text":"%s has fallen to %s." % [WorldMap.region(sid).settlement.name,faction(owner).get("name","the enemy")],"settlement":sid})
+ if now.destroyed and not before.destroyed: out.append({"kind":"destroyed","title":"Your house is destroyed","text":"No settlement was retaken in time. The Grey Scribes close your house's chronicle."})
+ elif now.grace>=0 and before.grace<0: out.append({"kind":"landless","title":"Your house is landless","text":"Retake a settlement within %d turn%s or your house is destroyed." % [now.grace,"" if now.grace == 1 else "s"]})
  return out
