@@ -1,6 +1,6 @@
 # Map-authoring pipeline: design
 
-**Status:** proposal, awaiting owner approval (2026-10-02). No game code until approved. Numbers are proposals or placeholders unless marked as measured.
+**Status:** APPROVED (owner, 2026-10-02). Decisions on every open question: section 11. Numbers are proposals or placeholders unless marked as measured.
 **Implements:** game-design §21 roadmap item 4 (map-authoring pipeline) and prepares item 5 (Map Stage A).
 **Reads:** `constitution.md` (mechanics), `docs/game-design.md` §3, §10.9, §11.4, §12, §19, `docs/world-bible-v2.md` §1, §6–§8, §10, `docs/v1-scope.md`.
 
@@ -612,24 +612,26 @@ No new runtime dependency, no paid tool, no network. Terrain3D (MIT, a GDExtensi
 
 ---
 
-## 11. Open questions (each with a recommended answer)
+## 11. Decisions (owner, 2026-10-02)
 
-| # | Question | Recommendation |
+Every question raised in this design, with the decision. Q4, Q6, Q7, Q8 and Q9 were decided explicitly; the rest adopt the recommendation.
+
+| # | Question | Decision |
 |---|---|---|
 | Q1 | Authoring format | **Hybrid:** SVG geometry (Inkscape-editable) + JSON attributes + optional painted overrides (section 2) |
-| Q2 | Terrain technology: our own GPU-displaced chunk grid, or the Terrain3D addon (MIT GDExtension) | **Our own.** No dependency to keep in step with the pinned engine, and the needs are modest: the 3D view only ever shows a few chunks. Revisit only if the scale proof fails its GPU budget. |
-| Q3 | World size and density | **Varos 4,096 × 2,560 m**; region spacing about 90 m in lowlands and 140–180 m in sparse lands; about 320 regions in V1; budgets for 600 |
-| Q4 | Gameplay of minor settlements (villages, castles, towns); the constitution leaves aggregation and governors open | **V1:** they belong to their region's owner and are captured with the major settlement (no separate sieges). Each adds a type bonus (village: food and population; castle: defence and garrison; town: income) and shows on the map. Separate ownership or sieges come later, if at all. |
-| Q5 | Major settlement types | **City or fortress only** on Varos (constitution). The test map keeps its village and town majors for the existing tests. |
-| Q6 | Rivers | **Impassable except at fords and bridges.** The pipeline creates them where roads cross and allows pinned ones. My understanding is that TW:WH3 behaves this way, but it is unverified: research it in P2 and record it in docs/tw-ui-parity.md. |
-| Q7 | Owners the world bible leaves open | **Crownhaven:** House Corvinus (with Corvinium; Sabellum goes to a generated family, keeping Corvinus at two regions), so uniting the families means winning or taking the old capital. **Highbloom:** House Verrin, a Roman minor (bible §11). **Oldstone Citadel:** Port Dallow, a minor. **Silverfall's tyrant family:** the Lannetids (from House Lannet, bible §11). |
-| Q8 | Orcs in Stage A | **Only the Snowtusk and Grimhollow tribes** (minor) beyond the Wall. The Ironjaw Horde, Frostmaw and Redhand arrive with Ghurmak in Stage B. Who holds Ghurmak is also open; recommend the Ironjaw Horde. |
-| Q9 | The Black Ark | **Stage B**, once the army-like moving landmark exists (map-mechanics block) |
-| Q10 | Land outside a built stage | **Dark "unexplored" edge, impassable**; sea lanes stop at the edge; the strategic map shows it as blank parchment |
-| Q11 | Saves across map versions | **Incompatible during development** (clear refusal message); after the V1 content freeze, keep IDs and ship migrations |
-| Q12 | Committed vs cached outputs | **Commit gameplay bakes** (movement, region raster, graphs, derived data); **cache render bakes** locally, keyed by the sources' hash |
-| Q13 | Rosters for non-human AI factions in Stage A (orcs, dwarves, dark elves, ratmen) | **Placeholder rosters as data:** existing unit stats re-tagged per race with racial names, on the shared placeholder model, until each race's roster block |
-| Q14 | AI cost at scale | **Same rules for all**; distant, peaceful factions replan strategic goals every few turns; a per-turn odds budget; factions processed across frames |
-| Q15 | Stage A boundaries and list (game-design §22 Q7) | **As in section 8**, with A1 (world outline) refining the exact lines for approval |
-| Q16 | The Wardens of the Greywall's AI behaviour (game-design §22 Q10) | **An independent major faction for Stage A** (as the bible lists them); their Greywall duties come with the Greywall mechanics |
-| Q17 | Unsettled wilderness regions (like today's Greyspine) | **Allowed**: mountain and forest regions without a major settlement, used for passes and outposts. A region with a major settlement always has an owner at start (crowded map, game-design §3.2). |
+| Q2 | Terrain technology | **Our own GPU-displaced chunk grid**, no Terrain3D dependency; revisit only if the scale proof misses its GPU budget |
+| Q3 | World size and density | **Varos 4,096 × 2,560 m**; region spacing about 90 m in lowlands, 140–180 m in sparse lands; about 320 regions in V1; budgets for 600 |
+| Q4 | Gameplay of minor settlements | **Approved as recommended:** they belong to their region's owner, fall with its major settlement (no separate sieges), and give a small bonus by type (village: food and population; castle: defence and garrison; town: income) |
+| Q5 | Major settlement types | **City or fortress only** on Varos; the test map keeps its village and town majors |
+| Q6 | Rivers | **Approved: crossable only at fords and bridges.** TW:WH3 parity on this is **unverified**; research it during the pipeline work and record it in docs/tw-ui-parity.md |
+| Q7 | Owners the world bible leaves open | **Approved:** Crownhaven = House Corvinus; Highbloom = House Verrin (Roman minor); Oldstone Citadel = Port Dallow; Silverfall's tyrants = the Lannetids |
+| Q8 | Orcs in Stage A | **Approved:** only minor orc tribes (Snowtusk, Grimhollow) beyond the Wall; the Ironjaw Horde and Ghurmak come in Stage B (Ghurmak's holder: the Ironjaw Horde) |
+| Q9 | The Black Ark | **Approved: Stage B**, once the moving-landmark entity exists |
+| Q10 | Land outside a built stage | Dark "unexplored" edge, impassable; sea lanes stop at the edge; blank parchment on the strategic map |
+| Q11 | Saves across map versions | Incompatible during development (clear refusal message); after the V1 content freeze, keep IDs and ship migrations |
+| Q12 | Committed vs cached outputs | Commit gameplay bakes (movement, region raster, graphs, derived data); cache render bakes locally by the sources' hash |
+| Q13 | Rosters for non-human AI factions in Stage A | Placeholder rosters as data (existing unit stats re-tagged per race, racial names, shared placeholder model) until each race's roster block |
+| Q14 | AI cost at scale | Same rules for all; distant peaceful factions replan strategic goals every few turns; a per-turn odds budget; factions processed across frames |
+| Q15 | Stage A boundaries and list | As in section 8; the world-outline block (A1) refines the exact lines for approval |
+| Q16 | The Wardens of the Greywall's AI | An independent major faction in Stage A; Greywall duties come with the Greywall mechanics |
+| Q17 | Unsettled wilderness regions | Allowed (mountain and forest regions without a major, for passes and outposts); every region with a major settlement has an owner at start |

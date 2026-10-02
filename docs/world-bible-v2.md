@@ -388,3 +388,60 @@ Each landmark has a unique campaign-map model with three growth stages (stage 1 
 - The Regency Council of Crownhaven and the empty-crown premise replaced by **the Long Stillness** expiring.
 - Playable V1 factions: **House Varn (Medieval)**, **House Varrenus (Roman)**, **the Aurekids of Goldspire (Greek)**.
 - House Aurek (Westerlands) becomes the Greek Aurekids; House Verrin of Highbloom and House Lannet become Roman/Greek AI or minor factions during the map build.
+
+---
+
+## Appendix A. Map build: owners and placeholder names (Stage A, 2026-10-02)
+
+Recorded from the approved map-pipeline design (`docs/map-pipeline-design.md` §8 and §11), so this bible stays the single lore source. Every name is a placeholder the owner can change, as everywhere in this bible.
+
+**Owner decisions on holders this bible left open:**
+- **Crownhaven:** House Corvinus.
+- **Highbloom:** House Verrin of Highbloom, now a Roman minor house (from §11).
+- **Oldstone Citadel:** Port Dallow.
+- **Silverfall:** ruled by the **Lannetids**, the tyrant family (from House Lannet, §11). Silverfall is the Aurekids' Liberator's Call target.
+- **Ghurmak:** the Ironjaw Horde (Stage B).
+- **Stage A orcs:** only the Snowtusk and Grimhollow tribes beyond the Wall; the Ironjaw Horde, Ghurmak and the Black Ark come in Stage B.
+
+**New placeholder names (in *italics* in the design's table).** Generated houses are named when the Stage A content is built, following §10.
+
+| Area | Province | Regions (major settlement) and holder |
+|---|---|---|
+| **Orc fringe** | *Snowtusk Fells* | *Snowtusk Camp* (F) Snowtusk tribe; *Rimefang* (F) Snowtusk tribe |
+| | *Grimhollow Barrens* | Grimhollow (F) Grimhollow tribe; *Skullcairn* (F) Grimhollow tribe |
+| **The Greywall** | *The Wall* | ★ Wardens' Gate (F) and *Rimeguard* (F), both the Wardens of the Greywall; *Ashen Tower*, an abandoned wall tower in an unsettled region (the Wall is undermanned) |
+| **The North** (Medieval) | *Frosthold Vale* | ★ Frosthold (C) **House Varn**; *Hearthwick* (C) **House Varn** |
+| | *Dunmoor* | *Dunmoor Keep* (F) House Dunmoor (Liberator's Call target); *Mirewick* (C) House Dunmoor |
+| | *The Barrowlands* | *Kellsford* (C) House Kells; *Barrowmere* (F) the Barrow-lords; *Coldbarrow* (C) House Kells |
+| | *Rowen Moors* | *Rowenhold* (F) House Rowen; *Greymere* (C) House Rowen |
+| | *Blackpine* | *Blackpine Hold* (F), *Elkford* (C): generated northern house |
+| | *The Long Lakes* | *Lakewick* (C), *Osricmere* (C): generated northern house |
+| **The Vale** (Medieval) | *Skyreach* | ★ Skyreach (F) House Aldane; *Highford* (C) House Aldane |
+| | *The Lower Vale* | *Brightmere* (C), *Stonewick* (C): generated Vale house |
+| **Middle Marches** (mixed) | *Caeloth* | ★ Caeloth (C) the Throne Church (untouchable); *Pilgrim's Ford* (C) the Throne Church |
+| | *Harrow* | ★ Harrow Crossing (F) House Tollan; *Harrowfield* (C) House Tollan |
+| | *Stillwater* | *Stillwater* (C) House Merrow; *Merrowmere* (C) House Merrow |
+| | *Brackenmoor* | *Bracke Hall* (F) House Bracke; *Fennick* (C) House Bracke |
+| | *Ashford* | *Ashford* (C) House Ashford; *Ashwick* (C) House Ashford |
+| | *The Riverforks* | *Forkwatch* (F), *Twinford* (C): generated Marches house |
+| **Greek coast** | *Goldspire* | ★ Goldspire Rock (C) **the Aurekids**; *Silverfall* (C) the city of Silverfall (Liberator's Call target) |
+| | *Theros* | *Theros* (C) the free city of Theros; *Kallipolis* (C) Theros |
+| | *Kyme* | *Kyme* (C) the Philandrid tyranny; *Lykon* (C) *the Lykourgids of Lykon* (Kyme's rivals) |
+| | *Elaia* | *Elaia* (C), *Myrtos* (C): generated Greek league |
+| | *Delos Minor* (island) | *Delos Minor* (C) the island colony of Delos Minor |
+| **Western Isles** (dark elves) | *Brinecrag* | ★ Brinecrag (F) the Reavers of Brinecrag; *Mor-Skerry* (C) the Reavers |
+| | *The Grey Stacks* | *Drakhaven* (F) independent reaver captain; *Vael-Shoal* (F) independent reaver captain |
+| **The Reach** (Roman) | *Highbloom* | ★ Highbloom (C) House Verrin (Q7); *Orchardium* (C) House Verrin |
+| | *Oldstone* | ★ Oldstone Citadel (C) and *Port Dallow* (C), both Port Dallow (Q7) |
+| | *Fossa* | *Fossum* (C) House Fossa; *Vinaria* (C) House Fossa |
+| **Crownlands** (Roman) | *The Seven Hills* | ★ Crownhaven (C) House Corvinus (Q7); *Varrenum* (C) **House Varrenus** |
+| | *Tullia* | *Tullanum* (C) the Tullan estates (Liberator's Call target); *Aquilia* (C) the Tullan estates |
+| | *Corvinia* | *Corvinium* (C) House Corvinus; *Sabellum* (C) generated Roman family |
+| | *Aemeria* | *Aemerium* (C) House Aemerius; *Lucentia* (C) House Aemerius |
+| | *The Via Septem* | *Septimium* (C), *Castra Nova* (F): generated Roman family |
+| **Stormlands** (Roman) | *Tempest Coast* | ★ Tempest Keep (F) House Durran; *Stormhaven* (C) House Durran |
+| | *The Rainwood* | ★ The Skulkmire (F) the Skulkmire Brood; *Rainwick* (C) generated Stormlands house |
+| **Red Peaks north face** (dwarves) | *Emberdeep* | ★ Emberdeep (F) Hold Emberdeep; *Karak Durn* (F) Hold Emberdeep |
+| | *Stonefast* | *Stonefast* (F) the Stonefast outpost; *Redgate Pass* (F) the Stonefast outpost |
+
+**New faction names:** the Lykourgids of Lykon (Greek minor, "Kyme's rivals"), the Lannetids (Silverfall's tyrants), and House Verrin of Highbloom (Roman minor).
