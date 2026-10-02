@@ -44,7 +44,8 @@ Controls follow Total War: Warhammer III (see `docs/tw-ui-parity.md`).
 | H | Jump to the current End Turn warning |
 | Ctrl+S / Ctrl+L | Quicksave / quickload |
 | Escape | Cancel a held move; else close the open panel (or show a hidden interface); with nothing open, open the pause menu |
-| Space / Escape (AI turn) | Skip following the AI armies (also the ">> Skip" button; Settings: Follow AI armies) |
+| Space / Escape (AI turn) | Skip following the AI armies. The AI turn bar also has Pause, 1x / 2x / 4x speed and ">> Skip"; following AI movements is Off / Only near my territory / All in the camera settings or Settings (default Off) |
+| R | Your armies move at 1x or 2x speed on the map (also in the camera settings and Settings) |
 | Tab | Strategic map |
 | K / Alt+K | Hide or show the interface / the same with cinematic letterbox bars (Escape also brings it back) |
 | Ctrl+T | Settlement labels (banners) on or off |

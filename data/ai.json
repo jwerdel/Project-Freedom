@@ -70,7 +70,7 @@
     "boldness": 1.5
   },
   "presentation": {
-    "_note": "End Turn on the map (main.gd): AI armies whose path comes within watch_meters of the player's settlements or armies are shown one at a time, the camera following at most camera_distance away and holding hold_seconds after each arrives (Settings: follow AI moves; Space or Esc skips). Presentation only: it never changes what the AI did.",
+    "_note": "End Turn on the map (main.gd): AI armies whose path comes within watch_meters of the player's settlements or armies are shown one at a time, the camera following at most camera_distance away and holding hold_seconds after each arrives (Settings: follow AI movements Off / Only near my territory / All, default Off; AI turn speed 1x/2x/4x divides the hold; Space or Esc skips). Presentation only: it never changes what the AI did.",
     "watch_meters": 60.0,
     "hold_seconds": 0.7,
     "camera_distance": 90.0

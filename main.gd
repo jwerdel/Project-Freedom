@@ -89,6 +89,7 @@ var follow_army = false   # camera follows the selected army
 var collecting_moves = false # End Turn: moves are gathered, then replayed (AI armies near you followed)
 var collected_moves = {}
 var spectate_queue: Array = [] # [[army id, path]] still to show, camera following
+var ai_paused := false # the AI turn bar's Pause (presentation only)
 var spectating := {}           # {id, hold}: the AI army the camera follows now
 var rmb_held := false       # right mouse held with an army selected: path preview (TW:WH3)
 var pitch_offset := 0.0     # middle-drag tilt on top of the zoom-dependent tilt
@@ -631,6 +632,7 @@ func make_ui():
  ui.warning_step.connect(step_warning)
  ui.warning_skip.connect(skip_warning)
  ui.ai_skip.connect(skip_spectating)
+ ui.ai_pause_toggled.connect(func(on): ai_paused = on)
  ui_data.changed.connect(refresh_warnings)
  ui.settlement_selected.connect(focus_settlement)
  ui.overlay_toggled.connect(set_overlay)
@@ -760,6 +762,12 @@ func panel_tab(tab: String):
   var g = ui_data.army_movement(selected_army_id()).garrison
   if g != "" and settlement_anchors.has(g): ui.show_settlement(g)
  if ui.selected_settlement != "": ui.set_settlement_tab(tab)
+
+# R (TW:WH3 character move speed): your armies' map animation at 1x or 2x (saved in Settings).
+func toggle_army_speed():
+ Settings.set_value("army_speed",2 if Settings.army_speed() == 1 else 1)
+ ui.toast("Your armies move at %dx speed." % Settings.army_speed())
+ ui.camera_settings_changed()
 
 # Tab: the strategic map (filled in by the strategic map part of this block).
 func toggle_strategic_map():
@@ -964,7 +972,9 @@ func update_walk(delta: float):
  for id in walks.keys():
   var w = walks[id]
   var fig = army_figures[id]
-  w.dist = minf(w.total,w.dist+delta*WALK_SPEED)
+  var own = ui_data.state.army_state.has(id) and ui_data.state.army_state[id].faction == ui_data.player_faction_id()
+  if ai_paused and not own: continue # the AI turn is paused (its bar's Pause)
+  w.dist = minf(w.total,w.dist+delta*Settings.walk_speed(WALK_SPEED,own))
   var left = w.dist
   var pts = w.points
   var at = pts[-1]
@@ -1156,6 +1166,7 @@ func _unhandled_input(event):
    ui.show_settlement(GOLDSPIRE_ID)
    focus_goldspire()
   if event.keycode == KEY_F: toggle_follow()
+  if event.keycode == KEY_R: toggle_army_speed()
   if event.keycode == KEY_BACKSPACE and army_selected(): ui_data.cancel_army_order(selected_army_id())
   if event.keycode == KEY_3 and ui.selected_settlement != "": ui.open_first_empty_slot(ui.selected_settlement)
   if event.keycode == KEY_1: panel_tab("buildings")
@@ -1649,7 +1660,7 @@ func play_moves(moves: Dictionary):
  for id in ui_data.army_ids():
   if ui_data.army(id).player_owned: mine.append(ui_data.army_movement(id).position)
  for id in ids:
-  var follow = Settings.follow_ai_moves() and (not capture_mode or "--follow-ai" in OS.get_cmdline_user_args()) and ui_data.state.army_state.has(id) and not ui_data.army(id).player_owned and _near(moves[id],mine,watch)
+  var follow = (not capture_mode or "--follow-ai" in OS.get_cmdline_user_args()) and ui_data.state.army_state.has(id) and not ui_data.army(id).player_owned and Settings.should_follow(Settings.follow_ai_mode(),_near(moves[id],mine,watch))
   if follow: spectate_queue.append([id,moves[id]])
   else: _on_army_moved(id,moves[id])
  _next_spectate()
@@ -1667,15 +1678,17 @@ func _next_spectate():
  ui.show_ai_turn_bar(not spectate_queue.is_empty())
  if spectate_queue.is_empty():
   spectating = {}
+  ai_paused = false
   open_pending_battle()
   return
  var next = spectate_queue.pop_front()
  _on_army_moved(next[0],next[1])
- spectating = {"id":next[0],"hold":float(Ai.data().presentation.hold_seconds)}
+ spectating = {"id":next[0],"hold":float(Ai.data().presentation.hold_seconds)/Settings.ai_speed()}
  ui.toast("%s marches." % ui_data.army(next[0]).display_name if ui_data.state.army_state.has(next[0]) else "An army marches.")
 
 # Skip the rest of the AI moves: everything jumps to where it ended.
 func skip_spectating():
+ ai_paused = false
  for q in spectate_queue: _on_army_moved(q[0],q[1])
  spectate_queue.clear()
  ui.show_ai_turn_bar(false)
@@ -1686,6 +1699,7 @@ func skip_spectating():
 
 func _update_spectate(delta: float):
  if spectating.is_empty(): return
+ if ai_paused: return
  var id = spectating.id
  if army_figures.has(id) and is_instance_valid(army_figures[id]):
   var c = army_figures[id].position

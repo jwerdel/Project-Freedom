@@ -1,6 +1,6 @@
 extends Control
-# Settings (placeholder set): resolution, fullscreen, UI scale and the debug keys switch. Changes
-# apply at once and are kept in user://settings.json (core/settings.gd).
+# Settings (placeholder set): resolution, fullscreen, UI scale, following AI movements, AI turn
+# speed, your armies' speed, End Turn warnings and the debug keys switch. Changes apply at once and are kept in user://settings.json (core/settings.gd).
 
 signal closed
 
@@ -24,8 +24,8 @@ func _ready():
  frame.anchor_bottom = 0.5
  frame.offset_left = -260
  frame.offset_right = 260
- frame.offset_top = -275
- frame.offset_bottom = 275
+ frame.offset_top = -320
+ frame.offset_bottom = 320
  add_child(frame)
  var v = VBoxContainer.new()
  v.add_theme_constant_override("separation",10)
@@ -71,13 +71,9 @@ func _ready():
   Settings.set_value("ui_scale",Settings.UI_SCALES[i])
   Settings.apply(get_tree()))
  grid.add_child(scale_opt)
- grid.add_child(UiKit.label("Follow AI armies at End Turn",16))
- var fol = CheckBox.new()
- fol.name = "FollowAi"
- fol.focus_mode = Control.FOCUS_NONE
- fol.button_pressed = Settings.follow_ai_moves()
- fol.toggled.connect(func(on): Settings.set_value("follow_ai_moves",on))
- grid.add_child(fol)
+ _option(grid,"FollowAi","Follow AI movements",Settings.FOLLOW_MODES,Settings.follow_ai_mode(),"follow_ai")
+ _option(grid,"AiSpeed","AI turn speed",Settings.AI_SPEEDS.map(func(s): return [s,"%dx" % s]),Settings.ai_speed(),"ai_speed")
+ _option(grid,"ArmySpeed","Your armies' speed (R)",Settings.ARMY_SPEEDS.map(func(s): return [s,"%dx" % s]),Settings.army_speed(),"army_speed")
  for wk in [["warn_funds","End Turn warning: low funds"],["warn_construction","End Turn warning: construction available"],["warn_army_moves","End Turn warning: army can still move"]]:
   grid.add_child(UiKit.label(wk[1],16))
   var cb = CheckBox.new()
@@ -109,3 +105,15 @@ func _unhandled_input(e):
  if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_ESCAPE:
   get_viewport().set_input_as_handled()
   closed.emit()
+
+# A labelled option list stored under `key`: options are [value, text].
+func _option(grid: GridContainer,node_name: String,label: String,options: Array,current,key: String):
+ grid.add_child(UiKit.label(label,16))
+ var o = OptionButton.new()
+ o.name = node_name
+ o.focus_mode = Control.FOCUS_NONE
+ for i in options.size():
+  o.add_item(options[i][1])
+  if options[i][0] == current: o.select(i)
+ o.item_selected.connect(func(i): Settings.set_value(key,options[i][0]))
+ grid.add_child(o)

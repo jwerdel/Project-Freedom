@@ -1604,9 +1604,33 @@ func _fill_camera_settings(v: VBoxContainer):
   v.add_child(c)
  _fill_camera_extra(v)
 
-# Filled in by the AI turn and animation speed settings (Part 3 of this block).
-func _fill_camera_extra(_v: VBoxContainer):
- pass
+# Following AI movements, AI turn speed and your armies' speed (saved in Settings; also in the
+# game menu's Settings, and R toggles your armies' speed).
+func _fill_camera_extra(v: VBoxContainer):
+ v.add_child(UiKit.divider(colors.trim))
+ var follow = Settings.FOLLOW_MODES.map(func(f): return [f[0],f[1]])
+ v.add_child(_choice("FollowAi","Follow AI movements",follow,Settings.follow_ai_mode(),func(k): Settings.set_value("follow_ai",k)))
+ var ai = Settings.AI_SPEEDS.map(func(s): return [s,"%dx" % s])
+ v.add_child(_choice("AiSpeed","AI turn speed",ai,Settings.ai_speed(),func(k): set_ai_speed(k)))
+ var own = Settings.ARMY_SPEEDS.map(func(s): return [s,"%dx" % s])
+ v.add_child(_choice("ArmySpeed","Your armies' speed (R)",own,Settings.army_speed(),func(k): Settings.set_value("army_speed",k)))
+
+# A labelled option row: options are [key, text]; picking one calls chosen(key).
+func _choice(node_name: String,label: String,options: Array,current,chosen: Callable) -> Control:
+ var row = HBoxContainer.new()
+ row.add_theme_constant_override("separation",8)
+ var l = UiKit.label(label,14)
+ l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ row.add_child(l)
+ var o = OptionButton.new()
+ o.name = node_name
+ o.focus_mode = Control.FOCUS_NONE
+ for i in options.size():
+  o.add_item(options[i][1])
+  if options[i][0] == current: o.select(i)
+ o.item_selected.connect(func(i): chosen.call(options[i][0]))
+ row.add_child(o)
+ return row
 
 func set_overlay_state(overlay: String,on: bool):
  overlay_state[overlay] = on
@@ -1897,18 +1921,42 @@ func open_first_empty_slot(settlement_id: String):
    break
  open_building_browser(settlement_id,slot)
 
-# During the AI's turn (camera following its armies): a top-centre bar with a skip button (TW:WH3's
-# ">>"). Space or Esc also skips.
+# During the AI's turn (camera following its armies): a top-centre bar (TW:WH3: Pause / Play and
+# ">>"). Ours adds 1x / 2x / 4x speed steps (owner), saved in Settings. Space or Esc also skips.
 signal ai_skip
+signal ai_pause_toggled(on: bool)
 var ai_bar: Control
+var ai_speed_buttons := {}
+var ai_pause: Button
+
 func show_ai_turn_bar(on: bool):
  if ai_bar == null:
   ai_bar = Widgets.Framed.new("main",colors.trim,Color(colors.panel,0.95))
   ai_bar.name = "AiTurnBar"
   var h = HBoxContainer.new()
-  h.add_theme_constant_override("separation",10)
+  h.add_theme_constant_override("separation",6)
   ai_bar.add_child(h)
   h.add_child(UiKit.header("Enemy movements",15))
+  ai_pause = Button.new()
+  ai_pause.name = "AiPause"
+  ai_pause.text = "Pause"
+  ai_pause.toggle_mode = true
+  ai_pause.focus_mode = Control.FOCUS_NONE
+  ai_pause.tooltip_text = "Pause or resume the AI movements"
+  ai_pause.toggled.connect(func(p):
+   ai_pause.text = "Play" if p else "Pause"
+   ai_pause_toggled.emit(p))
+  h.add_child(ai_pause)
+  for s in Settings.AI_SPEEDS:
+   var b = Button.new()
+   b.name = "AiSpeed%d" % s
+   b.text = "%dx" % s
+   b.toggle_mode = true
+   b.focus_mode = Control.FOCUS_NONE
+   b.tooltip_text = "AI turn speed %dx (saved in Settings)" % s
+   b.pressed.connect(set_ai_speed.bind(s))
+   ai_speed_buttons[s] = b
+   h.add_child(b)
   var skip = Button.new()
   skip.name = "AiSkip"
   skip.text = ">>  Skip"
@@ -1916,5 +1964,20 @@ func show_ai_turn_bar(on: bool):
   skip.focus_mode = Control.FOCUS_NONE
   skip.pressed.connect(func(): ai_skip.emit())
   h.add_child(skip)
-  _anchor(ai_bar,0.5,0,0.5,0,Rect2(-140,104,140,150))
+  _anchor(ai_bar,0.5,0,0.5,0,Rect2(-230,104,230,150))
+ ai_pause.set_pressed_no_signal(false)
+ ai_pause.text = "Pause"
+ _sync_ai_speed()
  ai_bar.visible = on
+
+func set_ai_speed(s: int):
+ Settings.set_value("ai_speed",s)
+ camera_settings_changed()
+
+func _sync_ai_speed():
+ for s in ai_speed_buttons: ai_speed_buttons[s].set_pressed_no_signal(s == Settings.ai_speed())
+
+# A speed or follow setting changed (bar, camera settings or the R key): update what shows it.
+func camera_settings_changed():
+ _sync_ai_speed()
+ if dropdown_visible() and dropdown_kind == "camera": _fill_dropdown()
