@@ -172,3 +172,14 @@ func test_important_events_pop_up():
  assert_true(ui.alert_visible())
  ui.popup_panel.find_child("PopupOk",true,false).pressed.emit()
  assert_false(ui.alert_visible())
+
+func test_small_text_keeps_visible_word_spaces():
+ # Alegreya Sans' spaces (about 0.18 em) all but vanished at 12-13 px once the canvas was scaled
+ # to the window (the general's name read "SerAlaricAurek").
+ var UiKit = load("res://ui/ui_kit.gd")
+ for size in [11,12,13]:
+  var l: Label = UiKit.label("Ser Alaric Aurek",size)
+  var f: Font = l.get_theme_font("font")
+  var gap = (f.get_string_size("Ser Alaric Aurek",HORIZONTAL_ALIGNMENT_LEFT,-1,size).x-f.get_string_size("SerAlaricAurek",HORIZONTAL_ALIGNMENT_LEFT,-1,size).x)/2.0
+  assert_gte(gap,0.25*size,"a space is at least a quarter em at %d px" % size)
+  l.free()

@@ -4,8 +4,11 @@ extends RefCounted
 # UI Borders (9-slice, tinted) and UI Pack RPG Expansion, tinted per faction.
 
 const FONT_HEAD = preload("res://assets/fonts/Cinzel-Variable.ttf")
-const FONT_BODY = preload("res://assets/fonts/AlegreyaSans-Regular.ttf")
-const FONT_BOLD = preload("res://assets/fonts/AlegreyaSans-Bold.ttf")
+# Body fonts with one extra pixel per space: Alegreya Sans' spaces are narrow (about 0.18 em) and
+# nearly vanished at small sizes once the 1600x1000 canvas is scaled to the window.
+const FONT_BODY = preload("res://assets/fonts/alegreya_sans_regular_spaced.tres")
+const FONT_BOLD = preload("res://assets/fonts/alegreya_sans_bold_spaced.tres")
+const SMALL_TEXT = 13 # at or below this size, labels get one more pixel per space
 const FRAMES = {
  "main": preload("res://assets/kenney/fantasy-ui-borders/panel-border-010.png"),
  "card": preload("res://assets/kenney/fantasy-ui-borders/panel-border-001.png"),
@@ -31,6 +34,7 @@ const TEXT_DIM = Color("b9ab8c")
 const PANEL_BG = Color("16110d")
 
 static var _head_bold: FontVariation
+static var _small := {} # base font -> its small-text variation
 
 static func head_font() -> Font:
  if _head_bold == null:
@@ -38,6 +42,16 @@ static func head_font() -> Font:
   _head_bold.base_font = FONT_HEAD
   _head_bold.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("wght"):700}
  return _head_bold
+
+# A body font with wider spaces for small text (see FONT_BODY).
+static func small_font(base: Font) -> Font:
+ if not _small.has(base):
+  # Nested variations do not add up (the outer spacing replaces the inner), so start from the file.
+  var v = FontVariation.new()
+  v.base_font = base.base_font if base is FontVariation else base
+  v.spacing_space = (base.spacing_space if base is FontVariation else 0)+1
+  _small[base] = v
+ return _small[base]
 
 static func colors(faction: Dictionary) -> Dictionary:
  var primary = Color(faction.get("primary","#5a4a3a"))
@@ -96,6 +110,7 @@ static func label(text: String,size := 16,color := TEXT,font: Font = null) -> La
  l.text = text
  l.add_theme_font_size_override("font_size",size)
  l.add_theme_color_override("font_color",color)
+ if size<=SMALL_TEXT and (font == null or font == FONT_BODY or font == FONT_BOLD): font = small_font(font if font else FONT_BODY)
  if font: l.add_theme_font_override("font",font)
  l.mouse_filter = Control.MOUSE_FILTER_IGNORE
  return l
