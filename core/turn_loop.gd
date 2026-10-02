@@ -1,11 +1,12 @@
 extends RefCounted
 # End of turn: one turn is one year (constitution). Runs a fixed, deterministic sequence:
 #   1. income   2. expenses   3. construction (completions)   4. population growth
-#   5. placeholder AI construction   6. armies: movement points refill, standing orders continue
-#   7. recruitment queues complete   8. replenishment   9. placeholder AI recruitment
-#   10. sieges and wounded generals   11. calendar + event log (chronicle)
-# Randomness is only drawn from a generator seeded by (campaign seed, year), and is used
-# only to vary the chronicle's wording.
+#   5. armies: movement points refill, standing orders continue   6. recruitment queues complete
+#   7. replenishment   8. sieges and wounded generals   9. calendar + event log (chronicle)
+#   10. the AI phase (core/ai.gd): every AI faction acts in the new year with full movement. Its
+#       attacks on a human player wait in state.pending_battles for the player's answer.
+# Randomness is only drawn from generators seeded by the campaign seed and year (chronicle
+# wording, AI choices).
 
 const Economy = preload("res://core/economy.gd")
 const Chronicle = preload("res://core/chronicle.gd")
@@ -13,9 +14,12 @@ const Construction = preload("res://core/construction.gd")
 const Movement = preload("res://core/movement.gd")
 const Armies = preload("res://core/armies.gd")
 const Battles = preload("res://core/battles.gd")
+const Ai = preload("res://core/ai.gd")
 
-# Returns a report: {year (the year that ended), ledgers, growth, completed, ai_started, moves (army id -> points walked), recruited, replenished, ai_armies, entries}.
-static func end_turn(state) -> Dictionary:
+# Returns a report: {year (the year that ended), ledgers, growth, completed, moves (army id ->
+# points walked), recruited, replenished, sieges, entries, ai (Ai.take_turns report)}.
+# opts: ai (false skips the AI phase, for tests of other systems), plus Ai.take_turns options.
+static func end_turn(state,opts := {}) -> Dictionary:
  var ended = state.year
  var ledgers = {}
  # 1-2. Income then expenses, for every faction alike.
@@ -30,22 +34,14 @@ static func end_turn(state) -> Dictionary:
  ids.sort()
  for id in ids: growth[id] = Economy.growth(state,id)
  for id in ids: state.settlements[id].population = maxf(0.0,state.settlements[id].population+growth[id].delta)
- # 5. PLACEHOLDER AI: non-player factions spend surplus gold on construction.
- var ai_started = []
- for f in state.factions():
-  if f != state.player_faction: ai_started.append_array(Construction.ai_turn(state,f))
- # 6. Armies: a new year's movement allowance; multi-turn orders keep walking.
+ # 5. Armies: a new year's movement allowance; multi-turn orders keep walking.
  var moves = Movement.end_turn(state)
- # 7-8. Recruits join their armies; armies regain men (free at home, paid in foreign lands).
+ # 6-7. Recruits join their armies; armies regain men (free at home, paid in foreign lands).
  var recruited = Armies.advance_queues(state)
  var replenished = Armies.replenish(state)
- # 9. PLACEHOLDER AI: non-player factions keep a garrison army at their capital.
- var ai_armies = []
- for f in state.factions():
-  if f != state.player_faction: ai_armies.append_array(Armies.ai_turn(state,f))
- # 10. Sieges advance (starvation, surrender); wounded generals heal.
+ # 8. Sieges advance (starvation, surrender); wounded generals heal.
  var sieges = Battles.end_turn(state)
- # 11. Calendar and event log.
+ # 9. Calendar and event log.
  state.year += 1
  state.turn += 1
  state.last_ledgers = ledgers
@@ -54,4 +50,14 @@ static func end_turn(state) -> Dictionary:
  var entries = Chronicle.building_entries(ended,completed,rng)
  entries.append_array(Chronicle.year_entries(state,ended,ledgers,growth,rng))
  state.chronicle.append_array(entries)
- return {"year":ended,"ledgers":ledgers,"growth":growth,"completed":completed,"ai_started":ai_started,"moves":moves,"recruited":recruited,"replenished":replenished,"ai_armies":ai_armies,"sieges":sieges,"entries":entries}
+ # 10. The AI phase.
+ var ai = {"actions":[],"pending":[],"entries":[],"ms":0.0}
+ if opts.get("ai",true):
+  ai = Ai.take_turns(state,opts)
+  state.pending_battles = []
+  for pb in ai.pending:
+   var p = pb.duplicate(true)
+   p.erase("approach") # the attacker has already marched; nothing left to plan
+   state.pending_battles.append(p)
+  entries.append_array(ai.entries)
+ return {"year":ended,"ledgers":ledgers,"growth":growth,"completed":completed,"moves":moves,"recruited":recruited,"replenished":replenished,"sieges":sieges,"entries":entries,"ai":ai}

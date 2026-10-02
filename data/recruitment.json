@@ -21,11 +21,5 @@
     "_note": "Raising a new army hires a general for general_cost gold at one of the faction's settlements. The maximum number of armies per faction is OPEN in the constitution; max_per_faction is a placeholder. Generals' names are generated from data/names.json (STUB until the character and family system exists).",
     "general_cost": 800,
     "max_per_faction": 3
-  },
-  "ai": {
-    "_note": "PLACEHOLDER AI: each AI faction keeps one defensive garrison army at its capital (its most populous settlement): it raises one there if it has none, then recruits the cheapest available unit until the army has garrison_units units, at most max_recruits_per_turn per turn, only while gold stays above reserve_gold and net income stays non-negative after the new upkeep. AI armies do not move.",
-    "garrison_units": 6,
-    "max_recruits_per_turn": 1,
-    "reserve_gold": 1000
   }
 }

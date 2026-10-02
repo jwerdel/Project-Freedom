@@ -1,0 +1,80 @@
+{
+  "_note": "PLACEHOLDER campaign AI tuning (docs/ai-design.md). Every number is a tunable placeholder, not approved balance. The AI acts only through the same functions as the player (no bonus gold, free units or ignored movement/upkeep); these weights only steer its choices. core/ai.gd applies them.",
+  "power": {
+    "_note": "Cheap strength estimate used to screen threats and opportunities. Unit power = men x (melee_attack + melee_defence + armour x armour_weight + charge x charge_weight + missile damage x volleys x missile_weight) / divisor x (1 + rank x rank_bonus). Settlement defence = automatic garrison + garrisoned armies + friendly armies within reinforcement range x reinforce_share, all x (1 + wall_bonus) when walled.",
+    "armour_weight": 0.5,
+    "charge_weight": 0.5,
+    "missile_weight": 0.15,
+    "divisor": 50.0,
+    "rank_bonus": 0.1,
+    "wall_bonus": 0.6,
+    "reinforce_share": 0.7
+  },
+  "reach": {
+    "_note": "An army can threaten or strike targets within reach_meters straight-line distance (about one turn's 60 movement points at mixed terrain cost). war_meters: how far a faction looks for targets when choosing a war and where to march (a few turns). Movement.plan confirms the chosen action; plan_candidates caps how many targets per army are path-checked per turn (A* is the expensive part).",
+    "reach_meters": 55.0,
+    "war_meters": 160.0,
+    "threat_meters": 70.0,
+    "plan_candidates": 3
+  },
+  "odds": {
+    "_note": "Battle odds. A power ratio (own / enemy) above sure_ratio or below hopeless_ratio decides without simulating; between them the AI runs odds_runs seeded fast simulations (Battles.odds, the same estimate the player's balance bar uses, with fewer runs; about 3 ms each in the debug build). At most odds_budget such estimates per faction per turn; beyond that the win chance is read off a logistic curve 1 / (1 + exp(-curve_k x (ratio - 1))).",
+    "odds_runs": 6,
+    "odds_budget": 2,
+    "curve_k": 3.0,
+    "sure_ratio": 2.2,
+    "hopeless_ratio": 0.45
+  },
+  "attack": {
+    "_note": "Attack an army or settlement when the estimated win chance is at least min_odds (divided by the personality's boldness). An army at war with nothing in reach marches on the best target within war_meters whose power ratio is at least march_ratio (divided by boldness). A walled settlement is besieged instead unless the assault odds reach assault_min_odds. Besieging armies hold the siege while their odds against the garrison stay above hold_siege_odds.",
+    "min_odds": 0.65,
+    "march_ratio": 1.2,
+    "assault_min_odds": 0.8,
+    "hold_siege_odds": 0.35
+  },
+  "defend": {
+    "_note": "A settlement is threatened when the power of enemy (and wary-of) armies within threat_meters exceeds its defence x threatened_ratio. Armies within reach move in to defend if together they reach save_ratio of the threat; otherwise they do not sacrifice themselves. In a field battle the defender withdraws when its odds are below withdraw_below (garrisons cannot withdraw). An army facing a threat above flee_ratio x its own power with no help falls back to its nearest own settlement.",
+    "threatened_ratio": 0.8,
+    "save_ratio": 0.75,
+    "withdraw_below": 0.25,
+    "flee_ratio": 1.6
+  },
+  "war": {
+    "_note": "Declaring war on a faction not yet at war (temporary rule: attacking declares war). Each turn, for its best opportunity against a faction it is at peace with, a faction declares with chance base_chance x aggression x weakness, where weakness = min(2, own power / target defence) - 1 (0 when not stronger). max_wars caps simultaneous wars it starts (wars never end yet: no peace exists). The faction must also pass the attack odds test for the target itself.",
+    "base_chance": 0.12,
+    "max_wars": 2
+  },
+  "economy": {
+    "_note": "Construction. Keep reserve_gold (x personality reserve) in the treasury, and net income after new upkeep at least min_net_income. Safe: build by economy_weights; threatened: by threatened_weights. Weight = category weight x personality multiplier; ties by cheapest, then settlement id. max_builds_per_turn per faction.",
+    "reserve_gold": 1200,
+    "min_net_income": 50,
+    "max_builds_per_turn": 1,
+    "economy_weights": {"main": 1.2, "economic": 1.0, "civic": 0.4, "military": 0.5, "defense": 0.3},
+    "threatened_weights": {"main": 0.5, "economic": 0.3, "civic": 0.1, "military": 1.0, "defense": 1.5}
+  },
+  "recruitment": {
+    "_note": "Armies recruit toward a target composition (shares of each role; role of a unit: levy if peasant_levy, else spear if it braces, else its category). The unit with the largest shortfall among those available, affordable (above the reserve) and within upkeep is queued; max_recruits_per_turn per army. A faction raises a new army when under its army target (base_armies x personality armies, capped by the faction army cap) and it can pay the general plus raise_margin gold above its reserve; a faction with no army at all only keeps emergency_reserve_share of its reserve, and so does recruiting while the faction has fewer than garrison_units units in all. garrison_units: a home army aims for at least this many units before it is sent out. field_units: the usual army size; a faction with more than rich_factor x its reserve fills armies up to the army cap instead.",
+    "max_recruits_per_turn": 2,
+    "base_armies": 2,
+    "raise_margin": 1000,
+    "garrison_units": 6,
+    "field_units": 10,
+    "rich_factor": 3.0,
+    "emergency_reserve_share": 0.25,
+    "composition": {"spear": 0.3, "infantry": 0.25, "missile": 0.25, "cavalry": 0.1, "levy": 0.1}
+  },
+  "personalities": {
+    "_note": "Multipliers per trait (faction traits in data/factions.json, from docs/world.md); a faction's value is the product over its traits. aggression scales the war chance; boldness divides attack.min_odds (bolder = attacks at worse odds); reserve scales the gold reserve; armies scales the army target; economy scales the weight of economic buildings; defense scales defense/military building weight; wariness = how much other factions treat this one's armies as threats before war (AI-internal; not a relationship value, which stays open); assault: 1 prefers assault to siege; vengeful: always at war with whoever attacked it; opportunist: prefers targets already at war with someone else; composition overrides the recruitment shares.",
+    "expansionist": {"aggression": 2.5, "boldness": 1.15, "armies": 1.5, "economy": 0.9},
+    "cruel": {"aggression": 1.5, "boldness": 1.1, "wariness": 1.0, "assault": 1},
+    "treacherous": {"aggression": 1.3, "wariness": 1.0, "opportunist": 1},
+    "cruel_when_crossed": {"vengeful": 1, "wariness": 0.5},
+    "income_focused": {"reserve": 1.6, "armies": 0.8, "economy": 1.5, "aggression": 0.8},
+    "generous": {"aggression": 0.3},
+    "kind": {"aggression": 0.3, "boldness": 0.9},
+    "passive": {"aggression": 0.15, "boldness": 0.85, "armies": 0.8, "defense": 1.4},
+    "defensive": {"aggression": 0.6, "defense": 1.6},
+    "proud": {"aggression": 1.2},
+    "levy_heavy": {"composition": {"spear": 0.2, "infantry": 0.1, "missile": 0.2, "cavalry": 0.05, "levy": 0.45}}
+  }
+}

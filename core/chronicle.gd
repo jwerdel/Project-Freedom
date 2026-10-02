@@ -119,3 +119,16 @@ static func capture_entry(year: int,sid: String,faction: String,surrender: bool)
  var vars = {"place":WorldMap.region(sid).settlement.name,"faction":WorldMap.faction(faction).name}
  var text = _pick(d.surrender_text if surrender else d.capture_text,rng)
  return entry(year,"war",_fill(_pick(d.capture_title,rng),vars),_fill(text,vars),faction)
+
+static func siege_entry(year: int,sid: String,faction: String) -> Dictionary:
+ var d = data()
+ var rng = _rng([year,sid,faction,"siege"])
+ var vars = {"place":WorldMap.region(sid).settlement.name,"faction":WorldMap.faction(faction).name}
+ return entry(year,"war",_fill(_pick(d.siege_title,rng),vars),_fill(_pick(d.siege_text,rng),vars),faction)
+
+# A defender that drew back before battle (Battles.withdraw).
+static func withdraw_entry(year: int,pb: Dictionary) -> Dictionary:
+ var d = data()
+ var rng = _rng([year,pb.seed,"withdraw"])
+ var vars = {"place":_place(pb),"faction":WorldMap.faction(pb.defender.faction).name,"attacker":WorldMap.faction(pb.attacker.faction).name}
+ return entry(year,"war",_fill(_pick(d.withdraw_title,rng),vars),_fill(_pick(d.withdraw_text,rng),vars),pb.defender.faction)

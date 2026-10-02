@@ -105,20 +105,12 @@ func test_turn_applies_income_then_expenses_for_every_faction():
  var before = s.treasury.duplicate()
  var ledgers = {}
  for f in s.factions(): ledgers[f] = Economy.faction_ledger(s,f)
- var report = TurnLoop.end_turn(s)
+ var report = TurnLoop.end_turn(s,{"ai":false}) # AI spending is checked in tests/test_ai.gd
  for f in s.factions():
-  # The placeholder AI may also start construction after income and expenses.
   var spent = 0
-  for a in report.ai_started:
-   if a.faction == f: spent += int(Construction.in_progress(s,a.settlement).cost)
   # Replenishing in foreign land also costs gold.
   for id in report.replenished:
    if s.army_state[id].faction == f: spent += int(report.replenished[id].gold)
-  # The placeholder AI may also hire generals and recruit.
-  for a in report.ai_armies:
-   if a.faction != f: continue
-   if a.action == "raise": spent += int(Armies.data().armies.general_cost)
-   else: spent += int(UnitTypes.get_type(a.unit).recruitment.cost)
   assert_eq(s.treasury[f],before[f]+ledgers[f].income_total-ledgers[f].expense_total-spent,f)
  assert_eq(report.year,1)
  assert_eq(s.year,2)

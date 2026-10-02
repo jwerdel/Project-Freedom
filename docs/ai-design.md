@@ -34,7 +34,7 @@ Randomness in AI choices (war rolls, tie-breaks) comes only from a generator see
    - *Reach* is straight-line distance up to `reach_meters` (one turn's allowance at average terrain cost). Movement.plan confirms it only for the actions finally chosen.
    - **Threats** are enemy armies within reach of an own settlement, plus wary neighbours' armies (cruel or treacherous factions not yet at war).
    - **Opportunities** are enemy settlements and armies within reach whose defence is low compared with an own army's power.
-   - The power ratio screens everything cheaply. The simulation-based odds estimate (`Battles.odds`, with `ai.odds_runs` seeded runs) is used only when deciding to attack and the ratio sits in the uncertain band.
+   - The power ratio screens everything cheaply. The simulation-based odds estimate (`Battles.odds`, with `odds_runs` seeded runs) is used only for an actual attack decision whose ratio sits in the uncertain band, at most `odds_budget` times per faction per turn. Otherwise a logistic curve of the ratio stands in, and war declarations always use the curve.
 2. **War.**
    - At war already: opportunities against those enemies are taken on merit.
    - Not at war: the faction may declare war on a weak target. Chance = `war.base_chance` × personality aggression × how weak the target is.
@@ -50,11 +50,13 @@ Randomness in AI choices (war rolls, tie-breaks) comes only from a generator see
    - Each faction has a target composition in data: shares of spear, infantry, archers, cavalry and levies. Verrin, "huge levies", is levy-heavy.
    - Each recruit is the available, affordable unit with the largest shortfall against that target, not simply the cheapest.
    - A new army is raised when the faction can afford its general and some units, is under its personality's army target, and stays under the faction cap.
+   - A faction with no army, or with hardly any units, digs into its reserve, keeping only `emergency_reserve_share` of it.
+   - A rich faction (more than `rich_factor` × its reserve) fills its armies past `field_units`, up to the army cap.
 5. **Armies** take one job each turn, in priority order:
    1. **Defend:** move into or next to a threatened settlement that can still be saved.
    2. **Attack:** an opportunity with odds ≥ `attack.min_odds` (personality-adjusted). A walled target is **besieged** instead, unless its assault odds reach `attack.assault_min_odds`.
    3. **Retreat/garrison:** an army facing a stronger threat it cannot beat moves into its nearest own settlement.
-   4. **Stage:** move toward the own settlement nearest the chosen enemy.
+   4. **Stage:** at war with nothing in reach, march on the best enemy target within `war_meters` (power ratio at least `march_ratio`), with a multi-turn order to its approach point. Otherwise move to the own settlement nearest the enemy. The last army at the capital stays.
    5. **Rest:** stay garrisoned to replenish.
 
    A captain-led army cannot move (same rule as the player) and stays put. A besieging army holds its siege while the siege can still win.

@@ -9,8 +9,7 @@ extends RefCounted
 #  - Gold is paid when construction starts; it completes after the level's turns (1 turn = 1 year)
 #    during End Turn. One construction at a time per settlement (data). Cancelling refunds in full
 #    in the turn it started, partially afterwards (PLACEHOLDER rule in data).
-#  - AI (PLACEHOLDER): AI factions spend surplus gold on the cheapest economic building or main
-#    building upgrade they can afford. It is a stub, not a designed AI.
+#  - AI factions build through start() like the player (core/ai.gd decides what).
 # OPEN (constitution): converting a city to a fortress or back is confirmed but deferred, not built.
 
 const Buildings = preload("res://core/buildings.gd")
@@ -140,45 +139,3 @@ static func set_level(state,id: String,level: int):
 static func visual_stage(state,id: String) -> Dictionary:
  var s = state.settlements[id]
  return {"stage":int(s.level),"generic":Buildings.chain(Buildings.main_chain_id(s.type)).visual_generic}
-
-# --- PLACEHOLDER AI ----------------------------------------------------------------
-# Each AI faction spends gold above the reserve on the cheapest affordable economic building or
-# main-building upgrade (ties: settlement id, then chain id). Returns the constructions started.
-static func ai_turn(state,faction: String) -> Array:
- var ai = Buildings.data().ai
- var started = []
- for n in int(ai.max_builds_per_turn):
-  var surplus = int(state.treasury.get(faction,0))-int(ai.reserve_gold)
-  var best = {}
-  for id in state.settlements_of(faction):
-   if not in_progress(state,id).is_empty(): continue
-   var s = state.settlements[id]
-   var first_empty = -1
-   for i in range(1,s.buildings.size()):
-    if s.buildings[i].is_empty():
-     first_empty = i
-     break
-   for i in s.buildings.size():
-    var b = s.buildings[i]
-    var candidates = []
-    if b.has("chain"):
-     if i == 0 or Buildings.chain(b.chain).category == "economic": candidates.append(b.chain)
-    elif i == first_empty:
-     for c in Buildings.chains_for(s.type):
-      if Buildings.chain(c).category == "economic": candidates.append(c)
-    for c in candidates:
-     var check = can_build(state,id,i,c)
-     if not check.ok: continue
-     var cost = int(Buildings.level_data(c,check.level).cost)
-     if cost>surplus: continue
-     var key = [cost,id,c]
-     if best.is_empty() or _less(key,best.key): best = {"key":key,"id":id,"slot":i,"chain":c}
-  if best.is_empty(): break
-  start(state,best.id,best.slot,best.chain)
-  started.append({"settlement":best.id,"chain":best.chain,"faction":faction})
- return started
-
-static func _less(a: Array,b: Array) -> bool:
- for i in a.size():
-  if a[i] != b[i]: return a[i]<b[i]
- return false

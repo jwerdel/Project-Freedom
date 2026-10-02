@@ -23,6 +23,7 @@ var battles := 0     # battles fought so far (part of each battle's seed)
 var road_level := 0   # road network level: 0 dirt, 1 gravel, 2 stone
 var chronicle = []    # {year, category, title, text}
 var last_ledgers = {} # faction id -> ledger of the last processed turn
+var pending_battles = [] # AI attacks on the human player awaiting the player's answer (pre-battle data)
 
 # A new campaign with a random campaign seed (stored in the state; every later random draw is
 # seeded from it, so a campaign replays exactly from its seed).
@@ -89,7 +90,7 @@ func armies_of(faction: String) -> Array:
 # Everything that defines the state: determinism checks and save files (core/save_system.gd).
 # Nothing the campaign needs may live outside these fields.
 func to_dict() -> Dictionary:
- return {"seed":seed,"year":year,"turn":turn,"player_faction":player_faction,"treasury":treasury.duplicate(true),"settlements":settlements.duplicate(true),"armies":armies.duplicate(),"army_state":army_state.duplicate(true),"road_level":road_level,"wars":wars.duplicate(),"battles":battles,"chronicle":chronicle.duplicate(true),"last_ledgers":last_ledgers.duplicate(true)}
+ return {"seed":seed,"year":year,"turn":turn,"player_faction":player_faction,"treasury":treasury.duplicate(true),"settlements":settlements.duplicate(true),"armies":armies.duplicate(),"army_state":army_state.duplicate(true),"road_level":road_level,"wars":wars.duplicate(),"battles":battles,"chronicle":chronicle.duplicate(true),"last_ledgers":last_ledgers.duplicate(true),"pending_battles":pending_battles.duplicate(true)}
 
 # The inverse of to_dict (a loaded save).
 static func from_dict(d: Dictionary) -> RefCounted:
@@ -107,6 +108,7 @@ static func from_dict(d: Dictionary) -> RefCounted:
  s.battles = int(d.battles)
  s.chronicle = d.chronicle.duplicate(true)
  s.last_ledgers = d.get("last_ledgers",{}).duplicate(true)
+ s.pending_battles = d.get("pending_battles",[]).duplicate(true)
  return s
 
 # A hash of the full state in its saved form: values, int/float types and dictionary order.

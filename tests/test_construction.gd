@@ -143,33 +143,6 @@ func test_event_messages_show_only_the_players_buildings():
  assert_gt(ai_built,0,"the AI built something")
  for e in data.events("buildings"): assert_eq(e.faction,"house_aurek")
 
-func test_ai_stub_builds_the_cheapest_affordable_economic_option():
- var s = GameState.from_data()
- var ai = Buildings.data().ai
- var surplus = int(s.treasury.house_lannet)-int(ai.reserve_gold)
- # Expected: the cheapest available economic or main-building option within the surplus.
- var best = 1<<30
- for id in s.settlements_of("house_lannet"):
-  for i in s.settlements[id].buildings.size():
-   for o in Construction.options(s,id,i):
-    if o.available and o.category in ["economic","main"] and o.cost<=surplus: best = mini(best,o.cost)
- var before = s.treasury.house_lannet
- var started = Construction.ai_turn(s,"house_lannet")
- assert_eq(started.size(),int(ai.max_builds_per_turn))
- assert_eq(before-s.treasury.house_lannet,best)
- var c = Construction.in_progress(s,started[0].settlement)
- assert_true(Buildings.chain(c.chain).category in ["economic","main"])
-
-func test_ai_keeps_its_reserve_and_leaves_the_player_alone():
- var s = GameState.from_data()
- s.treasury.house_lannet = int(Buildings.data().ai.reserve_gold)+100
- assert_eq(Construction.ai_turn(s,"house_lannet").size(),0)
- var player = GameState.from_data()
- player.treasury.house_aurek = 1000000
- var report = TurnLoop.end_turn(player)
- for a in report.ai_started: assert_ne(a.faction,"house_aurek")
- for id in player.settlements_of("house_aurek"): assert_true(Construction.in_progress(player,id).is_empty())
-
 func test_ui_browser_builds_upgrades_and_cancels():
  var studio = PortraitStudio.new()
  add_child_autofree(studio)

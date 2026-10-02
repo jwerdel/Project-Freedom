@@ -15,11 +15,6 @@
     "cancel_refund_same_turn": 1.0,
     "cancel_refund_later": 0.5
   },
-  "ai": {
-    "_note": "PLACEHOLDER AI: AI factions spend surplus gold (treasury above reserve_gold) on the cheapest economic building or main-building upgrade they can afford, at most max_builds_per_turn per faction.",
-    "reserve_gold": 1500,
-    "max_builds_per_turn": 1
-  },
   "main_chains": {
     "_note": "The main building chain of each settlement type.",
     "city": "main_city",

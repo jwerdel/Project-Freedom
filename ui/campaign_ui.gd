@@ -890,7 +890,7 @@ func _fill_prebattle():
   bs.disabled = not pb.approach.ok
   bs.tooltip_text = "Surround the settlement. Each turn weakens its walls; after its supplies run out the garrison starves (placeholder)."
   bs.pressed.connect(func():
-   var r = data.besiege(pb.attacker.army,pb.settlement)
+   var r = data.besiege(pb.attacker.army,pb.settlement,pb)
    close_battle()
    toast("Siege laid: %s can hold out about %d turns." % [place,r.endurance] if r.ok else ", ".join(r.reasons)))
   row.add_child(bs)
@@ -936,6 +936,10 @@ var report_timeline: VBoxContainer
 # Battle report: headline, why you won/lost, key numbers, the top-down replay with event markers,
 # both sides' unit tables, and the full timeline (collapsed; clicking an event jumps the replay).
 func open_battle_report(pb: Dictionary,out: Dictionary):
+ # The enemy drew back before battle: no report, just the news.
+ if out.get("withdrew",false):
+  toast("%s: %s" % [out.entry.title,out.entry.text])
+  return
  if report_panel == null:
   var pv = _center_panel(1240,860)
   report_panel = pv[0]

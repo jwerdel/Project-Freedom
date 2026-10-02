@@ -141,7 +141,7 @@ static func _men(units: Array) -> int:
 
 # Everything the pre-battle panel shows: {attacker {faction, army, reinforcements}, defender {...},
 # kind, settlement, field {terrain, summary, walls}, weather, seed, odds (attacker wins 0..1)}.
-static func prebattle(state,army_id: String,target: Dictionary) -> Dictionary:
+static func prebattle(state,army_id: String,target: Dictionary,with_odds := true) -> Dictionary:
  var me = state.army_state[army_id]
  var at = target.position
  var att_pos = Movement.position(state,army_id)
@@ -162,7 +162,7 @@ static func prebattle(state,army_id: String,target: Dictionary) -> Dictionary:
   "defender":{"faction":target.faction,"armies":defenders,"reinforcements":_reinforcements(state,target.faction,at,defenders)},
   "field":field,"seed":battle_seed(state,army_id,defenders,sid),"lanes":field.lanes}
  pb.weather = BattleSim.roll_weather(pb.seed)
- pb.odds = odds(state,pb)
+ pb.odds = odds(state,pb) if with_odds else -1.0
  return pb
 
 # Seed of a battle: the campaign seed, the year, the campaign's battle counter and both sides'
@@ -224,8 +224,9 @@ static func setup(state,pb: Dictionary,seed: int,fast := false) -> Dictionary:
  return {"seed":seed,"lanes":pb.lanes,"field":f,"sides":sides,"fast":fast}
 
 # Balance of power: share of seeded quick runs the attacker wins (decision 13).
-static func odds(state,pb: Dictionary) -> float:
- var n = int(cfg().odds_runs)
+# runs 0: the configured count (the player's balance bar); the AI asks for fewer.
+static func odds(state,pb: Dictionary,runs := 0) -> float:
+ var n = runs if runs>0 else int(cfg().odds_runs)
  var wins = 0
  for i in n:
   if BattleSim.simulate(setup(state,pb,hash([pb.seed,"odds",i]),true)).winner == 0: wins += 1
@@ -233,9 +234,10 @@ static func odds(state,pb: Dictionary) -> float:
 
 # --- Resolution and aftermath ------------------------------------------------------------------
 
-static func quick_resolve(state,pb: Dictionary) -> Dictionary:
+# fast: skip the replay and event log (same outcome; for battles nobody will read a report of).
+static func quick_resolve(state,pb: Dictionary,fast := false) -> Dictionary:
  state.battles += 1
- var result = BattleSim.simulate(setup(state,pb,int(pb.seed)))
+ var result = BattleSim.simulate(setup(state,pb,int(pb.seed),fast))
  var after = aftermath(state,pb,result)
  return {"result":result,"aftermath":after}
 
@@ -450,3 +452,9 @@ static func end_turn(state) -> Array:
     state.army_state[id].commander.status = "ok"
     events.append({"kind":"general_returns","army":id,"name":c.general.name})
  return events
+
+# Move the attacker to its approach point next to the target (pb.approach from approach()), as
+# Quick Resolve, Fight and Besiege all do before acting. Returns the points walked.
+static func move_to_attack(state,army_id: String,appr: Dictionary) -> Array:
+ if not appr.get("plan",{}).has("points"): return []
+ return Movement.order(state,army_id,appr.point).get("moved",[])

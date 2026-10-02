@@ -18,6 +18,10 @@
   "capture_title": ["{place} Falls to {faction}", "{faction} Takes {place}"],
   "capture_text": ["{place} is now held by {faction}.", "The banners over {place} are now those of {faction}."],
   "surrender_text": ["Starved after a long siege, {place} opened its gates to {faction}."],
+  "siege_title": ["The Siege of {place}", "{faction} Lays Siege to {place}"],
+  "siege_text": ["The host of {faction} has drawn its lines around {place}; the Grey Scribes count the granaries and wait.", "Before {place} the banners of {faction} are planted. None go in or out."],
+  "withdraw_title": ["{faction} Will Not Give Battle", "A Retreat Before {place}"],
+  "withdraw_text": ["Faced with the host of {attacker}, {faction} drew back from the field near {place} rather than fight.", "Near {place} the army of {faction} broke camp and slipped away from {attacker}."],
   "general_killed": ["{name} of {faction} fell in the battle.", "{name} of {faction} did not leave the field alive."],
   "general_wounded": ["{name} of {faction} was carried wounded from the field."],
   "captain_promoted": ["For the victory, {name} of {faction} was raised to command."]

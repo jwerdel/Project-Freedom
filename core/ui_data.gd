@@ -22,6 +22,7 @@ const Deployment = preload("res://core/deployment.gd")
 const BattleDeploy = preload("res://core/battle_deploy.gd")
 const TurnLoop = preload("res://core/turn_loop.gd")
 const Chronicle = preload("res://core/chronicle.gd")
+const Ai = preload("res://core/ai.gd")
 const MOCK = "res://data/mock_ui.json"
 const CATEGORIES = [{"id":"turn","name":"Turn Summary"},{"id":"buildings","name":"Buildings Constructed"},{"id":"war","name":"War Declared"},{"id":"world","name":"World Events"}]
 
@@ -386,6 +387,15 @@ func quick_resolve(pb: Dictionary) -> Dictionary:
  if pb.approach.get("plan",{}).has("points"):
   var r = Movement.order(state,pb.attacker.army,pb.approach.point)
   if r.get("moved",[]).size()>1: army_moved.emit(pb.attacker.army,r.moved)
+ # An AI army caught in the field may withdraw instead of fighting (core/ai.gd, its own odds).
+ if pb.defender.faction != state.player_faction and Ai.defender_withdraws(state,pb):
+  var w = Battles.withdraw(state,pb)
+  if w.ok:
+   var e = Chronicle.withdraw_entry(state.year,pb)
+   state.chronicle.append(e)
+   event_added.emit(e)
+   changed.emit()
+   return {"withdrew":true,"entry":e}
  var out = Battles.quick_resolve(state,pb)
  for e in out.aftermath.entries: event_added.emit(e)
  changed.emit()
@@ -396,7 +406,11 @@ func withdraw(pb: Dictionary) -> Dictionary:
  changed.emit()
  return r
 
-func besiege(army_id: String,settlement_id: String) -> Dictionary:
+# Besiege: march next to the settlement first (as Quick Resolve does), so the siege holds at End
+# Turn. pb: the pre-battle data with its approach; without one the army besieges from where it is.
+func besiege(army_id: String,settlement_id: String,pb := {}) -> Dictionary:
+ var walked = Battles.move_to_attack(state,army_id,pb.get("approach",{}))
+ if walked.size()>1: army_moved.emit(army_id,walked)
  var r = Battles.besiege(state,army_id,settlement_id)
  changed.emit()
  return r

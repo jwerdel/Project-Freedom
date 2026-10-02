@@ -1,6 +1,6 @@
 extends RefCounted
 # Armies as campaign state (state.army_state[id], shared with core/movement.gd): composition,
-# recruitment queue, disbanding, replenishment, raising new armies, and a placeholder AI.
+# recruitment queue, disbanding, replenishment, raising new armies.
 # Constitution rules applied: recruitment draws directly from the settlement's population;
 # disbanded survivors return to population; replenishment is automatic in friendly regions with no
 # population cost and faster in populous regions, and costs gold in enemy territory.
@@ -271,7 +271,7 @@ static func raise_army(state,faction: String,settlement_id: String) -> Dictionar
  state.armies.append(id)
  return {"ok":true,"reasons":[],"army":id,"name":name}
 
-# --- PLACEHOLDER AI --------------------------------------------------------------------
+# --- Helpers for the campaign AI (core/ai.gd) -----------------------------------------------
 
 static func capital(state,faction: String) -> String:
  var best = ""
@@ -279,30 +279,3 @@ static func capital(state,faction: String) -> String:
   if best == "" or float(state.settlements[id].population)>float(state.settlements[best].population): best = id
  return best
 
-# Keep one defensive garrison army at the capital (see data/recruitment.json ai). Returns actions.
-static func ai_turn(state,faction: String) -> Array:
- var ai = data().ai
- var actions = []
- var home = capital(state,faction)
- if home == "": return actions
- var garrison = ""
- for id in Movement.garrison_of(state,home):
-  if state.army_state[id].faction == faction: garrison = id
- var reserve = int(ai.reserve_gold)
- if garrison == "":
-  if int(state.treasury[faction])-int(data().armies.general_cost)<reserve or not can_raise(state,faction,home).ok: return actions
-  var r = raise_army(state,faction,home)
-  actions.append({"action":"raise","army":r.army,"faction":faction})
-  garrison = r.army
- var a = state.army_state[garrison]
- for n in int(ai.max_recruits_per_turn):
-  if a.units.size()+a.queue.size()>=int(ai.garrison_units): break
-  var net = Economy.faction_ledger(state,faction).net
-  var best = {}
-  for o in options(state,garrison):
-   if not o.available or int(state.treasury[faction])-o.cost<reserve or net-o.upkeep<0: continue
-   if best.is_empty() or o.cost<best.cost or (o.cost == best.cost and o.unit<best.unit): best = o
-  if best.is_empty(): break
-  recruit(state,garrison,best.unit)
-  actions.append({"action":"recruit","army":garrison,"unit":best.unit,"faction":faction})
- return actions
