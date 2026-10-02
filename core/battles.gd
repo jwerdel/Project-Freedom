@@ -22,6 +22,7 @@ const Buildings = preload("res://core/buildings.gd")
 const UnitTypes = preload("res://core/unit_types.gd")
 const WorldMap = preload("res://core/world_map.gd")
 const Chronicle = preload("res://core/chronicle.gd")
+const Deployment = preload("res://core/deployment.gd")
 
 static func cfg() -> Dictionary:
  return BattleSim.data().campaign
@@ -171,7 +172,27 @@ static func battle_seed(state,attacker: String,defenders: Array,settlement := ""
  d.sort()
  return hash([state.seed,state.year,state.battles,attacker,d,settlement])
 
-# Battle setup for the simulation, with the factions' default templates (quick resolve).
+# The units a side brings (its main armies, plus the garrison when defending a settlement).
+static func side_units(state,pb: Dictionary,role: int) -> Array:
+ var spec = pb.attacker if role == 0 else pb.defender
+ var main_armies = [spec.army] if role == 0 else spec.armies
+ var units = []
+ for a in main_armies: units.append_array(_units_of(state,a))
+ if role == 1 and pb.kind == "settlement": units.append_array(garrison_units(state,pb.settlement))
+ return units
+
+# The faction's default template for this battle (data/factions.json battle_style).
+static func default_template(state,pb: Dictionary,role: int) -> String:
+ var spec = pb.attacker if role == 0 else pb.defender
+ var style = WorldMap.faction(spec.faction).get("battle_style",{"default":"line"})
+ return BattleDeploy.choose_template(style,side_units(state,pb,role),role == 1 and pb.field.get("walls") != null)
+
+# A side's default deployment (AI sides always; quick resolve for the player).
+static func default_placement(state,pb: Dictionary,role: int) -> Array:
+ return BattleDeploy.deploy(side_units(state,pb,role),default_template(state,pb,role),pb.field.terrain,role)
+
+# Battle setup for the simulation. A side uses pb.deployment (core/deployment.gd) when it is that
+# side's, otherwise its default template.
 static func setup(state,pb: Dictionary,seed: int,fast := false) -> Dictionary:
  var terrain = pb.field.terrain
  var sides = []
@@ -179,12 +200,11 @@ static func setup(state,pb: Dictionary,seed: int,fast := false) -> Dictionary:
   var spec = pb.attacker if role == 0 else pb.defender
   var faction = spec.faction
   var main_armies = [spec.army] if role == 0 else spec.armies
-  var units = []
-  for a in main_armies: units.append_array(_units_of(state,a))
-  if role == 1 and pb.kind == "settlement": units.append_array(garrison_units(state,pb.settlement))
-  var style = WorldMap.faction(faction).get("battle_style",{"default":"line"})
-  var siege_def = role == 1 and pb.field.get("walls") != null
-  var placed = BattleDeploy.deploy(units,BattleDeploy.choose_template(style,units,siege_def),terrain,role)
+  var placed = default_placement(state,pb,role)
+  var general_lane = terrain.size()/2
+  if pb.has("deployment") and int(pb.deployment.role) == role:
+   placed = Deployment.setup_units(pb.deployment)
+   general_lane = int(pb.deployment.general_lane)
   for r in spec.reinforcements:
    for u in _units_of(state,r.army):
     u.line = "reserve"
@@ -198,7 +218,7 @@ static func setup(state,pb: Dictionary,seed: int,fast := false) -> Dictionary:
    g = {"name":c.name,"rank":int(c.rank) if c.status == "ok" else 1,"traits":WorldMap.faction(faction).get("general_traits",[])}
   elif pb.kind == "settlement":
    g = {"name":"the garrison commander","rank":1,"traits":WorldMap.faction(faction).get("general_traits",[])}
-  sides.append({"faction":faction,"general":g,"units":placed})
+  sides.append({"faction":faction,"general":g,"general_lane":general_lane,"units":placed})
  var f = {"terrain":terrain,"weather":pb.weather}
  if pb.field.get("walls") != null: f.walls = pb.field.walls
  return {"seed":seed,"lanes":pb.lanes,"field":f,"sides":sides,"fast":fast}

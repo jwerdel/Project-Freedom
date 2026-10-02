@@ -18,6 +18,8 @@ const Movement = preload("res://core/movement.gd")
 const Armies = preload("res://core/armies.gd")
 const Battles = preload("res://core/battles.gd")
 const BattleReport = preload("res://core/battle_report.gd")
+const Deployment = preload("res://core/deployment.gd")
+const BattleDeploy = preload("res://core/battle_deploy.gd")
 const TurnLoop = preload("res://core/turn_loop.gd")
 const Chronicle = preload("res://core/chronicle.gd")
 const MOCK = "res://data/mock_ui.json"
@@ -418,3 +420,58 @@ func battle_odds_runs() -> int:
 
 func battle_withdraw_share() -> float:
  return float(Battles.cfg().withdraw_casualty_share)
+
+# --- Deployment screen (core/deployment.gd) ----------------------------------------------------
+
+func player_role(pb: Dictionary) -> int:
+ return 1 if pb.player_is_defender else 0
+
+func deployment_templates() -> Array:
+ return BattleDeploy.TEMPLATES
+
+# A fresh deployment of the player's side from a template (default: the faction's own).
+func deployment_create(pb: Dictionary,template := "") -> Dictionary:
+ var role = player_role(pb)
+ if template == "": template = Battles.default_template(state,pb,role)
+ return Deployment.create(Battles.side_units(state,pb,role),pb.field.terrain,role,template)
+
+func deployment_apply_template(pb: Dictionary,dep: Dictionary,template: String):
+ Deployment.apply_template(dep,Battles.side_units(state,pb,player_role(pb)),template)
+
+func deployment_can_place(dep: Dictionary,i: int,lane: int,line: String) -> Dictionary:
+ return Deployment.can_place(dep,i,lane,line)
+
+func deployment_place(dep: Dictionary,i: int,lane: int,line: String) -> Dictionary:
+ return Deployment.place(dep,i,lane,line)
+
+func deployment_order(dep: Dictionary,i: int,order: String,arg = null) -> Dictionary:
+ return Deployment.set_order(dep,i,order,arg)
+
+func deployment_general(dep: Dictionary,lane: int) -> Dictionary:
+ return Deployment.set_general_lane(dep,lane)
+
+func deployment_lane_name(lanes: int,lane: int) -> String:
+ return Deployment.lane_name(lanes,lane)
+
+# The enemy as the player sees it before battle: its default deployment, with units hidden by
+# forest, reserve or fog marked unknown (decision 12).
+func deployment_enemy(pb: Dictionary) -> Array:
+ var role = 1-player_role(pb)
+ var out = []
+ for u in Battles.default_placement(state,pb,role):
+  var v = u.duplicate()
+  v.hidden = Deployment.hidden(u,pb.field.terrain,role,pb.weather)
+  out.append(v)
+ return out
+
+# Balance of power for this deployment (seeded quick runs).
+func deployment_odds(pb: Dictionary,dep: Dictionary) -> float:
+ var p = pb.duplicate()
+ p.deployment = dep
+ return Battles.odds(state,p)
+
+# Fight with the player's deployment (the enemy uses its default). Same flow as Quick Resolve.
+func fight(pb: Dictionary,dep: Dictionary) -> Dictionary:
+ var p = pb.duplicate()
+ p.deployment = dep
+ return quick_resolve(p)

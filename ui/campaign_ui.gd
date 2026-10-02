@@ -15,6 +15,7 @@ const UiKit = preload("res://ui/ui_kit.gd")
 const Widgets = preload("res://ui/widgets.gd")
 const Cards = preload("res://ui/cards.gd")
 const Minimap = preload("res://ui/minimap.gd")
+const DeploymentScreen = preload("res://ui/deployment_screen.gd")
 
 const MENU = [["faction","Faction overview"],["diplomacy","Diplomacy"],["tech","Technology"],["lords","Lords and heroes"],["finance","Finance"],["objectives","Objectives"]]
 const OVERLAYS = [["borders","Territory borders"],["settlements","Settlement banners"],["armies","Armies"]]
@@ -848,10 +849,12 @@ func _fill_prebattle():
  var row = HBoxContainer.new()
  row.add_theme_constant_override("separation",8)
  var deploy = Button.new()
- deploy.text = "Deploy (coming next)"
- deploy.disabled = true
+ deploy.name = "Deploy"
+ deploy.text = "Deploy"
  deploy.focus_mode = Control.FOCUS_NONE
- deploy.tooltip_text = "Deployment and orders come in the next block."
+ deploy.disabled = not pb.approach.ok
+ deploy.tooltip_text = pb.approach.get("reason","") if not pb.approach.ok else "Place your units and give orders on the battlefield."
+ deploy.pressed.connect(open_deployment)
  row.add_child(deploy)
  var quick = Button.new()
  quick.name = "QuickResolve"
@@ -892,6 +895,35 @@ func _fill_prebattle():
   row.add_child(bs)
  if not pb.approach.ok: row.add_child(UiKit.label(pb.approach.reason,14,Color("ef8a6a")))
  battle_box.add_child(row)
+
+# Deployment screen (ui/deployment_screen.gd): full screen over the map. Back returns to the
+# pre-battle panel with nothing spent; Fight resolves with the player's deployment.
+var deployment_screen: Control
+
+func deployment_visible() -> bool:
+ return deployment_screen != null and is_instance_valid(deployment_screen)
+
+func open_deployment():
+ var pbc = battle_pb
+ battle_panel.visible = false
+ deployment_screen = DeploymentScreen.new()
+ deployment_screen.name = "DeploymentScreen"
+ add_child(deployment_screen)
+ deployment_screen.setup(data,studio,colors,pbc)
+ get_viewport().disable_3d = true # the opaque screen covers the map; skip rendering it
+ deployment_screen.closed.connect(func():
+  close_deployment()
+  battle_panel.visible = true)
+ deployment_screen.fought.connect(func(p,out):
+  close_deployment()
+  close_battle()
+  battle_resolved.emit(out)
+  open_battle_report(p,out))
+
+func close_deployment():
+ if deployment_visible(): deployment_screen.queue_free()
+ deployment_screen = null
+ get_viewport().disable_3d = false
 
 # Battle report (Phase C, minimal): headline, why you won/lost (3-5 lines), key numbers, units.
 func close_report():

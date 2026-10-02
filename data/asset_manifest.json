@@ -49,6 +49,7 @@
     "weapon.shield_heater": "res://visuals/weapons/shield_heater.tscn",
     "weapon.shield_large": "res://visuals/weapons/shield_large.tscn",
     "weapon.hammer": "res://visuals/weapons/hammer.tscn",
+    "battle.tabletop": "res://visuals/battle/tabletop.tscn",
     "commerce.wagon": "res://visuals/commerce/wagon.tscn",
     "commerce.ship": "res://visuals/commerce/ship.tscn"
   },

@@ -252,6 +252,32 @@ CPU: one quick-resolved battle (Aurek host against Greyhaven's garrison and the 
 
 Screenshots (generated, in `captures/`): `battle_prebattle.png` (siege assault on Greyhaven: both armies, garrison, walls, balance of power 12%), `battle_report.png` (victory at Willowmere: headline, why you won, key numbers, units), `battle_captured.png` (Willowmere under House Aurek, territory recolored, the host garrisoned).
 
+## Deployment screen (2026-10-01)
+
+Deploy on the pre-battle panel opens a full-screen deployment view. The tabletop (`battle.tabletop`) is built from the sampled battlefield: terrain tiles, trees on forest cells, walls and towers for sieges. Both sides stand in their slots with the existing unit figures: idle sway, and a fluttering banner on the general. Layout is 5 lanes × front/back + reserve + general's row per side.
+
+- Placement: click a card or a placed unit, then a slot; or drag a card onto the board. Lane capacity and pass limits are checked with messages ("The pass holds only 1 unit per line", "Left front line is full (2 units in forest)", impassable lanes).
+- Orders: Hold, Aggressive, Flank left/right, Protect (then click the unit to shield) and Reserve. Each order shows as a letter on the card and on the board. Protect and Flank draw arrows in both views.
+- Templates and info: template buttons quick-fill the layout. Enemy units in forest, reserve or a fogged back line show as unknown. Lane terrain and weather are listed.
+- Balance of power: recomputed on "Update odds" or 1 s after the last change. It runs the same 50 seeded runs as the pre-battle panel, about 170 ms; this screen's run was not timed separately.
+- Buttons: 3D/2D toggle, Reset (the faction's default), Back to campaign (back to the pre-battle panel, nothing spent), Fight (the same flow as Quick Resolve, with the player's deployment).
+
+While the screen is open the map's 3D is switched off, since the opaque screen covers it.
+
+Tests: 134/134 GUT tests pass headless. The self-test passes and now opens the screen, applies a template, gives Reserve and Flank orders, toggles to 2D, updates the odds and goes Back with no movement spent.
+
+GPU time, same method as above (RTX 4060, 1440×900, vsync off, 10 s settle, 5 s average, 2 rounds; root viewport plus the tabletop SubViewport):
+
+| View | GPU ms |
+|---|---|
+| Deployment, 3D tabletop | 1.01 / 1.07 |
+| Deployment, 2D board | 0.26 / 0.26 |
+
+Screenshots (generated, in `captures/`):
+- `deploy_3d.png`: siege assault on Greyhaven, faction default layout.
+- `deploy_orders.png`: heavy infantry protecting archers, cavalry flanking right, with arrows.
+- `deploy_2d.png`: the same orders on the 2D board.
+
 ## Remaining limitations
 
 - Artwork is a prototype and has not been approved against the desired 2016 Total War campaign-map benchmark.

@@ -13,6 +13,8 @@ const UiKit = preload("res://ui/ui_kit.gd")
 const SettlementBanner = preload("res://ui/settlement_banner.gd")
 const TerritoryOverlay = preload("res://visuals/terrain/territory_overlay.gd")
 const MovementOverlay = preload("res://ui/movement_overlay.gd")
+const Battles = preload("res://core/battles.gd")
+const Deployment = preload("res://core/deployment.gd")
 const WALK_SPEED = 12.0 # map meters per second while the figure walks (presentation only)
 # Overview camera (Home). Framed so the coast and Goldspire's sea face sit above the bottom panel.
 const OVERVIEW_TARGET = Vector3(10,3,21)
@@ -175,6 +177,29 @@ func _ready():
    ui.open_battle_flow(COMMANDER_ARMY,sp,t)
    if "--attack-resolve" in OS.get_cmdline_user_args():
     ui.battle_box.find_child("QuickResolve",true,false).pressed.emit()
+    update_walk(1000.0)
+ # Deployment captures: --deploy opens the screen, --deploy-2d shows the board, --deploy-template=
+ # applies a template, --deploy-orders=i:order[:arg],... gives orders (arg: left/right or a unit)
+ # and --deploy-fight fights with that deployment.
+ for arg in OS.get_cmdline_user_args():
+  if arg == "--deploy" and ui.battle_visible():
+   ui.open_deployment()
+   var ds = ui.deployment_screen
+   for a2 in OS.get_cmdline_user_args():
+    if a2.begins_with("--deploy-template="): ds.apply_template(a2.get_slice("=",1))
+   for a2 in OS.get_cmdline_user_args():
+    if a2.begins_with("--deploy-orders="):
+     for o in a2.get_slice("=",1).split(","):
+      var p = o.split(":")
+      ds.select(int(p[0]))
+      if p[1] == "protect":
+       ds._order("protect")
+       ds.select(int(p[2]))
+      else: ds._order(p[1]+(":"+p[2] if p.size()>2 else ""))
+   if "--deploy-2d" in OS.get_cmdline_user_args(): ds._set_view(false)
+   ds.update_odds()
+   if "--deploy-fight" in OS.get_cmdline_user_args():
+    ds._fight()
     update_walk(1000.0)
  for arg in OS.get_cmdline_user_args():
   if arg.begins_with("--view="):
@@ -1055,6 +1080,32 @@ func run_checks():
  assert(ui.battle_visible() and ui.battle_box.find_child("DeclareWar",true,false) != null) # not at war yet: confirmation first
  ui.close_battle()
  assert(ui_data.army_movement(COMMANDER_ARMY).points == points_before)
+ # Deployment screen: open it (war set temporarily), place, order, fail a capacity rule, toggle
+ # the view, then Back: nothing spent, the pre-battle panel returns.
+ var city_t = ui_data.battle_target(COMMANDER_ARMY,WorldMap.settlement_position(CITY_ID))
+ var war_key = Battles.war_key(ui_data.player_faction_id(),city_t.faction)
+ ui_data.state.wars.append(war_key)
+ city_t.needs_war = false
+ ui.open_battle_flow(COMMANDER_ARMY,WorldMap.settlement_position(CITY_ID),city_t)
+ ui.open_deployment()
+ assert(ui.deployment_visible() and not ui.battle_visible())
+ var ds = ui.deployment_screen
+ ds.apply_template("line")
+ assert(ds.dep.units.size()>0 and Deployment.validate(ds.dep).is_empty())
+ ds.select(0)
+ ds._order("reserve")
+ assert(ds.dep.units[0].line == "reserve" and ds.dep.units[0].order == "reserve")
+ ds._order("flank:left")
+ assert(ds.dep.units[0].order == "flank" and int(ds.dep.units[0].lane) == 0)
+ ds._set_view(false)
+ assert(ds.board.visible and not ds.viewport_box.visible)
+ ds.update_odds()
+ assert(ds.odds>=0.0 and ds.odds<=1.0)
+ ds.closed.emit()
+ assert(not ui.deployment_visible() and ui.battle_visible())
+ assert(ui_data.army_movement(COMMANDER_ARMY).points == points_before)
+ ui.close_battle()
+ ui_data.state.wars.erase(war_key)
  order_army(Vector2(80,-10))
  update_walk(1000.0)
  var m = ui_data.army_movement(COMMANDER_ARMY)
@@ -1109,7 +1160,7 @@ func run_checks():
   assert(goldspire_level==level_now)
  ui.clear_selection()
  reset_camera()
- print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn; construction upgrades goldspire's stage; army movement preview, orders, blocking and garrison; recruitment queue and refund")
+ print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn; construction upgrades goldspire's stage; army movement preview, orders, blocking and garrison; deployment screen place, orders, view and back; recruitment queue and refund")
 
 # --- Movement grid bake ------------------------------------------------------------
 # Writes data/movement_grid.json, the terrain grid army movement reads (core/movement.gd), by
