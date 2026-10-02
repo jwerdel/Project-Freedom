@@ -116,7 +116,7 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 
 - Before resolution, players deploy units and assign standing orders such as hold ground, act aggressively, or attempt to flank.
 - Battle design (approved direction, 2026-10-01): docs/battle-design.md. Its numbers are placeholders and its open questions (section 13) are not decided until the owner answers them.
-- Implementation note (2026-10-01): battles are quick-resolved from the campaign (deployment UI comes next). TEMPORARY war rule until diplomacy: attacking another faction's army or settlement declares war after a confirmation, and there is no peace yet. Captured settlements are occupied only; sack, raze and expel stay open. A dead or wounded general is replaced by a captain who cannot move the army (placeholder until the character system).
+- Implementation note (2026-10-01): battles are fought from the campaign with the slot-based deployment screen or quick resolve. TEMPORARY war rule until diplomacy: attacking another faction's army or settlement declares war after a confirmation, and there is no peace yet. Captured settlements are occupied only; sack, raze and expel stay open. A dead or wounded general is replaced by a captain who cannot move the army (placeholder until the character system).
 - Resolve the battle through simulation without displaying animated combat in V1.
 - Detailed figures with minimal animation can be used in deployment; presentation specifics remain open.
 - Deployment and orders must have meaningful consequences. A useful explanation of results has been proposed; report format and simulation mechanics are not yet decided.
@@ -159,6 +159,19 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 - Develop naval capability before crossing the high seas. Only appropriate ship classes can make those crossings; early fishing boats cannot.
 - Research unlocks the necessary buildings; appropriate ships follow that development. Materials affect income, not access requirements. Specific research, shipyards, ship classes, and gold costs remain open.
 - Starting as a southern faction and its initial access to other continents remain open.
+
+## Post-V1 roadmap
+
+Not V1 scope. Recorded 2026-10-01 so the direction is known; nothing here is built for V1. V1 keeps the current slot-based deployment (lanes × front/back, reserve, general's slot).
+
+1. **Total War-style free deployment** (the first post-V1 item). Units are placed freely on a real 3D battlefield inside the deployment zone.
+   - Right-click-drag sets a unit's position, frontage width and facing, with a preview.
+   - Whole formations can be grouped and locked, moved with Alt-drag and rotated with Ctrl.
+   - Each army's last deployment is remembered.
+   - Positions snap to the existing lane model behind the scenes, so the battle simulation and its tuned win rates stay unchanged.
+2. **True spatial battle simulation** (a V2 decision). Units get real 2D positions, distances and facing, with geometric flanking, replacing the lane model.
+   - All win-rate targets must be re-tuned.
+   - It is the natural step toward watchable battles.
 
 ## Priority questions for the next discussion
 
