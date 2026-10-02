@@ -1,10 +1,16 @@
 # Project Freedom — Design Constitution
 
-Status: living design draft. Confirmed decisions below record the user's intent; open questions are not approved mechanics. Reference names describe inspiration and are not final world or faction names. A first local visual prototype has been implemented in ProjectFreedom; campaign mechanics remain unimplemented.
+Status: living design draft. Confirmed decisions below record the user's intent; open questions and proposals are not approved mechanics. A playable prototype implements the economy, construction, recruitment, movement, battles, campaign AI, debt and the loss condition, and save/load.
+
+Document precedence (2026-10-02): this constitution governs confirmed mechanics. docs/game-design.md is the full design; its items marked Proposed need the owner's approval before implementation. docs/world-bible-v2.md is the lore reference (it supersedes docs/archive/world-v1.md).
 
 ## Vision
 
-A fantasy strategy game combining Total War's accessible campaign interface, armies, and territorial play with deeper dynasties, relationships, politics, and economic connections inspired by Crusader Kings. Prioritize macro decisions, personal stories, and a changing political map over repetitive micromanagement. The player should know their faction's people and see their decisions change the world.
+- Confirmed (2026-10-02, game-design §1.1): "Crusader Kings depth, Total War look and feel." The politics, dynasties and intrigue of Crusader Kings, presented through Total War: Warhammer III's map, UI, controls and accessibility.
+- Confirmed (2026-10-02, game-design §1.2): depth comes through meaningful events and decisions, not management screens full of modifiers. Routine administration runs automatically; the game surfaces what needs attention.
+- Confirmed (2026-10-02, game-design §1.2 and §18): TW:WH3 parity for everything the player touches: map interactions, camera, UI layout, panels, cards, tooltips, controls, notifications and feedback match Total War: Warhammer III as closely as possible. Only the game rules differ. When unsure how TW:WH3 does something, research it rather than invent a UI convention.
+- Confirmed (2026-10-02, game-design §12.12): battles are complete for V1. No further battle work in V1 except bug fixes; magic and new unit types feed the existing simulation as data.
+- The player should know their faction's people and see their decisions change the world. Prioritize macro decisions, personal stories and a changing political map over repetitive micromanagement.
 
 ## Project constraints
 
@@ -39,6 +45,8 @@ Open:
 ## Campaign and world
 
 - Confirmed (2026-10-01), loss condition: a faction that loses its last settlement enters a grace period of N turns (data). If its armies retake a settlement in time it survives; otherwise it is destroyed and its armies disband. For the player, destruction is game over.
+- Confirmed (2026-10-02, game-design §3.1): no victory conditions. The campaign is a sandbox that continues indefinitely.
+- Confirmed requirement (2026-10-02, game-design §15): campaigns of hundreds or thousands of turns must stay fresh. The specific sources of novelty listed in game-design §15 are proposals.
 - One campaign turn represents one year.
 - Three major landmasses: two relatively close and a third far away. Game of Thrones is a geographic reference, not the desired limit on fantasy.
 - Existing cultures, religions, and internal histories at campaign start, but no starting wars, alliances, or diplomatic relationship bonuses.
@@ -51,17 +59,31 @@ Every race has multiple factions, with all intended factions available for playe
 
 Geographic references:
 
-- Western continent: multiple human realms inspired geographically by the Reach, Stormlands, and Westerlands; northern orcs; dwarves in southern mountains in the broadly Dorne-like region; Easterling-inspired people in desert areas.
+- Western continent (Aldryn in the world bible): multiple human realms inspired geographically by the Reach, Stormlands, and Westerlands; northern orcs; dwarves in southern mountains in the broadly Dorne-like region; Tomb-King-like desert humans in the southern desert (replacing the earlier Easterling-inspired idea); dark elves on the western isles; the Throne City at the centre.
 - Nearby eastern continent: principally elves and beastmen.
 - Far eastern portion of that continent: Necron-like and Chaos-like peoples, the intended origin of world-ending threats. How threats coexist with neutrality and playable factions remains open.
 - Remote southern continent: ratmen along the coast and lizardmen deep in the jungle.
 
-Lean strongly into fantasy. Each race/faction has massed troops and distinctive monsters, with different access to monsters: beastmen have many, humans relatively few. Environment should influence faction design. Specific cultures, religions, species names, rosters, and maps remain to be developed.
+Lean strongly into fantasy. Each race/faction has massed troops and distinctive monsters, with different access to monsters: beastmen have many, humans relatively few. Environment should influence faction design. Names, rosters, faiths and geography are now set in docs/world-bible-v2.md.
+
+- Confirmed (2026-10-02, game-design §10 and world bible §3): three human cultures.
+  - Medieval humans follow the Throne Church.
+  - Roman and Greek humans follow the Radiant Seven.
+  - The Tomb-King desert humans are neutral, a true swing between Order and Destruction.
+  - The western isles off Aldryn are home to the dark elves (not a human realm).
+  - Order: humans, elves, dwarves. Destruction: orcs, beastmen, ratmen, dark elves. Lizardmen are neutral, leaning Order.
+- Confirmed (2026-10-02, game-design §3.5): playable in V1 is one faction per human culture: House Varn of Frosthold (Medieval), House Varrenus (Roman) and the Aurekids of Goldspire (Greek). Every other faction is AI in V1; the long-term goal stays "every faction playable", with elves first after V1.
 
 ## Faction behavior and diplomacy
 
 - Factions have recognizable tendencies such as passive, income-focused, generous, kind, expansionist, cruel, or treacherous.
 - Other factions should account for those tendencies: cruel or treacherous neighbors cause more concern than kind or generous ones, despite neutral starting relationships. How this differs from numerical relationship bonuses must be defined.
+- Confirmed (2026-10-02, game-design §7.1, §7.2, §7.4, §7.6), reputation:
+  - Each faction has two reputations. The ruler's moves relatively quickly and weighs more overall. The House's is the world's long memory of the dynasty, and grows and fades slowly.
+  - Distance weighting: nearby factions care more about the ruler, distant factions more about the House.
+  - A new ruler's first-impressions window (about 10 turns; exact length open): the ruler's actions move both reputations much faster than normal, in either direction.
+  - Decrees: the ruler issues decrees, limited in number by Realm Standing. They have mechanical effects and shift reputation, amplified during the first-impressions window. Retiring a disgraced ruler for a better-reputed one changes how factions see you.
+  - Proposed, not confirmed: the instability safeguard against frequent ruler swaps (§7.5), and the list of reputation traits (§7.3).
 - Relationships form a web: an attack harms the victim's relationship strongly and can also harm relations with its allies to a lesser degree.
 - Alliances and dynastic marriages can improve relations.
 - Negotiations should support bundled offers using a faction's available means, including land, gold, resource tribute, troop transfers, marriage, alliances, and ceasefires. Eligibility and valuation remain open.
@@ -69,7 +91,8 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 - Attacking during a ceasefire/peace treaty or within its protected post-treaty period causes irreversible war with every faction and permanent loss of allies and trade partners; only loading an earlier save reverses it. Cancelling trade is permitted at any time and does not trigger this punishment.
 - Confirmed (2026-10-01): after peace or a ceasefire the treaty is protected for 20 turns; attacking during the treaty or that protection triggers the betrayal rule above.
 - AI suffers the same betrayal penalty. Confirmed (2026-10-01): the AI never triggers the betrayal rule (hardcoded). Treacherous AI factions show treachery in other ways: breaking trade agreements, abandoning allies, refusing alliance calls.
-- Courts may contain multiple races, independently of reproduction. An orc faction rejected by other orcs can join a welcoming human faction. Latest clarification: reproduction is within the same race only; this supersedes the earlier crossbreeding-alliance idea.
+- Courts may contain multiple races, independently of reproduction. An orc faction rejected by other orcs can join a welcoming human faction.
+- Confirmed (2026-10-02, game-design §4.9): cross-race marriage is allowed, and children take the father's race (orc father + human mother = orc children). This supersedes the earlier "reproduction within the same race only" clarification. Cross-race marriages have political consequences: prejudiced factions and faiths disapprove.
 - Welcoming an outsider requires sustained commitment to earn trust; exclusion can produce distrust and rebellion. Integration may damage relations with prejudiced same-race friends while creating opportunities for cross-race alliances.
 - Some human/orc factions should always hate the other race; a small minority may pursue friendship. This qualifies or conflicts with the earlier universally neutral start: distinguish starting relations, permanent prejudice, and willingness to negotiate before implementation.
 - Expelling conquered peoples is an intended player option, described by the user as the easy choice; retaining/integrating them is harder but potentially rewarding. Mechanical consequences, migration destinations, and the meaning of race destruction remain open.
@@ -85,7 +108,7 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 - Markets are dynamic: goods are more valuable where scarce. Selling wood to a desert region should be more lucrative than selling it to an abundant woodland region, all else equal.
 - Trade agreements, partners, roads, ships, caravans, buildings, and routes affect how effectively resources generate gold. Equal production need not yield equal income.
 - Player decisions concern agreements and infrastructure; detailed trade pricing, transport, and automation rules remain open.
-- Establishing outposts and moving armies through the world are core interests. Exact outpost functions remain to be designed.
+- Establishing outposts and moving armies through the world are core interests. Outpost functions are now confirmed (Battles and armies, 2026-10-02).
 - Recruitment draws directly from the region's population pool. Disbanded survivors return to population. Military mobilization should have demographic consequences without routinely trapping the player in hopeless situations.
 - A populous territory should be capable of raising multiple armies in one turn. A 'raise banners' action gathers population from the player's territories at the capital to form armies; timing, travel, and costs remain open.
 - Population and growth respond to resource abundance, developed wealth, and the popularity of the ruler. People can migrate toward regions where a popular ruler is appointed or moves to govern.
@@ -97,7 +120,15 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 - Materials affect income and should not directly block buildings or recruitment. Research unlocks buildings, including naval progression. Siege endurance is also intended to depend on settlement resources; how this works without manual inventories remains open.
 - Confirmed (2026-10-01): income scales with population through taxes. A settlement's income is a base amount by settlement type and level plus a per-capita tax on its population, both modified by resource endowments, buildings, and the settlement type's income factor and ceiling.
 - Confirmed (2026-10-01): buildings have real effects: income, growth, recruitment unlocks, and defense.
-- Confirmed (2026-10-01): the research tree is deferred past V1 (see docs/v1-scope.md). In V1, building availability is gated by settlement level, plus geography where a building needs it: confirmed 2026-10-01, ports require a coastal settlement.
+- Confirmed (2026-10-02, game-design §13): research is in V1, superseding the 2026-10-01 decision to defer it. Each race has its own tech tree. Research takes turns, and something should always be researching. It unlocks buildings, units, naval progression, decree slots, agent skills and culture mechanics. Building availability is also gated by settlement level, plus geography where a building needs it (confirmed 2026-10-01: ports require a coastal settlement).
+- Confirmed (2026-10-02, game-design §11.2 and §6.6): governors never skim from their own faction; the treasury is the faction's. A puppet ruler installed in another faction skims that faction's gold to its patron.
+- Confirmed (2026-10-02, game-design §11.6 and §4.7), Realm Standing:
+  - Realm Standing rises with territory, population and wealth.
+  - Each level raises the caps on lord armies, agents per career, and active decrees.
+  - There are no growth penalties (no corruption, no administrative strain).
+  - Ambition is softened: bigger realms make courtiers want more, shown as requests and opportunities, never as a realm-splitting crisis.
+  - Thresholds and cap values are open.
+- Confirmed (2026-10-02, game-design §12.7): trade routes are drawn on the map (sea and land lines, with little ships and caravans moving along them; visual only, not individually simulated). Each route has an abstract income. Raiding armies or fleets draw income from nearby routes and settlements; raiding harms relations but is not an act of war.
 
 ## Characters, dynasties, and governing
 
@@ -112,8 +143,29 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 - Generals are drawn from the court. Court members can also serve hero roles such as hunters and wizards. Recruited specialists such as wizards may be single-entity units represented by one unit card; they need not literally be monsters.
 - The player controls when new children are added to the main family tree. Rules for other families remain open.
 - At level 20 a character can become immortal and then ascend into a monster-like unit. An immortal defeated in battle returns after X turns; an assassinated immortal returns after Y turns, with Y substantially longer. Values, recovery location, and ascension details remain open.
-- The player controls the faction regardless of its current ruler; faction destruction is the loss condition. The exact test for destruction (last settlement versus remaining armies, for example) remains open.
+- The player controls the faction regardless of its current ruler; faction destruction is the loss condition. The test is confirmed (2026-10-01, Campaign and world): last settlement lost, then a grace period.
+- Confirmed (2026-10-02, game-design §4.5): there is no level cap. Level 20 is a great feat: leveling is slow, and most campaigns produce only a handful of level-20 characters. Legendary founders (Edric Varn, Lucan Varrenus, Kallias Aurekos, and AI legendary lords) are immortal from the start.
+- Confirmed (2026-10-02, game-design §4.3, §5.1, §5.5, §5.7), agents:
+  - Agents are court and family members on a career path, shown on the map as TW-style heroes.
+  - Careers: General, Warlord, Assassin, Spy, Politician, Merchant, Wizard, Priest. Governors are an appointment, not a career.
+  - Missions are gated by agent level against the target's importance (a level-1 assassin cannot target a ruler); the gate values are proposals.
+  - Capture outcomes depend on level: low-level agents may break and confess (exposing their master); high-level agents die before revealing their mission; captured agents can die, be imprisoned, or switch sides.
+- Confirmed (2026-10-02, game-design §4.7 and §11.8): no civil wars and no succession wars for the player, ever, and nothing hits the player without warning. AI factions can suffer both. Small rebellions are possible: a neglected, low-loyalty governor or vassal can declare independence with at most one region, after several turns of visible warning. The region's people decide: if they dislike the rebel they ask for your help (the Liberator's Call); if they love him you fight, negotiate, or let him go as an ally.
 - A wartime upbringing and battle-hardened childhood are valid player-directed story paths. Exact ages for training, command, and other roles remain open.
+
+## Religion and the Throne City
+
+- Confirmed (2026-10-02, game-design §9.2 and §9.3):
+  - Caeloth, the Throne City, is a huge, very rich, neutral metropolis at the heart of Aldryn.
+  - It is ruled by the Throne Church as an untouchable religious faction, like the Papal States. No human faction's goal is to take it.
+  - Romans and Greeks revere it as the root of their faith, though they worship the Seven.
+  - Influence is gained through Throne Church missions, religious buildings, tribute, marriage into Church-aligned families, and joining Holy Wars. It buys trade privileges in Caeloth, a voice in calling and targeting Holy Wars, legitimacy for the ruler, and the right to host or sway elections.
+- Confirmed (2026-10-02, game-design §9.2): no scheming against the Throne City itself in V1. Scheming within its politics (its elections) is allowed.
+- Proposed, not confirmed (game-design §9.4 to §9.9): the hierarchy names (Voice of the Throne, Exarchs); elections of the Voice from the three most pious Exarchs, with purchasable votes; Holy Wars with a joining window and rewards; Anathema (excommunication) with its causes, effects and lifting; the Inquisition; and the Radiant Seven's temples, omens and oracles. Section 20 of the design lists elections, Holy Wars and Anathema as constitution changes, but their sections are marked Proposed, so they stay proposals until approved.
+
+## Difficulty
+
+- Confirmed (2026-10-02, game-design §16.1): at lower and middle difficulty levels the AI becomes smarter and more aggressive under the same rules as the player. The top levels add a visible economic bonus to the AI. Difficulty effects are shown openly in the settings.
 
 ## Battles and armies
 
@@ -126,12 +178,21 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 - Troops, commanders, and casualties must relate back to the campaign; detailed persistence and replenishment rules remain open.
 - Replenishment is automatic in friendly regions and costs payment in enemy territory. It does not deduct regional population, but populous regions replenish faster. This is an explicit accessibility exception to the recruitment population model; replacement costs and disbanding must later be balanced to avoid unlimited population creation.
 - Implementation note (2026-10-01), placeholders in data/recruitment.json: recruitment is per settlement (men from that settlement's population, units unlocked by its buildings; every main building unlocks peasant levies), with a minimum population; gold and men are taken when a unit is queued and cancelling refunds both; disbanded men return to the population of the region the army stands in. Replenishment regains a share of each unit's max strength per turn, more in populous friendly regions, and costs gold per man anywhere the faction does not own. Army cap: 20 cards per army including the general, a Total War-style placeholder pending the army performance test (the earlier 6-10 cap stays rejected).
-- Open (raised by recruitment): recruitment slots per settlement; global recruitment; disbanding a whole army or its general; who counts as an enemy for replenishment once diplomacy exists (now every region the faction does not own); the maximum number of armies per faction (placeholder 3).
+- Confirmed in principle (2026-10-02, game-design §20 item 19): recruitment becomes province-wide, as specified in the TW parity block. That block's rule text is not yet in the repository, so the exact rule is pending; until it is recorded here, the per-settlement implementation note above describes the current game.
+- Open (raised by recruitment): recruitment slots per settlement; disbanding a whole army or its general; who counts as an enemy for replenishment once diplomacy exists (now every region the faction does not own). The maximum number of lord armies is now capped by Realm Standing (Economy and settlements); its values are open, and the prototype placeholder is 3.
+- Confirmed (2026-10-02, game-design §12.2 and §12.3):
+  - A lord (General) is required to attack; a full stack is 20 units.
+  - Armies without a lord can move as captain-led detachments, with a small unit cap (placeholder 6) so they are never full stacks. They ferry recruits, reinforce garrisons and merge into a lord's army on contact.
+  - Proposed, not confirmed: captains cannot initiate attacks and fight without a morale aura (§12.3), and raised banners form captain-led detachments (§12.4).
 - Ordinary monsters require special buildings. Unique legendary monsters exist in the world and can be recruited only by heroes of extraordinary stature; qualification and recruitment mechanics remain open.
 - Wars are centered on the opposing factions. Allies choose whether to join the war or support it through gold, resources, or troop tribute without themselves becoming belligerents. Supporting an ally does not automatically mean joining its war.
 - Campaign movement uses a per-turn movement allowance in the Total War style. An army may fight multiple battles while its allowance permits; no separate fixed battle count is intended.
 - Implementation note (2026-10-01): the allowance is implemented with placeholder numbers (data/movement.json): points refill each End Turn, terrain changes the cost (forest, hills and passes slower; water and mountains impassable except at passes), multi-turn orders continue automatically, and ending a move in one's own settlement garrisons the army. That roads speed movement, scaling with road level, is a placeholder rule, not a confirmed mechanic.
 - Confirmed (2026-10-01): until diplomacy exists, armies may move freely through other factions' territory. Diplomacy will later add trespass penalties and military access agreements.
+- Confirmed (2026-10-02, game-design §12.1 and §12.5):
+  - Movement is full in one's own and allied territory and drastically reduced in foreign territory, as a baseline rule. Not yet implemented; the prototype still uses one allowance everywhere.
+  - Outposts extend home-territory movement into regions you do not own.
+  - Outpost functions are confirmed: securing a pass, claiming a resource, a forward supply base, a trading post, and a watchtower that reveals the shroud. Outposts can be attacked by armies or burned by assassins.
 - Open (raised by army movement, not implemented): zone of control; attrition; movement after battle; naval movement; what happens when an army moves onto a foreign settlement or army (battle is not implemented, so it is blocked).
 - Siege endurance depends on the settlement's resources, with an approximate maximum of eight turns proposed by the user. Exact supply model and limit remain to be set.
 
@@ -182,4 +243,9 @@ The visual feasibility gate is replaced by the gameplay-first direction above. N
 
 ## Scope discipline
 
-The world vision above is not yet a promise that every race and system ships in V1. The V1 content scope is approved and recorded in docs/v1-scope.md (map, races, factions, settlements, systems, and what is deferred past V1). Development milestones and acceptance criteria remain to be agreed. Keep confirmed requirements separate from suggestions and unresolved mechanics as the constitution evolves.
+The world vision above is not yet a promise that every race and system ships in V1. The V1 content scope is approved and recorded in docs/v1-scope.md, revised 2026-10-02 to game-design §19:
+- the full world built in stages, without the Ashlands and endgame crises
+- three playable human houses, and every other V1 race present as AI
+- research, courts, careers and agents in V1
+
+Development milestones and acceptance criteria remain to be agreed. Keep confirmed requirements separate from suggestions and unresolved mechanics as the constitution evolves.
