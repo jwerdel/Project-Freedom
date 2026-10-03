@@ -1,0 +1,13 @@
+{
+  "_note": "Synthetic scale-test map (docs/map-pipeline-design.md §6.2): the full V1 world size with the design ceiling's counts. Only this file is committed; build the rest with: runtime/Godot.exe --headless --path . -s scripts/build_map.gd -- --map=synthetic600 (map/synthetic.gd). Used by scripts/scale_test.gd.",
+  "id": "synthetic600",
+  "name": "Synthetic 600",
+  "version": 1,
+  "kind": "synthetic",
+  "size": [4096, 2560],
+  "origin": [0, 0],
+  "cell": 2.0,
+  "chunk": 256,
+  "sea_level": 0.0,
+  "synthetic": {"seed": 600, "regions": 600, "factions": 150, "armies": 500}
+}

@@ -720,6 +720,38 @@ The screenshots were taken before three small follow-ups, which have not been re
 - The strategic map has no zoom of its own. At the big map's size it may need one, or region labels.
 - Small text (12–13 px) loses some word spacing in the current font (existing issue, visible in the lord column).
 
+## Map pipeline: data model and scale test (2026-10-02) — STOPPED on missed budgets
+
+**Built** (design `docs/map-pipeline-design.md`, approved):
+- **P1:** maps live in `data/maps/<id>/`, the prototype is the test map, and every loader reads the active map (`core/map_registry.gd`). Lookups are O(1): a province dictionary, plus a baked region raster for pipeline maps. Save schema 4 records the map ID and version and refuses saves from another map version.
+- **Synthetic generator** (`map/synthetic.gd`): the full V1 world size (4,096 × 2,560 m, 2 m cells) with 600 regions, 225 provinces, 150 factions, 500 armies and 1,171 roads. It writes the same formats a real map uses: zstd gameplay bakes and a local render cache (`map/map_bake.gd`).
+- **Tools:** `scripts/build_map.gd` builds a map; `scripts/scale_test.gd` is the CPU half of the scale test.
+- **Build time:** the 600-region world builds in 3.8 s headless.
+
+**CPU results** (synthetic600, mid-game worst case: every region owned, 500 armies; headless; debug editor build; Ryzen 7 5700X3D):
+
+| Measurement | Result | Budget | |
+|---|---|---|---|
+| Load (world, grid, start state) | 0.92 s | ≤ 10 s | met |
+| Memory after load / after 3 turns | 29 MB / 226 MB | ≤ 2.5 GB | met |
+| `region_at` | 0.0014 ms | ≤ 0.01 ms | met |
+| Save size / load | 1.1 MB / 0.47 s | ≤ 5 MB / ≤ 3 s | met |
+| Save time | 213–221 ms | ≤ 100 ms | **missed** |
+| First path plan (builds the A* grid) | 11.4–12.4 s | none set | a one-time hitch per session |
+| Path plan, 60 m | 127–137 ms median | ≤ 5 ms | **missed** |
+| End Turn, all 150 factions AI | turn 1: 28.8 s (includes the A* build); turns 2–3: 14.1 s and 17.1 s | ≤ 4 s (release) | **missed** |
+
+**Where End Turn goes** (one AI phase, profiled):
+- **Building the A* grid: 12.7 s.** A GDScript loop over 2.6 million cells.
+- **Army orders: 25.5 s.** 569 path plans cost 21.2 s, but the A* search inside them is only 0.53 s. The rest is rebuilding army and settlement blocking for every plan: a key string from 500 armies and 600 settlements, then about 27,000 cells re-marked.
+- **War decisions: 3.2 s** (odds simulations).
+- **Assess, books, build and recruit: about 1.7 s.**
+- **Economy, growth, armies and sieges together: about 0.16 s.**
+
+**Not measured** (the run stopped first): the GPU half (frame time, draw calls, VRAM, strategic map). It needs the chunked-terrain runtime (P3).
+
+**Not built:** the SVG and JSON authoring parser, the validator and debug overlay, the runtime map scene (P3), and the test map rebuilt through the pipeline (P5).
+
 ## Remaining limitations
 
 - Artwork is a prototype and has not been approved against the desired 2016 Total War campaign-map benchmark.
