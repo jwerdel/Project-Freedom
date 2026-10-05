@@ -21,17 +21,18 @@ func after_each():
  SaveSystem.dir = SaveSystem.DIR
  MapRegistry.set_active(MapRegistry.DEFAULT)
 
-func test_the_test_map_is_the_default_and_complete():
- assert_eq(MapRegistry.active,"testmap")
- assert_true("testmap" in MapRegistry.maps())
- for f in ["map.json","provinces.json","factions.json","campaign_start.json","movement_grid.json","movement.json"]:
+func test_the_pipeline_test_map_is_the_default_and_complete():
+ assert_eq(MapRegistry.active,"testmap_pipeline")
+ assert_true("testmap_pipeline" in MapRegistry.maps())
+ for f in ["map.json","provinces.json","factions.json","campaign_start.json","movement.json","sketch.svg","world.json","baked/movement.json","baked/regions.json"]:
   assert_true(MapRegistry.has_file(f),f)
- assert_eq(MapRegistry.meta().id,"testmap")
- assert_eq(MapRegistry.version(),1)
+ assert_eq(MapRegistry.meta().id,"testmap_pipeline")
+ assert_eq(MapRegistry.meta().kind,"pipeline")
+ assert_true(MapRegistry.meta("testmap").get("retired",false),"the legacy test map is retired")
 
 func test_a_campaign_records_its_map():
  var s = GameState.from_data()
- assert_eq(s.map_id,"testmap")
+ assert_eq(s.map_id,"testmap_pipeline")
  assert_eq(s.map_version,MapRegistry.version())
  var back = GameState.from_dict(s.to_dict())
  assert_eq([back.map_id,back.map_version],[s.map_id,s.map_version])
@@ -51,6 +52,16 @@ func test_schema_3_saves_migrate_to_the_test_map():
  assert_true(r.ok)
  assert_eq(r.data.state.map_id,"testmap")
  assert_eq(int(r.data.state.map_version),1)
+
+func test_a_save_from_the_retired_test_map_is_refused_with_a_clear_message():
+ var s = GameState.from_data()
+ s.map_id = "testmap"
+ s.map_version = 1
+ assert_true(SaveSystem.save(s,"old_testmap","Old test map").ok)
+ var r = SaveSystem.load_save("old_testmap")
+ assert_false(r.ok)
+ assert_string_contains(r.error,"no longer uses")
+ assert_string_contains(r.error,"new campaign")
 
 func test_a_save_from_another_map_version_is_refused():
  var s = GameState.from_data()

@@ -42,6 +42,8 @@ var rows := 0
 var material: ShaderMaterial
 var palette_img: Image
 var palette_tex: ImageTexture
+var owners_img: Image
+var owners_tex: ImageTexture
 var region_names: Array = []
 var culture_ids: Array = []
 var chunks = {}       # Vector2i -> {"node": Node3D, "trees": Node3D or null, "key": land key}
@@ -62,6 +64,10 @@ func setup(campaign_state):
  rows = int(grid.rows)
  sea_level = float(MapRegistry.meta().get("sea_level",0.0))
  var rc = MapBake.load_render_cache(MapRegistry.active)
+ if rc.is_empty() and str(MapRegistry.meta().get("kind","")) == "pipeline":
+  # First run (or a rebuilt map): the render cache is local, so build it from the map's sources.
+  load("res://map/pipeline.gd").build(MapRegistry.active,false)
+  rc = MapBake.load_render_cache(MapRegistry.active)
  assert(not rc.is_empty(),"No render cache for %s: run scripts/build_map.gd -- --map=%s" % [MapRegistry.active,MapRegistry.active])
  heights = rc.heights
  rivers = rc.rivers
@@ -98,6 +104,10 @@ func _make_material():
  palette_img = Image.create(maxi(1,region_names.size()+1),1,false,Image.FORMAT_RGBA8)
  palette_tex = ImageTexture.create_from_image(palette_img)
  material.set_shader_parameter("palette",palette_tex)
+ owners_img = Image.create(maxi(1,region_names.size()+1),1,false,Image.FORMAT_RGBA8)
+ owners_tex = ImageTexture.create_from_image(owners_img)
+ material.set_shader_parameter("owners",owners_tex)
+ refresh_owners()
  material.set_shader_parameter("origin",origin)
  material.set_shader_parameter("world_size",Vector2(cols,rows)*cell)
  material.set_shader_parameter("grid_size",Vector2(cols,rows))
@@ -106,6 +116,23 @@ func _make_material():
  refresh_land()
 
 # The land of every region into the palette texture (after End Turn or a change of hands).
+# Faction borders on the terrain (TW:WH3): each region's owner colour, drawn by the shader where
+# neighbouring regions have different owners. Call after captures.
+func refresh_owners():
+ if owners_img == null: return
+ owners_img.fill(Color(0,0,0,0))
+ for i in region_names.size():
+  var sid = region_names[i]
+  if not state.settlements.has(sid): continue
+  var o = str(state.settlements[sid].get("owner",""))
+  if o == "": continue
+  owners_img.set_pixel(i+1,0,Color(Color(WorldMap.faction(o).get("primary","#ffffff")),1.0))
+ owners_tex.update(owners_img)
+
+# Settlements rebuild on the next update when their spec changed (levels, buildings, owners).
+func refresh_settlements():
+ _last_focus = Vector3(INF,0,INF)
+
 func refresh_land():
  for i in region_names.size():
   var sid = region_names[i]

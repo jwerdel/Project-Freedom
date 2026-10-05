@@ -7,7 +7,7 @@ extends RefCounted
 # the active map changes, so tests and saves can switch maps.
 
 const ROOT = "res://data/maps/"
-const DEFAULT = "testmap" # tests, the self-test and captures; New Campaign until Varos exists
+const DEFAULT = "testmap_pipeline" # tests, the self-test, captures and New Campaign until Varos exists (the test map built by the pipeline)
 
 static var active := DEFAULT
 static var _meta = {}

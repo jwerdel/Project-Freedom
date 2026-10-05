@@ -27,6 +27,8 @@ const Realm = preload("res://core/realm.gd")
 const Ai = preload("res://core/ai.gd")
 const TurnLoop = preload("res://core/turn_loop.gd")
 const BattleSim = preload("res://core/battle_sim.gd")
+const MapView = preload("res://map/map_view.gd")
+const Construction = preload("res://core/construction.gd")
 const WALK_SPEED = 12.0 # map meters per second while the figure walks (presentation only)
 const STRATEGIC_RETURN_DISTANCE = 150.0 # zoom after returning from the strategic map to a place
 # Overview camera (Home). Framed so the coast and Goldspire's sea face sit above the bottom panel.
@@ -106,6 +108,12 @@ var loaded_from := ""    # "" prototype start, "new" campaign from the menu, or 
 var unsaved := false     # campaign changed since the last save or load
 var pause_menu: Control
 var game_over: Control
+# Pipeline maps (map.json "kind": "pipeline", the default since 2026-10-05): the world is the map view
+# (map/map_view.gd: generated terrain, culture biomes, forests, rivers, sprawling cities, landmarks),
+# built from the campaign state. The legacy hand-built test map keeps the old path (and its bake).
+var map_view = null
+var pipeline := false
+var early_state = null
 
 func _ready():
  rng.seed = 87231
@@ -121,23 +129,39 @@ func _ready():
  kit = ProtoKit.shared()
  set_pitch(OVERVIEW_PITCH) # the overview's tilt at its zoom
  Settings.apply(get_tree())
+ early_state = _campaign()
+ pipeline = str(MapRegistry.meta().get("kind","")) == "pipeline"
  make_environment()
- make_terrain()
- make_sea()
- make_roads()
- make_city()
- make_fortress(KEEP)
- make_village()
- make_farms()
- make_forest()
- make_coastal_rocks()
- make_harbor()
- kit.batch(self,[city_root,roads_root])
  for arg in OS.get_cmdline_user_args():
   if arg.begins_with("--goldspire-stage="): goldspire_level = clampi(int(arg.get_slice("=",1)),1,3)
- make_goldspire()
- make_traffic()
- if "--bake-movement-grid" in OS.get_cmdline_user_args():
+ if pipeline:
+  # The prototype start sets its two showcase settlements' levels from the scene (as before).
+  if loaded_from == "":
+   Construction.set_level(early_state,CITY_ID,city_level)
+   Construction.set_level(early_state,GOLDSPIRE_ID,goldspire_level)
+  _pipeline_atmosphere()
+  map_view = MapView.new()
+  add_child(map_view)
+  map_view.setup(early_state)
+  map_view.update(target)
+  goldspire_root = map_view.landmarks.get(GOLDSPIRE_ID)
+  make_roads()
+  make_traffic()
+ else:
+  make_terrain()
+  make_sea()
+  make_roads()
+  make_city()
+  make_fortress(KEEP)
+  make_village()
+  make_farms()
+  make_forest()
+  make_coastal_rocks()
+  make_harbor()
+  kit.batch(self,[city_root,roads_root])
+  make_goldspire()
+  make_traffic()
+ if "--bake-movement-grid" in OS.get_cmdline_user_args() and not pipeline:
   bake_movement_grid()
   set_process(false)
   get_tree().quit()
@@ -380,6 +404,7 @@ func coast(x: float) -> float:
  return 31.0 + sin(x*0.032)*8.0 + sin(x*0.095)*2.2
 
 func height_at(x: float,z: float) -> float:
+ if map_view != null: return map_view.height_at(x,z)
  var n = noise.get_noise_2d(x,z)
  var h = 3.7 + n*4.0 + detail.get_noise_2d(x,z)*0.65
  var mountain = exp(-pow((z+88.0)/26.0,2.0))
@@ -465,6 +490,14 @@ func curve_from(points: Array) -> Curve3D:
  return curve
 
 func make_roads():
+ if pipeline:
+  # The terrain paints the roads; the curves remain for traffic.
+  road_curves.clear()
+  for road in Movement.data().roads.network:
+   var pts = []
+   for p in road.points: pts.append(Vector2(p[0],p[1]))
+   road_curves.append(curve_from(pts))
+  return
  if roads_root:
   remove_child(roads_root)
   roads_root.queue_free()
@@ -480,6 +513,10 @@ func make_roads():
  road_material = roads_root.surface_material
 
 func make_city():
+ if pipeline:
+  map_view.refresh_settlements()
+  map_view.update(target)
+  return
  if city_root:
   remove_child(city_root)
   city_root.queue_free()
@@ -582,6 +619,11 @@ func make_coastal_rocks():
  source.free()
 
 func make_goldspire():
+ if pipeline:
+  map_view.refresh_settlements()
+  map_view.update(target)
+  goldspire_root = map_view.landmarks.get(GOLDSPIRE_ID)
+  return
  if goldspire_root:
   remove_child(goldspire_root)
   goldspire_root.queue_free()
@@ -592,8 +634,8 @@ func make_goldspire():
 
 func cycle_goldspire():
  goldspire_level = goldspire_level%3+1
- make_goldspire()
  if ui_data: ui_data.set_settlement_level(GOLDSPIRE_ID,goldspire_level)
+ make_goldspire()
  if minimap: minimap.refresh()
  if ui: ui.toast(["Goldspire Rock: mine tunnels glow beneath a lone summit tower.","Goldspire Rock: carved halls, a walled summit and a harbor at its foot.","Goldspire Rock: the whole sea face is terraced with halls and gold-roofed towers."][goldspire_level-1])
 
@@ -650,10 +692,10 @@ func make_ui():
  add_child(layer)
  studio = PortraitStudio.new()
  add_child(studio)
- ui_data = UiData.new(_campaign())
+ ui_data = UiData.new(early_state if early_state != null else _campaign())
  # The prototype start state takes its two showcase settlements' levels from the scene; a loaded or
  # menu-started campaign keeps its own and the scene follows it (sync_settlement_visuals).
- if loaded_from == "":
+ if loaded_from == "" and not pipeline:
   ui_data.set_settlement_level(CITY_ID,city_level)
   ui_data.set_settlement_level(GOLDSPIRE_ID,goldspire_level)
  pins_root = Control.new()
@@ -685,7 +727,12 @@ func make_ui():
   select_army(id)
   if army_figures.has(id): pan_to(army_figures[id].position+Vector3(0,2.2,0)))
  ui.settlement_chosen.connect(func(id): if settlement_anchors.has(id): select_settlement(id,true))
- settlement_anchors = {CITY_ID:ground(CITY,6),"crownwatch":ground(KEEP,6),"willowmere":ground(VILLAGE,5),GOLDSPIRE_ID:Vector3(GOLDSPIRE.x,27,GOLDSPIRE.y)}
+ if pipeline:
+  # Every settlement of the map; a landmark's banner floats above its model.
+  settlement_anchors = {}
+  for id in WorldMap.settlement_ids(): settlement_anchors[id] = ground(WorldMap.settlement_position(id),6)
+  if settlement_anchors.has(GOLDSPIRE_ID): settlement_anchors[GOLDSPIRE_ID] = Vector3(GOLDSPIRE.x,34,GOLDSPIRE.y)
+ else: settlement_anchors = {CITY_ID:ground(CITY,6),"crownwatch":ground(KEEP,6),"willowmere":ground(VILLAGE,5),GOLDSPIRE_ID:Vector3(GOLDSPIRE.x,27,GOLDSPIRE.y)}
  for id in settlement_anchors:
   var b = SettlementBanner.new(ui_data.settlement(id))
   b.pressed.connect(select_settlement.bind(id))
@@ -728,6 +775,11 @@ func sync_territory():
  var first = territory_owners.is_empty()
  territory_owners = owners
  TerritoryOverlay.live_owners = owners
+ if pipeline:
+  map_view.refresh_owners()
+  map_view.refresh_settlements()
+  if minimap: minimap.refresh()
+  return
  if first and owners.keys().all(func(k): return owners[k] == WorldMap.owner_of(k)): return
  terrain_material.set_shader_parameter("territory_tint",TerritoryOverlay.tint_texture())
  terrain_material.set_shader_parameter("territory_border",TerritoryOverlay.border_texture())
@@ -736,6 +788,15 @@ func sync_territory():
 # Settlement visuals follow the campaign data: a finished main-building upgrade raises the level,
 # and the settlement switches to that growth stage (generic stages or its landmark's own).
 func sync_settlement_visuals():
+ if pipeline:
+  # The sprawl and landmarks rebuild from the state (levels, buildings, owners, land).
+  city_level = ui_data.settlement_visual_stage(CITY_ID).stage
+  goldspire_level = ui_data.settlement_visual_stage(GOLDSPIRE_ID).stage
+  map_view.refresh_settlements()
+  map_view.update(target)
+  goldspire_root = map_view.landmarks.get(GOLDSPIRE_ID)
+  if minimap: minimap.refresh()
+  return
  var city_stage = ui_data.settlement_visual_stage(CITY_ID).stage
  if city_stage != city_level:
   city_level = city_stage
@@ -1156,7 +1217,9 @@ func set_overlay(overlay: String,on: bool):
  overlays[overlay] = on
  if overlay == "armies":
   for id in army_figures: army_figures[id].visible = on
- if overlay == "borders": terrain_material.set_shader_parameter("territory_on",1.0 if on else 0.0)
+ if overlay == "borders":
+  if pipeline: map_view.material.set_shader_parameter("border_width",1.4 if on else 0.0)
+  else: terrain_material.set_shader_parameter("territory_on",1.0 if on else 0.0)
  if overlay == "settlements":
   minimap.show_settlements = on
   pins_root.visible = on and ui.visible
@@ -1176,8 +1239,8 @@ func camera_footprint() -> PackedVector2Array:
 
 func upgrade_city():
  city_level = city_level%3+1
- make_city()
  if ui_data: ui_data.set_settlement_level(CITY_ID,city_level)
+ make_city()
  if minimap: minimap.refresh()
  if ui: ui.toast(["Greyhaven returns to its original fishing town.","Greyhaven's ramparts rise around its growing streets.","New wards and a high tower transform Greyhaven's skyline."][city_level-1])
 
@@ -1390,6 +1453,7 @@ func _process(delta):
   var c = army_figures[follow_id].position
   target = target.lerp(Vector3(c.x,c.y+2.2,c.z),minf(1,delta*4))
  camera_update(delta)
+ if map_view != null: map_view.update(target)
  update_army_presentation()
  for p in pins:
   var b = p.button
@@ -1465,7 +1529,7 @@ func run_checks():
  assert(road_level==road_before)
  for curve in road_curves: assert(curve.get_baked_length()>10)
  assert(height_at(CITY.x,CITY.y)>0)
- assert(height_at(0,70)<0)
+ assert(height_at(0,70)<0.05) # the sea (pipeline maps clamp to sea level)
  for id in AssetManifest.visuals():
   assert(ResourceLoader.exists(AssetManifest.scene_path(id)),"Missing visual scene for "+id)
  var zoom_before = desired_distance
@@ -1489,7 +1553,7 @@ func run_checks():
  assert(ui.selected_settlement=="crownwatch" and ui.province_title=="Crownwatch Pass")
  # Goldspire Rock: a registered landmark standing in the sea, its stages cycle, G jumps to it.
  assert(AssetManifest.is_landmark(GOLDSPIRE_ID))
- assert(height_at(GOLDSPIRE.x,GOLDSPIRE.y+8)<0)
+ assert(height_at(GOLDSPIRE.x,GOLDSPIRE.y+8)<0.05)
  var goldspire_before = goldspire_level
  for i in range(3):
   cycle_goldspire()
@@ -2010,3 +2074,20 @@ func _jump_to(item: Dictionary):
    select_army(item.id)
    if army_figures.has(item.id): pan_to(army_figures[item.id].position+Vector3(0,2.2,0))
   "faction": ui.toast("Low funds: hover the treasury for the ledger.")
+
+# Pipeline maps: the map view's atmosphere (data/campaign_view.json "atmosphere": haze, aerial
+# perspective, grade) and two shadow cascades (enough at campaign distances).
+func _pipeline_atmosphere():
+ var at = JSON.parse_string(FileAccess.get_file_as_string("res://data/campaign_view.json")).atmosphere
+ environment.fog_mode = Environment.FOG_MODE_DEPTH
+ environment.fog_light_color = Color(at.haze)
+ environment.fog_depth_begin = float(at.haze_begin)
+ environment.fog_depth_end = float(at.haze_end)
+ environment.fog_depth_curve = float(at.haze_curve)
+ environment.fog_density = float(at.haze_max)
+ environment.fog_aerial_perspective = float(at.aerial_perspective)
+ environment.adjustment_enabled = true
+ environment.adjustment_saturation = float(at.saturation)
+ environment.adjustment_contrast = float(at.contrast)
+ environment.adjustment_brightness = float(at.brightness)
+ sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS

@@ -13,6 +13,8 @@ uniform sampler2D heights : filter_linear, repeat_disable;      // R32F, metres
 uniform sampler2D classes : filter_nearest, repeat_disable;     // R8: data/movement.json class index
 uniform sampler2D regions : filter_nearest, repeat_disable;     // RGBA8: region id = R + 256 G (0 = none)
 uniform sampler2D palette : filter_nearest, repeat_disable;     // per region (x = id): R from, G to, B value
+uniform sampler2D owners : filter_nearest, repeat_disable;      // per region (x = id): owner colour, alpha 1 = owned
+uniform float border_width = 1.4; // metres: faction border lines (TW:WH3)
 uniform sampler2D culture_colors : source_color, filter_nearest, repeat_disable; // x = ground layer, y = culture (sRGB)
 uniform sampler2D culture_params : filter_nearest, repeat_disable; // x = culture: R snow line / 100 m
 uniform sampler2D rivers : filter_linear, repeat_disable;       // R8 river strength
@@ -45,6 +47,13 @@ const int SNOW = 6;
 const int DIRT = 7;
 const int SAND = 8;
 const int WATER = 9;
+
+// Region index at a world point (0 = none).
+int region_id(vec2 xz) {
+	ivec2 c = clamp(ivec2(floor((xz - origin) / world_size * grid_size)), ivec2(0), ivec2(grid_size) - 1);
+	vec4 r = texelFetch(regions, c, 0);
+	return int(r.r * 255.0 + 0.5) + 256 * int(r.g * 255.0 + 0.5);
+}
 
 float h_at(vec2 xz) {
 	return textureLod(heights, (xz - origin) / world_size, 0.0).r;
@@ -205,6 +214,19 @@ void fragment() {
 	vec2 cg = vec2(dFdx(cr), dFdy(cr)) / max(vec2(length(dFdx(world_xz)), length(dFdy(world_xz))), vec2(0.01));
 	n = normalize(n - vec3(cg.x, 0.0, cg.y) * 0.9 * wf * (1.0 - riv));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
+	// Faction borders (TW:WH3): a line in the owner's colour where the neighbouring land has another
+	// owner, and a faint line between regions of the same owner.
+	int rid = region_id(world_xz);
+	vec4 own = texelFetch(owners, ivec2(rid, 0), 0);
+	int r0 = region_id(world_xz + vec2(border_width, 0.0));
+	int r1 = region_id(world_xz - vec2(border_width, 0.0));
+	int r2 = region_id(world_xz + vec2(0.0, border_width));
+	int r3 = region_id(world_xz - vec2(0.0, border_width));
+	if ((r0 != rid || r1 != rid || r2 != rid || r3 != rid) && rid > 0 && ww < 0.5) {
+		bool other = texelFetch(owners, ivec2(r0, 0), 0) != own || texelFetch(owners, ivec2(r1, 0), 0) != own || texelFetch(owners, ivec2(r2, 0), 0) != own || texelFetch(owners, ivec2(r3, 0), 0) != own;
+		if (other && own.a > 0.5) col = mix(col, own.rgb * 1.2, 0.85);
+		else col *= 0.82;
+	}
 	ALBEDO = col;
 	ROUGHNESS = mix(0.92, 0.18, riv);
 	SPECULAR = mix(0.3, 0.6, riv);

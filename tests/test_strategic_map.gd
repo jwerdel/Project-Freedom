@@ -234,6 +234,7 @@ func test_region_raster_matches_region_lookup():
   for x in range(3,cols,7):
    var w = m.world_rect.position+(Vector2(x,z)+Vector2(0.5,0.5))/cols*m.world_rect.size
    var i = ids[z*cols+x]
+   if WorldMap.region_at(w) == "": continue # the sea (pipeline maps keep regions to land)
    total += 1
    if (names[i-1] if i>0 else "") == WorldMap.region_at(w): agree += 1
  assert_gt(float(agree)/total,0.98,"raster and polygons agree (edges may differ by a cell)")

@@ -4,6 +4,8 @@
   "name": "Test map",
   "version": 1,
   "kind": "legacy",
+  "retired": true,
+  "_retired_note": "Retired 2026-10-05: the campaign, captures and tests play on testmap_pipeline (the same world built by the map pipeline). Saves made here are refused with a clear message; the files stay for history and the legacy bake.",
   "size": [280, 280],
   "origin": [-140, -140]
 }

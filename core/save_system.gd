@@ -42,7 +42,7 @@ static func _v2_to_v3(d: Dictionary) -> Dictionary:
 # made on the prototype map, now the test map, version 1.
 static func _v3_to_v4(d: Dictionary) -> Dictionary:
  if d.get("state") is Dictionary:
-  if not d.state.has("map_id"): d.state.map_id = MapRegistry.DEFAULT
+  if not d.state.has("map_id"): d.state.map_id = "testmap" # the prototype map, now retired (below)
   if not d.state.has("map_version"): d.state.map_version = 1
  return d
 
@@ -167,6 +167,9 @@ static func load_save(file: String) -> Dictionary:
  # across map versions are incompatible (docs/map-pipeline-design.md §7, Q11).
  var map_id = str(state_dict.get("map_id",MapRegistry.DEFAULT))
  if not map_id in MapRegistry.maps(): return {"ok":false,"error":"The save \"%s\" was made on the map \"%s\", which this version of the game does not have." % [file,map_id]}
+ # Retired maps (map.json "retired"): the campaign moved to another map, so their saves no longer load.
+ if MapRegistry.meta(map_id).get("retired",false):
+  return {"ok":false,"error":"The save \"%s\" was made on %s, which the campaign no longer uses (it now plays on %s). Start a new campaign." % [file,MapRegistry.meta(map_id).get("name",map_id),MapRegistry.meta(MapRegistry.DEFAULT).get("name",MapRegistry.DEFAULT)]}
  if int(state_dict.get("map_version",1)) != MapRegistry.version(map_id):
   return {"ok":false,"error":"The save \"%s\" was made with an older version of the map \"%s\" (map version %d, now %d) and cannot be loaded." % [file,MapRegistry.meta(map_id).get("name",map_id),int(state_dict.get("map_version",1)),MapRegistry.version(map_id)]}
  MapRegistry.set_active(map_id)
