@@ -2,7 +2,7 @@
   "_note": "Tiny synthetic map for the pipeline tests (tests/test_map_pipeline.gd builds it): the same generator and formats as synthetic600, small enough to build in a test. Only this file is committed.",
   "id": "synthetic_tiny",
   "name": "Synthetic tiny",
-  "version": 1,
+  "version": 2,
   "kind": "synthetic",
   "size": [512, 320],
   "origin": [0, 0],

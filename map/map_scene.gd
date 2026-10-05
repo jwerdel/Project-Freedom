@@ -40,6 +40,7 @@ func _ready():
  var sc = _arg("--showcase=","")
  _environment()
  view = MapView.new()
+ view.tree_shadows = not args.has("--no-tree-shadows")
  add_child(view)
  var focus_id = ""
  if sc != "": focus_id = _showcase(sc)
@@ -83,6 +84,7 @@ func _environment():
  sun.light_energy = 1.15
  sun.shadow_enabled = true
  sun.directional_shadow_max_distance = 220.0
+ sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS # two cascades suffice at campaign distances (half the shadow passes)
  add_child(sun)
  var env = Environment.new()
  env.background_mode = Environment.BG_SKY
@@ -91,6 +93,22 @@ func _environment():
  env.sky = sky
  env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
  env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+ # Atmosphere (TW:WH3): far land fades into a pale blue haze that sells the scale, and a mild grade
+ # keeps the colours rich (data/campaign_view.json "atmosphere").
+ var at = _atmosphere()
+ env.fog_enabled = true
+ env.fog_mode = Environment.FOG_MODE_DEPTH
+ env.fog_light_color = Color(at.haze)
+ env.fog_depth_begin = float(at.haze_begin)
+ env.fog_depth_end = float(at.haze_end)
+ env.fog_depth_curve = float(at.haze_curve)
+ env.fog_density = float(at.haze_max)
+ env.fog_aerial_perspective = float(at.aerial_perspective)
+ env.fog_sky_affect = 0.4
+ env.adjustment_enabled = true
+ env.adjustment_saturation = float(at.saturation)
+ env.adjustment_contrast = float(at.contrast)
+ env.adjustment_brightness = float(at.brightness)
  var we = WorldEnvironment.new()
  we.environment = env
  add_child(we)
@@ -246,6 +264,7 @@ func _measure():
  RenderingServer.viewport_set_measure_render_time(rid,true)
  # Warm up: streaming builds and shaders compile.
  for i in 120: await get_tree().process_frame
+ _debug_hide(_arg("--hide=","").split(",",false))
  var gpu = 0.0
  var cpu = 0.0
  var frames = 0
@@ -282,3 +301,18 @@ func _capture():
  var err = get_viewport().get_texture().get_image().save_png(path)
  print("CAPTURE ",path," result=",err)
  get_tree().quit(0)
+
+func _atmosphere() -> Dictionary:
+ return JSON.parse_string(FileAccess.get_file_as_string("res://data/campaign_view.json")).atmosphere
+
+# Cost attribution for the GPU report: --hide=trees,cities,terrain,shadows.
+func _debug_hide(what: Array):
+ for k in view.chunks:
+  var c = view.chunks[k]
+  if "trees" in what and c.trees != null: c.trees.visible = false
+  if "terrain" in what:
+   for mi in c.node.get_children(): mi.visible = false
+ if "cities" in what:
+  for sid in view.settlements: view.settlements[sid].visible = false
+ if "shadows" in what:
+  for n in find_children("*","DirectionalLight3D",true,false): n.shadow_enabled = false

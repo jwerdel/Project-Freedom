@@ -42,6 +42,9 @@
     "watchtower": {"watch": 2},
     "houses": {"houses": 0.15}
   },
+  "lod_bias": 0.2,
+  "_lod_bias_note": "GeometryInstance3D.lod_bias for city MultiMeshes: Godot picks a MultiMesh's LOD from the nearest point of its bounds (a whole city), so without a bias a city near the camera draws every far house at full detail.",
+  "detail_ranges": {"_note": "Camera distance (m) beyond which a city stops drawing small props (the no_shadow pieces) and houses; walls, towers, keeps and temples draw to the build radius. Keeps far cities cheap; the haze hides the difference.", "small": 260, "house": 480, "houses": ["kit.house_a", "kit.house_b", "kit.house_tall", "kit.hut", "kit.farmstead", "kit.warehouse", "kit.stall", "kit.tent"]},
   "no_shadow": ["kit.field", "kit.road", "kit.pit", "kit.spoil", "kit.cart", "kit.fence", "kit.stall", "kit.shrine", "kit.tent"],
   "_no_shadow_note": "Pieces drawn without casting shadows (flat or small at campaign scale; fewer shadow draw calls).",
   "colors": {"_note": "Farm field patchwork (instance colours of kit.field) and roads.", "fields": ["#c9b25a", "#a6b74e", "#8fa848", "#d6c27a", "#b59a4e", "#9cbc5c"], "road": "#7a6a52"}

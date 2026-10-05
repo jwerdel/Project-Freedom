@@ -921,3 +921,52 @@ The three budgets that failed in the previous run, fixed without cutting content
   - The chronicle groups settlements by faction in one pass.
   - The slicer now names the longest chunk (`end_turn_sliced_longest_chunk_at`).
 - **Tests:** sliced and one-go End Turns still give identical results.
+
+## Terrain overhaul (2026-10-04), synthetic600
+
+**What changed** (owner brief: TW:WH3 campaign terrain, `docs/reference/tw/terrain_*.png`, not committed):
+- **Relief** (`map/synthetic.gd` `_relief`, on the 8 m land grid):
+  - broad massifs from a ridged fractal with domain warp inside a low-frequency massif mask;
+  - foothills rolling into the plains, and pass valleys where a gap noise ridges;
+  - a thermal-erosion pass (wider bases, scree at the feet);
+  - rivers from a priority-flood drainage network with meander noise, traced as chains, rounded and drawn with widths by drainage area. They are carved into valleys and stored in the render cache (`rivers.bin`). Rivers are **visual only** for now: crossing rules are open.
+  - Peaks reach about 110 m. Map versions bumped to 2.
+- **Texturing** (`map/terrain_view.gdshader`, per-culture `ground` palettes in `data/cultures.json`, targets `docs/reference/biomes/`):
+  - grass and dry patches, rock by slope and on the massifs, scree, snow above each culture's snow line, sand on beaches, dirt on passes and roads, water in rivers;
+  - canopy carpets on forest cells with crown relief;
+  - per-pixel normals and two-scale cavity shading, strata on rock;
+  - organically frayed culture borders.
+  - **Found and fixed:** the palette texture had been read as linear while holding sRGB colours. That is why the terrain looked pale and washed out before.
+- **Forests:** Quaternius Stylized Nature trees per culture (weighted models, density, tint, scale), within 320 m of the camera. They are thinner but larger, over the shader's canopy.
+- **Roads and fields:** draped over the terrain as one mesh per city. Fields turn along the contour with furrows; roads run along their direction (they were drawn crosswise).
+- **Atmosphere:** depth haze, aerial perspective and a mild colour grade (`data/campaign_view.json` `atmosphere`).
+
+**GPU** (RTX 4060, 1440×900). The new geography packs more cities near the densest point (137 cities, 42,600 pieces in the worst case vs 93 and 28,000 before), so the worst case is heavier than in the previous table.
+
+| View | GPU ms | Draw calls | Primitives | VRAM |
+|---|---|---|---|---|
+| Close (60 m), worst | 5.63 | 1,110 | 1.31 M | 294 MB |
+| Middle (120 m), worst | 5.56 | 1,196 | 1.50 M | 294 MB |
+| Farthest (210 m), worst | 5.39 | 1,168 | 1.40 M | 294 MB |
+| Normal campaign view (150 m) | 5.95 | 872 | 1.20 M | 279 MB |
+| Massif close-up | 6.61 | 139 | 0.44 M | 268 MB |
+| TW comparison angle | 4.70 | 92 | 0.45 M | 268 MB |
+
+**Budget fixes made on the way:**
+- The first pass measured 16–30 ms. A `--hide=trees,cities,terrain,shadows` attribution showed trees cost 9 of 12 ms. Fixes:
+  - fewer, larger trees;
+  - LOD bias on city and tree MultiMeshes (Godot picks a MultiMesh's LOD from its nearest point);
+  - city detail ranges (small props to 260 m, houses to 480 m);
+  - two shadow cascades instead of four;
+  - a light farmstead piece (the RTS farm had 10,000 triangles and no LOD).
+
+**Screenshots** (`captures/`):
+- `p2_compare_close.png`, `p2_compare_mid.png`, `p2_compare_far.png`: before | after from the same camera arguments. The map was regenerated, so the dense focus point moved.
+- `p2_tw_side_by_side.png`: TW terrain_1 | ours.
+- `p2_normal.png`, `p2_massif.png`.
+
+**Still not TW quality:**
+- Cities are concentric rings (next part).
+- Distant forests are flat canopy texture.
+- Rock lacks TW's sculpted detail.
+- The sky is a flat procedural sky.

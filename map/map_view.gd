@@ -4,8 +4,9 @@ extends Node3D
 #    visibility ranges, all sharing one material that displaces them from the heightfield texture
 #    and colours them by terrain class and land culture (map/terrain_view.gdshader);
 #  - a sea plane;
-#  - trees scattered per chunk from the forest cells, built only near the camera (per chunk one
-#    MultiMesh per tree mesh), their species following the region's land conversion;
+#  - trees planted per chunk on the forest cells near the camera (per chunk one MultiMesh per tree
+#    model, from the culture's forest profile and the region's land conversion), boulders on the
+#    hills; beyond TREE_RANGE forests are the terrain shader's canopy carpet;
 #  - settlements: procedural sprawl (map/sprawl.gd) built only within build_radius of the camera.
 # Reads the active map's bakes (render cache, movement grid, region raster) and the campaign state
 # (owners, levels, buildings, land). update(focus) streams; refresh_land() after End Turn.
@@ -21,14 +22,19 @@ const KitCache = preload("res://map/kit_cache.gd")
 const AssetManifest = preload("res://core/asset_manifest.gd")
 const CHUNK = 256.0
 const LODS = [[127,0.0,420.0],[63,420.0,950.0],[31,950.0,2200.0],[15,2200.0,0.0]] # subdivisions, range begin, end
-const TREE_RANGE = 520.0
+const TREE_RANGE = 320.0 # 3D trees near the camera; farther forests are the terrain's canopy carpet
+const TREE_DENSITY = 0.12 # trees per forest cell (2 m) at density 1; the terrain's canopy carpet fills between them
+const ROCK_DENSITY = 0.0015 # boulders per hill or mountain cell
+const TREE_LOD_BIAS = 0.25 # a chunk's trees share one LOD, picked from the chunk's nearest point: bias it coarser
+var tree_shadows := true
 const BUILD_RADIUS = 700.0
 const DROP_RADIUS = 950.0
-const TREE_DENSITY = 0.16 # trees per forest cell
+const GROUND_LAYERS = ["grass","dry","forest_floor","canopy","rock","scree","snow","dirt","sand","water"] # map/terrain_view.gdshader columns
 
 var state
 var grid: Dictionary
 var heights: Image
+var rivers: Image
 var cell := 2.0
 var origin := Vector2.ZERO
 var cols := 0
@@ -54,6 +60,7 @@ func setup(campaign_state):
  var rc = MapBake.load_render_cache(MapRegistry.active)
  assert(not rc.is_empty(),"No render cache for %s: run scripts/build_map.gd -- --map=%s" % [MapRegistry.active,MapRegistry.active])
  heights = rc.heights
+ rivers = rc.rivers
  _make_material()
  _make_terrain()
  _make_sea()
@@ -69,11 +76,20 @@ func _make_material():
  # The int32 region ids are already RGBA8 texels: id = R + 256 G (no per-pixel loop).
  material.set_shader_parameter("regions",ImageTexture.create_from_image(Image.create_from_data(cols,rows,false,Image.FORMAT_RGBA8,ras.ids.to_byte_array())))
  culture_ids = Sprawl.culture_data().cultures.keys()
- var classes = grid.names
- var cc = Image.create(8,culture_ids.size(),false,Image.FORMAT_RGBA8)
+ # Biome layers per culture (data/cultures.json "ground"), in the shader's column order (sRGB), and
+ # each culture's parameters (snow line / 100 m) in a float texture.
+ var cc = Image.create(GROUND_LAYERS.size(),culture_ids.size(),false,Image.FORMAT_RGBA8)
+ var cp = Image.create(culture_ids.size(),1,false,Image.FORMAT_RF)
  for y in culture_ids.size():
-  var terr = Sprawl.culture(culture_ids[y]).terrain
-  for x in classes.size(): cc.set_pixel(x,y,Color(terr.get(classes[x],"#ff00ff")))
+  var gr = Sprawl.culture(culture_ids[y]).ground
+  for x in GROUND_LAYERS.size(): cc.set_pixel(x,y,Color(gr.get(GROUND_LAYERS[x],"#ff00ff")))
+  cp.set_pixel(y,0,Color(float(gr.get("snow_line",999))/100.0,0,0))
+ material.set_shader_parameter("culture_params",ImageTexture.create_from_image(cp))
+ var classes = grid.names
+ for k in ["forest","hills","pass","settlement","mountain","water"]: material.set_shader_parameter("class_"+k,classes.find(k))
+ material.set_shader_parameter("rivers",ImageTexture.create_from_image(rivers))
+ material.set_shader_parameter("roads",ImageTexture.create_from_image(Image.create_from_data(cols,rows,false,Image.FORMAT_R8,grid.road))) # 0 or 1 per cell (the shader scales it)
+ material.set_shader_parameter("sea_level",sea_level)
  material.set_shader_parameter("culture_colors",ImageTexture.create_from_image(cc))
  palette_img = Image.create(maxi(1,region_names.size()+1),1,false,Image.FORMAT_RGBA8)
  palette_tex = ImageTexture.create_from_image(palette_img)
@@ -204,49 +220,71 @@ func settlement_spec(sid: String) -> Dictionary:
 func _make_trees(k: Vector2i) -> Node3D:
  var root = Node3D.new()
  add_child(root)
- var tree_meshes = KitCache.meshes("nature.tree")
- if tree_meshes.is_empty(): return root
- var groups = {}
+ var groups = {} # model id -> {xf, col}
  var x0 = int((k.x*CHUNK)/cell)
  var z0 = int((k.y*CHUNK)/cell)
  var n = int(CHUNK/cell)
  var forest = grid.names.find("forest")
+ var rocky = [grid.names.find("hills"),grid.names.find("mountain")]
  var terrain: PackedByteArray = grid.terrain
  for z in range(z0,mini(z0+n,rows)):
   for x in range(x0,mini(x0+n,cols)):
    var i = z*cols+x
-   if terrain[i] != forest: continue
+   var t = terrain[i]
    var h = _hash(x,z)
-   if h>TREE_DENSITY: continue
-   var p = origin+Vector2(x+fmod(h*97.0,1.0),z+fmod(h*61.0,1.0))*cell
+   if t != forest:
+    # Boulders on the hills and below the cliffs.
+    if t in rocky and h<ROCK_DENSITY: _plant(groups,"nature.rock_%d" % (1+int(h*977.0)%3),x,z,h,Color("ffffff"),[1.0,1.0],2.2)
+    continue
+   if h>TREE_DENSITY*1.6: continue
+   var p = origin+Vector2(x,z)*cell
    var sid = WorldMap.region_at(p)
    var cul = "medieval"
    if state.land.has(sid):
     var e = state.land[sid]
     cul = e.to if fmod(h*7919.0,1.0)<float(e.value) else e.from
-   var tr = Sprawl.culture(cul).tree
-   var mi = clampi(int(tr.variant),0,tree_meshes.size()-1)
-   var base_h = maxf(0.1,tree_meshes[mi].mesh.get_aabb().size.y)
-   var sz = (4.2+fmod(h*331.0,1.0)*2.6)/base_h
-   var basis = Basis(Vector3.UP,fmod(h*1000.0,TAU)).scaled(Vector3(sz*float(tr.scale[0]),sz*float(tr.scale[1]),sz*float(tr.scale[0])))
-   var xf = Transform3D(basis,Vector3(p.x,height_at(p.x,p.y),p.y))*tree_meshes[mi].xform
-   if not groups.has(mi): groups[mi] = {"xf":[],"col":[]}
-   groups[mi].xf.append(xf)
-   groups[mi].col.append(Color(tr.tint))
- for mi in groups:
+   var fo = Sprawl.culture(cul).forest
+   if h>TREE_DENSITY*float(fo.density): continue
+   _plant(groups,_pick_tree(fo.trees,fmod(h*4111.0,1.0)),x,z,h,Color(fo.tint),fo.scale,7.0)
+ for id in groups:
+  var mesh = KitCache.baked(id)
+  if mesh == null: continue
   var mm = MultiMesh.new()
   mm.transform_format = MultiMesh.TRANSFORM_3D
   mm.use_colors = true
-  mm.mesh = tree_meshes[mi].mesh
-  mm.instance_count = groups[mi].xf.size()
-  for j in groups[mi].xf.size():
-   mm.set_instance_transform(j,groups[mi].xf[j])
-   mm.set_instance_color(j,groups[mi].col[j])
+  mm.mesh = mesh
+  mm.instance_count = groups[id].xf.size()
+  for j in groups[id].xf.size():
+   mm.set_instance_transform(j,groups[id].xf[j])
+   mm.set_instance_color(j,groups[id].col[j])
   var mmi = MultiMeshInstance3D.new()
   mmi.multimesh = mm
   mmi.visibility_range_end = TREE_RANGE
+  mmi.lod_bias = TREE_LOD_BIAS
+  if not tree_shadows: mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
   root.add_child(mmi)
  return root
+
+# One tree (or rock) at a cell, jittered, sized to about `size` metres tall, turned and tinted.
+func _plant(groups: Dictionary,id: String,x: int,z: int,h: float,tint: Color,scale: Array,size: float):
+ var mesh = KitCache.baked(id)
+ if mesh == null: return
+ var p = origin+Vector2(x+fmod(h*97.0,1.0),z+fmod(h*61.0,1.0))*cell
+ var sz = size*(0.75+fmod(h*331.0,1.0)*0.5)/maxf(0.1,mesh.get_aabb().size.y)
+ var basis = Basis(Vector3.UP,fmod(h*1000.0,TAU)).scaled(Vector3(sz*float(scale[0]),sz*float(scale[1]),sz*float(scale[0])))
+ if not groups.has(id): groups[id] = {"xf":[],"col":[]}
+ groups[id].xf.append(Transform3D(basis,Vector3(p.x,height_at(p.x,p.y)-0.2,p.y)))
+ groups[id].col.append(tint)
+
+# A weighted choice from [[model id, weight], ...] by u in 0-1.
+static func _pick_tree(trees: Array,u: float) -> String:
+ var total = 0.0
+ for t in trees: total += float(t[1])
+ var a = u*total
+ for t in trees:
+  a -= float(t[1])
+  if a<0.0: return t[0]
+ return trees[-1][0]
 
 func _hash(x: int,z: int) -> float:
  var h = (x*73856093) ^ (z*19349663)

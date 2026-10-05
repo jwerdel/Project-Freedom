@@ -6,6 +6,9 @@ extends RefCounted
 const AssetManifest = preload("res://core/asset_manifest.gd")
 
 static var _cache = {}
+# Packs whose vertex colours hold other data (Quaternius Stylized Nature: wind masks), which Godot's
+# glTF import would otherwise show as colour.
+const NO_VERTEX_COLOUR = "nature."
 
 static func meshes(id: String) -> Array:
  if _cache.has(id): return _cache[id]
@@ -18,7 +21,12 @@ static func meshes(id: String) -> Array:
   while p != null and p != root:
    t = p.transform*t
    p = p.get_parent()
-  out.append({"mesh":_tintable(m.mesh,m),"xform":t})
+  # Which surfaces really colour with their vertex colours (some packs store wind masks there).
+  var vc = []
+  for s in m.mesh.get_surface_count():
+   var mat = m.get_surface_override_material(s) if m.get_surface_override_material(s) != null else m.mesh.surface_get_material(s)
+   vc.append(mat is BaseMaterial3D and mat.vertex_color_use_as_albedo and not id.begins_with(NO_VERTEX_COLOUR))
+  out.append({"mesh":_tintable(m.mesh,m),"xform":t,"vc":vc})
  root.free()
  _cache[id] = out
  return out
@@ -92,7 +100,7 @@ static func baked(id: String):
    g.v.append_array(t*v)
    g.n.append_array(nt*n)
    g.uv.append_array(uv)
-   if vc != null and vc.size() == v.size():
+   if vc != null and vc.size() == v.size() and part.vc[s]:
     for c in vc: g.c.append(base*c)
    else:
     var cs = PackedColorArray()

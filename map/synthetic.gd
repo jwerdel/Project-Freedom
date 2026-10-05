@@ -64,45 +64,66 @@ static func build(map_id: String) -> Dictionary:
  var land = land_img.get_data().to_float32_array()
  times.land = Time.get_ticks_msec()-t
  # --- 2. Heights and classes ---------------------------------------------------------------------
+ # TW:WH3-like relief (owner, 2026-10-04): broad massifs with wide bases, several peaks, ridges and
+ # valleys, foothills rolling into the plains, natural pass valleys through the ranges, and rivers
+ # winding to the sea in carved valleys. Shaped on the 8 m land grid (native noise, ridged fractal
+ # with domain warp, a thermal-erosion pass, a priority-flood drainage network), then upsampled to
+ # cells with fine detail added.
  t = Time.get_ticks_msec()
- var base = _noise(int(spec.seed)+1,0.006,cols,rows,5)
- var ridge = _noise(int(spec.seed)+2,0.004,cols,rows,3)
- var forest = _noise(int(spec.seed)+3,0.02,cols,rows,3)
- # Passes (design: ranges are impassable except at passes): where this noise is high, a ridge drops
- # to a pass corridor; at this frequency a ridge opens every few hundred metres.
- var gaps = _noise(int(spec.seed)+4,0.012,cols,rows,2)
- var pass_above = int(spec.get("pass_above",168)) # 256: no passes (the earlier maze-like ridges)
+ var lo_cell = cell*4.0
+ var relief = _relief(int(spec.seed),land_lo,lc,lr,lo_cell)
+ var hi_img = Image.create_from_data(lc,lr,false,Image.FORMAT_RF,relief.heights.to_byte_array())
+ hi_img.resize(cols,rows,Image.INTERPOLATE_BILINEAR)
+ var hi_h = hi_img.get_data().to_float32_array()
+ var mass_img = Image.create_from_data(lc,lr,false,Image.FORMAT_RF,relief.mass.to_byte_array())
+ mass_img.resize(cols,rows,Image.INTERPOLATE_BILINEAR)
+ var mass = mass_img.get_data().to_float32_array()
+ var pass_img = Image.create_from_data(lc,lr,false,Image.FORMAT_RF,relief.valley.to_byte_array())
+ pass_img.resize(cols,rows,Image.INTERPOLATE_BILINEAR)
+ var valley = pass_img.get_data().to_float32_array()
+ var riv_img = Image.create_from_data(lc,lr,false,Image.FORMAT_RF,relief.rivers.to_byte_array())
+ riv_img.resize(cols,rows,Image.INTERPOLATE_BILINEAR)
+ var riv = riv_img.get_data().to_float32_array()
+ var detail = _noise(int(spec.seed)+5,0.08,cols,rows,3)
+ var forest = _noise(int(spec.seed)+3,0.014,cols,rows,4)
  var heights = PackedFloat32Array()
  heights.resize(n)
  var cls = PackedByteArray()
  cls.resize(n)
  var colors = PackedByteArray()
  colors.resize(n*3)
+ var rivers = PackedByteArray()
+ rivers.resize(n)
  var palette = {PASS:Color("b59a6c"),OPEN:Color("8fae5a"),FOREST:Color("4f7a38"),HILLS:Color("a69a5e"),MOUNTAIN:Color("8a7f72"),WATER:Color("3f6f8e")}
  var pal = []
  for k in 7: pal.append(palette.get(k,Color.MAGENTA))
+ # Heights with fine detail (rougher in the mountains).
  for i in n:
-  var l = land[i]
-  if l<0.0:
-   heights[i] = -2.0+l*4.0
-   cls[i] = WATER
-  else:
-   var b = float(base[i])/255.0
-   var r = 1.0-absf(float(ridge[i])/127.5-1.0) # ridged: 1 on the ridge line
-   var mtn = maxf(0.0,r-0.86)*7.0*minf(1.0,l*4.0)
-   var h = 0.6+b*7.0+mtn*40.0+minf(l,0.3)*6.0
-   var is_pass = h>20.0 and gaps[i]>pass_above
-   if is_pass: h = 12.0+b*4.0
-   heights[i] = h
-   if is_pass: cls[i] = PASS
-   elif h>20.0: cls[i] = MOUNTAIN
-   elif h>8.5: cls[i] = HILLS
-   elif forest[i]>150: cls[i] = FOREST
-   else: cls[i] = OPEN
-  var c = pal[cls[i]]
-  colors[i*3] = c.r8
-  colors[i*3+1] = c.g8
-  colors[i*3+2] = c.b8
+  var h = hi_h[i]
+  if land[i]>=0.0: h += (float(detail[i])/255.0-0.5)*(0.5+mass[i]*5.0)
+  heights[i] = h
+ for z in rows:
+  for x in cols:
+   var i = z*cols+x
+   var h = heights[i]
+   rivers[i] = clampi(int(riv[i]*255.0),0,255)
+   if land[i]<0.0:
+    cls[i] = WATER
+   else:
+    var dx = heights[mini(i+1,n-1)]-heights[maxi(i-1,0)]
+    var dz = heights[mini(i+cols,n-1)]-heights[maxi(i-cols,0)]
+    var slope = sqrt(dx*dx+dz*dz)/(2.0*cell) # rise per metre
+    if h>MOUNTAIN_ABOVE or (h>MOUNTAIN_ABOVE*0.6 and slope>1.1): cls[i] = MOUNTAIN
+    elif valley[i]>0.5 and mass[i]>0.25: cls[i] = PASS
+    elif h>HILLS_ABOVE or slope>0.45: cls[i] = HILLS
+    elif riv[i]<0.3 and float(forest[i])+mass[i]*60.0+(25.0 if slope>0.2 else 0.0)>FOREST_ABOVE: cls[i] = FOREST
+    else: cls[i] = OPEN
+    # Forested slopes and valleys in the hills too (TW: canopy carpets climbing the ranges).
+    if cls[i] == HILLS and riv[i]<0.3 and float(forest[i])+mass[i]*50.0>FOREST_ABOVE+20.0: cls[i] = FOREST
+   var c = pal[cls[i]]
+   colors[i*3] = c.r8
+   colors[i*3+1] = c.g8
+   colors[i*3+2] = c.b8
  times.terrain = Time.get_ticks_msec()-t
  # --- 3. Region sites -----------------------------------------------------------------------------
  t = Time.get_ticks_msec()
@@ -332,13 +353,171 @@ static func build(map_id: String) -> Dictionary:
  for key in adj:
   if adj[key][1]>=0: edges.append([key/65536-1,key%65536-1,adj[key][1],adj[key][2]])
  MapBake.write_graph(dir,edges)
- MapBake.write_render_cache(map_id,cell,origin,cols,rows,heights,colors)
+ MapBake.write_render_cache(map_id,cell,origin,cols,rows,heights,colors,rivers)
  times.write = Time.get_ticks_msec()-t
  t = Time.get_ticks_msec()
  var hpa = PathHierarchy.build(map_id)
  times.hpa = Time.get_ticks_msec()-t
  times.total = Time.get_ticks_msec()-t_all
  return {"regions":sites.size(),"provinces":provinces.size(),"factions":nf,"armies":armies.size(),"hpa_paths":hpa.paths,"roads":network.size(),"cols":cols,"rows":rows,"times":times}
+
+# --- Relief (8 m land grid) ----------------------------------------------------------------------
+const MOUNTAIN_ABOVE = 32.0 # metres: impassable massif
+const HILLS_ABOVE = 9.0
+const FOREST_ABOVE = 150.0  # forest noise (0-255) plus massif and slope bonuses
+const RIVER_CELLS = 150     # drainage area (16 m cells, about 0.04 km2) where a river starts
+const TALUS = 0.95          # thermal erosion: steepest stable rise per metre
+
+# Heights, massif mask, pass valleys and river strength (0-1) on the land grid (lc x lr, cell lo_cell).
+static func _relief(seed: int,land_lo: PackedFloat32Array,lc: int,lr: int,lo_cell: float) -> Dictionary:
+ var m = lc*lr
+ var massif = _fnl(seed+11,0.00042*lo_cell,FastNoiseLite.FRACTAL_FBM,4)
+ var ridged = _fnl(seed+12,0.0026*lo_cell,FastNoiseLite.FRACTAL_RIDGED,5)
+ ridged.fractal_weighted_strength = 0.55
+ ridged.domain_warp_enabled = true
+ ridged.domain_warp_amplitude = 26.0
+ ridged.domain_warp_frequency = 0.02
+ var rolling = _fnl(seed+13,0.0011*lo_cell,FastNoiseLite.FRACTAL_FBM,4)
+ var gaps = _fnl(seed+14,0.0009*lo_cell,FastNoiseLite.FRACTAL_RIDGED,2)
+ var h = PackedFloat32Array()
+ h.resize(m)
+ var mass = PackedFloat32Array()
+ mass.resize(m)
+ var valley = PackedFloat32Array()
+ valley.resize(m)
+ for z in lr:
+  for x in lc:
+   var i = z*lc+x
+   var l = land_lo[i]
+   if l<0.0:
+    h[i] = -2.0+l*4.0
+    continue
+   var coast = minf(1.0,l*3.0)
+   var mv = massif.get_noise_2d(x,z)*0.5+0.5
+   var ms = _smooth(0.53,0.73,mv)*coast
+   var foot = _smooth(0.36,0.6,mv)*coast
+   var r = ridged.get_noise_2d(x,z)*0.5+0.5 # ridged: peaks and ridgelines, valleys between
+   var b = rolling.get_noise_2d(x,z)*0.5+0.5
+   var hh = 0.8+b*4.5+minf(l,0.3)*5.0+foot*(3.0+r*9.0)+ms*(r*r*105.0+10.0)
+   # Pass valleys: where the gap noise ridges, the range drops to a valley floor.
+   var g = _smooth(0.78,0.93,gaps.get_noise_2d(x,z)*0.5+0.5)*ms
+   if g>0.0: hh = lerpf(hh,minf(hh,11.0+b*5.0),g)
+   h[i] = hh
+   mass[i] = ms
+   valley[i] = g
+ _erode(h,land_lo,lc,lr,lo_cell)
+ var riv = _rivers(h,land_lo,lc,lr)
+ # Carve the river valleys: the bed sinks with the river's size, the banks slope up gently.
+ for i in m:
+  if riv[i]<=0.0 or land_lo[i]<0.0: continue
+  h[i] = maxf(lerpf(h[i],0.3,riv[i]*0.85)-riv[i]*1.6,-0.6)
+ return {"heights":h,"mass":mass,"valley":valley,"rivers":riv}
+
+static func _fnl(seed: int,freq: float,fractal: int,octaves: int) -> FastNoiseLite:
+ var f = FastNoiseLite.new()
+ f.seed = seed
+ f.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+ f.frequency = freq
+ f.fractal_type = fractal
+ f.fractal_octaves = octaves
+ return f
+
+static func _smooth(a: float,b: float,v: float) -> float:
+ var t = clampf((v-a)/(b-a),0.0,1.0)
+ return t*t*(3.0-2.0*t)
+
+# Thermal erosion: material slides from slopes steeper than TALUS to the cell below, which widens
+# the bases, rounds the ridges and piles scree at the feet of the cliffs.
+static func _erode(h: PackedFloat32Array,land_lo: PackedFloat32Array,lc: int,lr: int,lo_cell: float):
+ var limit = TALUS*lo_cell
+ for it in 4:
+  for z in range(1,lr-1):
+   for x in range(1,lc-1):
+    var i = z*lc+x
+    if land_lo[i]<0.0: continue
+    var low = i
+    var drop = 0.0
+    for j in [i-1,i+1,i-lc,i+lc]:
+     var d = h[i]-h[j]
+     if d>drop:
+      drop = d
+      low = j
+    if drop>limit:
+     var move = (drop-limit)*0.35
+     h[i] -= move
+     h[low] += move
+
+# Rivers by drainage (on a 16 m grid): a priority flood from the coast gives every land cell a
+# downstream neighbour (filling pits, so every river reaches the sea); the drainage area summed
+# upstream marks rivers where it passes RIVER_CELLS. Returns river strength 0-1 on the land grid.
+static func _rivers(h: PackedFloat32Array,land_lo: PackedFloat32Array,lc: int,lr: int) -> PackedFloat32Array:
+ var c2 = lc/2
+ var r2 = lr/2
+ var m2 = c2*r2
+ var hh = PackedFloat32Array()
+ hh.resize(m2)
+ var landm = PackedByteArray()
+ landm.resize(m2)
+ var wander = _fnl(7919,0.045,FastNoiseLite.FRACTAL_FBM,4)
+ for z in r2:
+  for x in c2:
+   var i = (z*2)*lc+x*2
+   # Meanders: a little noise on the heights the water follows, so rivers wind across the plains.
+   hh[z*c2+x] = h[i]+wander.get_noise_2d(x,z)*6.0
+   landm[z*c2+x] = 1 if land_lo[i]>=0.0 else 0
+ # Bucket queue on filled height (0.1 m buckets).
+ var STEP = 0.1
+ var buckets = []
+ var down = PackedInt32Array()
+ down.resize(m2)
+ down.fill(-1)
+ var seen = PackedByteArray()
+ seen.resize(m2)
+ var order = PackedInt32Array()
+ var filled = hh.duplicate()
+ var push = func(i: int,v: float):
+  var k = maxi(0,int(v/STEP)+20)
+  while buckets.size()<=k: buckets.append([])
+  buckets[k].append(i)
+ for i in m2:
+  if landm[i] == 1: continue
+  # Sea cells next to land seed the flood.
+  var x = i%c2
+  var z = i/c2
+  for nb in [[x-1,z],[x+1,z],[x,z-1],[x,z+1]]:
+   if nb[0]>=0 and nb[1]>=0 and nb[0]<c2 and nb[1]<r2:
+    var j = nb[1]*c2+nb[0]
+    if landm[j] == 1 and seen[j] == 0:
+     seen[j] = 1
+     down[j] = -1
+     filled[j] = maxf(hh[j],0.0)
+     push.call(j,filled[j])
+ var k = 0
+ while k<buckets.size():
+  if buckets[k].is_empty():
+   k += 1
+   continue
+  var i = buckets[k].pop_back()
+  order.append(i)
+  var x = i%c2
+  var z = i/c2
+  for d in [Vector2i(-1,0),Vector2i(1,0),Vector2i(0,-1),Vector2i(0,1),Vector2i(-1,-1),Vector2i(1,-1),Vector2i(-1,1),Vector2i(1,1)]:
+   var nx = x+d.x
+   var nz = z+d.y
+   if nx<0 or nz<0 or nx>=c2 or nz>=r2: continue
+   var j = nz*c2+nx
+   if seen[j] == 1 or landm[j] == 0: continue
+   seen[j] = 1
+   down[j] = i
+   filled[j] = maxf(hh[j],filled[i]+0.01)
+   push.call(j,filled[j])
+ var acc = PackedFloat32Array()
+ acc.resize(m2)
+ acc.fill(1.0)
+ for t in range(order.size()-1,-1,-1):
+  var i = order[t]
+  if down[i]>=0: acc[down[i]] += acc[i]
+ return _draw_rivers(acc,down,landm,c2,r2,lc,lr)
 
 # Record a border between regions a and b (1-based) at cells i and j; keep the passable crossing
 # nearest the sites' midpoint.
@@ -379,3 +558,59 @@ static func _shuffle(a: Array,rng: RandomNumberGenerator):
   var tmp = a[i]
   a[i] = a[j]
   a[j] = tmp
+
+# The river network as smooth lines: chains of river cells (16 m grid) followed downstream from
+# each source to the sea or the river they join, rounded (Chaikin) and drawn onto the land grid
+# with a width that grows with the drainage area. Returns strength 0-1 per land-grid cell.
+static func _draw_rivers(acc: PackedFloat32Array,down: PackedInt32Array,landm: PackedByteArray,c2: int,r2: int,lc: int,lr: int) -> PackedFloat32Array:
+ var m2 = c2*r2
+ var is_river = PackedByteArray()
+ is_river.resize(m2)
+ var has_up = PackedByteArray()
+ has_up.resize(m2)
+ for i in m2:
+  if landm[i] == 1 and acc[i]>=RIVER_CELLS:
+   is_river[i] = 1
+   if down[i]>=0: has_up[down[i]] = 1
+ var out = PackedFloat32Array()
+ out.resize(lc*lr)
+ var done = PackedByteArray()
+ done.resize(m2)
+ for i in m2:
+  if is_river[i] == 0 or has_up[i] == 1: continue
+  # A source: walk down to the sea or to a cell already drawn (the junction).
+  var pts = PackedVector2Array()
+  var sw = PackedFloat32Array()
+  var c = i
+  while c>=0:
+   pts.append(Vector2(c%c2,c/c2)*2.0+Vector2(1,1))
+   sw.append(clampf(0.35+0.65*log(acc[c]/RIVER_CELLS)/log(60.0),0.0,1.0))
+   if done[c] == 1: break
+   done[c] = 1
+   c = down[c]
+  if pts.size()<3: continue
+  for it in 2:
+   var p2 = PackedVector2Array([pts[0]])
+   var s2 = PackedFloat32Array([sw[0]])
+   for k in pts.size()-1:
+    p2.append(pts[k].lerp(pts[k+1],0.25))
+    p2.append(pts[k].lerp(pts[k+1],0.75))
+    s2.append(lerpf(sw[k],sw[k+1],0.25))
+    s2.append(lerpf(sw[k],sw[k+1],0.75))
+   p2.append(pts[pts.size()-1])
+   s2.append(sw[sw.size()-1])
+   pts = p2
+   sw = s2
+  for k in pts.size()-1:
+   var a = pts[k]
+   var b = pts[k+1]
+   var w = 0.45+sw[k]*1.25 # half width in land cells (8 m)
+   var lo = Vector2i((a.min(b)-Vector2.ONE*(w+1.5)).floor())
+   var hi = Vector2i((a.max(b)+Vector2.ONE*(w+1.5)).ceil())
+   for z in range(maxi(lo.y,0),mini(hi.y,lr-1)+1):
+    for x in range(maxi(lo.x,0),mini(hi.x,lc-1)+1):
+     var p = Vector2(x+0.5,z+0.5)
+     var d = p.distance_to(Geometry2D.get_closest_point_to_segment(p,a,b))
+     var v = clampf((w+1.0-d)/1.5,0.0,1.0)*(0.55+0.45*sw[k])
+     if v>out[z*lc+x]: out[z*lc+x] = v
+ return out

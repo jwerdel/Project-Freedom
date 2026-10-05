@@ -50,11 +50,13 @@ static func cache_dir(map_id: String) -> String:
  return CACHE+map_id+"/"
 
 # The render cache is valid for one build of one map version (stamp written by the build).
-static func write_render_cache(map_id: String,cell: float,origin: Vector2,cols: int,rows: int,heights: PackedFloat32Array,colors: PackedByteArray):
+static func write_render_cache(map_id: String,cell: float,origin: Vector2,cols: int,rows: int,heights: PackedFloat32Array,colors: PackedByteArray,rivers := PackedByteArray()):
  var dir = cache_dir(map_id)
  DirAccess.make_dir_recursive_absolute(dir)
  _write_zstd(dir+"heights.bin",heights.to_byte_array())
  _write_zstd(dir+"colors.bin",colors)
+ if rivers.size() == cols*rows: _write_zstd(dir+"rivers.bin",rivers) # river strength per cell (0-255), drawn as water
+ elif FileAccess.file_exists(dir+"rivers.bin"): DirAccess.remove_absolute(dir+"rivers.bin")
  write_json(dir+"meta.json",{"map_version":MapRegistry.version(map_id),"cell":cell,"origin":[origin.x,origin.y],"cols":cols,"rows":rows,"stamp":stamp(map_id)})
 
 # Changes whenever the committed bakes change (their meta files' modification times and sizes).
@@ -74,8 +76,13 @@ static func load_render_cache(map_id: String) -> Dictionary:
  var h = _read_zstd(dir+"heights.bin",cols*rows*4)
  var c = _read_zstd(dir+"colors.bin",cols*rows*3)
  if h.size() != cols*rows*4 or c.size() != cols*rows*3: return {}
+ var rv = _read_zstd(dir+"rivers.bin",cols*rows) if FileAccess.file_exists(dir+"rivers.bin") else PackedByteArray()
+ if rv.size() != cols*rows:
+  rv = PackedByteArray()
+  rv.resize(cols*rows)
  return {"cell":float(meta.cell),"origin":Vector2(meta.origin[0],meta.origin[1]),"cols":cols,"rows":rows,
-  "heights":Image.create_from_data(cols,rows,false,Image.FORMAT_RF,h),"colors":Image.create_from_data(cols,rows,false,Image.FORMAT_RGB8,c)}
+  "heights":Image.create_from_data(cols,rows,false,Image.FORMAT_RF,h),"colors":Image.create_from_data(cols,rows,false,Image.FORMAT_RGB8,c),
+  "rivers":Image.create_from_data(cols,rows,false,Image.FORMAT_R8,rv)}
 
 # Row runs of identical cells, for building the pathfinding grid in bulk (core/movement.gd): quads
 # (x0, z, length, code) with code = terrain index + 16 * road. Computed once per map (at build time

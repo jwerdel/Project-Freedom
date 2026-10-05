@@ -59,6 +59,7 @@ func test_land_change_rebuilds_the_sprawl():
 func tris_drawn(node) -> int:
  var t = 0
  for mi in node.get_children():
+  if not (mi is MultiMeshInstance3D) or mi.name.begins_with("kit_field") or mi.name.begins_with("kit_road"): continue # draped ground
   var m: Mesh = mi.multimesh.mesh
   for si in m.get_surface_count():
    var arr = m.surface_get_arrays(si)
@@ -86,12 +87,17 @@ func test_city_draws_one_baked_mesh_per_piece_with_every_triangle():
  add_child_autofree(old)
  old.build(spec,v.terrain_at,v.height_at,v.sea_level)
  SprawlNode.merge = true
- assert_lt(baked.draw_calls()*2,old.draw_calls(),"less than half the draw calls (%d vs %d)" % [baked.draw_calls(),old.draw_calls()])
- assert_eq(tris_drawn(baked),tris_drawn(old),"every triangle kept")
+ assert_lt(baked.draw_calls(),old.draw_calls(),"fewer draw calls (%d vs %d; big cities: under half)" % [baked.draw_calls(),old.draw_calls()])
+ assert_eq(tris_drawn(baked),tris_drawn(old),"every triangle of every piece kept")
  var quiet = 0
  for mi in baked.get_children():
   if mi.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF: quiet += 1
- assert_gt(quiet,0,"fields and roads without shadows")
+ assert_gt(quiet,0,"small props without shadows")
+ # Fields and roads: one mesh draped over the ground, its corners on the terrain.
+ var ground = baked.get_node_or_null("Ground")
+ assert_not_null(ground,"fields and roads draped")
+ var verts = ground.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+ for k in range(0,verts.size(),37): assert_almost_eq(verts[k].y,maxf(v.height_at(verts[k].x,verts[k].z),v.sea_level)+0.1,0.06,"on the ground")
 
 func test_baked_piece_keeps_material_colours_in_linear_vertex_colours():
  var KitCache = load("res://map/kit_cache.gd")

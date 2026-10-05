@@ -2,7 +2,7 @@
   "_note": "Synthetic scale-test map (docs/map-pipeline-design.md §6.2): the full V1 world size (5,632 x 3,584 m since design Addendum A: regions about 120 m apart so sprawling cities fit) with the design ceiling's counts. Only this file is committed; build the rest with: runtime/Godot.exe --headless --path . -s scripts/build_map.gd -- --map=synthetic600 (map/synthetic.gd). Used by scripts/scale_test.gd.",
   "id": "synthetic600",
   "name": "Synthetic 600",
-  "version": 1,
+  "version": 2,
   "kind": "synthetic",
   "size": [5632, 3584],
   "origin": [0, 0],
