@@ -970,3 +970,65 @@ The three budgets that failed in the previous run, fixed without cutting content
 - Distant forests are flat canopy texture.
 - Rock lacks TW's sculpted detail.
 - The sky is a flat procedural sky.
+
+## Settlement variety and culture kits (2026-10-04)
+
+**Culture kits:**
+- Every culture has its own procedural building kit, built from simple shapes (`visuals/kits/cultures/culture_kit.gd`, `kit_shapes.gd`).
+- Pieces: houses ×3, tall house, hut, wall, tower, gatehouse, keep, temple, a bridge, and one signature building per specialization path (military, farming, mining, lumber, market).
+- Each piece is 20–620 triangles. They load through the asset manifest's new `procedural` section (`kit.<culture>.<piece>`).
+- Targets: `docs/reference/biomes/` and `specializations/` (palette and style only).
+
+**Layouts** (`map/sprawl.gd` rewritten): every culture lays out its own way, using the terrain (high ground, slopes, shores, rivers, forests, mountains):
+
+| Culture | Layout |
+|---|---|
+| Roman | Grid and forum, square walls |
+| Lizardmen | Plaza with pyramids and causeways |
+| Desert | Blocks along the river, a processional avenue to the pyramid |
+| Greek | Terraces stepping down the contours toward the sea |
+| Medieval | Crooked lanes from the gates to a square below the castle |
+| Ratmen | Leaning stacks with walkways over ruins |
+| Dwarves | A hold at the mountain's foot, halls stepping up, a fortified front |
+| Orcs | A palisaded stronghold and sprawling camps |
+| Elves | Spires and bridges |
+| Dark elves | Towers on the rocks and shore |
+| Beastmen | Herdstone and groves |
+
+- Walls follow the built outline and stop at cliffs and shores.
+- Interiors are filled; suburbs spill along the roads.
+- Towns show their specialization path. A mining town on flat land opens a pit; lumber towns keep their forests.
+- Rivers count as water for layouts.
+
+**Goldspire Rock rebuilt** to the owner's brief:
+- a golden spire with the castle carved into it: colonnaded halls and gold-roofed towers on the ledges, glowing mines, and a colossus in the face;
+- the white Greek city with red roofs at its foot, a theatre, and walls to the sea;
+- the harbour with a breakwater and lighthouses.
+
+**GPU** (worst case: every settlement a level-3 city with every chain, mixed conversion):
+
+| View | GPU ms | Draw calls | Primitives | VRAM |
+|---|---|---|---|---|
+| Close (60 m) | 5.55 | 330 | 0.77 M | 359 MB |
+| Middle (120 m) | 5.32 | 641 | 1.59 M | 359 MB |
+| Farthest (210 m) | 5.20 | 607 | 1.47 M | 359 MB |
+| Normal view (150 m) | 5.32 | 401 | 1.18 M | 333 MB |
+
+- **Draw calls:** the first run of the culture kits measured 1,702. Separate meshes per culture piece, doubled in mixed and converting regions, put it over the budget. The low-poly kit pieces now merge into one mesh per look per settlement; imported props stay instanced with their LODs.
+
+**Screenshots** (`captures/`):
+- `p3_variety_grid.png`: 12 settlements of mixed cultures, types, paths and terrain;
+- `p3_lineup_grid.png`: one level-3 city per culture;
+- `p3_goldspire_1.png`, `p3_goldspire_3.png`.
+
+**Tests:**
+- every culture builds its own pieces in its own layout;
+- walls are not a ring, and the inside is built up;
+- the Roman square wall;
+- mining pit, docks, farming and lumber.
+- Self-test passes.
+
+**Still rough:**
+- On flat ground the Greek terraces still form a rounded blob (a hill gives them their shape).
+- Small towns read sparse at the showcase distance.
+- The kits are first-pass shapes. The colossus and breakwater are blocky.

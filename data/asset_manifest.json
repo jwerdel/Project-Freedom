@@ -102,6 +102,20 @@
     "commerce.wagon": "res://visuals/commerce/wagon.tscn",
     "commerce.ship": "res://visuals/commerce/ship.tscn"
   },
+  "procedural": {
+    "_note": "Visuals built in code, by id prefix: the builder script's build_id(id) returns the Node3D. Culture kits: kit.<culture>.<piece> (visuals/kits/cultures/culture_kit.gd PIECES).",
+    "kit.medieval.": "res://visuals/kits/cultures/culture_kit.gd",
+    "kit.roman.": "res://visuals/kits/cultures/culture_kit.gd",
+    "kit.greek.": "res://visuals/kits/cultures/culture_kit.gd",
+    "kit.desert.": "res://visuals/kits/cultures/culture_kit.gd",
+    "kit.dwarf.": "res://visuals/kits/cultures/culture_kit.gd",
+    "kit.orc.": "res://visuals/kits/cultures/culture_kit.gd",
+    "kit.elf.": "res://visuals/kits/cultures/culture_kit.gd",
+    "kit.dark_elf.": "res://visuals/kits/cultures/culture_kit.gd",
+    "kit.beastmen.": "res://visuals/kits/cultures/culture_kit.gd",
+    "kit.ratmen.": "res://visuals/kits/cultures/culture_kit.gd",
+    "kit.lizardmen.": "res://visuals/kits/cultures/culture_kit.gd"
+  },
   "landmarks": {
     "goldspire_rock": {
       "stage_1": "res://visuals/landmarks/goldspire_rock_stage_1.tscn",

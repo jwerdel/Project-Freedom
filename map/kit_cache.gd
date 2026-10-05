@@ -46,6 +46,7 @@ static func reset():
  _cache = {}
  _baked = {}
  _looks = {}
+ _tris = {}
 
 # --- One mesh per piece (map/sprawl_node.gd) ----------------------------------------------------
 # A kit piece's parts and surfaces baked into one mesh with one surface per look (its material
@@ -152,3 +153,32 @@ static func _shared(mat: Material) -> Material:
  m.albedo_color = Color.WHITE
  m.vertex_color_use_as_albedo = true
  return m
+
+# --- Merging small pieces (map/sprawl_node.gd) --------------------------------------------------------
+# A low-poly piece (the procedural culture kits: tens to hundreds of triangles, no LODs to lose) as
+# plain triangle arrays per look, so a whole city's pieces merge into one mesh per look with native
+# array appends: {look key: {"v", "n", "c", "material"}}.
+static var _tris = {}
+
+static func tris(id: String) -> Dictionary:
+ if _tris.has(id): return _tris[id]
+ var out = {}
+ var mesh = baked(id)
+ if mesh != null:
+  for s in mesh.get_surface_count():
+   var arr = mesh.surface_get_arrays(s)
+   var idx: PackedInt32Array = arr[Mesh.ARRAY_INDEX]
+   var vv: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+   var nn: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+   var cc: PackedColorArray = arr[Mesh.ARRAY_COLOR]
+   var v = PackedVector3Array()
+   var n = PackedVector3Array()
+   var c = PackedColorArray()
+   for i in idx:
+    v.append(vv[i])
+    n.append(nn[i])
+    c.append(cc[i])
+   var mat = mesh.surface_get_material(s)
+   out[str(mat.get_instance_id())] = {"v":v,"n":n,"c":c,"material":mat}
+ _tris[id] = out
+ return out

@@ -116,6 +116,14 @@ func _environment():
 func _place_camera():
  var dir = Vector3(sin(yaw)*cos(pitch),sin(pitch),cos(yaw)*cos(pitch))
  camera.position = target+dir*distance
+ # Keep clear of the ground: tilt up while a ridge stands between the camera and its target.
+ var p = pitch
+ var tries = 0
+ while view != null and tries<20 and _occluded(camera.position):
+  p = minf(p+0.06,1.45)
+  dir = Vector3(sin(yaw)*cos(p),sin(p),cos(yaw)*cos(p))
+  camera.position = target+dir*distance
+  tries += 1
  camera.look_at(target,Vector3.UP)
 
 func _process(delta):
@@ -157,7 +165,50 @@ func _land_demo():
   state.land[sid] = {"from":other,"to":e.to,"value":[0.0,0.34,0.67,1.0][rng.randi_range(0,3)],"built":0}
 
 # A settlement set up for a showcase shot (with a lord beside it for scale); returns its id.
+#  city1 / city3 / farm / mine / convert:N   the earlier showcases
+#  variety:N   one of 12 settlements of mixed cultures, types, paths and terrain (VARIETY)
+#  lineup:<culture>   a level-3 city of that culture on ground that suits it
+const VARIETY = [
+ ["roman","city",3,"","plain"],["greek","city",3,"","coast"],["medieval","town",2,"farming","hill"],
+ ["dwarf","fortress",3,"","mountain"],["orc","town",3,"military","plain"],["elf","city",3,"","coast"],
+ ["dark_elf","fortress",2,"","coast"],["beastmen","village",3,"","forest"],["ratmen","town",3,"lumber","forest"],
+ ["lizardmen","city",3,"","forest"],["desert","town",3,"market","coast"],["medieval","town",3,"mining","hill"]]
+const LINEUP_SITE = {"medieval":"hill","roman":"plain","greek":"coast","desert":"coast","dwarf":"mountain","orc":"plain",
+ "elf":"coast","dark_elf":"coast","beastmen":"forest","ratmen":"forest","lizardmen":"forest"}
+const PATH_CHAIN = {"farming":"farm","mining":"mine","military":"barracks","market":"market"}
+
 func _showcase(kind: String) -> String:
+ if kind.begins_with("variety:") or kind.begins_with("lineup:"):
+  var v = []
+  var rank = 0
+  if kind.begins_with("variety:"):
+   var n = int(kind.get_slice(":",1))
+   v = VARIETY[n]
+   for k in n: if VARIETY[k][4] == v[4]: rank += 1
+  else:
+   var cu = kind.get_slice(":",1)
+   v = [cu,"city",3,"",LINEUP_SITE.get(cu,"plain")]
+   rank = 3+LINEUP_SITE.keys().find(cu)%3 # away from the variety picks
+  var sid = _pick_site(v[4],rank)
+  var s = state.settlements[sid]
+  s.type = v[1]
+  s.level = v[2]
+  s.buildings = [{"chain":"temple","level":2},{"chain":"walls","level":v[2]}]
+  if v[3] != "":
+   view.spec_overrides[sid] = {"path":v[3]}
+   if PATH_CHAIN.has(v[3]): s.buildings.append({"chain":PATH_CHAIN[v[3]],"level":v[2]})
+  if v[4] == "coast": s.buildings.append({"chain":"port","level":2})
+  state.land[sid] = {"from":v[0],"to":v[0],"value":1.0,"built":0}
+  # Only this settlement is built, on its own culture's land (its biome) all around.
+  view.only = sid
+  var here = WorldMap.settlement_position(sid)
+  for other in WorldMap.settlement_ids():
+   if WorldMap.settlement_position(other).distance_to(here)<450.0: state.land[other] = {"from":v[0],"to":v[0],"value":1.0,"built":0}
+  _place_lord.call_deferred(sid)
+  distance = 52.0+v[2]*10.0
+  pitch = 0.72
+  yaw = 0.7
+  return sid
  var sid = _pick(kind)
  var s = state.settlements[sid]
  s.type = "city"
@@ -188,6 +239,28 @@ func _showcase(kind: String) -> String:
  pitch = 0.62
  yaw = 0.7
  return sid
+
+# The settlement whose surroundings best fit a site (plain, coast, hill, mountain, forest); rank
+# picks the next best ones, so repeated sites give different settlements.
+func _pick_site(site: String,rank: int) -> String:
+ var scored = []
+ for sid in WorldMap.settlement_ids():
+  var c = WorldMap.settlement_position(sid)
+  var n = {"open":0,"forest":0,"hills":0,"mountain":0,"water":0,"pass":0}
+  for i in 64:
+   var p = c+Vector2.from_angle(i*TAU/16.0)*(14.0+(i/16)*14.0)
+   var t = Movement.terrain_at(p)
+   if n.has(t): n[t] += 1
+  var score = 0.0
+  match site:
+   "plain": score = n.open-n.water*3.0-n.mountain*2.0
+   "coast": score = minf(n.water,14.0)*2.0+n.open-maxf(0.0,n.water-20.0)*3.0
+   "hill": score = n.hills*2.0+n.open-n.water*2.0
+   "mountain": score = minf(n.mountain,16.0)*2.0+n.hills+n.open*0.5-n.water*2.0
+   "forest": score = n.forest*2.0+n.open*0.5-n.water*2.0
+  scored.append([score,sid])
+ scored.sort_custom(func(a,b): return a[0]>b[0])
+ return scored[mini(rank*7,scored.size()-1)][1]
 
 func _place_lord(sid: String):
  var p = WorldMap.settlement_position(sid)+Vector2(-30,26)
@@ -316,3 +389,10 @@ func _debug_hide(what: Array):
   for sid in view.settlements: view.settlements[sid].visible = false
  if "shadows" in what:
   for n in find_children("*","DirectionalLight3D",true,false): n.shadow_enabled = false
+
+# Is the camera below the ground, or is the ground in the way to the target?
+func _occluded(cam: Vector3) -> bool:
+ for k in 8:
+  var q = cam.lerp(target,k/8.0)
+  if q.y<view.height_at(q.x,q.z)+3.0: return true
+ return false

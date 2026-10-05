@@ -8,6 +8,7 @@ extends Node3D
 
 const Sprawl = preload("res://map/sprawl.gd")
 const KitCache = preload("res://map/kit_cache.gd")
+const AssetManifest = preload("res://core/asset_manifest.gd")
 
 static var merge := true
 static var _decal: ShaderMaterial = null
@@ -20,16 +21,22 @@ func build(s: Dictionary,terrain_at: Callable,height_at: Callable,sea_level := 0
  for c in get_children():
   remove_child(c)
   c.queue_free()
- var placed = Sprawl.layout(s,terrain_at)
+ var placed = Sprawl.layout(s,terrain_at,height_at)
  pieces = placed.size()
  var rng = RandomNumberGenerator.new()
  rng.seed = hash(["ruins",s.id])
  var quiet = Sprawl.sprawl_data().get("no_shadow",[])
  var draped = [] # fields and roads: one mesh over the ground
+ var merged = {} # culture kit pieces: one mesh per look for the whole settlement
  var groups = {} # merge: piece -> {mesh, xforms, colors}; else "piece|part" -> the same
  for p in placed:
-  var y = sea_level if p.get("water",false) else float(height_at.call(p.pos.x,p.pos.y))
-  var basis = Basis(Vector3.UP,p.rot).scaled(p.scale)
+  # Seated on the low side of its footprint (a slope shows the foundation instead of a floating edge).
+  var y = sea_level
+  if not p.get("water",false):
+   y = INF
+   for o in [Vector2.ZERO,Vector2(1.2,0),Vector2(-1.2,0),Vector2(0,1.2),Vector2(0,-1.2)]: y = minf(y,float(height_at.call(p.pos.x+o.x,p.pos.y+o.y)))
+  # The piece's local +z faces rot (a direction in the map plane).
+  var basis = Basis(Vector3.UP,PI*0.5-float(p.rot))*Basis.from_scale(p.scale)
   if p.ruin:
    basis = Basis(Vector3(rng.randf_range(-1,1),0,rng.randf_range(-1,1)).normalized(),rng.randf_range(0.12,0.3))*basis.scaled(Vector3(1,rng.randf_range(0.45,0.7),1))
    y -= 0.4
@@ -37,6 +44,9 @@ func build(s: Dictionary,terrain_at: Callable,height_at: Callable,sea_level := 0
    draped.append(p)
    continue
   var xf = Transform3D(basis,Vector3(p.pos.x,y,p.pos.y))
+  if merge and AssetManifest.procedural_builder(p.piece) != "":
+   _merge_piece(merged,p.piece,xf,p.color)
+   continue
   if merge:
    if KitCache.baked(p.piece) == null: continue
    if not groups.has(p.piece): groups[p.piece] = {"mesh":KitCache.baked(p.piece),"xforms":[],"colors":[],"shadow":not quiet.has(p.piece)}
@@ -70,9 +80,43 @@ func build(s: Dictionary,terrain_at: Callable,height_at: Callable,sea_level := 0
   var dr = Sprawl.sprawl_data().get("detail_ranges",{})
   if visibility_end>0.0 and not dr.is_empty():
    if quiet.has(piece): mi.visibility_range_end = float(dr.small)
-   elif dr.houses.has(piece): mi.visibility_range_end = float(dr.house)
+   elif dr.houses.has(piece) or dr.houses.has(piece.get_slice(".",2)): mi.visibility_range_end = float(dr.house)
   add_child(mi)
  if not draped.is_empty(): _drape(draped,height_at,visibility_end)
+ _merged_meshes(merged,visibility_end)
+
+# The low-poly culture kit pieces of the whole settlement merged into one mesh per look (two or three
+# draw calls for a city of hundreds of buildings); ruins keep their darkened tint.
+func _merge_piece(merged: Dictionary,id: String,xf: Transform3D,tint: Color):
+ var nb = Transform3D(xf.basis.inverse().transposed(),Vector3.ZERO)
+ var tr = KitCache.tris(id)
+ for k in tr:
+  var t = tr[k]
+  if not merged.has(k): merged[k] = {"v":PackedVector3Array(),"n":PackedVector3Array(),"c":PackedColorArray(),"material":t.material}
+  var m = merged[k]
+  m.v.append_array(xf*t.v)
+  m.n.append_array(nb*t.n)
+  if tint == Color.WHITE: m.c.append_array(t.c)
+  else:
+   for c in t.c: m.c.append(c*tint)
+
+func _merged_meshes(merged: Dictionary,visibility_end: float):
+ for k in merged:
+  var m = merged[k]
+  if m.v.is_empty(): continue
+  var arr = []
+  arr.resize(Mesh.ARRAY_MAX)
+  arr[Mesh.ARRAY_VERTEX] = m.v
+  arr[Mesh.ARRAY_NORMAL] = m.n
+  arr[Mesh.ARRAY_COLOR] = m.c
+  var mesh = ArrayMesh.new()
+  mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arr)
+  mesh.surface_set_material(0,m.material)
+  var mi = MeshInstance3D.new()
+  mi.name = "Buildings"
+  mi.mesh = mesh
+  if visibility_end>0.0: mi.visibility_range_end = visibility_end
+  add_child(mi)
 
 # Fields and roads as one mesh draped over the ground: each a grid of quads whose corners sit on the
 # terrain (height_at), so they follow slopes instead of floating as flat squares; fields turn to run
@@ -88,7 +132,7 @@ func _drape(placed: Array,height_at: Callable,visibility_end: float):
   var sz = float(p.scale.z)
   # Sprawl angles are directions in the map plane (x, z); a Y rotation of PI - rot turns a piece's
   # local z (its length) along them.
-  var rot = PI-float(p.rot)
+  var rot = PI*0.5-float(p.rot)
   if not road:
    var c = p.pos
    var gx = float(height_at.call(c.x+2.0,c.y))-float(height_at.call(c.x-2.0,c.y))

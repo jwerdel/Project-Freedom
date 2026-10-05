@@ -32,12 +32,25 @@ static func visuals() -> Dictionary:
 static func landmarks() -> Dictionary:
  return _manifest().landmarks
 
+# Procedural visuals: an id starting with a prefix in the manifest's "procedural" section is built
+# by that builder script's build_id(id) (culture kits: visuals/kits/cultures/culture_kit.gd).
+static func procedural_builder(id: String) -> String:
+ var p = _manifest().get("procedural",{})
+ for prefix in p:
+  if not prefix.begins_with("_") and id.begins_with(prefix): return p[prefix]
+ return ""
+
+static func has(id: String) -> bool:
+ return visuals().has(id) or procedural_builder(id) != ""
+
 static func scene_path(id: String) -> String:
  var path = visuals().get(id,"")
  assert(path != "","No visual registered for '%s' in %s" % [id,PATH])
  return path
 
 static func instantiate(id: String) -> Node3D:
+ var builder = procedural_builder(id)
+ if builder != "": return load(builder).build_id(id)
  return load(scene_path(id)).instantiate()
 
 static func is_landmark(settlement_id: String) -> bool:

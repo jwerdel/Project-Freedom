@@ -47,6 +47,8 @@ var culture_ids: Array = []
 var chunks = {}       # Vector2i -> {"node": Node3D, "trees": Node3D or null, "key": land key}
 var settlements = {}  # id -> SprawlNode
 var sea_level := 0.0
+var spec_overrides = {} # settlement id -> spec fields to override (showcases: a town's path)
+var only := "" # build only this settlement (showcases)
 var _last_focus := Vector3(INF,0,INF)
 
 func setup(campaign_state):
@@ -172,7 +174,12 @@ func height_at(x: float,z: float) -> float:
  var b = lerpf(heights.get_pixel(x0,z0+1).r,heights.get_pixel(x0+1,z0+1).r,fx)
  return maxf(lerpf(a,b,fz),sea_level)
 
+# The terrain class for settlement layouts: the movement class, except that rivers (drawn, not yet
+# in the movement rules) count as water, so towns grow along their banks instead of across them.
 func terrain_at(p: Vector2) -> String:
+ var x = int((p.x-origin.x)/cell)
+ var z = int((p.y-origin.y)/cell)
+ if rivers != null and x>=0 and z>=0 and x<cols and z<rows and rivers.get_pixel(x,z).r>0.42: return "water"
  return Movement.terrain_at(p)
 
 # --- Streaming ----------------------------------------------------------------------------------
@@ -196,6 +203,7 @@ func update(focus: Vector3):
  for sid in WorldMap.settlement_ids():
   var p = WorldMap.settlement_position(sid)
   var d = p.distance_to(f2)
+  if only != "" and sid != only: continue
   if d<BUILD_RADIUS:
    var s = settlement_spec(sid)
    var key = str(s.hash())
@@ -214,8 +222,10 @@ func update(focus: Vector3):
 func settlement_spec(sid: String) -> Dictionary:
  var st = state.settlements[sid]
  var e = Land.entry(state,sid)
- return {"id":sid,"type":st.type,"level":int(st.level),"position":WorldMap.settlement_position(sid),"from":e.from,"to":e.to,
+ var spec = {"id":sid,"type":st.type,"level":int(st.level),"position":WorldMap.settlement_position(sid),"from":e.from,"to":e.to,
   "value":snappedf(float(e.value),0.05),"buildings":st.buildings.filter(func(b): return b.has("chain")),"landmark_radius":0.0}
+ spec.merge(spec_overrides.get(sid,{}),true)
+ return spec
 
 func _make_trees(k: Vector2i) -> Node3D:
  var root = Node3D.new()
