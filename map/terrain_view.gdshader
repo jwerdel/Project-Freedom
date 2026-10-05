@@ -59,6 +59,32 @@ float h_at(vec2 xz) {
 	return textureLod(heights, (xz - origin) / world_size, 0.0).r;
 }
 
+// Canopy depth (TW:WH3): beyond the 3D trees (map/map_view.gd TREE_RANGE) forest cells rise into a lumpy
+// canopy carpet, so distant forests have volume instead of being flat paint.
+uniform float canopy_height = 5.5;
+uniform float canopy_fade_begin = 230.0;
+uniform float canopy_fade_end = 320.0;
+
+float vhash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float vnoise(vec2 p) {
+	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(vhash(i), vhash(i + vec2(1, 0)), f.x), mix(vhash(i + vec2(0, 1)), vhash(i + vec2(1, 1)), f.x), f.y);
+}
+
+float forest_weight(vec2 xz) {
+	vec2 g = (xz - origin) / world_size * grid_size - 0.5;
+	ivec2 c = ivec2(floor(g));
+	vec2 f = fract(g);
+	float w = 0.0;
+	for (int k = 0; k < 4; k++) {
+		ivec2 o = ivec2(k & 1, k >> 1);
+		ivec2 cc = clamp(c + o, ivec2(0), ivec2(grid_size) - 1);
+		int cl = int(texelFetch(classes, cc, 0).r * 255.0 + 0.5);
+		w += (cl == class_forest ? 1.0 : 0.0) * (o.x == 1 ? f.x : 1.0 - f.x) * (o.y == 1 ? f.y : 1.0 - f.y);
+	}
+	return w;
+}
+
 void vertex() {
 	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	world_xz = w.xz;
@@ -68,6 +94,11 @@ void vertex() {
 	float hx = h_at(w.xz + vec2(e, 0.0)) - h_at(w.xz - vec2(e, 0.0));
 	float hz = h_at(w.xz + vec2(0.0, e)) - h_at(w.xz - vec2(0.0, e));
 	NORMAL = normalize(vec3(-hx, 2.0 * e, -hz));
+	float far = smoothstep(canopy_fade_begin, canopy_fade_end, distance(w, CAMERA_POSITION_WORLD));
+	if (far > 0.0) {
+		float fw = forest_weight(w.xz);
+		VERTEX.y += canopy_height * fw * far * (0.7 + 0.6 * vnoise(w.xz * 0.11));
+	}
 }
 
 float hash(vec2 p) {
@@ -213,6 +244,11 @@ void fragment() {
 	// Canopy relief: the crowns bulge (a tilt from the crown pattern's gradient).
 	vec2 cg = vec2(dFdx(cr), dFdy(cr)) / max(vec2(length(dFdx(world_xz)), length(dFdy(world_xz))), vec2(0.01));
 	n = normalize(n - vec3(cg.x, 0.0, cg.y) * 0.9 * wf * (1.0 - riv));
+	// Sculpted rock: a screen-space bump from a two-scale rock noise, so cliffs read as carved masses.
+	float rn = fbm(world_xz * 0.16 + vec2(h * 0.08)) + 0.5 * noise(world_xz * 0.7 + vec2(h * 0.3));
+	vec2 rg = vec2(dFdx(rn), dFdy(rn)) / max(vec2(length(dFdx(world_xz)), length(dFdy(world_xz))), vec2(0.01));
+	n = normalize(n - vec3(rg.x, 0.0, rg.y) * 2.2 * w_rock);
+	col *= mix(1.0, 0.82 + 0.36 * rn, w_rock * 0.6);
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 	// Faction borders (TW:WH3): a line in the owner's colour where the neighbouring land has another
 	// owner, and a faint line between regions of the same owner.

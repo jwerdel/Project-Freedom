@@ -1072,6 +1072,10 @@ class BalanceBar extends Control:
   draw_line(Vector2(size.x*0.5,-3),Vector2(size.x*0.5,size.y+3),Color(1,1,1,0.6),1.0)
 
 var battle_panel: Control
+const STANCES = [
+ {"id":"aggressive","name":"Aggressive","tip":"Attack hard: heavier losses on both sides, a better chance of a decisive win, worse if outmatched."},
+ {"id":"balanced","name":"Balanced","tip":"The default."},
+ {"id":"defensive","name":"Defensive","tip":"Hold your ground: fewer losses, stronger behind walls and on hills, less likely to destroy the enemy."}]
 var battle_box: VBoxContainer
 var battle_pb := {}
 var report_panel: Control
@@ -1180,7 +1184,7 @@ func _fill_prebattle():
  title.name = "BattleTitle"
  title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  head.add_child(title)
- # An AI attack must be answered (Deploy, Quick resolve or Withdraw): no Close.
+ # An AI attack must be answered (Fight or Withdraw): no Close.
  if not pb.get("forced",false):
   var close = Button.new()
   close.text = "Close"
@@ -1213,22 +1217,34 @@ func _fill_prebattle():
  var verdict = "Decisive victory likely" if mine>=0.85 else ("Victory likely" if mine>=0.6 else ("Close fight" if mine>=0.4 else ("Defeat likely" if mine>=0.15 else "Crushing defeat likely")))
  bal.add_child(UiKit.label("%s (%d%%)" % [verdict,int(round(mine*100))],15,Color("f1d79a"),UiKit.FONT_BOLD))
  battle_box.add_child(bal)
+ # Stance (docs/war-and-realm.md §1): one for the whole force, then the battle resolves.
+ var srow = HBoxContainer.new()
+ srow.name = "Stances"
+ srow.add_theme_constant_override("separation",6)
+ srow.add_child(UiKit.label("Stance",14,UiKit.TEXT_DIM))
+ var current = data.battle_stance(pb)
+ for st in STANCES:
+  var sb = Button.new()
+  sb.name = "Stance_"+st.id
+  sb.text = st.name
+  sb.toggle_mode = true
+  sb.button_pressed = st.id == current
+  sb.focus_mode = Control.FOCUS_NONE
+  sb.custom_minimum_size = Vector2(130,0)
+  sb.tooltip_text = st.tip
+  sb.pressed.connect(func():
+   data.set_battle_stance(battle_pb,st.id)
+   _fill_prebattle())
+  srow.add_child(sb)
+ battle_box.add_child(srow)
  var row = HBoxContainer.new()
  row.add_theme_constant_override("separation",8)
- var deploy = Button.new()
- deploy.name = "Deploy"
- deploy.text = "Deploy"
- deploy.focus_mode = Control.FOCUS_NONE
- deploy.disabled = not pb.approach.ok
- deploy.tooltip_text = pb.approach.get("reason","") if not pb.approach.ok else "Place your units and give orders on the battlefield."
- deploy.pressed.connect(open_deployment)
- row.add_child(deploy)
  var quick = Button.new()
  quick.name = "QuickResolve"
- quick.text = "Quick resolve"
+ quick.text = "Fight"
  quick.focus_mode = Control.FOCUS_NONE
  quick.disabled = not pb.approach.ok
- quick.tooltip_text = pb.approach.get("reason","") if not pb.approach.ok else "Fight now with default deployments for both sides."
+ quick.tooltip_text = pb.approach.get("reason","") if not pb.approach.ok else "Fight the battle with your chosen stance; it resolves at once."
  quick.pressed.connect(func():
   var out = data.quick_resolve(battle_pb)
   var pbc = battle_pb
@@ -1358,47 +1374,14 @@ func open_battle_report(pb: Dictionary,out: Dictionary):
  nl.custom_minimum_size = Vector2(510,0)
  left.add_child(nl)
  for g in rep.generals: left.add_child(UiKit.label(g,14,Color("f1d79a")))
- var right = VBoxContainer.new()
- right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
- top.add_child(right)
- right.add_child(UiKit.header("Replay",16))
- var my_fac = data.faction(pb.attacker.faction if rep.my_side == 0 else pb.defender.faction)
- var their_fac = data.faction(pb.defender.faction if rep.my_side == 0 else pb.attacker.faction)
- report_replay = BattleReplay.new()
- report_replay.name = "Replay"
- report_replay.setup(rep,UiKit.colors(my_fac).primary.lightened(0.1),UiKit.colors(their_fac).primary.lightened(0.1))
- right.add_child(report_replay)
- right.add_child(UiKit.label("Markers: green helped you, red helped them. Click one to jump there.",12,Color(UiKit.TEXT_DIM,0.8)))
+ # (The 2D replay and the timeline left V1 with the deployment screen: stance-only battles.)
  body.add_child(UiKit.divider(colors.trim))
  var tables = HBoxContainer.new()
  tables.add_theme_constant_override("separation",40)
  tables.add_child(_unit_table("Your units",rep.units,"Units"))
  tables.add_child(_unit_table("Enemy units",rep.enemy_units,"EnemyUnits"))
  body.add_child(tables)
- body.add_child(UiKit.divider(colors.trim))
- var toggle = Button.new()
- toggle.name = "TimelineToggle"
- toggle.text = "Show full timeline (%d events)" % rep.timeline.size()
- toggle.focus_mode = Control.FOCUS_NONE
- toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
- body.add_child(toggle)
- report_timeline = VBoxContainer.new()
- report_timeline.name = "Timeline"
- report_timeline.visible = false
- report_timeline.add_theme_constant_override("separation",0)
- for e in rep.timeline:
-  var b = Button.new()
-  b.flat = true
-  b.focus_mode = Control.FOCUS_NONE
-  b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-  b.text = "Tick %d  ·  %s" % [e.tick,e.text]
-  b.add_theme_color_override("font_color",Color("bfe3a8") if e.ours else Color("efb39f"))
-  b.pressed.connect(report_replay.jump.bind(e.tick,e.units))
-  report_timeline.add_child(b)
- body.add_child(report_timeline)
- toggle.pressed.connect(func():
-  report_timeline.visible = not report_timeline.visible
-  toggle.text = ("Hide full timeline" if report_timeline.visible else "Show full timeline (%d events)" % rep.timeline.size()))
+
 
 func _unit_table(title: String,units: Array,name: String) -> Control:
  var v = VBoxContainer.new()

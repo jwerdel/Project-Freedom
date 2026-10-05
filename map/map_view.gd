@@ -100,6 +100,8 @@ func _make_material():
  material.set_shader_parameter("rivers",ImageTexture.create_from_image(rivers))
  material.set_shader_parameter("roads",ImageTexture.create_from_image(Image.create_from_data(cols,rows,false,Image.FORMAT_R8,grid.road))) # 0 or 1 per cell (the shader scales it)
  material.set_shader_parameter("sea_level",sea_level)
+ material.set_shader_parameter("canopy_fade_end",TREE_RANGE)
+ material.set_shader_parameter("canopy_fade_begin",TREE_RANGE*0.72)
  material.set_shader_parameter("culture_colors",ImageTexture.create_from_image(cc))
  palette_img = Image.create(maxi(1,region_names.size()+1),1,false,Image.FORMAT_RGBA8)
  palette_tex = ImageTexture.create_from_image(palette_img)

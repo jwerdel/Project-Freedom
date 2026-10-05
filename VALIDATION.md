@@ -1077,3 +1077,45 @@ The three budgets that failed in the previous run, fixed without cutting content
 The synthetic maps are performance fixtures, so their findings are recorded, not fixed.
 
 **Captures** (`captures/`): `p5_testmap_overview.png`, `p5_testmap_goldspire.png`, `p5_testmap_willowmere.png`, `p5_testmap_crownwatch.png`, `p5_debug_regions.png`, `p5_debug_movement.png`, `p5_debug_problems_synthetic600.png`.
+
+## Fixes carried from the last report (2026-10-05)
+
+**Stance-only battles** (`docs/war-and-realm.md` §1):
+- **Pre-battle panel:** shows both forces, terrain and weather, the balance-of-power bar, the stance choice (Aggressive / Balanced / Defensive), Fight, Withdraw (defender) and Besiege (settlements).
+- **Deployment screen and 2D replay:** removed from the UI (code dormant).
+- **Battle report:** keeps the "why you won or lost" summary and both casualty tables.
+- **Sim:** a stance scales the losses each side deals and takes, and how hard it pursues. Defensive takes less again behind walls or on hills. The AI picks its stance from the odds; the player starts Balanced; choosing a stance recomputes the balance of power. Numbers are in `data/battle.json` `stances`.
+- **Multi-army battles:** each side's main armies fight with the garrison, and nearby armies of both sides join as reserve blocks.
+- **Tests:** Aggressive costs both sides more; Defensive costs less and holds walls better; AI stance rule; the player's stance reaches the sim.
+
+**Strategic map legend:** lists only the factions you have met (yours, at war with you, or within 220 m of your settlements and armies; a placeholder until contact and envoys exist), with a count of the factions not met. The title collapses it.
+
+**Greek cities always terraced:** the acropolis core stands on stepped stone terraces (plinths, 2–10 m) even on flat ground, stepping down a terrace per band; on a hill the contours add to it.
+
+**Small towns:**
+- **Footprints:** larger and denser in the data. Small Roman towns use fewer streets.
+- **People:** specks of townsfolk on streets, squares and the roads out.
+- **Smoke:** a few chimneys smoke (particles drawn within 320 m).
+- **Houses** (flat ground, levels 1/2/3):
+
+| Settlement | Before | After |
+|---|---|---|
+| Medieval town | 29/39/63 | 51/66/105 |
+| Roman village | 5/13/24 | 11/23/40 |
+
+**TW terrain gaps:**
+- canopy depth: distant forests rise into a lumpy canopy beyond the 3D trees;
+- sculpted rock: a screen-space bump from two-scale rock noise;
+- a real sky shader: gradient, sun glow, drifting clouds;
+- haze retuned.
+
+**GPU** (synthetic600, worst case):
+
+| View | GPU ms | Draw calls |
+|---|---|---|
+| Close | 4.64 | 340 |
+| Middle | 5.38 | 709 |
+| Farthest | 5.34 | 675 |
+| Normal view | 5.30 | 458 |
+
+All within budget.

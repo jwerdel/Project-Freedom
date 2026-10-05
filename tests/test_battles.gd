@@ -299,3 +299,50 @@ func test_balance_of_power_reflects_the_odds():
  place(s2,HOST,near("greyhaven"))
  var weak = Battles.prebattle(s2,HOST,Battles.target_at(s2,HOST,WorldMap.settlement_position("greyhaven")))
  assert_lt(weak.odds,strong.odds,"walls and a larger garrison lower the odds")
+
+# --- Stances (docs/war-and-realm.md §1, confirmed 2026-10-05) -------------------------------------
+
+func losses_with(s,pb: Dictionary,att: String,def: String) -> Array:
+ var p = pb.duplicate(true)
+ p.stances = {"0":att,"1":def}
+ var tot = [0.0,0.0]
+ for i in 12:
+  var r = BattleSim.simulate(Battles.setup(s,p,hash([p.seed,"stance",i]),true))
+  for side in 2: tot[side] += BattleSim.losses(r,side)
+ return tot
+
+func test_aggressive_costs_both_sides_more_and_defensive_less():
+ var s = GameState.from_data()
+ var pb = field_battle(s)
+ var bal = losses_with(s,pb,"balanced","balanced")
+ var agg = losses_with(s,pb,"aggressive","balanced")
+ var dfn = losses_with(s,pb,"defensive","balanced")
+ assert_gt(agg[1],bal[1],"Aggressive kills more")
+ assert_gt(agg[0],bal[0]*0.95,"and loses at least as much")
+ assert_lt(dfn[0],bal[0],"Defensive loses fewer men")
+ assert_lt(dfn[1],bal[1],"and kills fewer")
+
+func test_defensive_is_stronger_behind_walls():
+ var s = GameState.from_data()
+ var pb = willowmere_battle(s)
+ var open = losses_with(s,pb,"balanced","balanced")
+ var held = losses_with(s,pb,"balanced","defensive")
+ assert_lt(held[1],open[1],"defending the walls Defensive costs the garrison fewer men")
+
+func test_the_ai_picks_its_stance_from_the_odds_and_the_player_starts_balanced():
+ assert_eq(Battles.ai_stance(0.8),"aggressive")
+ assert_eq(Battles.ai_stance(0.5),"balanced")
+ assert_eq(Battles.ai_stance(0.2),"defensive")
+ var data = UiData.new(GameState.from_data())
+ place(data.state,"silverfall_guard",Vector2(2,-12))
+ place(data.state,HOST,Vector2(2,-2))
+ Battles.declare_war(data.state,"house_aurek","house_lannet")
+ var pb = data.prebattle(HOST,Vector2(2,-12))
+ assert_eq(data.battle_stance(pb),"balanced")
+ var before = pb.odds
+ data.set_battle_stance(pb,"aggressive")
+ assert_eq(data.battle_stance(pb),"aggressive")
+ assert_true(pb.odds>=0.0 and pb.odds<=1.0)
+ var r = Battles.setup(data.state,pb,1)
+ assert_eq(r.sides[0].stance,"aggressive")
+ assert_eq(r.sides[1].stance,pb.stances["1"],"the AI side keeps its own stance")

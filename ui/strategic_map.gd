@@ -42,6 +42,7 @@ var base_parchment: ImageTexture
 var base_vivid: ImageTexture
 var layer_buttons := {}
 var legend: VBoxContainer
+var legend_collapsed := false
 var fade := 0.0
 var showing := false
 var selected_army := ""
@@ -254,12 +255,27 @@ func _fill_legend():
  var title = ""
  for l in LAYERS:
   if l.id == layer: title = l.name
- legend.add_child(UiKit.header(title,15))
+ # Collapsible (TW:WH3 legends fold away): the title toggles the rows.
+ var head = Button.new()
+ head.name = "LegendToggle"
+ head.flat = true
+ head.focus_mode = Control.FOCUS_NONE
+ head.alignment = HORIZONTAL_ALIGNMENT_LEFT
+ head.text = ("▸ " if legend_collapsed else "▾ ")+title
+ head.add_theme_font_override("font",UiKit.head_font())
+ head.pressed.connect(func():
+  legend_collapsed = not legend_collapsed
+  _fill_legend())
+ legend.add_child(head)
+ if legend_collapsed: return
  var rows = []
  match layer:
   "affiliation":
-   for f in data.state.factions():
+   # Only the factions you have met (yours, at war with you, or near your lands and armies).
+   for f in data.known_factions():
     if not data.state.settlements_of(f).is_empty(): rows.append([Color(data.faction(f).primary),data.faction(f).name])
+   var hidden = data.state.factions().size()-data.known_factions().size()
+   if hidden>0: rows.append([Color(0,0,0,0),"(%d factions not met)" % hidden])
   "diplomatic": rows = [[Color("4fb34a"),"Yours"],[Color("c8382c"),"At war with you"],[Color("8a97a8"),"Not at war"]]
   "order": rows = [[Color("4fb34a"),"High"],[Color("c9a43a"),"Neutral"],[Color("c8382c"),"Low (unrest)"]]
   "development": rows = [[Color("f4e2a6"),"Level 1"],[Color("bf9a5a"),"Level 2"],[Color("8a5a12"),"Level 3"]]

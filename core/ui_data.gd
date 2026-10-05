@@ -131,6 +131,7 @@ func pending_battle() -> Dictionary:
    pb.view = {"attacker":_side_view(pb,0),"defender":_side_view(pb,1)}
    pb.player_is_defender = true
    pb.forced = true # the player must answer: no Close button
+   Battles.set_stance(state,pb,1,"balanced") # the player's stance starts Balanced
    return pb
   state.pending_battles.pop_front()
  return {}
@@ -441,7 +442,15 @@ func prebattle(army_id: String,point: Vector2) -> Dictionary:
  pb.approach = a
  pb.view = {"attacker":_side_view(pb,0),"defender":_side_view(pb,1)}
  pb.player_is_defender = pb.defender.faction == state.player_faction
+ Battles.set_stance(state,pb,1 if pb.player_is_defender else 0,"balanced") # the player's stance starts Balanced
  return pb
+
+# The player's stance for a battle (Aggressive, Balanced, Defensive); the balance of power follows.
+func set_battle_stance(pb: Dictionary,stance: String):
+ Battles.set_stance(state,pb,1 if pb.get("player_is_defender",false) else 0,stance)
+
+func battle_stance(pb: Dictionary) -> String:
+ return str(pb.get("stances",{}).get("1" if pb.get("player_is_defender",false) else "0","balanced"))
 
 func _side_view(pb: Dictionary,role: int) -> Dictionary:
  var spec = pb.attacker if role == 0 else pb.defender
@@ -737,3 +746,30 @@ func land(settlement_id: String) -> Dictionary:
 
 func culture_name(culture: String) -> String:
  return str(Land.data().cultures.get(culture,{}).get("name",culture.capitalize()))
+
+# Factions the player has met (strategic map legend; diplomacy lists): the player, factions at war
+# with the player, and factions with a settlement or army near the player's settlements or armies.
+# PLACEHOLDER until contact and envoys exist (docs/war-and-realm.md §7.3: envoys can reach anyone).
+const MET_RADIUS = 220.0
+func known_factions() -> Array:
+ var me = state.player_faction
+ var mine = []
+ for sid in state.settlements_of(me): mine.append(WorldMap.settlement_position(sid))
+ for id in state.army_state:
+  if state.army_state[id].faction == me: mine.append(Movement.position(state,id))
+ var out = [me]
+ for f in state.factions():
+  if f == me: continue
+  if Battles.at_war(state,me,f):
+   out.append(f)
+   continue
+  var near = false
+  for sid in state.settlements_of(f):
+   var p = WorldMap.settlement_position(sid)
+   for q in mine:
+    if p.distance_to(q)<MET_RADIUS:
+     near = true
+     break
+   if near: break
+  if near: out.append(f)
+ return out

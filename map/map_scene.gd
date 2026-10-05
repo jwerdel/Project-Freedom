@@ -92,7 +92,9 @@ func _environment():
  var env = Environment.new()
  env.background_mode = Environment.BG_SKY
  var sky = Sky.new()
- sky.sky_material = ProceduralSkyMaterial.new()
+ var sm = ShaderMaterial.new()
+ sm.shader = load("res://map/sky.gdshader") # gradient, sun glow, drifting clouds
+ sky.sky_material = sm
  env.sky = sky
  env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
  env.tonemap_mode = Environment.TONE_MAPPER_FILMIC

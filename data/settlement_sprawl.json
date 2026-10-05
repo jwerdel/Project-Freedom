@@ -13,14 +13,14 @@
       {"wall": 22, "wall_rings": 2, "towers_every": 2, "house_gap": 4.6, "plaza": 8.0, "suburb": 28, "villages": 2, "village_radius": 40, "farm": 42, "roads": 4, "keeps": 5}
     ],
     "town": [
-      {"wall": 0, "house_gap": 4.2, "plaza": 3.5, "suburb": 11, "villages": 0, "village_radius": 0, "farm": 22, "roads": 2},
-      {"wall": 12, "palisade": true, "towers_every": 5, "house_gap": 4.0, "plaza": 4.0, "suburb": 16, "villages": 1, "village_radius": 26, "farm": 28, "roads": 3},
-      {"wall": 15, "palisade": true, "towers_every": 4, "house_gap": 3.9, "plaza": 4.5, "suburb": 21, "villages": 1, "village_radius": 32, "farm": 34, "roads": 3}
+      {"wall": 0, "house_gap": 3.8, "plaza": 3.5, "suburb": 18, "villages": 1, "village_radius": 26, "farm": 28, "roads": 3},
+      {"wall": 13, "palisade": true, "towers_every": 5, "house_gap": 3.7, "plaza": 4.0, "suburb": 22, "villages": 1, "village_radius": 30, "farm": 32, "roads": 3},
+      {"wall": 16, "palisade": true, "towers_every": 4, "house_gap": 3.6, "plaza": 4.5, "suburb": 26, "villages": 2, "village_radius": 34, "farm": 36, "roads": 4}
     ],
     "village": [
-      {"wall": 0, "house_gap": 4.6, "plaza": 3.0, "suburb": 8, "villages": 0, "village_radius": 0, "farm": 18, "roads": 2},
-      {"wall": 0, "house_gap": 4.4, "plaza": 3.0, "suburb": 11, "villages": 0, "village_radius": 0, "farm": 22, "roads": 2},
-      {"wall": 0, "house_gap": 4.2, "plaza": 3.5, "suburb": 14, "villages": 1, "village_radius": 24, "farm": 26, "roads": 3}
+      {"wall": 0, "house_gap": 4.0, "plaza": 3.0, "suburb": 13, "villages": 0, "village_radius": 0, "farm": 22, "roads": 2},
+      {"wall": 0, "house_gap": 3.9, "plaza": 3.0, "suburb": 16, "villages": 1, "village_radius": 22, "farm": 26, "roads": 3},
+      {"wall": 0, "house_gap": 3.8, "plaza": 3.5, "suburb": 19, "villages": 1, "village_radius": 26, "farm": 30, "roads": 3}
     ],
     "castle": [
       {"wall": 9, "wall_rings": 1, "towers_every": 2, "house_gap": 5.5, "plaza": 4.0, "suburb": 11, "villages": 0, "village_radius": 0, "farm": 18, "roads": 1, "keeps": 1},

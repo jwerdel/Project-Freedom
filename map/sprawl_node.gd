@@ -35,6 +35,7 @@ func build(s: Dictionary,terrain_at: Callable,height_at: Callable,sea_level := 0
   if not p.get("water",false):
    y = INF
    for o in [Vector2.ZERO,Vector2(1.2,0),Vector2(-1.2,0),Vector2(0,1.2),Vector2(0,-1.2)]: y = minf(y,float(height_at.call(p.pos.x+o.x,p.pos.y+o.y)))
+  y += float(p.get("lift",0.0)) # raised on a terrace (Greek acropolis)
   # The piece's local +z faces rot (a direction in the map plane).
   var basis = Basis(Vector3.UP,PI*0.5-float(p.rot))*Basis.from_scale(p.scale)
   if p.ruin:
@@ -83,6 +84,7 @@ func build(s: Dictionary,terrain_at: Callable,height_at: Callable,sea_level := 0
    elif dr.houses.has(piece) or dr.houses.has(piece.get_slice(".",2)): mi.visibility_range_end = float(dr.house)
   add_child(mi)
  if not draped.is_empty(): _drape(draped,height_at,visibility_end)
+ _smoke(placed,height_at)
  _merged_meshes(merged,visibility_end)
 
 # The low-poly culture kit pieces of the whole settlement merged into one mesh per look (two or three
@@ -186,9 +188,67 @@ func _drape(placed: Array,height_at: Callable,visibility_end: float):
  if visibility_end>0.0: mi.visibility_range_end = visibility_end
  add_child(mi)
 
+# Alive at scale (game-design §12.13 F): a few chimneys smoke (soft grey puffs drifting with the wind),
+# drawn only near the camera.
+const SMOKE_MAX = 4
+const SMOKE_RANGE = 320.0
+static var _smoke_mat: StandardMaterial3D = null
+static var _smoke_process: ParticleProcessMaterial = null
+
+func _smoke(placed: Array,height_at: Callable):
+ var n = 0
+ for p in placed:
+  if n>=SMOKE_MAX: break
+  var piece = str(p.piece)
+  if p.ruin or not (piece.ends_with("house_1") or piece.ends_with("house_2") or piece.ends_with(".tall") or piece.ends_with(".hut")): continue
+  if (int(abs(p.pos.x*7.3+p.pos.y*3.1)))%7 != 0: continue
+  if _smoke_mat == null:
+   _smoke_mat = StandardMaterial3D.new()
+   _smoke_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+   _smoke_mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+   _smoke_mat.vertex_color_use_as_albedo = true
+   _smoke_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+   _smoke_mat.albedo_color = Color(0.82,0.82,0.8,0.5)
+   _smoke_process = ParticleProcessMaterial.new()
+   _smoke_process.direction = Vector3(0,1,0)
+   _smoke_process.spread = 12.0
+   _smoke_process.initial_velocity_min = 0.6
+   _smoke_process.initial_velocity_max = 1.0
+   _smoke_process.gravity = Vector3(0.25,0.12,0.05)
+   _smoke_process.scale_min = 0.6
+   _smoke_process.scale_max = 1.2
+   var curve = Curve.new()
+   curve.add_point(Vector2(0,0.4))
+   curve.add_point(Vector2(1,1.6))
+   var ct = CurveTexture.new()
+   ct.curve = curve
+   _smoke_process.scale_curve = ct
+   var g = Gradient.new()
+   g.set_color(0,Color(1,1,1,0.55))
+   g.set_color(1,Color(1,1,1,0.0))
+   var gt = GradientTexture1D.new()
+   gt.gradient = g
+   _smoke_process.color_ramp = gt
+  var ps = GPUParticles3D.new()
+  ps.name = "Smoke"
+  ps.amount = 10
+  ps.lifetime = 5.0
+  ps.preprocess = 5.0
+  ps.process_material = _smoke_process
+  var q = QuadMesh.new()
+  q.size = Vector2(1.1,1.1)
+  q.material = _smoke_mat
+  ps.draw_pass_1 = q
+  ps.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+  ps.visibility_range_end = SMOKE_RANGE
+  ps.position = Vector3(p.pos.x,float(height_at.call(p.pos.x,p.pos.y))+float(p.get("lift",0.0))+3.4,p.pos.y)
+  add_child(ps)
+  n += 1
+
 # Surfaces drawn (each is a draw call per pass).
 func draw_calls() -> int:
  var n = 0
  for c in get_children():
-  n += c.multimesh.mesh.get_surface_count() if c is MultiMeshInstance3D else c.mesh.get_surface_count()
+  if c is GPUParticles3D: n += 1
+  else: n += c.multimesh.mesh.get_surface_count() if c is MultiMeshInstance3D else c.mesh.get_surface_count()
  return n

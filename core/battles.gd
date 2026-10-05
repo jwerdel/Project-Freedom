@@ -162,8 +162,25 @@ static func prebattle(state,army_id: String,target: Dictionary,with_odds := true
   "defender":{"faction":target.faction,"armies":defenders,"reinforcements":_reinforcements(state,target.faction,at,defenders)},
   "field":field,"seed":battle_seed(state,army_id,defenders,sid),"lanes":field.lanes}
  pb.weather = BattleSim.roll_weather(pb.seed)
+ pb.stances = {"0":"balanced","1":"balanced"}
  pb.odds = odds(state,pb) if with_odds else -1.0
+ if with_odds:
+  # Each side's AI stance from the balance of power (the player's panel sets its own side).
+  pb.stances = {"0":ai_stance(pb.odds),"1":ai_stance(1.0-pb.odds)}
+  pb.odds = odds(state,pb)
  return pb
+
+# Stances (docs/war-and-realm.md §1): the AI fights Aggressive when likely to win, Defensive when not.
+static func ai_stance(win_share: float) -> String:
+ var a = BattleSim.data().get("stances",{}).get("ai",{"aggressive_above":0.65,"defensive_below":0.4})
+ if win_share>=float(a.aggressive_above): return "aggressive"
+ if win_share<float(a.defensive_below): return "defensive"
+ return "balanced"
+
+# The player picks a side's stance (role 0 attacker, 1 defender); the balance of power follows.
+static func set_stance(state,pb: Dictionary,role: int,stance: String):
+ pb.stances[str(role)] = stance
+ pb.odds = odds(state,pb)
 
 # Seed of a battle: the campaign seed, the year, the campaign's battle counter and both sides'
 # army IDs, so two battles in the same year differ while every battle stays reproducible.
@@ -218,7 +235,7 @@ static func setup(state,pb: Dictionary,seed: int,fast := false) -> Dictionary:
    g = {"name":c.name,"rank":int(c.rank) if c.status == "ok" else 1,"traits":WorldMap.faction(faction).get("general_traits",[])}
   elif pb.kind == "settlement":
    g = {"name":"the garrison commander","rank":1,"traits":WorldMap.faction(faction).get("general_traits",[])}
-  sides.append({"faction":faction,"general":g,"general_lane":general_lane,"units":placed})
+  sides.append({"faction":faction,"general":g,"general_lane":general_lane,"units":placed,"stance":str(pb.get("stances",{}).get(str(role),"balanced"))})
  var f = {"terrain":terrain,"weather":pb.weather}
  if pb.field.get("walls") != null: f.walls = pb.field.walls
  return {"seed":seed,"lanes":pb.lanes,"field":f,"sides":sides,"fast":fast}

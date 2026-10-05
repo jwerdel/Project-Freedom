@@ -306,29 +306,10 @@ func _ready():
    ui_data.changed.emit()
    ui._rebuild_events()
    refresh_army_overlays()
- # Deployment captures: --deploy opens the screen, --deploy-2d shows the board, --deploy-template=
- # applies a template, --deploy-orders=i:order[:arg],... gives orders (arg: left/right or a unit)
- # and --deploy-fight fights with that deployment.
+ # --stance=aggressive|balanced|defensive (captures): the player's stance in the open pre-battle panel.
  for arg in OS.get_cmdline_user_args():
-  if arg == "--deploy" and ui.battle_visible():
-   ui.open_deployment()
-   var ds = ui.deployment_screen
-   for a2 in OS.get_cmdline_user_args():
-    if a2.begins_with("--deploy-template="): ds.apply_template(a2.get_slice("=",1))
-   for a2 in OS.get_cmdline_user_args():
-    if a2.begins_with("--deploy-orders="):
-     for o in a2.get_slice("=",1).split(","):
-      var p = o.split(":")
-      ds.select(int(p[0]))
-      if p[1] == "protect":
-       ds._order("protect")
-       ds.select(int(p[2]))
-      else: ds._order(p[1]+(":"+p[2] if p.size()>2 else ""))
-   if "--deploy-2d" in OS.get_cmdline_user_args(): ds._set_view(false)
-   ds.update_odds()
-   if "--deploy-fight" in OS.get_cmdline_user_args():
-    ds._fight()
-    update_walk(1000.0)
+  if arg.begins_with("--stance=") and ui.battle_visible():
+   ui.battle_box.find_child("Stance_"+arg.get_slice("=",1),true,false).pressed.emit()
  for arg in OS.get_cmdline_user_args():
   if arg.begins_with("--view="):
    var v = arg.get_slice("=",1).split(",")
@@ -344,12 +325,6 @@ func _ready():
   if arg.begins_with("--select-after="):
    ui.close_report()
    select_settlement(arg.get_slice("=",1))
- # Report captures: --report-event=k jumps the replay to timeline event k; --report-timeline expands it.
- for arg in OS.get_cmdline_user_args():
-  if arg.begins_with("--report-event=") and ui.report_visible():
-   var ev = ui.report_timeline.get_child(int(arg.get_slice("=",1)))
-   if ev: ev.pressed.emit()
-  if arg == "--report-timeline" and ui.report_visible(): ui.report_box.find_child("TimelineToggle",true,false).pressed.emit()
  if "--chronicle" in OS.get_cmdline_user_args(): ui.toggle_chronicle()
  # --strategic opens the strategic map at once; --layer=ID picks its layer (captures).
  for arg in OS.get_cmdline_user_args():
@@ -1647,41 +1622,24 @@ func run_checks():
  assert(ui.battle_visible() and ui.battle_box.find_child("DeclareWar",true,false) != null) # not at war yet: confirmation first
  ui.close_battle()
  assert(ui_data.army_movement(COMMANDER_ARMY).points == points_before)
- # Deployment screen: open it (war set temporarily), place, order, fail a capacity rule, toggle
- # the view, then Back: nothing spent, the pre-battle panel returns.
+ # Stance-only battles (docs/war-and-realm.md §1): the pre-battle panel offers the three stances;
+ # choosing one recomputes the balance of power; the report keeps the why and both unit tables.
  var city_t = ui_data.battle_target(COMMANDER_ARMY,WorldMap.settlement_position(CITY_ID))
  var war_key = Battles.war_key(ui_data.player_faction_id(),city_t.faction)
  ui_data.state.wars.append(war_key)
  city_t.needs_war = false
  ui.open_battle_flow(COMMANDER_ARMY,WorldMap.settlement_position(CITY_ID),city_t)
- ui.open_deployment()
- assert(ui.deployment_visible() and not ui.battle_visible())
- var ds = ui.deployment_screen
- ds.apply_template("line")
- assert(ds.dep.units.size()>0 and Deployment.validate(ds.dep).is_empty())
- ds.select(0)
- ds._order("reserve")
- assert(ds.dep.units[0].line == "reserve" and ds.dep.units[0].order == "reserve")
- ds._order("flank:left")
- assert(ds.dep.units[0].order == "flank" and int(ds.dep.units[0].lane) == 0)
- ds._set_view(false)
- assert(ds.board.visible and not ds.viewport_box.visible)
- ds.update_odds()
- assert(ds.odds>=0.0 and ds.odds<=1.0)
- # Full report from a pure simulation of this deployment (no campaign change): replay, scrubber
- # markers, tables, collapsed timeline; clicking an event jumps the replay and highlights.
- var rpb = ds.pb.duplicate()
- rpb.deployment = ds.dep
+ assert(ui.battle_visible() and ui.battle_box.find_child("Deploy",true,false) == null)
+ for st in ["aggressive","balanced","defensive"]: assert(ui.battle_box.find_child("Stance_"+st,true,false) != null)
+ assert(ui_data.battle_stance(ui.battle_pb) == "balanced")
+ ui.battle_box.find_child("Stance_defensive",true,false).pressed.emit()
+ assert(ui_data.battle_stance(ui.battle_pb) == "defensive" and ui.battle_pb.odds>=0.0 and ui.battle_pb.odds<=1.0)
+ var rpb = ui.battle_pb.duplicate()
  var sim = BattleSim.simulate(Battles.setup(ui_data.state,rpb,rpb.seed))
  ui.open_battle_report(rpb,{"result":sim,"aftermath":{"captured":"","generals":[],"promoted":[]}})
- assert(ui.report_visible() and ui.report_replay.frames.size() == int(sim.ticks)+1)
- assert(not ui.report_timeline.visible and ui.report_box.find_child("EnemyUnits",true,false) != null)
- if ui.report_timeline.get_child_count()>0:
-  ui.report_timeline.get_child(0).pressed.emit()
-  assert(ui.report_replay.tick == int(sim.events[0].tick) and not ui.report_replay.highlight.is_empty())
+ assert(ui.report_visible() and ui.report_box.find_child("Why",true,false) != null and ui.report_box.find_child("EnemyUnits",true,false) != null)
+ assert(ui.report_box.find_child("Replay",true,false) == null,"no replay in V1")
  ui.close_report()
- ds.closed.emit()
- assert(not ui.deployment_visible() and ui.battle_visible())
  assert(ui_data.army_movement(COMMANDER_ARMY).points == points_before)
  ui.close_battle()
  ui_data.state.wars.erase(war_key)
@@ -1752,7 +1710,7 @@ func run_checks():
   assert(goldspire_level==level_now)
  ui.clear_selection()
  reset_camera()
- print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn; construction upgrades goldspire's stage; army movement preview (hold right click, no numbers), selection without camera moves, cycling at the current zoom, End Turn warnings, orders, blocking and garrison; deployment screen place, orders, view and back; battle report replay, timeline and jump; autosave and save/load round trip; esc order and pause menu; recruitment queue and refund, panel open across clicks, capacity overflow, global recruitment")
+ print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn; construction upgrades goldspire's stage; army movement preview (hold right click, no numbers), selection without camera moves, cycling at the current zoom, End Turn warnings, orders, blocking and garrison; stance choice and balance of power; battle report why and unit tables; autosave and save/load round trip; esc order and pause menu; recruitment queue and refund, panel open across clicks, capacity overflow, global recruitment")
 
 # --- Movement grid bake ------------------------------------------------------------
 # Writes the test map's movement_grid.json (data/maps/testmap/), the terrain grid army movement reads (core/movement.gd), by
@@ -2091,3 +2049,9 @@ func _pipeline_atmosphere():
  environment.adjustment_contrast = float(at.contrast)
  environment.adjustment_brightness = float(at.brightness)
  sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+ var sky = Sky.new()
+ var sm = ShaderMaterial.new()
+ sm.shader = load("res://map/sky.gdshader")
+ sky.sky_material = sm
+ environment.sky = sky
+ environment.background_mode = Environment.BG_SKY

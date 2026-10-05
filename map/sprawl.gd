@@ -105,6 +105,7 @@ static func layout(s: Dictionary,terrain_at: Callable,height_at := Callable()) -
   if float(cfg.get("wall",0))>0.0: _walls(ctx)
  _suburbs(ctx)
  _countryside(ctx)
+ _crowds(ctx)
  return ctx.out
 
 # --- Site --------------------------------------------------------------------------------------------
@@ -204,6 +205,8 @@ static func _put(ctx: Dictionary,role: String,p: Vector2,rot: float,sc := 1.0,ex
  var col = Color(culture(cul).tint.ruin) if ruin else Color.WHITE
  if role.begins_with("kit.") and extra.has("color"): col = extra.color
  var e = {"piece":piece,"culture":cul,"ruin":ruin,"pos":p,"rot":rot,"scale":extra.get("scale",Vector3.ONE*sc),"color":col}
+ var lift = float(extra.get("lift",ctx.get("lift",0.0)))
+ if lift>0.0: e.lift = lift
  if extra.get("water",false): e.water = true
  ctx.out.append(e)
 
@@ -221,6 +224,7 @@ static func _street(ctx: Dictionary,pts: Array,gap: float,setback: float,role_of
     if ctx.rng.randf()<0.08: continue
     var q = p+dir.orthogonal()*side*setback+dir*ctx.rng.randf_range(-0.4,0.4)
     _lot(ctx,q,(-dir.orthogonal()*side).angle(),role_of.call(q))
+   if ctx.rng.randf()<0.18: _put(ctx,"people",p+dir.orthogonal()*ctx.rng.randf_range(-0.6,0.6),ctx.rng.randf()*TAU)
 
 # A crooked lane from a to b (random walk with a pull toward b).
 static func _lane(ctx: Dictionary,a: Vector2,b: Vector2,wiggle: float) -> Array:
@@ -277,7 +281,7 @@ static func _grid(ctx: Dictionary,plaza: bool):
  var c: Vector2 = ctx.center
  var ax = Vector2.from_angle(ctx.roads[0])
  var ay = ax.orthogonal()
- var R = maxf(float(cfg.get("wall",0)),float(cfg.suburb)*0.6)
+ var R = maxf(float(cfg.get("wall",0)),float(cfg.suburb)*0.85)
  var rx = R*ctx.rng.randf_range(0.95,1.2)
  var ry = R*ctx.rng.randf_range(0.7,0.95)
  var lot = 4.2
@@ -298,7 +302,8 @@ static func _grid(ctx: Dictionary,plaza: bool):
  var ny = int(ry/lot)
  for i in range(-nx,nx+1):
   for j in range(-ny,ny+1):
-   if i%3 == 0 or j%3 == 0: continue # streets
+   var every = 3 if str(ctx.s.get("type","city")) in ["city","fortress"] else 4
+   if i%every == 0 or j%every == 0: continue # streets (fewer in small towns)
    var p = c+ax*i*lot+ay*j*lot
    if plaza and ctx.rng.randf()<0.35: continue # looser jungle quarters
    var role = "house"
@@ -322,7 +327,7 @@ static func _river(ctx: Dictionary):
  var c: Vector2 = ctx.center
  var w: Vector2 = ctx.site.water if ctx.site.water != Vector2.ZERO else Vector2.from_angle(ctx.roads[0])
  var along = w.orthogonal()
- var R = maxf(float(cfg.get("wall",0)),float(cfg.suburb)*0.6)
+ var R = maxf(float(cfg.get("wall",0)),float(cfg.suburb)*0.85)
  # The pyramid inland, the avenue to the water lined with guardian statues (towers here).
  var pyr = c-w*R*0.55
  _lot(ctx,pyr,w.angle(),"keep",true)
@@ -348,9 +353,18 @@ static func _river(ctx: Dictionary):
 static func _terraces(ctx: Dictionary):
  var cfg = ctx.cfg
  var top: Vector2 = ctx.site.high
+ # Always terraced (owner, 2026-10-05): the core stands on a raised acropolis of stepped stone
+ # terraces, built up even on flat ground (higher where the hill is low) and stepping down a
+ # terrace per band; on a hill the contours add to it.
+ var relief = maxf(0.0,float(ctx.site.high_h)-float(ctx.site.low_h))
+ var acro = maxf(2.0,6.0+ctx.L*1.5-relief*0.5)
+ ctx.acro = {"top":top,"lift":acro}
+ _terrace(ctx,top,acro,13.0)
+ ctx.lift = acro
  _lot(ctx,top,(ctx.center-top).angle(),"temple",true)
  _lot(ctx,top+(ctx.center-top).normalized().orthogonal()*8.0,(ctx.center-top).angle(),"keep",true)
- var reach = _blob(ctx,maxf(float(cfg.get("wall",0)),float(cfg.suburb)*0.6))
+ ctx.lift = 0.0
+ var reach = _blob(ctx,maxf(float(cfg.get("wall",0)),float(cfg.suburb)*0.85))
  var downhill: Vector2 = ctx.site.water if ctx.site.water != Vector2.ZERO else (ctx.center-top).normalized()
  var h_top = _h(ctx,top)
  for band in range(1,9):
@@ -371,15 +385,24 @@ static func _terraces(ctx: Dictionary):
     while rr<reach.call(a)*1.4 and _h(ctx,top+dir*rr)>target: rr += 1.5
     r = lerpf(r,rr,0.7)
    if r>reach.call(a)*1.3: continue
-   _lot(ctx,top+dir*r,a+PI,"tall" if band<3 and ctx.rng.randf()<0.3 else "house")
+   var lift = maxf(0.0,acro-band*1.5)
+   var q = top+dir*r
+   if lift>0.2 and _land(ctx,q) and _free(ctx,q,1.2): _terrace(ctx,q,lift,3.4)
+   ctx.lift = lift
+   _lot(ctx,q,a+PI,"tall" if band<3 and ctx.rng.randf()<0.3 else "house")
+   ctx.lift = 0.0
  _infill(ctx,top.lerp(ctx.center,0.5),reach,4.0,_role_mix(ctx,0.08))
+
+# A stone terrace (retaining walls and fill) of the given height and width under a lot.
+static func _terrace(ctx: Dictionary,p: Vector2,height: float,width: float):
+ _put(ctx,"plinth",p,ctx.rng.randf()*0.2,1.0,{"scale":Vector3(width,height+0.6,width),"lift":-0.5})
 
 # Medieval (and the ratmen's stacks): lanes from the gates to a market square below the castle.
 static func _organic(ctx: Dictionary,stacks: bool):
  var cfg = ctx.cfg
  var c: Vector2 = ctx.center
  var high: Vector2 = ctx.site.high
- var R = maxf(float(cfg.get("wall",0)),float(cfg.suburb)*0.6)
+ var R = maxf(float(cfg.get("wall",0)),float(cfg.suburb)*0.85)
  var reach = _blob(ctx,R)
  # The castle (or the ratmen's bell tower) on the high ground; the square between it and the centre.
  var keep_at = high if high.distance_to(c)>4.0 else c+Vector2.from_angle(ctx.roads[0]+PI*0.8)*R*0.35
@@ -419,7 +442,7 @@ static func _cliff(ctx: Dictionary):
  var up: Vector2 = ctx.site.mountain if ctx.site.mountain != Vector2.ZERO else (ctx.site.high-c).normalized()
  if up == Vector2.ZERO: up = Vector2.from_angle(ctx.roads[0]+PI)
  var side = up.orthogonal()
- var R = maxf(float(cfg.get("wall",0)),float(cfg.suburb)*0.6)
+ var R = maxf(float(cfg.get("wall",0)),float(cfg.suburb)*0.85)
  # The great gate where the land meets the rock, facing out.
  var foot = c+up*minf(float(ctx.site.mountain_d)*0.85,R*0.8) if ctx.site.mountain != Vector2.ZERO else c+up*R*0.5
  _lot(ctx,foot,(-up).angle(),"keep",true)
@@ -448,7 +471,7 @@ static func _camp(ctx: Dictionary):
   if absf(angle_difference(a,(c-hold).angle()))<0.35: continue # its gate faces the camps
   _lot(ctx,hold+Vector2.from_angle(a)*(pr+ctx.rng.randf_range(-0.6,0.6)),a+PI,"wall",true,false)
  _lot(ctx,hold+(c-hold).normalized()*pr,(c-hold).angle(),"gate",true,false)
- var R = maxf(float(cfg.get("wall",0)),float(cfg.suburb)*0.7)
+ var R = maxf(float(cfg.get("wall",0)),float(cfg.suburb)*0.9)
  for k in 4+ctx.L*2:
   var cc = hold+Vector2.from_angle(ctx.rng.randf()*TAU)*ctx.rng.randf_range(pr+6.0,R)
   var size = ctx.rng.randf_range(5.0,9.0+ctx.L*2.0)
@@ -462,7 +485,7 @@ static func _camp(ctx: Dictionary):
 static func _spires(ctx: Dictionary,crags: bool):
  var cfg = ctx.cfg
  var c: Vector2 = ctx.center
- var R = maxf(float(cfg.get("wall",0)),float(cfg.suburb)*0.65)
+ var R = maxf(float(cfg.get("wall",0)),float(cfg.suburb)*0.85)
  var reach = _blob(ctx,R)
  var top: Vector2 = ctx.site.high
  if crags and ctx.site.water != Vector2.ZERO: top = c.lerp(ctx.site.water_p,0.6)
@@ -495,7 +518,7 @@ static func _wild(ctx: Dictionary):
  _lot(ctx,c,0.0,"keep",true)
  _take(ctx,c,8.0)
  var groves = ctx.site.forest.duplicate()
- var R = maxf(float(cfg.get("wall",0)),float(cfg.suburb)*0.7)
+ var R = maxf(float(cfg.get("wall",0)),float(cfg.suburb)*0.9)
  for k in 4+ctx.L*2:
   var g = groves[ctx.rng.randi_range(0,groves.size()-1)] if not groves.is_empty() and ctx.rng.randf()<0.7 else c+Vector2.from_angle(ctx.rng.randf()*TAU)*ctx.rng.randf_range(12.0,R)
   g = c+(g-c).limit_length(R)
@@ -568,6 +591,22 @@ static func _wall_ring(ctx: Dictionary,poly: Array,every: int):
    if role == "wall" and k%every == every-1: role = "tower"
    k += 1
    _lot(ctx,p,(b-a).angle()+PI*0.5,role,role != "tower",false) # wall length along the edge
+
+# Alive at scale (game-design §12.13 F): specks of people gathered in the open ground of the centre
+# (squares, forums, plazas) and travellers on the roads out of town.
+static func _crowds(ctx: Dictionary):
+ var c: Vector2 = ctx.center
+ var placed = 0
+ for i in 40:
+  if placed>=4+ctx.L*4: break
+  var p = c+Vector2.from_angle(ctx.rng.randf()*TAU)*ctx.rng.randf_range(2.0,10.0+ctx.L*2.0)
+  if _land(ctx,p) and _free(ctx,p,0.6):
+   _put(ctx,"people",p,ctx.rng.randf()*TAU)
+   placed += 1
+ for a in ctx.roads:
+  for k in 1+ctx.L:
+   var p = c+Vector2.from_angle(a)*ctx.rng.randf_range(float(ctx.cfg.suburb),float(ctx.cfg.farm))+Vector2.from_angle(a+PI*0.5)*1.2
+   if _land(ctx,p): _put(ctx,"people",p,a)
 
 # --- Outside the walls -------------------------------------------------------------------------------
 

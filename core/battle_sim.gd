@@ -98,6 +98,8 @@ class Unit:
 
 class Battle:
  var d: Dictionary
+ var loss_mult := [1.0,1.0]    # stances: losses a side takes (its stance's taken x the enemy's dealt)
+ var pursuit_mult := [1.0,1.0] # stances: how hard a side pursues
  var rng := RandomNumberGenerator.new()
  var lanes := 5
  var nbands := 6
@@ -213,6 +215,7 @@ static func simulate(setup: Dictionary) -> Dictionary:
   b.t_hills.append(hi)
   b.t_pass.append(pa)
  assert(b.terrain.size() == b.lanes,"terrain must have one column per lane")
+ _stances(b,setup)
  b.weather = setup.field.get("weather",roll_weather(int(setup.seed)))
  b.walls = setup.field.get("walls",null)
  b.fast = bool(setup.get("fast",false))
@@ -776,10 +779,32 @@ static func _pass_support(b: Battle,i: int) -> float:
   if (w.state == S_READY and w.lane == r.lane) or (w.state == S_RESERVE and open_lanes == 1): men += minf(w.men,_frontage(b,r))
  return men
 
+# Stances (data/battle.json "stances"): a side's losses scale with its own stance's "taken" and the
+# enemy's "dealt"; a Defensive side behind walls (the defender) or on hills takes less again.
+static func _stances(b: Battle,setup: Dictionary):
+ var st = b.d.get("stances",{})
+ if st.is_empty(): return
+ var names = []
+ for s in 2: names.append(str(setup.sides[s].get("stance","balanced")) if s<setup.sides.size() else "balanced")
+ for s in 2:
+  var mine = st.get(names[s],st.balanced)
+  var theirs = st.get(names[1-s],st.balanced)
+  var m = float(mine.taken)*float(theirs.dealt)
+  if names[s] == "defensive":
+   var strong = (s == 1 and setup.field.get("walls") != null)
+   var hills = 0
+   for lane in b.terrain:
+    for ter in lane:
+     if ter == "hills": hills += 1
+   if hills*3>b.lanes*b.nbands: strong = true
+   if strong: m *= float(mine.get("strong_ground_taken",1.0))
+  b.loss_mult[s] = m
+  b.pursuit_mult[s] = float(mine.pursuit)
+
 static func _apply(b: Battle,losses: Dictionary):
  for j in losses:
   var e: Unit = b.u[j]
-  var l = minf(e.men,losses[j])
+  var l = minf(e.men,losses[j]*b.loss_mult[e.side])
   e.men -= l
   e.lost_tick += l
 
@@ -910,7 +935,7 @@ static func _pursuit(b: Battle):
     if e.cat == C_CAVALRY: break
   if hunter>=0:
    var h: Unit = b.u[hunter]
-   var k = r.men*float(p.cavalry if h.cat == C_CAVALRY else p.infantry)
+   var k = r.men*float(p.cavalry if h.cat == C_CAVALRY else p.infantry)*b.pursuit_mult[h.side]
    losses[i] = losses.get(i,0.0)+k
    h.kills += k
    b.cause("pursuit",h.side,k)

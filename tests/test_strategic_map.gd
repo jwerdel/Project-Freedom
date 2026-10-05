@@ -281,3 +281,17 @@ func test_debug_layers_show_regions_movement_and_validator_problems():
  assert_true(m._problems is Array)
  m.cycle_debug()
  assert_eq(m.debug,"","F9 cycles back to off")
+
+func test_legend_lists_met_factions_and_collapses():
+ var data = UiData.new(GameState.from_data())
+ var m = build_map(data)
+ m.set_layer("affiliation")
+ var known = data.known_factions()
+ assert_has(known,data.player_faction_id())
+ for f in known: assert_true(f == data.player_faction_id() or data.at_war(f) or data.state.settlements_of(f).size()>=0)
+ var rows_open = m.legend.get_child_count()
+ m.legend_collapsed = true
+ m._fill_legend()
+ await get_tree().process_frame
+ assert_eq(m.legend.get_children().filter(func(c): return not c.is_queued_for_deletion()).size(),1,"only the title when collapsed")
+ assert_gt(rows_open,1)

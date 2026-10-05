@@ -23,7 +23,7 @@ extends RefCounted
 const S = preload("res://visuals/kits/cultures/kit_shapes.gd")
 
 const PIECES = ["house_1","house_2","house_3","tall","hut","wall","tower","gate","keep","temple",
- "path_military","path_farming","path_mining","path_lumber","path_market","bridge"]
+ "path_military","path_farming","path_mining","path_lumber","path_market","bridge","plinth","people"]
 
 # wall, accent, roof, roof2, trim, glow (none = no glow), roof style.
 const STYLE = {
@@ -67,6 +67,15 @@ static func build(culture: String,piece: String) -> Node3D:
   "path_mining": _mining(root,st,culture)
   "path_lumber": _lumber(root,st,culture)
   "path_market": _market(root,st,culture)
+  "people": # specks of townsfolk (alive at scale, game-design §12.13 F): a small group in the culture's colours
+   var cols = [st.timber.lightened(0.2),st.roof,st.trim,st.wall.darkened(0.3),st.roof2]
+   for i in 5:
+    var p = Vector3(cos(i*2.4)*0.7,0,sin(i*2.4)*0.7)
+    S.cylinder(root,0.14,0.18,0.62,p,cols[i%cols.size()],5)
+    S.cylinder(root,0.12,0.12,0.2,p+Vector3(0,0.62,0),Color("e0b898"),5)
+  "plinth": # a 1 m block of terrace stone, scaled under a building (Greek acropolis terraces)
+   S.box(root,Vector3(1.0,1.0,1.0),Vector3.ZERO,st.stone.darkened(0.06))
+   S.box(root,Vector3(1.04,0.08,1.04),Vector3(0,0.96,0),st.wall)
   "bridge": # a 1 m beam along x, scaled to span two towers (elf bridges, ratmen walkways)
    S.box(root,Vector3(1.0,0.35,1.0),Vector3(0,-0.17,0),st.trim if culture == "elf" else st.timber)
   _: push_error("Unknown kit piece "+piece)

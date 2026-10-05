@@ -65,6 +65,11 @@
     "_army_break": "When this share of a side's starting men is dead, routed or fled, the rest of its army breaks and the battle ends."
   },
   "pursuit": {"infantry": 0.03, "cavalry": 0.08, "rout_speed": 1.0},
+  "stances": {"_note": "Battle stances (docs/war-and-realm.md §1, confirmed 2026-10-05): one per side, chosen before the battle. dealt/taken multiply the men each side kills and loses; pursuit multiplies how hard it runs down routers (a decisive win); strong_ground_taken further cuts a Defensive side's losses behind walls or on hills. AI: Aggressive when it wins at least aggressive_above of the quick simulations, Defensive below defensive_below. PLACEHOLDER numbers.",
+    "aggressive": {"dealt": 1.2, "taken": 1.15, "pursuit": 1.5},
+    "balanced": {"dealt": 1.0, "taken": 1.0, "pursuit": 1.0},
+    "defensive": {"dealt": 0.85, "taken": 0.8, "pursuit": 0.5, "strong_ground_taken": 0.85},
+    "ai": {"aggressive_above": 0.65, "defensive_below": 0.4}},
   "orders": {
     "_note": "Delays in ticks (section 3). Flank delay = field length in bands / (speed x terrain speed), then the rank reduction.",
     "flank_path_bands": 8.5,
