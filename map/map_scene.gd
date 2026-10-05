@@ -339,8 +339,9 @@ func _open_strategic():
   strategic._layout()
   for i in stress-1:
    var c = strategic._surface.duplicate()
-   strategic.add_child(c)
-   strategic.move_child(c,strategic._surface.get_index())
+   var holder = strategic._surface.get_parent()
+   holder.add_child(c)
+   holder.move_child(c,strategic._surface.get_index())
    c.position = strategic._surface.position
    c.size = strategic._surface.size
  # As in the game (main.gd): nothing 3D renders behind the opaque strategic map.

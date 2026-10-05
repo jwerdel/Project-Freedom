@@ -26,6 +26,7 @@ const Chronicle = preload("res://core/chronicle.gd")
 const Ai = preload("res://core/ai.gd")
 const Realm = preload("res://core/realm.gd")
 const Land = preload("res://core/land.gd")
+const Characters = preload("res://core/characters.gd")
 const MOCK = "res://data/mock_ui.json"
 const CATEGORIES = [{"id":"turn","name":"Turn Summary"},{"id":"buildings","name":"Buildings Constructed"},{"id":"war","name":"Wars and Battles"},{"id":"world","name":"World Events"}]
 
@@ -81,17 +82,19 @@ func income_breakdown(faction_id := "") -> Dictionary:
 func end_turn():
  var t0 = Time.get_ticks_usec()
  var before = _alert_snapshot()
+ _refresh_attack_orders()
  var report = TurnLoop.end_turn(state)
  last_turn_ms = (Time.get_ticks_usec()-t0)/1000.0
  return _after_turn(report,before)
 
 # End Turn spread over frames (the game): the map keeps rendering and the AI turn bar shows
 # turn_progress(factions done, factions in all). Same result as end_turn.
-signal turn_progress(done: int,total: int)
+signal turn_progress(done: int,total: int,faction: String)
 func end_turn_async(tree: SceneTree,budget_ms := 12.0):
  var t0 = Time.get_ticks_usec()
  var before = _alert_snapshot()
- var report = await TurnLoop.end_turn_sliced(state,tree,budget_ms,func(d,n): turn_progress.emit(d,n))
+ _refresh_attack_orders()
+ var report = await TurnLoop.end_turn_sliced(state,tree,budget_ms,func(d,n,f := ""): turn_progress.emit(d,n,f))
  last_turn_ms = (Time.get_ticks_usec()-t0)/1000.0
  return _after_turn(report,before)
 
@@ -193,7 +196,17 @@ func settlement(id: String) -> Dictionary:
  # Under siege: who besieges it and how long it has held ({} if not).
  var sg = live.get("siege",{})
  s.siege = {} if sg.is_empty() or not state.army_state.has(sg.army) else {"faction":faction(state.army_state[sg.army].faction),"turns":int(sg.turns),"endurance":int(sg.endurance)}
+ s.upgrade_available = s.player_owned and upgrade_available(id)
  return s
+
+# Something can be built or upgraded in this settlement now (TW:WH3 green hammer on the map banner
+# and in lists; the building cards show which).
+func upgrade_available(id: String) -> bool:
+ if not Construction.in_progress(state,id).is_empty(): return false
+ for i in state.settlements[id].buildings.size():
+  for o in Construction.options(state,id,i):
+   if o.available: return true
+ return false
 
 # Developer override (prototype keys, capture flags): sets the main building level directly.
 func set_settlement_level(id: String,level: int):
@@ -238,6 +251,10 @@ func building_slots(settlement_id: String) -> Array:
    var c = Buildings.chain(b.chain)
    view = {"slot":i,"chain":b.chain,"name":b.get("name",Buildings.building_name(settlement_id,b.chain,int(b.level))),"visual":c.visual,
     "level":int(b.level),"max_level":Buildings.max_level(b.chain),"main":c.get("main",false),"effects":Buildings.effect_lines(b.chain,int(b.level))}
+   # Upgradeable now (TW:WH3 green arrow on the card).
+   view.upgrade = pending.is_empty() and s.owner == state.player_faction and Construction.can_build(state,settlement_id,i,b.chain).ok
+   # Upgradeable now (TW:WH3 green arrow on the card).
+   view.upgrade = pending.is_empty() and s.owner == state.player_faction and Construction.can_build(state,settlement_id,i,b.chain).ok
   if not pending.is_empty() and pending.slot == i:
    view.construction = pending
    if view.has("empty"):
@@ -306,6 +323,36 @@ func army_ids() -> Array:
  out.sort()
  return out
 
+# --- Lords & Heroes character window (docs/tw-ui-parity.md §15; core/characters.gd) ------------
+
+# The window's view of an army's general: name, epithet, level and experience, stats, traits,
+# the skill rows with each skill's state (taken, available, locked + reason), points and the
+# auto-allocate switch, plus the army he leads.
+func character(army_id: String) -> Dictionary:
+ var a = state.army_state[army_id]
+ var c = a.commander
+ var rows = []
+ for r in Characters.rows():
+  var skills = []
+  for s in r.skills:
+   var can = Characters.can_take(c,s.id)
+   skills.append({"id":s.id,"name":s.name,"level":int(s.level),"text":s.text,"taken":s.id in c.get("skills",[]),"available":can.ok,"reason":can.reason})
+  rows.append({"id":r.id,"name":r.name,"function":r.function,"skills":skills})
+ var m = army_movement(army_id)
+ return {"army_id":army_id,"name":c.name,"epithet":str(c.get("epithet","")),"level":Characters.level(c),"xp":Characters.xp_progress(c),
+  "status":str(c.get("status","ok")),"faction":a.faction,"faction_data":faction(a.faction),"player_owned":a.faction == state.player_faction,
+  "stats":Characters.stats(c),"traits":Characters.traits(state,army_id),"rows":rows,"points":Characters.skill_points(c),
+  "auto":Characters.auto_on(state,army_id),"army":army(army_id),"men":Armies.men(a),"location":m.garrison_name if m.garrison != "" else WorldMap.region(WorldMap.region_at(m.position)).get("name","the wilds") if WorldMap.region_at(m.position) != "" else "the wilds"}
+
+func take_skill(army_id: String,skill_id: String) -> bool:
+ var ok = Characters.take(state,army_id,skill_id)
+ if ok: changed.emit()
+ return ok
+
+func set_auto_skills(army_id: String,on: bool):
+ Characters.set_auto(state,army_id,on)
+ changed.emit()
+
 # --- Recruitment ---------------------------------------------------------------------
 
 # Recruitment panel data: {settlement ("" if the army is not in or next to its own settlement),
@@ -362,11 +409,13 @@ func order_move(army_id: String,target: Vector2) -> Dictionary:
  if Movement.army(state,army_id).faction != state.player_faction: return {"ok":false,"reason":"Not your army"}
  var r = Movement.order(state,army_id,target)
  if r.ok:
+  state.army_state[army_id].erase("attack") # a new order replaces an attack order
   army_moved.emit(army_id,r.moved)
   changed.emit()
  return r
 
 func cancel_army_order(army_id: String):
+ if state.army_state.has(army_id): state.army_state[army_id].erase("attack")
  Movement.cancel_order(state,army_id)
  changed.emit()
 
@@ -424,6 +473,76 @@ func battle_target(army_id: String,point: Vector2) -> Dictionary:
  t.reason = a.get("reason","")
  return t
 
+# Attack orders (TW:WH3 flow, owner 2026-10-05): after any war declaration, the lord marches on the
+# target over as many turns as needed; the pre-battle panel opens only when the lord stands in attack
+# range (ready_attack). The order lives in the army's state ("attack": {kind, id}), so saves keep it.
+# Returns {ok, now (in range this turn: the army moved next to it), turns, reason}.
+func attack_order(army_id: String,point: Vector2) -> Dictionary:
+ var t = Battles.target_at(state,army_id,point)
+ if t.kind == "": return {"ok":false,"reason":"Nothing to attack there"}
+ var a = Battles.approach(state,army_id,t)
+ if a.ok:
+  if a.get("plan",{}).has("points"):
+   var r = Movement.order(state,army_id,a.point)
+   if r.get("moved",[]).size()>1: army_moved.emit(army_id,r.moved)
+  state.army_state[army_id].erase("attack")
+  changed.emit()
+  return {"ok":true,"now":true,"turns":0}
+ if not a.get("plan",{}).get("ok",false): return {"ok":false,"reason":a.get("reason","No way to reach the enemy")}
+ var r2 = Movement.order(state,army_id,a.point)
+ if not r2.ok: return {"ok":false,"reason":r2.get("reason","No way to reach the enemy")}
+ state.army_state[army_id].attack = {"kind":t.kind,"id":t.id}
+ if r2.get("moved",[]).size()>1: army_moved.emit(army_id,r2.moved)
+ changed.emit()
+ return {"ok":true,"now":false,"turns":int(a.plan.total_turns)}
+
+# Where an attack-ordered target is now: {kind, id, faction, position}, or {} when it is gone or no
+# longer an enemy.
+func _attack_target(army_id: String) -> Dictionary:
+ var at = state.army_state[army_id].get("attack",{})
+ if at.is_empty(): return {}
+ var me = state.army_state[army_id].faction
+ if at.kind == "settlement":
+  if not state.settlements.has(at.id) or state.settlements[at.id].owner == me: return {}
+  return {"kind":"settlement","id":at.id,"faction":state.settlements[at.id].owner,"position":WorldMap.settlement_position(at.id)}
+ if not state.army_state.has(at.id) or state.army_state[at.id].faction == me: return {}
+ var o = state.army_state[at.id]
+ if o.garrison != "": return {"kind":"settlement","id":o.garrison,"faction":state.settlements[o.garrison].owner,"position":WorldMap.settlement_position(o.garrison)}
+ return {"kind":"army","id":at.id,"faction":o.faction,"position":Movement.position(state,at.id)}
+
+# Before End Turn's marching: an attack order follows a target that moved.
+func _refresh_attack_orders():
+ for id in state.army_state:
+  var a = state.army_state[id]
+  if a.faction != state.player_faction or not a.has("attack"): continue
+  var t = _attack_target(id)
+  if t.is_empty():
+   a.erase("attack")
+   continue
+  var ap = Battles.approach(state,id,t)
+  if ap.ok and not ap.get("plan",{}).has("points"): continue # already there
+  if ap.get("plan",{}).get("ok",false): Movement.order(state,id,ap.point)
+
+# The first of the player's attack orders whose army now stands within attack range of its target:
+# {army, point, target} for the pre-battle panel (opened at the start of the turn), or {}.
+func ready_attack() -> Dictionary:
+ for id in state.army_state:
+  var a = state.army_state[id]
+  if a.faction != state.player_faction or not a.has("attack"): continue
+  var t = _attack_target(id)
+  if t.is_empty():
+   a.erase("attack")
+   continue
+  if not Battles.at_war(state,a.faction,t.faction): continue
+  var ap = Battles.approach(state,id,t)
+  if ap.ok and not ap.get("plan",{}).has("points"):
+   return {"army":id,"point":t.position,"target":t}
+ return {}
+
+# The pre-battle panel opened for an attack order: the order is done (the player fights or not).
+func clear_attack(army_id: String):
+ if state.army_state.has(army_id): state.army_state[army_id].erase("attack")
+
 # TEMPORARY war rule: the player's confirmation declares war (no peace until diplomacy).
 func declare_war(target_faction: String) -> Dictionary:
  var e = Battles.declare_war(state,state.player_faction,target_faction)
@@ -433,6 +552,29 @@ func declare_war(target_faction: String) -> Dictionary:
 
 func at_war(other_faction: String) -> bool:
  return Battles.at_war(state,state.player_faction,other_faction)
+
+# --- Diplomacy screen (docs/tw-ui-parity.md §15; docs/diplomacy-design.md) ---------------------
+# Real: war and peace status, holdings and strength, faction tendencies, who is at war with whom.
+# PLACEHOLDERS until the diplomacy system: attitude (neutral start, diplomacy-design §3.3),
+# reliability, deal chances and every treaty but war.
+const ATTITUDE_STEPS = ["Hostile","Unfriendly","Indifferent","Friendly","Very friendly"]
+
+func diplomacy_faction(id: String) -> Dictionary:
+ var f = faction(id)
+ var men = 0
+ for a in Armies.armies_of(state,id): men += Armies.men(state.army_state[a])
+ var wars = state.factions().filter(func(o): return o != id and Battles.at_war(state,id,o)).map(func(o): return faction(o).name)
+ return {"id":id,"name":f.name,"faction_data":f,"realm":f.get("realm",""),"seat":f.get("seat",""),"culture":str(f.get("culture","")).capitalize(),
+  "settlements":state.settlements_of(id).size(),"armies":Armies.armies_of(state,id).size(),"men":men,
+  "traits":f.get("traits",[]).map(func(t): return str(t).capitalize()),"wars":wars,"at_war":id != player_faction_id() and at_war(id),
+  "attitude":0,"attitude_label":ATTITUDE_STEPS[2],"reliability":"Reliable"}
+
+# The player's faction and the known factions (met or at war), the player first.
+func diplomacy() -> Dictionary:
+ var others = []
+ for f in known_factions():
+  if f != player_faction_id() and not f in state.destroyed: others.append(diplomacy_faction(f))
+ return {"me":diplomacy_faction(player_faction_id()),"factions":others}
 
 # Pre-battle panel data (see Battles.prebattle) with readable army lists added.
 func prebattle(army_id: String,point: Vector2) -> Dictionary:
@@ -605,7 +747,9 @@ func attack_preview(army_id: String,point: Vector2) -> Dictionary:
 #   army_moves:   an own army (led by a general, with units) that can still move and has no order
 #   funds:        the treasury is in debt or will be after this turn's income and upkeep
 # Returns [{kind, label, items: [{type: settlement|army, id, name}]}], in this order.
-const WARNINGS = [["funds","Low funds"],["construction","Construction available"],["army_moves","Army can still move"]]
+# End Turn warnings (TW:WH3, docs/tw-ui-parity.md §15): each skippable, each item jumps to its subject.
+const WARNINGS = [["funds","Low funds"],["settlement_upgrade","Settlement can be upgraded"],["construction","Idle construction slots"],
+ ["army_moves","Lords with movement left"],["skill_points","Unspent skill points"],["recruit","Army can recruit"]]
 
 func end_turn_warnings(enabled := {}) -> Array:
  var out = []
@@ -630,6 +774,25 @@ func end_turn_warnings(enabled := {}) -> Array:
      var a = state.army_state[id]
      if a.units.is_empty() or not a.order.is_empty() or not Battles.can_move(state,id): continue
      if float(a.points)>=float(a.max_points)*0.25: items.append({"type":"army","id":id,"name":a.display_name})
+   "settlement_upgrade":
+    # The main building (the settlement level) can go up now.
+    for sid in state.settlements_of(f):
+     if not Construction.in_progress(state,sid).is_empty(): continue
+     var s = state.settlements[sid]
+     var main = Buildings.main_chain_id(s.type)
+     for i in s.buildings.size():
+      if s.buildings[i].get("chain","") == main and Construction.can_build(state,sid,i,main).ok:
+       items.append({"type":"settlement","id":sid,"name":settlement(sid).name})
+   "skill_points":
+    # Generals with free points and auto-allocate off (placeholder skills: data/skills.json).
+    for id in Armies.armies_of(state,f):
+     if not Characters.auto_on(state,id) and Characters.skill_points(state.army_state[id].commander)>0: items.append({"type":"character","id":id,"name":state.army_state[id].commander.name})
+   "recruit":
+    # Armies in recruiting range with room and gold for at least one unit.
+    for id in Armies.armies_of(state,f):
+     var a = state.army_state[id]
+     if Armies.card_count(a)>=Armies.max_units() or not a.queue.is_empty(): continue
+     if Armies.options(state,id,"local").any(func(o): return o.available): items.append({"type":"army","id":id,"name":a.display_name})
   if not items.is_empty(): out.append({"kind":w[0],"label":w[1],"items":items})
  return out
 
@@ -686,7 +849,7 @@ func lords_list() -> Array:
   var m = army_movement(id)
   out.append({"id":id,"general":a.commander.name,"army":a.display_name,"units":a.units.size(),"men":Armies.men(state.army_state[id]),
    "where":m.garrison_name if m.garrison != "" else WorldMap.region(WorldMap.region_at(m.position)).get("name","the wilds") if WorldMap.region_at(m.position) != "" else "the wilds",
-   "movement":m.points/maxf(1.0,m.max_points)})
+   "movement":m.points/maxf(1.0,m.max_points),"level":Characters.level(state.army_state[id].commander),"points":Characters.skill_points(state.army_state[id].commander)})
  return out
 
 # Provinces list: the player's provinces with income, growth and public order.

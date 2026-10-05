@@ -177,7 +177,7 @@ class BuildingCard extends Control:
   if slot.get("locked",false): tooltip_text = "Locked slot\nRequires: %s" % slot.get("requires","?")
   elif slot.get("empty",false): tooltip_text = "Empty building slot\nClick to choose a building."
   elif not c.is_empty(): tooltip_text = "Under construction: %s (level %d)\n%d of %d turns left\nClick to cancel (refund %d gold)." % [c.name,c.level,c.turns_left,c.turns_total,c.refund]
-  else: tooltip_text = "%s\nLevel %d of %d\n%s\nClick for upgrades." % [slot.name,int(slot.level),int(slot.get("max_level",slot.level)),"\n".join(slot.get("effects",[]))]
+  else: tooltip_text = "%s\nLevel %d of %d\n%s\n%s" % [slot.name,int(slot.level),int(slot.get("max_level",slot.level)),"\n".join(slot.get("effects",[])),"Upgrade available: click to upgrade." if slot.get("upgrade",false) else "Click for upgrades."]
   if not slot.get("locked",false): mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
   gui_input.connect(func(e):
    if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT and not slot.get("locked",false):
@@ -242,6 +242,7 @@ class BuildingCard extends Control:
    for i in n:
     var col = Color("f2cf6a") if i<int(slot.level) else Color(0,0,0,0.45)
     draw_circle(Vector2(size.x*0.5+(i-(n-1)*0.5)*12,size.y-9),3.6,col)
+   if slot.get("upgrade",false): Icons.upgrade_arrow(self,Vector2(size.x-17,17),12.0)
  func _caption(text: String):
   var f = UiKit.FONT_BOLD
   var w = f.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,13).x

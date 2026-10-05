@@ -128,7 +128,9 @@ func test_end_turn_warnings_follow_state_and_settings():
  assert_false("funds" in kinds)
  data.state.treasury.house_aurek = -10
  assert_true(data.end_turn_warnings().map(func(w): return w.kind).has("funds"))
- assert_eq(data.end_turn_warnings({"funds":false,"construction":false,"army_moves":false}),[],"each kind can be switched off")
+ var off = {}
+ for w in UiData.WARNINGS: off[w[0]] = false
+ assert_eq(data.end_turn_warnings(off),[],"each kind can be switched off")
 
 # --- The map scene: camera and input (Phase C) ---------------------------------------------------
 

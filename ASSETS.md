@@ -19,7 +19,9 @@ License: CC0 1.0, https://polyhaven.com/license . Artist credits are on each ass
 
 ## Original to this project
 
-Architecture, ships, wagons, the commander, the terrain heightfield, layout, UI, and shaders were built procedurally for this prototype (`main.gd`, `visuals/`, `*.gdshader`). No Total War, Warhammer, Lord of the Rings, or Game of Thrones assets are included. Greyhaven, Crownwatch, Willowmere, and the Greywater March are working names, not final worldbuilding.
+Architecture, ships, wagons, the terrain heightfield, layout, UI, and shaders were built procedurally for this prototype (`main.gd`, `visuals/`, `*.gdshader`). No Total War, Warhammer, Lord of the Rings, or Game of Thrones assets are included.
+
+The commander (`assets/models/general_aurek.glb` with its extracted `general_aurek_base_color.png`, `_normal.png`, `_orm.png`) is original to this project: modelled, rigged (humanoid bone names) and textured in Blender for it. The source `.blend` and its renders stay out of git in `art_source/general_aurek/`; the `.glb` is a plain glTF export of it (Blender 5.2, `export_apply`). Used by `visuals/units/commander_visual.gd`. Greyhaven, Crownwatch, Willowmere, and the Greywater March are working names, not final worldbuilding.
 
 ## Quaternius (CC0) — imported
 

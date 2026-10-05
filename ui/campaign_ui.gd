@@ -533,13 +533,36 @@ func _show_lord(army_id: String,a: Dictionary,location: String):
  top.add_theme_constant_override("separation",8)
  var lord_card = Cards.unit_card(data.unit_type("commander"),a.commander,a.faction_data,studio,"%s\n%s · %s\nGeneral of %s" % [a.commander.name,a.faction_data.name,location,a.display_name])
  lord_card.name = "LordCard"
- top.add_child(lord_card)
+ # Under the portrait: TW:WH3's character details button (magnifying glass) and the unspent
+ # skill points alert (game-design §4.4a).
+ var card_col = VBoxContainer.new()
+ card_col.add_theme_constant_override("separation",2)
+ card_col.add_child(lord_card)
+ var under = HBoxContainer.new()
+ under.alignment = BoxContainer.ALIGNMENT_CENTER
+ under.add_theme_constant_override("separation",4)
+ var mag = Widgets.RoundButton.new("magnify","Character details\nStats, traits, skills and equipment",28,colors.trim)
+ mag.name = "LordDetails"
+ mag.pressed.connect(open_character.bind(army_id))
+ under.add_child(mag)
+ var pts = data.character(army_id).points if a.player_owned else 0
+ if pts>0:
+  var sp = Button.new()
+  sp.name = "LordSkillPoints"
+  sp.text = "+%d" % pts
+  sp.focus_mode = Control.FOCUS_NONE
+  sp.add_theme_color_override("font_color",Color("8fd36b"))
+  sp.tooltip_text = "%d unspent skill point%s\nClick to open the skill tree." % [pts,"" if pts == 1 else "s"]
+  sp.pressed.connect(open_character.bind(army_id,"skills"))
+  under.add_child(sp)
+ card_col.add_child(under)
+ top.add_child(card_col)
  var side = VBoxContainer.new()
  side.add_theme_constant_override("separation",4)
  var lord_name = _small(a.commander.name,Color("f1d79a"),15)
  lord_name.custom_minimum_size = Vector2(110,0)
  side.add_child(lord_name)
- side.add_child(_small("Rank %d" % a.commander.rank))
+ side.add_child(_small("Level %d" % a.commander.rank))
  for slot in [["finance","Equipment"],["objectives","Traits"],["armies","Stances"]]:
   var r = HBoxContainer.new()
   r.add_theme_constant_override("separation",4)
@@ -1081,6 +1104,7 @@ var battle_pb := {}
 var report_panel: Control
 var report_box: VBoxContainer
 signal battle_resolved(outcome: Dictionary)
+signal war_declared_for(army_id: String,point: Vector2,target: Dictionary) # the map marches the lord on
 
 func battle_visible() -> bool:
  return battle_panel != null and battle_panel.visible
@@ -1112,7 +1136,7 @@ func open_battle_flow(army_id: String,point: Vector2,target: Dictionary):
  if target.needs_war:
   battle_box.add_child(UiKit.header("This means war with %s" % target.faction_name,22))
   battle_box.add_child(UiKit.divider(colors.trim))
-  var t = UiKit.label("Diplomacy does not exist yet. Under the temporary rule, attacking another faction's army or settlement declares war on it, and there is no peace until diplomacy exists.",15)
+  var t = UiKit.label("Attacking %s declares war on them. Your lord will march on the target, over as many turns as it takes, and the battle begins when the lord arrives. (Diplomacy does not exist yet: under the temporary rule there is no peace until it does.)" % target.faction_name,15)
   t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
   t.custom_minimum_size = Vector2(900,0)
   battle_box.add_child(t)
@@ -1124,7 +1148,8 @@ func open_battle_flow(army_id: String,point: Vector2,target: Dictionary):
   yes.pressed.connect(func():
    data.declare_war(target.faction)
    target.needs_war = false
-   open_battle_flow(army_id,point,target))
+   close_battle()
+   war_declared_for.emit(army_id,point,target))
   row.add_child(yes)
   var no = Button.new()
   no.text = "Cancel"
@@ -1429,7 +1454,8 @@ func _build_end_turn():
  ring.add_child(end_turn_button)
  # Around the ring: [key, icon, tooltip, angle in degrees (0 = right, 90 = down), enabled].
  var items = [["notifications","finance","Notification settings\nWhich End Turn warnings show",135,true],
-  ["objectives","objectives","Objectives",180,false],["diplomacy","diplomacy","Diplomacy",218,false],
+  ["objectives","objectives","Objectives",180,false],["diplomacy","diplomacy","Diplomacy
+Known factions, war and peace, Quick Deal",218,true],
   ["technology","tech","Technology",256,false],["culture","faction","Senate, League or Vassals (by culture)",294,false]]
  for it in items:
   var b = _round(it[1],it[2],38,it[4])
@@ -1438,6 +1464,7 @@ func _build_end_turn():
   round_buttons[it[0]] = b
   ring.add_child(b)
  round_buttons.notifications.pressed.connect(open_notification_settings)
+ round_buttons.diplomacy.pressed.connect(func(): open_diplomacy())
  # Hourglass turn counter under the button.
  var counter = HBoxContainer.new()
  counter.name = "TurnCounter"
@@ -1752,15 +1779,26 @@ func _list_head(cells: Array,widths: Array) -> Control:
 
 func _fill_lords(v: VBoxContainer):
  v.add_child(UiKit.header("Lords and heroes",16))
- var w = [130,120,46,100]
- v.add_child(_list_head(["General","Location","Units","Movement"],w))
+ var w = [120,34,110,36,70]
+ v.add_child(_list_head(["General","Lvl","Location","Units","Movement"],w))
  var rows = data.lords_list()
  for r in rows:
-  var row = _list_row([r.general,r.where,r.units,"%d%%" % int(round(r.movement*100))],w,func():
+  var line = HBoxContainer.new()
+  line.add_theme_constant_override("separation",4)
+  var row = _list_row([r.general,"%d" % r.level,r.where,r.units,"%d%%" % int(round(r.movement*100))],w,func():
    close_dropdown()
-   army_chosen.emit(r.id),"%s\n%s · %s men" % [r.army,r.general,UiKit.format_int(r.men)])
+   army_chosen.emit(r.id),"%s\n%s · level %d · %s men%s" % [r.army,r.general,r.level,UiKit.format_int(r.men),"\n%d unspent skill point%s" % [r.points,"" if r.points == 1 else "s"] if r.points>0 else ""])
   row.name = "Lord_"+r.id
-  v.add_child(row)
+  row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  line.add_child(row)
+  # TW:WH3's character details button (owner: also from this list).
+  var mag = Widgets.RoundButton.new("magnify","Character details (Lords & Heroes)",26,colors.trim)
+  mag.name = "LordInfo_"+r.id
+  mag.pressed.connect(func():
+   close_dropdown()
+   open_character(r.id))
+  line.add_child(mag)
+  v.add_child(line)
  if rows.is_empty(): v.add_child(UiKit.label("No armies.",13,UiKit.TEXT_DIM))
  v.add_child(UiKit.label("Heroes"+COMING.replace("\n"," "),12,Color(UiKit.TEXT_DIM,0.6)))
 
@@ -1784,6 +1822,55 @@ func _fill_factions(v: VBoxContainer):
    "%s\n%s with you · %d settlements, %d armies\nAttitude comes with diplomacy." % [r.name,"At war" if r.at_war else "At peace",r.settlements,r.armies])
   row.name = "Faction_"+r.id
   v.add_child(row)
+
+# --- Diplomacy full screen (ui/diplomacy_screen.gd) ------------------------------------------
+
+const DiplomacyScreen = preload("res://ui/diplomacy_screen.gd")
+var diplomacy_screen: Control
+
+# focus: the faction to select first (double-clicking its army or settlement on the map).
+func open_diplomacy(focus := ""):
+ close_diplomacy()
+ close_dropdown()
+ diplomacy_screen = DiplomacyScreen.new(data,colors,focus)
+ diplomacy_screen.closed.connect(close_diplomacy)
+ add_child(diplomacy_screen)
+
+func close_diplomacy():
+ if diplomacy_screen:
+  remove_child(diplomacy_screen)
+  diplomacy_screen.queue_free()
+ diplomacy_screen = null
+
+func diplomacy_visible() -> bool:
+ return diplomacy_screen != null
+
+# --- Lords & Heroes character window (ui/character_window.gd) --------------------------------
+
+const CharacterWindow = preload("res://ui/character_window.gd")
+var character_panel: Control
+var character_window: Control
+
+func open_character(army_id: String,tab := "details"):
+ close_character()
+ close_dropdown()
+ character_panel = Widgets.Framed.new("main",colors.trim,Color(colors.panel,1.0))
+ character_panel.name = "CharacterPanel"
+ character_window = CharacterWindow.new(data,colors,army_id,tab)
+ character_window.closed.connect(close_character)
+ character_panel.add_child(character_window)
+ _anchor(character_panel,0.5,0.5,0.5,0.5,Rect2(-560,-345,560,330))
+
+func close_character():
+ if character_panel:
+  character_panel.queue_free()
+  remove_child(character_panel)
+ character_panel = null
+ character_window = null
+ if selected_army != "" and data.state.army_state.has(selected_army): show_army(selected_army,army_location)
+
+func character_visible() -> bool:
+ return character_panel != null
 
 # --- Faction summary (TW:WH3 top-right round button): Summary, Records, Statistics ------------
 
@@ -1933,6 +2020,15 @@ func close_top_panel() -> bool:
  if alert_visible():
   _next_alert()
   return true
+ if diplomacy_visible():
+  if diplomacy_screen.confirm and is_instance_valid(diplomacy_screen.confirm):
+   diplomacy_screen.confirm.queue_free()
+   diplomacy_screen.confirm = null
+  else: close_diplomacy()
+  return true
+ if character_visible():
+  close_character()
+  return true
  if dropdown_visible():
   close_dropdown()
   return true
@@ -2058,13 +2154,84 @@ func camera_settings_changed():
 # progress, top centre. done < 0 hides it.
 var turn_progress_bar: Control
 var turn_progress_label: Label
-func show_turn_progress(done: int,total: int):
+var turn_progress_faction: Label
+var turn_progress_emblem: HBoxContainer
+# TW:WH3 AI turn bar: which faction is taking its turn (emblem and name) and how far the world is.
+func show_turn_progress(done: int,total: int,faction := ""):
  if turn_progress_bar == null:
   turn_progress_bar = Widgets.Framed.new("main",colors.trim,Color(colors.panel,0.95))
   turn_progress_bar.name = "TurnProgress"
+  var v = VBoxContainer.new()
+  v.alignment = BoxContainer.ALIGNMENT_CENTER
+  turn_progress_bar.add_child(v)
   turn_progress_label = UiKit.header("",15)
   turn_progress_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-  turn_progress_bar.add_child(turn_progress_label)
-  _anchor(turn_progress_bar,0.5,0,0.5,0,Rect2(-180,104,180,146))
+  v.add_child(turn_progress_label)
+  var h = HBoxContainer.new()
+  h.alignment = BoxContainer.ALIGNMENT_CENTER
+  h.add_theme_constant_override("separation",8)
+  turn_progress_emblem = HBoxContainer.new()
+  h.add_child(turn_progress_emblem)
+  turn_progress_faction = UiKit.label("",14,Color("f1d79a"),UiKit.FONT_BOLD)
+  turn_progress_faction.name = "MovingFaction"
+  h.add_child(turn_progress_faction)
+  v.add_child(h)
+  _anchor(turn_progress_bar,0.5,0,0.5,0,Rect2(-210,104,210,176))
  turn_progress_bar.visible = done>=0
- if done>=0: turn_progress_label.text = "The world takes its turn  %d / %d" % [done,total] if total>1 else "The world takes its turn"
+ if done<0: return
+ turn_progress_label.text = "The world takes its turn  %d / %d" % [done,total] if total>1 else "The world takes its turn"
+ for c in turn_progress_emblem.get_children(): c.queue_free()
+ if faction != "":
+  var f = data.faction(faction)
+  turn_progress_emblem.add_child(Widgets.Emblem.new(f,22))
+  turn_progress_faction.text = "%s moves" % f.name
+ else: turn_progress_faction.text = "The yearly accounts"
+
+# Turn banners (TW:WH3 plus the owner's request, 2026-10-05): "Ending turn" while the world takes its
+# turn, and "Your turn" with the year when control returns. hold <= 0: stays until hidden.
+var turn_banner: Control
+var turn_banner_title: Label
+var turn_banner_sub: Label
+var turn_shade: ColorRect
+var _banner_tween: Tween
+func show_turn_banner(title: String,sub: String,hold := 2.2,shade := false):
+ if turn_banner == null:
+  turn_shade = ColorRect.new()
+  turn_shade.name = "TurnShade"
+  turn_shade.color = Color(0,0,0,0.28)
+  turn_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+  turn_shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+  add_child(turn_shade)
+  move_child(turn_shade,0)
+  turn_banner = Widgets.Framed.new("main",colors.trim,Color(colors.panel,0.94))
+  turn_banner.name = "TurnBanner"
+  turn_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+  var v = VBoxContainer.new()
+  v.alignment = BoxContainer.ALIGNMENT_CENTER
+  turn_banner.add_child(v)
+  turn_banner_title = UiKit.header("",34,Color("f1d79a"))
+  turn_banner_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+  v.add_child(turn_banner_title)
+  turn_banner_sub = UiKit.label("",17,UiKit.TEXT)
+  turn_banner_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+  v.add_child(turn_banner_sub)
+  _anchor(turn_banner,0.5,0.32,0.5,0.32,Rect2(-260,-50,260,50))
+ turn_banner_title.text = title.to_upper()
+ turn_banner_sub.text = sub
+ turn_banner.visible = true
+ turn_shade.visible = shade
+ turn_banner.modulate.a = 0.0
+ if _banner_tween: _banner_tween.kill()
+ _banner_tween = create_tween()
+ _banner_tween.tween_property(turn_banner,"modulate:a",1.0,0.35)
+ if hold>0.0:
+  _banner_tween.tween_interval(hold)
+  _banner_tween.tween_property(turn_banner,"modulate:a",0.0,0.6)
+  _banner_tween.tween_callback(hide_turn_banner)
+
+func hide_turn_banner():
+ if turn_banner: turn_banner.visible = false
+ if turn_shade: turn_shade.visible = false
+
+func turn_banner_text() -> String:
+ return turn_banner_title.text if turn_banner != null and turn_banner.visible else ""

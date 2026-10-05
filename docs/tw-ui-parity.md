@@ -140,6 +140,12 @@ Debug keys (ours, behind the Settings switch): F5, F6, F7, L, and F8 (traffic pa
 - Selecting never moves or zooms the camera; cycling and notification jumps pan at the current zoom (S3, S5, C10, C11).
 - Middle-drag orbits; right-drag does nothing (hold right-click is the preview) (C4, C5).
 - Recruitment rule (Phase B): any own region of a province; units from that province's buildings; queued units greyed with a turn counter, click to cancel (A3, A6, A7).
+- Turn start (owner, 2026-10-05): a clear "Your turn / Year X" announcement when control returns, on top of the TW behaviour (§15).
+- Attack flow (owner, 2026-10-05): a war declaration window first, then the lord marches over as many turns as needed; the pre-battle panel opens only on arrival or when the target is in attack range this turn (§15).
+- Lords & Heroes window (owner, 2026-10-05): also opened from a magnifying-glass button on each row of the top-bar Lords list (TW's list only selects and pans). Skills are a placeholder tree (`data/skills.json`, rows Command / Logistics / Conquest, one point per level, no gameplay effect yet); auto-allocate is per general and always on for AI generals (§15).
+- Diplomacy screen layout (owner, 2026-10-05): TW:WH3's three columns (your faction left, known factions with Quick Deal / Negotiate / War Coordination centre, the selected faction mirrored right). This replaces the column layout sketched in docs/diplomacy-design.md §15 for the screen's frame; the proposal builder, reasons and acceptance bar from that section arrive with the diplomacy system. Wired now: declaring war (with a confirmation), war/peace status, strength and tendencies; attitude ("Indifferent"), reliability and deal chances are placeholders; treaties are greyed "Coming later".
+- Strategic map zoom (2026-10-05, ours): the wheel zooms the parchment map (up to 3×, around the cursor; right/middle drag pans); scrolling in at the closest zoom returns to the 3D map there, as before. Zoomed out it names provinces and the larger settlements; zoomed in, every settlement. The painted look follows `docs/reference/world/varos_map.jpg` (palette and style only).
+- Lord figure (2026-10-05): the rigged Blender general (`art_source/general_aurek`, exported to `assets/models/general_aurek.glb`) replaces the procedural figure, at the same campaign size, with the faction colours on its cape, tabard and shield and the faction standard beside it. It has no walk animation yet.
 
 ## 11. Open: needs in-game observation, or an owner decision
 
@@ -183,7 +189,7 @@ Legend:
 | C6 | Edge scroll | Open | |
 | C7 | Home pans to the capital, End resets rotation | Matched | |
 | C8 | Tilt follows zoom | Matched | Our curve: about 35° close in |
-| C9 | Strategic map: Tab or zooming out | Matched | Flat parchment map with territory colours, borders, settlement and army icons; click or scroll in returns there (L11). Its visual style is ours |
+| C9 | Strategic map: Tab or zooming out | Matched | Painted parchment map (relief, mountain and forest glyphs, rivers, inked coasts, watercolour territory, owner borders), settlement and army icons; the wheel zooms it (labels thin out zoomed out), click or scroll in past the closest zoom returns there (L11) |
 | C10 | `,` / `.` cycle armies or settlements at the current zoom | Matched | C removed |
 | C11 | Notification jumps | Matched (owner) | Pan at the current zoom |
 | C12 | Hold Space for overlays | Matched | Settlement banners at any zoom; debug traffic pause moved to F8 |
@@ -284,3 +290,69 @@ Sources:
 Fixed in two places:
 - Cards accept the press before acting.
 - The map counts a release as a click only if it also received the press.
+
+## 15. Playtest fixes research (round 4, 2026-10-05)
+
+Web research (guides, Steam discussions, patch notes and UI mods; the Fandom wiki was unreachable). Items marked **[unverified]** are recollection to confirm against in-game footage before polishing.
+
+**Lords & Heroes character window**
+- **Opening it:** the magnifying glass under the portrait in the bottom-left army panel. The top-right Lords and Heroes list (level, army strength) selects the character and pans to it. **[unverified]** Double-clicking the portrait also opens it.
+- **Tabs:** across the top. Details (default) and Skills; item management on the right (Equipment; Quests for legendary lords).
+- **Details tab:** the full-body character model on a dark backdrop. Name with epithet, level, rank chevron and XP bar. Stats: Leadership, Speed, Melee Attack, Melee Defence, Weapon Strength, Armour, HP. Traits as an icon row with tooltips. Equipped items and followers next to the model.
+- **Skills tab:** horizontal rows read left to right.
+  - Rows 1–2: signature perks and spells. Then battle rows. Then army-influence and campaign rows (lords); heroes get agent-action rows instead.
+  - One point per level, with an unspent-points count.
+  - Auto-allocate is a checkbox at the upper left; it also removes the character from the unspent-points end-turn warning.
+- **Equipment tab:** slots for Weapon, Armour, Talisman, Enchanted Item, Arcane Item, followers and a banner. Rarity colours: grey, green, blue, purple/gold.
+
+**Diplomacy screen**
+- **Opening it:** the Diplomacy button (a hand holding a scroll) on the round End Turn menu, or double-clicking a foreign army or settlement.
+- **Layout:** a full screen in three columns.
+  - Left: your faction (leader portrait, strength, pacts, trade goods; reliability rating under the portrait, in yellow).
+  - Centre: the known factions list with attitude. Quick Deal has a "deal chance" column and deal buttons: non-aggression, trade, military access, defensive alliance, military alliance, peace. Negotiate and War Coordination (axes) buttons sit under the list.
+  - Right: the selected faction mirrored, with its diplomatic traits.
+- **Negotiation:** new agreements, existing agreements and offers/demands along the bottom; an acceptance score in the lower right (accepted above 0).
+- **Attitude:** a number with an itemised breakdown on hover.
+- **Declaring war:** cancels every agreement, after a confirmation that warns about broken treaties.
+
+**Turn transitions**
+- **Ending the turn:** End Turn, or Enter.
+- **AI turns:** a bar at the top centre scrolls the factions taking their turns. ">>" skips AI movement, ">" restores normal display. Pause opens the per-group (friendly / neutral / enemy) movement display settings.
+- **Your turn:** event messages open in sequence, the hourglass turn counter advances and the camera returns. **[unverified]** In single player there is no large "Your Turn" banner, only a chime.
+- **Owner request:** a clear announcement is wanted. We add a "Your turn / Year X" banner, recorded as an owner decision (§10).
+
+**End Turn warnings**
+- End Turn with pending items shows a list by the round menu.
+- Each item jumps the camera to the army, character or settlement. H goes to the next item. Shift+Enter ends the turn anyway.
+- Types: settlement upgrade available, construction slots free, characters with movement left, unspent skill points, army can recruit (plus research and rites).
+- A cog by End Turn toggles each type.
+
+**Upgrade indicators**
+- A green hammer marks "upgrade available" in the Provinces list. **[unverified]** It also appears on the settlement's map label.
+- **[unverified]** In the settlement panel, an upgradeable building's card shows a small green up-arrow; hovering it shows the next tier's cost and turns.
+
+**Attack flow**
+- Select the lord, then right-click an enemy army or settlement.
+- If you are not at war, a confirmation warns about the declaration and broken treaties.
+- The army marches over as many turns as needed: the path preview is green this turn, red next turn, cyan after.
+- The pre-battle panel opens only when the army reaches the target with movement to spare. If the target was hidden in the shroud, the army stops at the zone-of-control edge to confirm.
+
+**Strategic map**
+- Opened by Tab or by zooming out.
+- A stylised parchment and painted map with faction-coloured region fills and a layers panel.
+- Ctrl+T toggles labels. **[unverified]** Province names show when zoomed out, settlement names when zoomed in.
+- Armies appear as banner tokens with the faction emblem.
+
+**Lord figures**
+- One figure per army: the lord, often mounted, oversized against settlements, with a faction standard on a pole.
+- The selected figure gets a ground ring.
+- **[unverified]** Heroes have no standard.
+
+**Sources:**
+- gamepressure.com Total War: Warhammer 3 guide: user interface, skills, equipment, diplomacy, movement, settlement development.
+- Xbox Wire, "Total War: Warhammer III hot keys revealed" (2022-02-16).
+- thegamer.com diplomacy guide.
+- github.com/emmanuel-h/wh3-quick-deal-indicator.
+- Steam community discussions in app 1142710: AI movement display, notifications, skill auto-allocate, upgrade arrows, zone-of-control attacks.
+- gamewatcher.com autoresolve article.
+- moddb "Building progression icons".

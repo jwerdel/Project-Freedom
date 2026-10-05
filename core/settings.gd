@@ -8,7 +8,8 @@ const RESOLUTIONS = [Vector2i(1280,720),Vector2i(1440,900),Vector2i(1600,1000),V
 const UI_SCALES = [0.8,1.0,1.25,1.5]
 const DEFAULTS = {"resolution":[1440,900],"fullscreen":false,"ui_scale":1.0,"debug_keys":true,
  "follow_ai":"off","ai_speed":1,"army_speed":1,
- "warn_funds":true,"warn_construction":true,"warn_army_moves":true}
+ "warn_funds":true,"warn_settlement_upgrade":true,"warn_construction":true,"warn_army_moves":true,
+ "warn_skill_points":true,"warn_recruit":true}
 
 static var _current = null
 
@@ -78,7 +79,9 @@ static func apply(tree: SceneTree):
 
 # Which End Turn warnings show (TW:WH3's notification settings), keyed like UiData.WARNINGS.
 static func end_turn_warnings() -> Dictionary:
- return {"funds":bool(get_value("warn_funds")),"construction":bool(get_value("warn_construction")),"army_moves":bool(get_value("warn_army_moves"))}
+ var out = {}
+ for k in ["funds","settlement_upgrade","construction","army_moves","skill_points","recruit"]: out[k] = bool(get_value("warn_"+k))
+ return out
 
 # Forget the loaded values so the next read comes from the file again (tests, external edits).
 static func reload():

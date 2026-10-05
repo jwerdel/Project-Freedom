@@ -79,6 +79,13 @@ static func draw(c: CanvasItem,kind: String,r: Rect2,color: Color):
    for i in 4:
     var y = 0.22+i*0.15
     for d in [-1,1]: c.draw_colored_polygon(_ellipse(p.call(0.5+d*0.1,y),s*0.07,s*0.12,false),color)
+  "magnify":
+   c.draw_arc(p.call(0.42,0.42),s*0.26,0,TAU,24,color,w*1.2)
+   c.draw_line(p.call(0.61,0.61),p.call(0.88,0.88),color,w*2.0)
+  "skull":
+   c.draw_circle(p.call(0.5,0.42),s*0.32,color)
+   c.draw_rect(Rect2(p.call(0.34,0.6),Vector2(0.32,0.24)*r.size),color)
+   for x in [0.38,0.62]: c.draw_circle(p.call(x,0.42),s*0.08,dark)
   _:
    c.draw_circle(p.call(0.5,0.5),s*0.3,color)
 
@@ -89,3 +96,18 @@ static func _ellipse(center: Vector2,rx: float,ry: float,upper_half: bool) -> Pa
   var a = (PI+i*PI/n) if upper_half else i*TAU/n
   out.append(center+Vector2(cos(a)*rx,sin(a)*ry))
  return out
+
+# Upgrade available (TW:WH3): a green up-arrow in a dark disc, centred at c with radius r.
+static func upgrade_arrow(ci: CanvasItem,c: Vector2,r: float):
+ ci.draw_circle(c,r+1.5,Color(0.05,0.08,0.04,0.9))
+ ci.draw_circle(c,r,Color("3d8f2e"))
+ var pts = PackedVector2Array([c+Vector2(0,-r*0.72),c+Vector2(r*0.62,-r*0.02),c+Vector2(r*0.24,-r*0.02),c+Vector2(r*0.24,r*0.66),c+Vector2(-r*0.24,r*0.66),c+Vector2(-r*0.24,-r*0.02),c+Vector2(-r*0.62,-r*0.02)])
+ ci.draw_colored_polygon(pts,Color("e9ffd8"))
+
+# Settlement can build or upgrade (TW:WH3 green hammer), centred at c.
+static func upgrade_hammer(ci: CanvasItem,c: Vector2,r: float):
+ ci.draw_circle(c,r+1.5,Color(0.05,0.08,0.04,0.9))
+ ci.draw_circle(c,r,Color("3d8f2e"))
+ var head = Rect2(c+Vector2(-r*0.55,-r*0.6),Vector2(r*1.1,r*0.42))
+ ci.draw_rect(head,Color("e9ffd8"))
+ ci.draw_line(c+Vector2(0,-r*0.2),c+Vector2(0,r*0.65),Color("e9ffd8"),maxf(2.0,r*0.24))

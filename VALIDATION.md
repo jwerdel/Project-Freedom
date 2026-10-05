@@ -1119,3 +1119,31 @@ The synthetic maps are performance fixtures, so their findings are recorded, not
 | Normal view | 5.30 | 458 |
 
 All within budget.
+
+## Playtest fixes (2026-10-05, Part 3)
+
+Research and decisions: docs/tw-ui-parity.md §10 and §15.
+
+**Lord model:** the rigged Blender general (`art_source/general_aurek`) imports cleanly: a 6,580-vertex body skinned to a 22-bone humanoid rig (Godot humanoid bone names), separate mace and shield, `faction_primary`/`faction_secondary` materials. Exported to `assets/models/general_aurek.glb`; same campaign size as the old procedural figure; faction colours on cape, tabard and shield; no walk animation yet.
+
+**Lords & Heroes window:** opened from the magnifying glass under the lord portrait, the Lords list, and the unspent-points warning. Details (stats, traits, army), Skills (Command / Logistics / Conquest rows, one point per level, auto-allocate; placeholder: no effects), Equipment (greyed slots). Skills are saved with the general.
+
+**Diplomacy:** full screen from the round menu or by double-clicking a foreign army or settlement. Your faction, known factions with Quick Deal, the selected faction mirrored. Declaring war works (with a confirmation); attitude, reliability and deal chances are placeholders; treaties greyed.
+
+**Turn transitions:** an "Ending turn" banner while the year closes, the AI turn bar naming the moving faction, and "Your turn / Year X" when control returns.
+
+**End Turn warnings:** settlement upgrade, idle construction, lords with movement, unspent skill points, armies that can recruit, low funds; each skippable, each item jumps to its subject (the skill-points warning opens the skill tree).
+
+**Upgrade icons:** a green arrow on upgradeable building cards, a green hammer on the settlement banner.
+
+**Attack flow:** right-clicking an enemy not at war asks for war first; then the lord marches over the turns needed, and the pre-battle panel opens on arrival. Checked by tests/test_attack_flow.gd and a capture series: war window, march, arrival in year 2.
+
+**Strategic map:** painted from map data, in the look of `docs/reference/world/varos_map.jpg`:
+- relief shading, snowy peaks, rivers;
+- an inked coast with ripple contours, a teal sea, paper grain;
+- watercolour territory with smooth owner borders (region polygons rasterised at 8×, cached);
+- mountain, hill and tree glyphs;
+- province names zoomed out, settlement names zoomed in;
+- the wheel zooms up to 3×.
+
+**Tests:** 295 GUT tests pass headless; the self-test passes (now also opens the character window and the diplomacy screen).

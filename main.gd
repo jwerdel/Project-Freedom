@@ -325,11 +325,56 @@ func _ready():
   if arg.begins_with("--select-after="):
    ui.close_report()
    select_settlement(arg.get_slice("=",1))
+ # Captures of the playtest fixes: --character[=details|skills|equipment], --diplomacy[=faction],
+ # --turn-banner=ending|yours|ai (held on screen), --attack-order=<settlement id> (select the host and
+ # right-click it; --attack-yes then confirms the war and the lord marches).
+ for arg in OS.get_cmdline_user_args():
+  if arg.begins_with("--character"):
+   select_army(COMMANDER_ARMY)
+   ui.open_character(COMMANDER_ARMY,arg.get_slice("=",1) if "=" in arg else "details")
+  if arg.begins_with("--diplomacy"): ui.open_diplomacy(arg.get_slice("=",1) if "=" in arg else "")
+  if arg.begins_with("--turn-banner="):
+   var r = ui_data.resources()
+   match arg.get_slice("=",1):
+    "ending": ui.show_turn_banner("Ending turn","The year %d draws to a close" % r.year,0.0,true)
+    "yours": ui.show_turn_banner("Your turn","Year %d  ·  %s" % [r.year,ui_data.player_faction().name],999.0)
+    "ai":
+     ui.show_ai_turn_bar(true)
+     var fs = ui_data.state.factions()
+     ui.show_turn_progress(1,fs.size(),fs[1] if fs.size()>1 else fs[0])
+  if arg.begins_with("--attack-order="):
+   var sid = arg.get_slice("=",1)
+   select_army(COMMANDER_ARMY)
+   ui_data.state.army_state[COMMANDER_ARMY].garrison = ""
+   for a2 in OS.get_cmdline_user_args():
+    if a2.begins_with("--attack-from="):
+     var fp = WorldMap.settlement_position(a2.get_slice("=",1))
+     ui_data.state.army_state[COMMANDER_ARMY].position = [fp.x+6.0,fp.y-6.0]
+     place_commander()
+   order_army(WorldMap.settlement_position(sid))
+   if "--attack-yes" in OS.get_cmdline_user_args() and ui.battle_visible():
+    ui.battle_box.find_child("DeclareWar",true,false).pressed.emit()
+    update_walk(1000.0)
+    select_army(COMMANDER_ARMY)
+    # --march-turns=N: End Turn N times after the order (the march continues; the pre-battle panel
+    # opens on arrival).
+    for a3 in OS.get_cmdline_user_args():
+     if a3.begins_with("--march-turns="):
+      for i in int(a3.get_slice("=",1)):
+       ui_data.end_turn()
+       update_walk(1000.0)
+   var a = army_figures[COMMANDER_ARMY].position
+   var s = WorldMap.settlement_position(sid)
+   target = ground((Vector2(a.x,a.z)+s)*0.5)
  if "--chronicle" in OS.get_cmdline_user_args(): ui.toggle_chronicle()
  # --strategic opens the strategic map at once; --layer=ID picks its layer (captures).
  for arg in OS.get_cmdline_user_args():
   if arg.begins_with("--layer="): strategic.set_layer(arg.get_slice("=",1))
  if "--strategic" in OS.get_cmdline_user_args(): open_strategic_map(true)
+ for arg in OS.get_cmdline_user_args():
+  if arg.begins_with("--strategic-zoom="):
+   strategic._layout()
+   strategic.zoom_at(strategic.to_screen(WorldMap.settlement_position(GOLDSPIRE_ID)),float(arg.get_slice("=",1)))
  if "--pause-menu" in OS.get_cmdline_user_args(): open_pause_menu()
  if "--self-test" in OS.get_cmdline_user_args():
   run_checks()
@@ -689,12 +734,13 @@ func make_ui():
  strategic.location_chosen.connect(close_strategic_map)
  strategic.closed.connect(func(): close_strategic_map())
  ui.end_turn_requested.connect(end_turn_pressed)
+ ui.war_declared_for.connect(func(id,p,_t): attack_with(id,p))
  ui.warning_step.connect(step_warning)
  ui.warning_skip.connect(skip_warning)
  ui.ai_skip.connect(skip_spectating)
  ui.ai_pause_toggled.connect(func(on): ai_paused = on)
  ui_data.changed.connect(refresh_warnings)
- ui_data.turn_progress.connect(func(d,n): ui.show_turn_progress(d,n))
+ ui_data.turn_progress.connect(func(d,n,f): ui.show_turn_progress(d,n,f))
  ui.settlement_selected.connect(focus_settlement)
  ui.overlay_toggled.connect(set_overlay)
  ui.menu_requested.connect(open_pause_menu)
@@ -710,7 +756,9 @@ func make_ui():
  else: settlement_anchors = {CITY_ID:ground(CITY,6),"crownwatch":ground(KEEP,6),"willowmere":ground(VILLAGE,5),GOLDSPIRE_ID:Vector3(GOLDSPIRE.x,27,GOLDSPIRE.y)}
  for id in settlement_anchors:
   var b = SettlementBanner.new(ui_data.settlement(id))
-  b.pressed.connect(select_settlement.bind(id))
+  b.pressed.connect(func():
+   select_settlement(id)
+   _clicked(id))
   pins_root.add_child(b)
   pins.append({"button":b,"world":settlement_anchors[id],"id":id})
  ui_data.changed.connect(func():
@@ -937,7 +985,8 @@ func sync_army_figures():
   var f = commander if id == COMMANDER_ARMY and commander != null else AssetManifest.instantiate("unit.commander")
   if f.get_parent() == null: add_child(f)
   f.set_meta("army_id",id)
-  f.set_banner_color(Color(ui_data.army(id).faction_data.primary))
+  var fd = ui_data.army(id).faction_data
+  f.set_faction_colors(Color(fd.primary),Color(fd.get("secondary",fd.primary)))
   f.visible = overlays.armies
   army_figures[id] = f
   # TW-style floating faction banner (screen space; ui/army_banner.gd).
@@ -945,7 +994,8 @@ func sync_army_figures():
   var b = ArmyBanner.new(id,a.faction_data,"%s
 %s · %s" % [a.commander.name,a.faction_data.name,a.display_name])
   b.pressed.connect(func():
-   select_army(id))
+   select_army(id)
+   _clicked("army:"+id))
   pins_root.add_child(b)
   army_banners[id] = b
  for id in army_figures.keys():
@@ -1093,12 +1143,35 @@ func order_army(p: Vector2):
   if r.reason == Movement.BLOCKED_BATTLE:
    var t = ui_data.battle_target(selected_army_id(),p)
    if t.kind != "":
-    ui.open_battle_flow(selected_army_id(),p,t)
+    # TW:WH3 flow (owner 2026-10-05): not at war, the war declaration first; then the lord marches
+    # and the pre-battle panel opens when it arrives.
+    if t.needs_war: ui.open_battle_flow(selected_army_id(),p,t)
+    else: attack_with(selected_army_id(),p)
     return
   ui.toast(r.reason)
   return
  if r.total_turns>1: ui.toast("Marching: %d turns to the destination. The order continues each End Turn." % r.total_turns)
  elif r.settlement != "": ui.toast("Marching into %s." % ui_data.settlement(r.settlement).name)
+
+# March on an enemy (war already declared). In range this turn: the lord walks next to it and the
+# pre-battle panel opens when the walk ends; farther: an attack order that continues each End Turn.
+var pending_attack := {} # {army, point}: open the pre-battle panel when this army's walk ends
+func attack_with(army_id: String,p: Vector2):
+ var r = ui_data.attack_order(army_id,p)
+ if not r.ok:
+  ui.toast(r.reason)
+  return
+ if r.now:
+  pending_attack = {"army":army_id,"point":p}
+  return
+ var t = ui_data.battle_target(army_id,p)
+ ui.toast("Marching to attack %s: %d turns. The battle begins when your lord arrives." % [t.get("faction_name","the enemy"),r.turns])
+
+func _open_attack(army_id: String,p: Vector2):
+ var t = ui_data.battle_target(army_id,p)
+ if t.kind == "" or t.needs_war: return
+ select_army(army_id)
+ ui.open_battle_flow(army_id,p,t)
 
 func toggle_follow():
  follow_army = not follow_army
@@ -1120,8 +1193,8 @@ func _on_army_moved(id: String,walked: Array):
   movement_overlay.clear("reach")
   movement_overlay.clear("preview")
 
-# Figures slide along their walked paths with a subtle step bob (the commander is a procedural
-# figure without a skeleton; it will be replaced by a rigged model).
+# Figures slide along their walked paths with a subtle step bob (the rigged general has no
+# walk animation yet).
 func update_walk(delta: float):
  for id in walks.keys():
   var w = walks[id]
@@ -1169,6 +1242,8 @@ func end_turn(_skip_warnings := false):
  var a = SaveSystem.autosave(ui_data.state,thumbnail(),camera_view())
  if capture_mode: print("AUTOSAVE_MS %.2f main thread (with thumbnail; written in the background)" % ((Time.get_ticks_usec()-t0)/1000.0))
  if not a.ok: ui.toast("Autosave failed: %s" % a.error)
+ var ending_year = ui_data.resources().year
+ ui.show_turn_banner("Ending turn","The year %d draws to a close" % ending_year,0.0,true)
  collecting_moves = true
  collected_moves = {}
  if async_turns():
@@ -1181,6 +1256,8 @@ func end_turn(_skip_warnings := false):
   turn_running = false
  else: ui_data.end_turn()
  collecting_moves = false
+ ui.hide_turn_banner()
+ awaiting_your_turn = true
  var r = ui_data.resources()
  ui.toast("Year %d begins. Treasury %s gold." % [r.year,UiKit.format_int(r.treasury)])
  if r.destroyed:
@@ -1282,6 +1359,12 @@ func hover_text(hit: String) -> String:
 func _unhandled_input(event):
  if pause_menu != null or game_over != null: return
  if turn_running: return # End Turn in progress (spread over frames)
+ # Full-screen diplomacy takes the keys; Esc closes it.
+ if ui.diplomacy_visible():
+  if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+   ui.close_top_panel()
+   get_viewport().set_input_as_handled()
+  return
  if map_open():
   # The strategic map takes the mouse itself; here only Tab and Esc (back to the 3D map).
   if event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_TAB,KEY_ESCAPE]:
@@ -1314,6 +1397,7 @@ func _unhandled_input(event):
    if hit.begins_with("army:"): select_army(hit.get_slice(":",1))
    elif hit != "": select_settlement(hit)
    else: deselect()
+   _clicked(hit)
   elif event.button_index == MOUSE_BUTTON_LEFT: map_press = false
   elif event.button_index == MOUSE_BUTTON_RIGHT:
    var held = rmb_held
@@ -1402,6 +1486,17 @@ func _process(delta):
  if map_open() and strategic.fade>=1.0 and not get_viewport().disable_3d: get_viewport().disable_3d = true
  # Answer AI attacks once nothing else is on screen (captures only with --defense).
  if not spectating_now() and (not capture_mode or "--defense" in OS.get_cmdline_user_args()) and ui_data.has_pending_battle(): open_pending_battle()
+ # The player's attacks: on arrival (after the walk), or at the start of the turn in which a marching
+ # lord stands in range of its target.
+ if not pending_attack.is_empty() and not walks.has(pending_attack.army) and not ui.battle_visible():
+  var pa = pending_attack
+  pending_attack = {}
+  _open_attack(pa.army,pa.point)
+ elif not spectating_now() and walks.is_empty() and not ui.battle_visible() and not ui.report_visible() and not turn_running:
+  var ready = ui_data.ready_attack()
+  if not ready.is_empty():
+   ui_data.clear_attack(ready.army)
+   _open_attack(ready.army,ready.point)
  if not paused:
   time += delta
   for rotor in flags: rotor.rotation.z += delta*0.3
@@ -1546,6 +1641,7 @@ func run_checks():
  var year = ui_data.resources().year
  end_turn()
  assert(ui_data.resources().year==year+1)
+ assert(ui.turn_banner_text() == "YOUR TURN","the new turn is announced")
  assert(ui_data.events("turn")[0].year==year+1 and ui_data.events("turn")[1].category=="turn")
  print("END_TURN_MS %.3f" % ui_data.last_turn_ms)
  # Saves: End Turn autosaved; a manual save loads back to the identical state.
@@ -1708,9 +1804,23 @@ func run_checks():
   assert(ui_data.events("buildings").size()>0)
   ui_data.set_settlement_level(GOLDSPIRE_ID,level_now)
   assert(goldspire_level==level_now)
+ # Character window (magnifying glass) and diplomacy (round menu, double-click a foreign settlement).
+ select_army(COMMANDER_ARMY)
+ ui.lord_box.find_child("LordDetails",true,false).pressed.emit()
+ assert(ui.character_visible() and ui.character_window.find_child("CharacterModel",true,false) != null)
+ assert(ui.close_top_panel() and not ui.character_visible())
+ ui.round_buttons.diplomacy.pressed.emit()
+ assert(ui.diplomacy_visible())
+ assert(ui.close_top_panel() and not ui.diplomacy_visible())
+ var foreign = ui_data.state.settlements.keys().filter(func(s): return ui_data.state.settlements[s].owner != ui_data.player_faction_id())
+ if not foreign.is_empty():
+  _clicked(foreign[0])
+  _clicked(foreign[0])
+  assert(ui.diplomacy_visible(),"double-clicking a foreign settlement opens diplomacy")
+  ui.close_diplomacy()
  ui.clear_selection()
  reset_camera()
- print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn; construction upgrades goldspire's stage; army movement preview (hold right click, no numbers), selection without camera moves, cycling at the current zoom, End Turn warnings, orders, blocking and garrison; stance choice and balance of power; battle report why and unit tables; autosave and save/load round trip; esc order and pause menu; recruitment queue and refund, panel open across clicks, capacity overflow, global recruitment")
+ print("SELF_TEST_PASS | upgrades cycle; traffic routes valid; manifest visuals present; city dry; sea submerged; goldspire stages cycle; ui selection, army panel and end turn; construction upgrades goldspire's stage; army movement preview (hold right click, no numbers), selection without camera moves, cycling at the current zoom, End Turn warnings, orders, blocking and garrison; stance choice and balance of power; battle report why and unit tables; autosave and save/load round trip; esc order and pause menu; recruitment queue and refund, panel open across clicks, capacity overflow, global recruitment; character window and diplomacy screen")
 
 # --- Movement grid bake ------------------------------------------------------------
 # Writes the test map's movement_grid.json (data/maps/testmap/), the terrain grid army movement reads (core/movement.gd), by
@@ -1861,6 +1971,14 @@ func _near(path: Array,points: Array,radius: float) -> bool:
    if p.distance_to(q)<=radius: return true
  return false
 
+# Control returns to the player after the AI's moves: the "Your turn" announcement with the year.
+var awaiting_your_turn := false
+func _your_turn():
+ if not awaiting_your_turn: return
+ awaiting_your_turn = false
+ var r = ui_data.resources()
+ ui.show_turn_banner("Your turn","Year %d  ·  %s" % [r.year,ui_data.faction(ui_data.player_faction_id()).name],2.2)
+
 func spectating_now() -> bool:
  return not spectating.is_empty() or not spectate_queue.is_empty()
 
@@ -1869,6 +1987,7 @@ func _next_spectate():
  if spectate_queue.is_empty():
   spectating = {}
   ai_paused = false
+  _your_turn()
   open_pending_battle()
   return
  var next = spectate_queue.pop_front()
@@ -1879,6 +1998,7 @@ func _next_spectate():
 # Skip the rest of the AI moves: everything jumps to where it ended.
 func skip_spectating():
  ai_paused = false
+ _your_turn.call_deferred()
  for q in spectate_queue: _on_army_moved(q[0],q[1])
  spectate_queue.clear()
  ui.show_ai_turn_bar(false)
@@ -2032,6 +2152,11 @@ func _jump_to(item: Dictionary):
    select_army(item.id)
    if army_figures.has(item.id): pan_to(army_figures[item.id].position+Vector3(0,2.2,0))
   "faction": ui.toast("Low funds: hover the treasury for the ledger.")
+  "character":
+   # Unspent skill points: the general's skill tree (game-design §4.4a).
+   select_army(item.id)
+   if army_figures.has(item.id): pan_to(army_figures[item.id].position+Vector3(0,2.2,0))
+   ui.open_character(item.id,"skills")
 
 # Pipeline maps: the map view's atmosphere (data/campaign_view.json "atmosphere": haze, aerial
 # perspective, grade) and two shadow cascades (enough at campaign distances).
@@ -2055,3 +2180,20 @@ func _pipeline_atmosphere():
  sky.sky_material = sm
  environment.sky = sky
  environment.background_mode = Environment.BG_SKY
+
+# Double-clicking a foreign army or settlement opens diplomacy with its faction (TW:WH3,
+# docs/tw-ui-parity.md §15). Clicks on map figures and on their banners both count.
+const DOUBLE_CLICK_MS = 400
+var last_click := {"hit":"","at":-10000}
+
+func _clicked(hit: String):
+ var now = Time.get_ticks_msec()
+ var twice = hit != "" and hit == last_click.hit and now-int(last_click.at)<=DOUBLE_CLICK_MS
+ last_click = {"hit":hit,"at":-10000 if twice else now}
+ if not twice: return
+ var f = ""
+ if hit.begins_with("army:"):
+  var id = hit.get_slice(":",1)
+  if ui_data.state.army_state.has(id): f = ui_data.state.army_state[id].faction
+ elif ui_data.state.settlements.has(hit): f = ui_data.state.settlements[hit].owner
+ if f != "" and f != ui_data.player_faction_id(): ui.open_diplomacy(f)

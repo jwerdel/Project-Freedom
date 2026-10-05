@@ -993,7 +993,7 @@ Each item is one or more CC blocks; design-heavy items start with a design note 
 2. **Debt and loss condition** (written; pending; diplomacy design part replaced by item 8 below).
 3. **Constitution and docs update** from this document and world bible v2.
 4. **Map-authoring pipeline:** generate terrain, provinces, regions, roads, coasts, settlements, resources, climate from data files, so the world is designed in data rather than by hand. Includes performance budget checks for large maps.
-5. **Map Stage A:** the medium slice (three playable cultures, Caeloth, neighbors), with placeholder art.
+5. **Map Stage A:** the medium slice (three playable cultures, Caeloth, neighbors), with placeholder art. Faction selection arrives with it (owner, 2026-10-05): the three playable houses, an illustrated intro and a court introduction; it is not built on the test map.
 6. **Characters core:** court, family tree, ages and maturity, careers, skill trees, traits/epithets, loyalty, marriage, heirs, renaming. Court screen.
 7. **Agents and spymaster:** agents on the map, direct control, automated travel, level gates, basic missions, capture outcomes.
 8. **Reputation, suspicion, decrees** and **diplomacy** (design note first): embassies, dossiers, war justifications, commandable allies, vassals, treaties, betrayal.

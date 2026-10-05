@@ -20,6 +20,7 @@ const WorldMap = preload("res://core/world_map.gd")
 const Movement = preload("res://core/movement.gd")
 const Settings = preload("res://core/settings.gd")
 const MapShader = preload("res://ui/strategic_map.gdshader")
+const Paint = preload("res://ui/strategic_paint.gd")
 const FADE = 0.35
 # Map layers (TW:WH3 overlays). available: false = greyed until its system exists.
 const LAYERS = [
@@ -51,7 +52,7 @@ var _seals := []    # [world position, colour, level, name, region id]
 var _armies := []   # [id, world position, colour]
 var _owners := {}   # region id -> owner faction id
 var _polys := {}    # region id -> screen polygon (closed), for _poly_size
-var _poly_size := Vector2.ZERO
+var _poly_size = null # the size, zoom and centre the polygons were placed for
 var _surface: TextureRect # the territory (shader)
 var _icons: Node2D        # seal, pip and army MultiMeshes
 var _overlay: Control     # names and the selected army's ring
@@ -60,6 +61,16 @@ var _palette: Image
 var _palette_tex: ImageTexture
 var _labels := []         # placed names: [screen position, text, font size]
 var _layout_key = null
+var _clip: Control         # the map's frame: clips a zoomed map
+var _glyph_layer: Node2D  # mountains, hills and trees (MultiMeshes)
+var _glyph_key = null
+var _paint := {}          # ui/strategic_paint.gd textures and glyphs
+var _region_labels := []  # province names: [screen position, text, font size, alpha]
+# Zoom (1 = the whole world in the frame, up to MAX_ZOOM) and the world point at the frame centre.
+const MAX_ZOOM = 3.0
+var zoom := 1.0
+var center := Vector2.INF
+var _drag := false
 
 func setup(ui_data,rect: Rect2):
  data = ui_data
@@ -110,6 +121,8 @@ func _build_bar():
  var close = Button.new()
  close.name = "CloseMap"
  close.text = "Close (Tab)"
+ close.tooltip_text = "Back to the campaign map (Tab or Esc).
+On the map: the wheel zooms, right drag pans, click or scroll in past the closest zoom to go there."
  close.focus_mode = Control.FOCUS_NONE
  close.pressed.connect(func(): closed.emit())
  h.add_child(close)
@@ -198,8 +211,8 @@ func _rebuild_fills():
  _update_palette()
 
 func _screen_polys() -> Dictionary:
- if _poly_size != size:
-  _poly_size = size
+ if _poly_size != [size,zoom,center]:
+  _poly_size = [size,zoom,center]
   _polys.clear()
   var regions = WorldMap.regions()
   for id in regions:
@@ -210,12 +223,38 @@ func _screen_polys() -> Dictionary:
 
 # --- Geometry ---------------------------------------------------------------------------------
 
-# The map's square area on screen (letterboxed, leaving room for the bars).
+# The frame on screen (below the layer bar) and the map inside it: the whole world letterboxed at
+# zoom 1; zoomed in, a larger map around `center`, clamped so it always fills the frame.
+func frame_rect() -> Rect2:
+ return Rect2(Vector2(16,128),size-Vector2(32,144))
+
 func map_rect() -> Rect2:
- var area = Rect2(Vector2(16,128),size-Vector2(32,144))
+ var area = frame_rect()
  var s = minf(area.size.x/world_rect.size.x,area.size.y/world_rect.size.y)
- var sz = world_rect.size*s
- return Rect2(area.position+(area.size-sz)*0.5,sz)
+ var sz = world_rect.size*s*zoom
+ if zoom<=1.0 or not center.is_finite(): return Rect2(area.position+(area.size-sz)*0.5,sz)
+ var pos = area.get_center()-(center-world_rect.position)/world_rect.size*sz
+ for k in 2:
+  if sz[k]>area.size[k]: pos[k] = clampf(pos[k],area.end[k]-sz[k],area.position[k])
+  else: pos[k] = area.position[k]+(area.size[k]-sz[k])*0.5
+ return Rect2(pos,sz)
+
+# Zoom by `factor` keeping the world point under `at` (screen) in place.
+func zoom_at(at: Vector2,factor: float):
+ var w = to_world(at)
+ var z = clampf(zoom*factor,1.0,MAX_ZOOM)
+ if z == zoom: return
+ var area = frame_rect()
+ var s = minf(area.size.x/world_rect.size.x,area.size.y/world_rect.size.y)*z
+ zoom = z
+ center = w+(area.get_center()-at)/s
+ _layout()
+
+func pan_by(delta: Vector2):
+ if zoom<=1.0: return
+ center = to_world(frame_rect().get_center()-delta)
+ center = to_world(frame_rect().get_center()) # back inside the clamped map
+ _layout()
 
 func to_screen(w: Vector2) -> Vector2:
  var r = map_rect()
@@ -302,14 +341,24 @@ func _fill_legend():
 
 func _draw():
  draw_rect(Rect2(Vector2.ZERO,size),Color("2a2218"))
- draw_rect(map_rect().grow(1.5),Color("5a4630"),false,3.0)
+ # A parchment map's frame: a dark outer band, a gilt rule and an inked inner line.
+ var f = frame_rect().intersection(map_rect())
+ draw_rect(f.grow(9),Color("1a130d"))
+ draw_rect(f.grow(6),Color("b8955a"),false,1.5)
+ draw_rect(f.grow(3),Color("3a2a1a"),false,2.0)
 
-# The territory surface (one shader pass), the icon layer and the name layer, under the bars.
+# The territory surface (one shader pass), the relief glyphs, the icon layer and the name layer,
+# under the bars, inside a clip so a zoomed map stays in its frame.
 func _build_surface():
  var rr = _region_raster()
  for i in rr.names.size(): _index[rr.names[i]] = i+1
  _palette = Image.create(rr.names.size()+1,2,false,Image.FORMAT_RGBA8)
  _palette_tex = ImageTexture.create_from_image(_palette)
+ _clip = Control.new()
+ _clip.name = "MapClip"
+ _clip.clip_contents = true
+ _clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ add_child(_clip)
  _surface = TextureRect.new()
  _surface.name = "Territory"
  _surface.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -321,17 +370,21 @@ func _build_surface():
  mat.set_shader_parameter("ids",rr.tex)
  mat.set_shader_parameter("palette",_palette_tex)
  mat.set_shader_parameter("id_xform",rr.xform)
+ _paint = Paint.build(world_rect)
+ for k in ["heights","biome","rivers","coast","paint_xform","coast_xform","texel","relief","coast_texel"]: mat.set_shader_parameter(k,_paint[k])
  _surface.material = mat
- add_child(_surface)
+ _clip.add_child(_surface)
+ _glyph_layer = Node2D.new()
+ _glyph_layer.name = "Glyphs"
+ _clip.add_child(_glyph_layer)
  _icons = Node2D.new()
  _icons.name = "Icons"
- add_child(_icons)
+ _clip.add_child(_icons)
  _overlay = Control.new()
  _overlay.name = "Names"
  _overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
- _overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  _overlay.draw.connect(_draw_overlay)
- add_child(_overlay)
+ _clip.add_child(_overlay)
 
 # Region IDs as a texture: the map's baked raster (pipeline maps), or the region polygons scanned
 # into one (the test map). xform maps the surface's uv (world_rect) to the raster's uv.
@@ -346,11 +399,21 @@ func _region_raster() -> Dictionary:
  var span: Vector2
  if rs != null:
   names = rs.names
-  ids = rs.ids
-  cols = rs.cols
-  rows = rs.rows
   origin = rs.origin
-  span = Vector2(cols,rows)*float(rs.cell)
+  span = Vector2(rs.cols,rs.rows)*float(rs.cell)
+  # Smooth borders: the region polygons (vector, from the sketch) rasterised finer than the baked
+  # raster, up to POLY_RASTER_MAX wide; cached per map.
+  var regions = WorldMap.regions()
+  if names.all(func(n): return regions.has(n) and regions[n].points.size()>=3):
+   cols = mini(POLY_RASTER_MAX,rs.cols*8)
+   rows = maxi(1,int(round(cols*float(rs.rows)/rs.cols)))
+   var key = "%s|%d|%d" % [MapRegistry.active,cols,rows]
+   if not _poly_raster.has(key): _poly_raster[key] = rasterize(names,origin,span,cols,rows)
+   ids = _poly_raster[key]
+  else:
+   ids = rs.ids
+   cols = rs.cols
+   rows = rs.rows
  else:
   names = WorldMap.regions().keys()
   cols = 1024
@@ -407,16 +470,30 @@ func _update_palette():
   if o != "" and _index.has(id): _palette.set_pixel(_index[id],1,Color(Color(data.faction(o).primary).darkened(0.2),1.0))
  _palette_tex.update(_palette)
  _surface.texture = base_vivid if layer == "climate" or debug == "movement" else base_parchment
+ # Painted parchment except for the movement classes; the climate layer washes the ground colours
+ # in strongly.
+ _surface.material.set_shader_parameter("painted",debug != "movement")
+ _surface.material.set_shader_parameter("wash",0.85 if layer == "climate" else 0.5)
 
-# Positions follow the screen: the surface, the icons and the names are laid out again when the
-# size or the campaign state changes.
+# Positions follow the screen: the surface, the glyphs, the icons and the names are laid out again
+# when the size, the zoom or the campaign state changes.
 func _layout():
  if _surface == null or data == null: return
  var r = map_rect()
  if r.size.x<=0.0 or r.size.y<=0.0: return
- _surface.position = r.position
+ var area = frame_rect()
+ queue_redraw() # the frame follows the zoom
+ _clip.position = area.position
+ _clip.size = area.size
+ # Children of the clip draw in this control's coordinates.
+ _surface.position = r.position-area.position
  _surface.size = r.size
- var key = [size,_seals.size(),_armies.size()]
+ if _paint.has("coast_cells_per_world"): _surface.material.set_shader_parameter("coast_px",float(_paint.coast_cells_per_world)*world_rect.size.x/r.size.x)
+ for n in [_glyph_layer,_icons]: n.position = -area.position
+ _overlay.position = -area.position
+ _overlay.size = size
+ _layout_glyphs()
+ var key = [size,_seals.size(),_armies.size(),zoom,center]
  if key == _layout_key: return
  _layout_key = key
  for c in _icons.get_children():
@@ -443,6 +520,102 @@ func _layout():
  _place_labels()
  _overlay.queue_redraw()
 
+# Mountains, hills and trees as ink-outlined glyphs (MultiMeshes), sized by the glyph grid's
+# spacing on screen; skipped when the map is too small for them to read.
+func _layout_glyphs():
+ var r = map_rect()
+ var key = [r]
+ if key == _glyph_key: return
+ _glyph_key = key
+ for c in _glyph_layer.get_children():
+  _glyph_layer.remove_child(c)
+  c.free()
+ var spacing = r.size.x/Paint.GLYPHS_ACROSS
+ var base = spacing/zoom # glyphs grow slower than the map: zoomed in, they spread out
+ if spacing<2.5 or _paint.is_empty(): return
+ var px = clampf(base*1.25*sqrt(zoom),5.0,40.0)
+ var meshes = _glyph_meshes()
+ var sets = {"m_back":[],"m":[],"snow":[],"h_back":[],"h":[],"t_back":[],"t":[]}
+ var ink = Color(0.2,0.15,0.11,0.9)
+ var area = frame_rect().grow(px*2)
+ for gl in _paint.glyphs:
+  var p = to_screen(gl[0])
+  if not area.has_point(p): continue
+  var s = px*float(gl[2])
+  match int(gl[1]):
+   0:
+    var xf = Transform2D(0.0,Vector2(s*(1.3+gl[3]*0.3),s*1.35),0.0,p)
+    sets.m_back.append([xf,ink])
+    sets.m.append([xf,Color.WHITE.darkened(gl[3]*0.12)])
+    if gl[2]>1.05: sets.snow.append([xf,Color.WHITE])
+   1:
+    var xf = Transform2D(0.0,Vector2(s,s*0.8),0.0,p)
+    sets.h_back.append([xf,ink])
+    sets.h.append([xf,Color.WHITE.darkened(gl[3]*0.1)])
+   2:
+    var xf = Transform2D(0.0,Vector2(s,s)*0.55,0.0,p)
+    sets.t_back.append([xf,ink])
+    sets.t.append([xf,Color.WHITE.darkened(gl[3]*0.18)])
+ for k in [["h_back","hill_back"],["h","hill"],["t_back","tree_back"],["t","tree"],["m_back","mountain_back"],["m","mountain"],["snow","snow"]]:
+  if not sets[k[0]].is_empty(): _glyph_layer.add_child(_multimesh(meshes[k[1]],sets[k[0]]))
+
+static var _gmeshes := {}
+static func _glyph_meshes() -> Dictionary:
+ if not _gmeshes.is_empty(): return _gmeshes
+ var lit = Color("dccaa2")
+ var shade = Color("8a7458")
+ # Mountain: a peak with a lit west face and a shaded east face, its base on the point.
+ _gmeshes.mountain = _tris([[[Vector2(-0.62,0),Vector2(-0.08,-1),Vector2(0.06,0)],lit],[[Vector2(0.06,0),Vector2(-0.08,-1),Vector2(0.62,0)],shade]])
+ _gmeshes.mountain_back = _tris([[[Vector2(-0.74,0.06),Vector2(-0.08,-1.12),Vector2(0.74,0.06)],Color.WHITE]])
+ _gmeshes.snow = _tris([[[Vector2(-0.3,-0.56),Vector2(-0.08,-1),Vector2(-0.02,-0.6)],Color("f4f1e8")],[[Vector2(-0.02,-0.6),Vector2(-0.08,-1),Vector2(0.16,-0.62)],Color("cfd3d4")]])
+ # Hill: a low dome, lit west and shaded east.
+ var west = []
+ var east = []
+ for i in 8:
+  var a0 = PI+i*PI/16.0
+  var a1 = PI+(i+1)*PI/16.0
+  west.append([[Vector2.ZERO,Vector2(cos(a0)*0.6,sin(a0)*0.42),Vector2(cos(a1)*0.6,sin(a1)*0.42)],Color("d4bf8e")])
+  var b0 = 1.5*PI+i*PI/16.0
+  var b1 = 1.5*PI+(i+1)*PI/16.0
+  east.append([[Vector2.ZERO,Vector2(cos(b0)*0.6,sin(b0)*0.42),Vector2(cos(b1)*0.6,sin(b1)*0.42)],Color("a48c63")])
+ _gmeshes.hill = _tris(west+east)
+ var back = []
+ for i in 16:
+  var a0 = PI+i*PI/16.0
+  var a1 = PI+(i+1)*PI/16.0
+  back.append([[Vector2(0,0.05),Vector2(cos(a0)*0.7,sin(a0)*0.52),Vector2(cos(a1)*0.7,sin(a1)*0.52)],Color.WHITE])
+ _gmeshes.hill_back = _tris(back)
+ # Tree: a three-lobed canopy, dark with a lit crown, on a short trunk.
+ var tree = [[[Vector2(-0.07,0),Vector2(0.07,0),Vector2(0,-0.5)],Color("5a4632")]]
+ var tb = []
+ for lobe in [[Vector2(-0.3,-0.5),0.34,Color("4f6b3b")],[Vector2(0.3,-0.52),0.32,Color("49633a")],[Vector2(0,-0.85),0.36,Color("5d7a44")],[Vector2(-0.1,-0.95),0.16,Color("86a35e")]]:
+  tree.append_array(_disc_tris(lobe[0],lobe[1],lobe[2]))
+ for lobe in [[Vector2(-0.3,-0.5),0.42],[Vector2(0.3,-0.52),0.4],[Vector2(0,-0.85),0.44]]:
+  tb.append_array(_disc_tris(lobe[0],lobe[1],Color.WHITE))
+ _gmeshes.tree = _tris(tree)
+ _gmeshes.tree_back = _tris(tb)
+ return _gmeshes
+
+static func _disc_tris(c: Vector2,r: float,col: Color) -> Array:
+ var out = []
+ for i in 10:
+  out.append([[c,c+Vector2.from_angle(i*TAU/10)*r,c+Vector2.from_angle((i+1)*TAU/10)*r],col])
+ return out
+
+static func _tris(tris: Array) -> ArrayMesh:
+ var v = PackedVector2Array()
+ var col = PackedColorArray()
+ for t in tris:
+  for p in t[0]:
+   v.append(p)
+   col.append(t[1])
+ var arr = []
+ arr.resize(Mesh.ARRAY_MAX)
+ arr[Mesh.ARRAY_VERTEX] = v
+ arr[Mesh.ARRAY_COLOR] = col
+ var m = ArrayMesh.new()
+ m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arr)
+ return m
 func _multimesh(mesh: Mesh,items: Array) -> MultiMeshInstance2D:
  var mm = MultiMesh.new()
  mm.transform_format = MultiMesh.TRANSFORM_2D
@@ -480,11 +653,18 @@ static func _fan(pts: PackedVector2Array) -> ArrayMesh:
 
 # Names by importance (level, then yours, then the rest by name), each kept only if it overlaps no
 # name or seal already placed: a crowded map shows its larger settlements, never a pile of text,
-# and the larger the map is on screen, the more names fit.
+# and the larger the map is on screen, the more names fit. Labels thin with the zoom (TW:WH3,
+# docs/tw-ui-parity.md §15): zoomed out, province names in spaced capitals and only the larger
+# settlements (level 2+ and yours); zoomed in, every settlement name and no province names.
 const NAME_PAD = 3.0
 const ID_MAX_WIDTH = 2048
+const POLY_RASTER_MAX = 2048
+static var _poly_raster := {} # map|cols|rows -> ids from the region polygons
+const PROVINCE_NAMES_UNTIL = 2.0 # zoom at which province names have faded out
+const ALL_SETTLEMENTS_FROM = 1.4 # zoom from which small settlements are named too
 func _place_labels():
  _labels.clear()
+ _region_labels.clear()
  var font = UiKit.FONT_BOLD
  var me = data.player_faction_id()
  var order = range(_seals.size())
@@ -500,9 +680,27 @@ func _place_labels():
  for s in _seals:
   var p = to_screen(s[0])
   _take(taken,Rect2(p-Vector2(9,8),Vector2(18,23)))
- var r = map_rect()
+ var r = frame_rect().intersection(map_rect())
+ # Province names first while zoomed out (they matter most at that scale).
+ var pa = clampf((PROVINCE_NAMES_UNTIL-zoom)/(PROVINCE_NAMES_UNTIL-1.0),0.0,1.0)
+ if pa>0.0:
+  var hf = UiKit.head_font()
+  var fs = int(round(16.0+4.0*zoom))
+  for prov in WorldMap.provinces():
+   var regs = WorldMap.settlements_in(prov.id)
+   if regs.is_empty(): continue
+   var c = Vector2.ZERO
+   for sid in regs: c += WorldMap.settlement_position(sid)
+   var text = _spaced(str(prov.name).to_upper())
+   var w = hf.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,fs).x
+   var p = to_screen(c/regs.size())+Vector2(0,26)
+   var box = Rect2(p+Vector2(-w*0.5-NAME_PAD,-fs),Vector2(w+NAME_PAD*2,fs+NAME_PAD))
+   if not r.encloses(box) or _hits(taken,box): continue
+   _take(taken,box)
+   _region_labels.append([p+Vector2(-w*0.5,0),text,fs,pa])
  for k in order:
   var s = _seals[k]
+  if zoom<ALL_SETTLEMENTS_FROM and int(s[2])<2 and _owners.get(s[4],"") != me: continue
   var fs = 15 if s[2]>=3 else 13
   var w = font.get_string_size(s[3],HORIZONTAL_ALIGNMENT_LEFT,-1,fs).x
   var p = to_screen(s[0])
@@ -512,6 +710,13 @@ func _place_labels():
   _take(taken,box)
   _labels.append([p+Vector2(-w*0.5,-12),s[3],fs])
 
+# Spaced capitals for province names ("G R E Y W A T E R").
+static func _spaced(t: String) -> String:
+ var out = ""
+ for i in t.length():
+  out += t[i]
+  if i<t.length()-1: out += " " if t[i] != " " else "  "
+ return out
 func _buckets_of(box: Rect2) -> Array:
  var out = []
  for by in range(int(floor(box.position.y/48.0)),int(floor(box.end.y/48.0))+1):
@@ -529,8 +734,14 @@ func _take(taken: Dictionary,box: Rect2):
 
 func _draw_overlay():
  _draw_debug()
+ # Aged edges: a soft brown vignette inside the frame.
+ var f = frame_rect().intersection(map_rect())
+ for i in 10:
+  _overlay.draw_rect(f.grow(-i*2.5),Color(0.24,0.16,0.08,0.05),false,2.5)
+ var hf = UiKit.head_font()
+ for l in _region_labels: _overlay.draw_string(hf,l[0],l[1],HORIZONTAL_ALIGNMENT_LEFT,-1,l[2],Color(0.22,0.14,0.08,0.62*l[3]))
  var font = UiKit.FONT_BOLD
- for l in _labels: _overlay.draw_string(font,l[0]+Vector2(1,1),l[1],HORIZONTAL_ALIGNMENT_LEFT,-1,l[2],Color(0,0,0,0.7))
+ for l in _labels: _overlay.draw_string_outline(font,l[0],l[1],HORIZONTAL_ALIGNMENT_LEFT,-1,l[2],4,Color(0.93,0.87,0.72,0.85))
  for l in _labels: _overlay.draw_string(font,l[0],l[1],HORIZONTAL_ALIGNMENT_LEFT,-1,l[2],Color("2a1c10"))
  for a in _armies:
   if a[0] != selected_army: continue
@@ -538,14 +749,31 @@ func _draw_overlay():
   var shield = PackedVector2Array([p+Vector2(-6,-8),p+Vector2(6,-8),p+Vector2(6,2),p+Vector2(0,9),p+Vector2(-6,2),p+Vector2(-6,-8)])
   _overlay.draw_polyline(shield,Color("f2cf6a"),2.0)
 
+# Left click returns to the 3D map there. The wheel zooms the parchment in (around the cursor) and
+# out; scrolling in at the closest zoom returns to the 3D map there. Right or middle drag pans.
 func _gui_input(e):
  if not showing: return
- if e is InputEventMouseMotion and debug == "problems": tooltip_text = _debug_tooltip(e.position)
- if e is InputEventMouseButton and e.pressed:
+ if e is InputEventMouseMotion:
+  if debug == "problems": tooltip_text = _debug_tooltip(e.position)
+  if _drag:
+   pan_by(e.relative)
+   accept_event()
+  return
+ if e is InputEventMouseButton:
+  if e.button_index in [MOUSE_BUTTON_RIGHT,MOUSE_BUTTON_MIDDLE]:
+   _drag = e.pressed and zoom>1.0
+   return
+  if not e.pressed: return
   var r = map_rect()
-  if not r.has_point(e.position): return
-  if e.button_index == MOUSE_BUTTON_LEFT or e.button_index == MOUSE_BUTTON_WHEEL_UP:
+  if not r.has_point(e.position) or not frame_rect().has_point(e.position): return
+  if e.button_index == MOUSE_BUTTON_LEFT or (e.button_index == MOUSE_BUTTON_WHEEL_UP and zoom>=MAX_ZOOM):
    location_chosen.emit(to_world(e.position))
+   accept_event()
+  elif e.button_index == MOUSE_BUTTON_WHEEL_UP:
+   zoom_at(e.position,1.25)
+   accept_event()
+  elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+   zoom_at(e.position,1.0/1.25)
    accept_event()
 
 # --- Debug overlay (docs/map-pipeline-design.md §5.2; debug keys on: F9 cycles) ------------------

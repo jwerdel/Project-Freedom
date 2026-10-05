@@ -1,0 +1,32 @@
+{
+  "_note": "PLACEHOLDER general skill tree for the Lords & Heroes window (game-design §4.4: one point per level, career trees with rows by function; example General branches Command / Logistics / Conquest). Names, levels and texts are placeholders; the skills have no gameplay effect until the character system is built (game-design §4.4, build order 6). Each row is read left to right: a skill needs the one before it in its row and the character level shown. auto_order is the row order auto-allocation fills (round robin).",
+  "points_per_level": 1,
+  "auto_order": ["command", "logistics", "conquest"],
+  "careers": {
+    "general": {
+      "rows": [
+        {"id": "command", "name": "Command", "function": "Battle: the army in the field", "skills": [
+          {"id": "rally_the_line", "name": "Rally the Line", "level": 1, "text": "Wavering units near the general recover faster."},
+          {"id": "drilled_ranks", "name": "Drilled Ranks", "level": 2, "text": "Infantry hold formation under charges."},
+          {"id": "stern_presence", "name": "Stern Presence", "level": 4, "text": "The army's morale rises in defensive stance."},
+          {"id": "veteran_captains", "name": "Veteran Captains", "level": 6, "text": "Units gain experience faster."},
+          {"id": "warlord", "name": "Warlord", "level": 9, "text": "Aggressive stance costs fewer casualties."}
+        ]},
+        {"id": "logistics", "name": "Logistics", "function": "Campaign: movement, supply and upkeep", "skills": [
+          {"id": "forced_march", "name": "Forced March", "level": 1, "text": "More movement range on the campaign map."},
+          {"id": "quartermaster", "name": "Quartermaster", "level": 2, "text": "Lower upkeep for the army."},
+          {"id": "foragers", "name": "Foragers", "level": 3, "text": "Faster replenishment in foreign land."},
+          {"id": "field_surgeons", "name": "Field Surgeons", "level": 5, "text": "Some fallen soldiers return after a battle."},
+          {"id": "supply_trains", "name": "Supply Trains", "level": 8, "text": "One more unit recruited per turn."}
+        ]},
+        {"id": "conquest", "name": "Conquest", "function": "Campaign: sieges and occupation", "skills": [
+          {"id": "siege_engineers", "name": "Siege Engineers", "level": 1, "text": "Besieged settlements hold out one turn less."},
+          {"id": "sappers", "name": "Sappers", "level": 3, "text": "Walls weaken faster during a siege."},
+          {"id": "swift_occupation", "name": "Swift Occupation", "level": 4, "text": "Captured settlements settle sooner."},
+          {"id": "iron_rule", "name": "Iron Rule", "level": 6, "text": "Public order in occupied provinces."},
+          {"id": "conqueror", "name": "Conqueror", "level": 10, "text": "More gold from captured settlements."}
+        ]}
+      ]
+    }
+  }
+}

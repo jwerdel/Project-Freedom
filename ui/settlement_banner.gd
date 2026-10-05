@@ -68,6 +68,8 @@ func _draw():
   var p = Vector2(cx+(i-1)*12,plate.end.y+6)
   draw_circle(p,4.2,Color(0,0,0,0.75))
   draw_circle(p,3.0,Color("f2cf6a") if i<int(settlement.level) else Color(0.35,0.3,0.25))
+ # Something can be built or upgraded here (the player's own settlements): the TW:WH3 green hammer.
+ if settlement.get("upgrade_available",false): Icons.upgrade_hammer(self,Vector2(plate.end.x-2,plate.position.y-2),9.0)
  # Under siege: a red tag under the pips with the besieger and the turns held.
  var sg = settlement.get("siege",{})
  if not sg.is_empty():

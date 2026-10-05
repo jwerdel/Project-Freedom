@@ -105,10 +105,11 @@ func test_round_menu_end_turn_counter_and_greyed_buttons():
  var ui = build_ui(data)
  var ring = ui.find_child("RoundMenu",true,false)
  assert_true(ring.is_ancestor_of(ui.end_turn_button))
- for k in ["objectives","diplomacy","technology","culture"]:
+ for k in ["objectives","technology","culture"]:
   assert_true(ui.round_buttons[k].disabled,k+" greyed")
   assert_string_contains(ui.round_buttons[k].tooltip_text,"Coming later")
  assert_false(ui.round_buttons.notifications.disabled)
+ assert_false(ui.round_buttons.diplomacy.disabled,"diplomacy opens the diplomacy screen")
  assert_eq(ui.resource_labels.year.text,"Year %d · Turn %d" % [data.resources().year,data.resources().turn])
  ui.round_buttons.notifications.pressed.emit()
  assert_eq(ui.dropdown_kind,"notifications")
@@ -196,3 +197,45 @@ func test_small_text_keeps_visible_word_spaces():
   var gap = (f.get_string_size("Ser Alaric Aurek",HORIZONTAL_ALIGNMENT_LEFT,-1,size).x-f.get_string_size("SerAlaricAurek",HORIZONTAL_ALIGNMENT_LEFT,-1,size).x)/2.0
   assert_gte(gap,0.25*size,"a space is at least a quarter em at %d px" % size)
   l.free()
+
+# --- Diplomacy screen and character window (docs/tw-ui-parity.md §15) --------------------------
+
+func test_diplomacy_screen_three_columns_and_declare_war():
+ var data = UiData.new(GameState.from_data())
+ var ui = build_ui(data)
+ ui.round_buttons.diplomacy.pressed.emit()
+ assert_true(ui.diplomacy_visible())
+ var d = ui.diplomacy_screen
+ for n in ["DiplomacyMe","DiplomacyCentre","DiplomacyThem","QuickDeal","Acceptance","Reliability","Attitude","WarStatus"]: assert_not_null(d.find_child(n,true,false),n)
+ for n in ["Deal_peace","Deal_trade","Negotiate","WarCoordination"]: assert_true(d.find_child(n,true,false).disabled,n+" greyed")
+ var target = d.selected
+ assert_ne(target,"")
+ assert_false(data.at_war(target))
+ d.find_child("DeclareWarDip",true,false).pressed.emit()
+ assert_not_null(d.find_child("WarConfirm",true,false),"war asks first")
+ d.find_child("WarYes",true,false).pressed.emit()
+ assert_true(data.at_war(target))
+ assert_true(d.find_child("DeclareWarDip",true,false).disabled,"already at war")
+ assert_true(ui.close_top_panel())
+ assert_false(ui.diplomacy_visible())
+
+func test_diplomacy_focus_selects_the_faction():
+ var data = UiData.new(GameState.from_data())
+ var ui = build_ui(data)
+ var ids = data.diplomacy().factions.map(func(f): return f.id)
+ assert_gt(ids.size(),0)
+ ui.open_diplomacy(ids[-1])
+ assert_eq(ui.diplomacy_screen.selected,ids[-1])
+
+func test_character_window_from_the_lord_panel_and_lords_list():
+ var data = UiData.new(GameState.from_data())
+ var ui = build_ui(data)
+ ui.show_army(HOST,"here")
+ ui.lord_box.find_child("LordDetails",true,false).pressed.emit()
+ assert_true(ui.character_visible())
+ assert_true(ui.close_top_panel())
+ assert_false(ui.character_visible())
+ ui.toggle_dropdown("lords")
+ ui.dropdown.find_child("LordInfo_"+HOST,true,false).pressed.emit()
+ assert_true(ui.character_visible())
+ assert_false(ui.dropdown_visible())

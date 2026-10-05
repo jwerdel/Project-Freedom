@@ -221,7 +221,7 @@ static func take_turns_sliced(state,opts: Dictionary,slicer,progress := Callable
      _in_phase = true
      _invalidate()
    report.faction_ms[f] = (Time.get_ticks_usec()-tf)/1000.0
-  if progress.is_valid(): progress.call(k+1,order.size())
+  if progress.is_valid(): progress.call(k+1,order.size(),f) # (done, total, the faction that just moved)
   if slicer.over():
    # Another frame: the snapshot of army positions is rebuilt after it (the map may have
    # changed nothing, but the cached lookups must not outlive the frame for safety).

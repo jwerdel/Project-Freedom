@@ -119,21 +119,44 @@ func test_click_or_scroll_in_chooses_a_location():
  m.open_map(true)
  watch_signals(m)
  var target = Vector2(-30,10)
- for button in [MOUSE_BUTTON_LEFT,MOUSE_BUTTON_WHEEL_UP]:
+ var click = func(button):
   var e = InputEventMouseButton.new()
   e.button_index = button
   e.pressed = true
   e.position = m.to_screen(target)
   m._gui_input(e)
+ click.call(MOUSE_BUTTON_LEFT)
+ assert_signal_emit_count(m,"location_chosen",1)
+ assert_almost_eq(get_signal_parameters(m,"location_chosen")[0],target,Vector2(0.01,0.01))
+ # The wheel zooms the parchment around the cursor first; past the closest zoom it returns there.
+ click.call(MOUSE_BUTTON_WHEEL_UP)
+ assert_gt(m.zoom,1.0)
+ assert_signal_emit_count(m,"location_chosen",1,"zooming in is not choosing")
+ assert_almost_eq(m.to_world(m.to_screen(target)),target,Vector2(0.01,0.01))
+ for i in 10:
+  if m.zoom<StrategicMap.MAX_ZOOM: click.call(MOUSE_BUTTON_WHEEL_UP)
+ click.call(MOUSE_BUTTON_WHEEL_UP)
  assert_signal_emit_count(m,"location_chosen",2)
- var p = get_signal_parameters(m,"location_chosen")[0]
- assert_almost_eq(p,target,Vector2(0.01,0.01))
- var down = InputEventMouseButton.new()
- down.button_index = MOUSE_BUTTON_WHEEL_DOWN
- down.pressed = true
- down.position = m.to_screen(target)
- m._gui_input(down)
- assert_signal_emit_count(m,"location_chosen",2,"scrolling out does nothing")
+ assert_almost_eq(get_signal_parameters(m,"location_chosen",1)[0],target,Vector2(0.5,0.5))
+ for i in 10: click.call(MOUSE_BUTTON_WHEEL_DOWN)
+ assert_eq(m.zoom,1.0,"scrolling out zooms back to the whole world")
+ click.call(MOUSE_BUTTON_WHEEL_DOWN)
+ assert_signal_emit_count(m,"location_chosen",2,"scrolling out does nothing more")
+
+func test_zoom_thins_labels_and_pans_inside_the_map():
+ var m = build_map(UiData.new(GameState.from_data()))
+ m._layout()
+ assert_gt(m._region_labels.size(),0,"province names zoomed out")
+ var far = m._labels.size()
+ m.zoom_at(m.frame_rect().get_center(),StrategicMap.MAX_ZOOM)
+ assert_eq(m._region_labels.size(),0,"no province names zoomed in")
+ assert_gte(m._labels.size(),1)
+ var r = m.map_rect()
+ assert_true(r.encloses(m.frame_rect()),"a zoomed map fills the frame")
+ m.pan_by(Vector2(5000,5000))
+ assert_true(m.map_rect().encloses(m.frame_rect()),"panning stops at the map's edge")
+ assert_gt(m._glyph_layer.get_child_count(),0,"mountain, hill and tree glyphs")
+ gut.p("labels zoomed out %d, in %d" % [far,m._labels.size()])
 
 func test_rebuild_is_cheap():
  # Scaling guard: rebuilding every cached colour and icon must stay far below a frame.

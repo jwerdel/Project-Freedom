@@ -8,6 +8,7 @@ extends RefCounted
 #   10. the AI phase (core/ai.gd): every AI faction acts in the new year with full movement. Its
 #       attacks on a human player wait in state.pending_battles for the player's answer.
 #   11. the loss condition (grace periods, destruction; core/realm.gd).
+#   12. generals with auto-allocation on (all AI generals) spend their skill points (core/characters.gd).
 # Randomness is only drawn from generators seeded by the campaign seed and year (chronicle
 # wording, AI choices).
 
@@ -20,6 +21,7 @@ const Battles = preload("res://core/battles.gd")
 const Ai = preload("res://core/ai.gd")
 const Realm = preload("res://core/realm.gd")
 const Land = preload("res://core/land.gd")
+const Characters = preload("res://core/characters.gd")
 
 # Returns a report: {year (the year that ended), ledgers, growth, completed, moves (army id ->
 # points walked), recruited, replenished, sieges, entries, ai (Ai.take_turns report)}.
@@ -161,6 +163,8 @@ static func _finish(state,ctx: Dictionary,ai: Dictionary) -> Dictionary:
   entries.append_array(ai.entries)
  # 11. The loss condition: grace periods start, count down, end (survived or destroyed).
  var realm = Realm.check_survival(state)
+ # 12. Skill points (placeholder skills, no effects yet).
+ Characters.auto_allocate_all(state)
  var realm_entries = Realm.entries(state,state.year,ctx.debt+realm)
  state.chronicle.append_array(realm_entries)
  entries.append_array(realm_entries)

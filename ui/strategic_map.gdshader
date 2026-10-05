@@ -1,15 +1,38 @@
 shader_type canvas_item;
-// The strategic map's territory in one pass (ui/strategic_map.gd): the terrain base, each region's
-// fill on the current layer and the borders, all looked up from a region-ID texture (one texel per
-// raster cell, the index in RG) and a small palette (one column per region index):
+// The strategic map's territory in one pass (ui/strategic_map.gd): a painted parchment map (look
+// after docs/reference/world/varos_map.jpg) with each region's fill on the current layer and the
+// borders, looked up from a region-ID texture (one texel per raster cell, the index in RG) and a
+// small palette (one column per region index):
 //   row 0: fill colour (alpha = strength, 0 = none);  row 1: owner colour (alpha 1 = owned).
-// Inside a region (the common case) it costs five ID lookups and one palette lookup.
+// Painting (ui/strategic_paint.gd): relief shading from heights, ground colours washed into the
+// parchment, blue rivers, an inked coastline, a teal sea with ripple contour lines along the coast,
+// paper grain. painted = false shows the plain class texture instead (debug: movement classes).
 
 uniform sampler2D ids : filter_nearest;
 uniform sampler2D palette : filter_nearest;
 uniform vec4 id_xform = vec4(1.0, 1.0, 0.0, 0.0); // map uv -> id uv: uv * xy + zw
-uniform vec4 thin_color : source_color = vec4(0.2, 0.15, 0.1, 0.55);
+uniform vec4 thin_color : source_color = vec4(0.2, 0.15, 0.1, 0.45);
 uniform float owner_width = 2.0; // screen pixels
+
+uniform bool painted = true;
+uniform float wash = 0.5; // how much of the ground colour shows through the parchment
+uniform sampler2D heights : filter_linear;
+uniform sampler2D biome : source_color, filter_linear;
+uniform sampler2D rivers : filter_linear;
+uniform sampler2D coast : filter_linear; // signed distance to the coast in cells, + land
+uniform vec4 paint_xform = vec4(1.0, 1.0, 0.0, 0.0);
+uniform vec4 coast_xform = vec4(1.0, 1.0, 0.0, 0.0);
+uniform vec2 texel = vec2(0.004);
+uniform float relief = 1.0;
+uniform vec2 coast_texel = vec2(0.004);
+uniform float coast_px = 0.3; // coast cells per screen pixel (set with the zoom)
+
+const vec3 PARCHMENT = vec3(0.91, 0.84, 0.67);
+const vec3 INK = vec3(0.20, 0.15, 0.11);
+const vec3 SEA_DEEP = vec3(0.16, 0.30, 0.36);
+const vec3 SEA_SHALLOW = vec3(0.40, 0.56, 0.56);
+const vec3 RIVER = vec3(0.27, 0.46, 0.56);
+const vec3 SNOW = vec3(0.95, 0.94, 0.90);
 
 float id_at(vec2 uv) {
 	vec2 q = uv * id_xform.xy + id_xform.zw;
@@ -22,27 +45,104 @@ vec4 pal(float id, int row) {
 	return texelFetch(palette, ivec2(int(id), row), 0);
 }
 
+float hash(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float vnoise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
+float h_at(vec2 q) {
+	return texture(heights, q).r;
+}
+
+vec3 paint(vec2 uv, out float land) {
+	vec2 q = uv * paint_xform.xy + paint_xform.zw;
+	vec2 cq = uv * coast_xform.xy + coast_xform.zw;
+	// Nine taps soften the chamfer field's cell corners so coasts and contours run smooth.
+	float sd = texture(coast, cq).r * 0.2;
+	for (int k = 0; k < 8; k++) {
+		vec2 o = vec2(cos(float(k) * 0.785), sin(float(k) * 0.785)) * coast_texel * 1.6;
+		sd += texture(coast, cq + o).r * 0.1;
+	}
+	float px = max(coast_px, 1e-4); // cells per screen pixel (uniform: no derivative noise)
+	float sdp = sd / px; // signed distance in screen pixels
+	land = step(0.0, sd);
+	// Paper: fine grain and broad, uneven tea stains.
+	float grain = vnoise(uv * 900.0) * 0.5 + vnoise(uv * 2200.0) * 0.5;
+	float stain = vnoise(uv * 7.0) * 0.6 + vnoise(uv * 19.0) * 0.4;
+	vec3 col;
+	if (sd >= 0.0) {
+		vec3 ground = texture(biome, q).rgb;
+		float g = dot(ground, vec3(0.333));
+		ground = mix(vec3(g), ground, 0.75); // painted, not photographic
+		col = mix(PARCHMENT, ground, wash);
+		// Relief: light from the north-west.
+		float h = h_at(q);
+		float hx = h_at(q + vec2(texel.x, 0.0)) - h_at(q - vec2(texel.x, 0.0));
+		float hz = h_at(q + vec2(0.0, texel.y)) - h_at(q - vec2(0.0, texel.y));
+		float shade = clamp(0.5 - (hx + hz) * 9.0 * relief, 0.0, 1.0);
+		col *= mix(0.72, 1.14, shade);
+		col = mix(col, SNOW, smoothstep(0.84, 0.97, h) * 0.6);
+		// Rivers: blue with a darker bank.
+		float r = texture(rivers, q).r * 0.2;
+		for (int k = 0; k < 8; k++) r += texture(rivers, q + vec2(cos(float(k) * 0.785), sin(float(k) * 0.785)) * texel * 1.3).r * 0.1;
+		col = mix(col, RIVER * 0.7, smoothstep(0.22, 0.34, r) * 0.85);
+		col = mix(col, RIVER, smoothstep(0.36, 0.5, r));
+		// A pale beach band inside the coast.
+		col = mix(col, vec3(0.93, 0.87, 0.70), (1.0 - smoothstep(1.0, 4.0, sdp)) * 0.55);
+	} else {
+		float d = -sdp;
+		col = mix(SEA_DEEP, SEA_SHALLOW, exp(-d / 34.0));
+		// Ripple contours following the coast (classic hand-drawn map).
+		for (int k = 1; k <= 3; k++) {
+			float at = float(k) * 6.5 + float(k * k) * 1.5;
+			float line = 1.0 - smoothstep(0.35, 1.05, abs(d - at));
+			col = mix(col, vec3(0.80, 0.86, 0.82), line * (0.55 - float(k) * 0.12));
+		}
+	}
+	// The inked coastline.
+	col = mix(col, INK, 1.0 - smoothstep(0.6, 1.5, abs(sdp)));
+	col *= 0.95 + grain * 0.07;
+	col *= 0.93 + stain * 0.1;
+	return col;
+}
+
 void fragment() {
 	vec4 col = texture(TEXTURE, UV);
+	float land = 1.0;
+	if (painted) col.rgb = paint(UV, land);
 	vec2 px = vec2(abs(dFdx(UV.x)), abs(dFdy(UV.y))); // one screen pixel in uv
 	float id = id_at(UV);
 	vec4 f = pal(id, 0);
-	col.rgb = mix(col.rgb, f.rgb, f.a);
+	// Watercolour fills on land only.
+	col.rgb = mix(col.rgb, f.rgb, f.a * mix(1.0, 0.55, float(painted)) * land);
 	// Neighbours owner_width pixels away: any different region means a border is near.
 	vec2 d = px * owner_width;
 	float n0 = id_at(UV + vec2(d.x, 0.0));
 	float n1 = id_at(UV - vec2(d.x, 0.0));
 	float n2 = id_at(UV + vec2(0.0, d.y));
 	float n3 = id_at(UV - vec2(0.0, d.y));
+	vec4 own = pal(id, 1);
+	// Painted maps: a soft band of the owner's colour inside its border (TW-style glow).
+	if (painted && own.a > 0.5) {
+		vec2 g = px * owner_width * 4.0;
+		if (pal(id_at(UV + vec2(g.x, 0.0)), 1) != own || pal(id_at(UV - vec2(g.x, 0.0)), 1) != own || pal(id_at(UV + vec2(0.0, g.y)), 1) != own || pal(id_at(UV - vec2(0.0, g.y)), 1) != own) {
+			col.rgb = mix(col.rgb, own.rgb, 0.28 * land);
+		}
+	}
 	if (n0 != id || n1 != id || n2 != id || n3 != id) {
 		// Thin outline of every region (one pixel, where the right or lower neighbour differs).
 		if (id_at(UV + vec2(px.x, 0.0)) != id || id_at(UV + vec2(0.0, px.y)) != id) {
-			col.rgb = mix(col.rgb, thin_color.rgb, thin_color.a);
+			col.rgb = mix(col.rgb, thin_color.rgb, thin_color.a * land);
 		}
 		// Owned regions: a strong border in the owner's colour along any edge with another owner.
-		vec4 own = pal(id, 1);
 		if (own.a > 0.5 && (pal(n0, 1) != own || pal(n1, 1) != own || pal(n2, 1) != own || pal(n3, 1) != own)) {
-			col.rgb = own.rgb;
+			col.rgb = mix(col.rgb, own.rgb, land);
 		}
 	}
 	COLOR = col;
