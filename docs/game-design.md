@@ -684,6 +684,63 @@ Wild legendary monsters roam certain regions (dragons, giants, frost-beasts). Ma
 ### 12.12 Battles **(Confirmed: complete for V1)**
 No further battle work in V1 except bugs. Magic and new unit types feed the existing simulation as data.
 
+### 12.13 Living settlements and changing land **(Confirmed 2026-10-04, owner)**
+**A. Big cities feel big.**
+- Major settlements are procedural sprawl, not single models:
+  - walls, districts, and suburbs spilling past the gates;
+  - converging roads, and surrounding villages and farmland.
+- Each settlement level visibly grows the footprint, not just the center.
+- Landmarks keep their unique models but gain the same surrounding sprawl.
+- Built from the low-poly kits through the asset manifest (a building kit per culture), so the art pass upgrades them automatically.
+- Scale target: our major cities and fortresses are bigger than TW:WH3's equivalents, relative to the map and to lord figures.
+  - A level-3 city dominates its region visually: walls, districts, suburbs, outlying villages.
+  - A great fortress reads as a massive defensive work, not a single keep.
+- Regions are large enough to hold a sprawling city plus its countryside and industry without crowding neighbors.
+
+**B. The countryside shows what's built.** Each building chain adds visible features around its settlement, growing with level:
+
+| Chain | Visible features |
+|---|---|
+| Farms | Field patchwork spreading outward |
+| Mines | Pits, spoil heaps, carts in nearby hills |
+| Port | Docks, ships, warehouses |
+| Barracks, stables, range | Training yards, tents, paddocks |
+| Temples | Spires and shrines |
+| Markets | Stalls and caravans |
+| Walls and towers | Visible fortifications |
+
+The features are placed procedurally in the region around the settlement, respecting terrain (mines on hills, fields on flat ground, docks on the coast). They update when buildings complete or are demolished.
+
+**C. Land transforms to match its owner.**
+- Every culture has a biome profile: terrain colors and textures, ground cover, tree types, weather and snow, building kit, and props.
+
+| Culture | Biome |
+|---|---|
+| Medieval | Green temperate, oaks |
+| Roman | Warm, vineyards, cypress |
+| Greek | Dry hills, olives, white stone |
+| Orcs | Snow, frozen ground, pines, crude huts |
+| Dwarves | Bare rock, stone works |
+| Elves | Lush, white stone |
+| Dark elves | Dark stone, black sails, grim coasts |
+| Beastmen | Wild overgrowth, bones, herdstones |
+| Ratmen | Polluted swamp, green glow |
+| Lizardmen | Jungle |
+| Tomb-King desert | Sand, red stone |
+
+  Chaos and Hollow Dynasty profiles (twisted, corrupted land) come after V1, but the system supports them.
+- When any faction takes a region from another culture, the region transforms toward the new owner's profile (data values):
+  - noticeable after 3 turns;
+  - very noticeable after 6;
+  - fully converted after 9.
+
+  Owning that culture's buildings there speeds it up (data). It works in every direction, for every culture.
+- The old owner's buildings become ruins that linger and decay over the conversion period. This is flavor; the focus is the new owner's look growing in.
+- Gameplay follows the visuals:
+  - the climate yield penalty for the new owner (§10.9) fades over the same period;
+  - once converted, the region is foreign climate for the original culture if they retake it, which starts converting it back.
+- This is the land, not the people: a region's culture and faith mix (§11.4) still shifts on its own over decades.
+
 ---
 
 ## 13. Research **(Confirmed)**

@@ -144,6 +144,13 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
   - Ambition is softened: bigger realms make courtiers want more, shown as requests and opportunities, never as a realm-splitting crisis.
   - Thresholds and cap values are open.
 - Confirmed (2026-10-02, game-design §12.7): trade routes are drawn on the map (sea and land lines, with little ships and caravans moving along them; visual only, not individually simulated). Each route has an abstract income. Raiding armies or fleets draw income from nearby routes and settlements; raiding harms relations but is not an act of war.
+- Confirmed (2026-10-02, game-design §10.9): climate. Each race has preferred terrains and climates; settlements in unsuitable climates produce fewer resources (not a hard ban). Numbers are placeholders in data.
+- Confirmed (owner, 2026-10-04, game-design §12.13 C): the land transforms to match its owner.
+  - Every culture has a biome profile (terrain colors and textures, ground cover, tree types, weather and snow, building kit, props); Chaos and Hollow Dynasty profiles come after V1, but the system supports them.
+  - A region taken from another culture transforms toward the new owner's profile: noticeable after 3 turns, very noticeable after 6, fully converted after 9 (data values). Owning that culture's buildings there speeds it up (data). It works in every direction, for every culture.
+  - The old owner's buildings become ruins that linger and decay over the conversion period (flavor).
+  - The climate yield penalty for the new owner fades over the same period; once converted, the region is foreign climate for the original culture if they retake it, which starts converting it back.
+  - This is the land, not the people: the culture and faith mix of a region still shifts on its own (game-design §11.4).
 
 ## Characters, dynasties, and governing
 
@@ -245,6 +252,13 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 - A fully 3D campaign map with visible terrain, growing cities, trade routes, ships, and caravans is required; a text adventure, pixel-art map, or blocky Minecraft/Roblox-like treatment would not satisfy the request.
 - Generals and heroes appear as oversized map figures. Zooming in reveals smaller environmental details and moving commerce.
 - Road upgrades must change visible road surfaces (user examples: dirt, gravel, cement); settlement upgrades visibly enlarge or change settlements.
+- Confirmed (owner, 2026-10-04, game-design §12.13 A and B), living settlements:
+  - Major settlements are procedural sprawl, not single models: walls, districts, suburbs spilling past the gates, converging roads, and surrounding villages and farmland. Each level visibly grows the footprint, not just the center.
+  - Landmarks keep their unique models and gain the same sprawl.
+  - They are built from per-culture low-poly building kits through the asset manifest, so the art pass upgrades them automatically.
+  - Our major cities and fortresses are bigger than TW:WH3's equivalents relative to the map and to lord figures: a level-3 city dominates its region visually, and a great fortress reads as a massive defensive work.
+  - Regions are sized to hold a sprawling city plus its countryside without crowding neighbors.
+  - Each building chain adds visible countryside features that grow with level (farms: field patchwork; mines: pits, spoil heaps and carts in the hills; port: docks, ships, warehouses; military buildings: training yards, tents, paddocks; temples: spires and shrines; markets: stalls and caravans; walls and towers: fortifications), placed procedurally to suit the terrain and updated when buildings complete or are demolished.
 - The user authorized building the visual milestone. A small native Godot region now demonstrates terrain, three city stages, three road stages, moving commerce, a prototype armored commander, camera controls, and screenshots. It is an initial visual checkpoint, not evidence that the Total War quality benchmark has been met. Its visuals now sit behind the asset manifest and serve as the campaign-map scale reference.
 - Research reference checked: https://totalwarwarhammer.fandom.com/wiki/Endgame_scenario . The user's intended invasion model is the design requirement; do not silently import all current or future Warhammer mechanics.
 

@@ -635,3 +635,72 @@ Every question raised in this design, with the decision. Q4, Q6, Q7, Q8 and Q9 w
 | Q15 | Stage A boundaries and list | As in section 8; the world-outline block (A1) refines the exact lines for approval |
 | Q16 | The Wardens of the Greywall's AI | An independent major faction in Stage A; Greywall duties come with the Greywall mechanics |
 | Q17 | Unsettled wilderness regions | Allowed (mountain and forest regions without a major, for passes and outposts); every region with a major settlement has an owner at start |
+
+---
+
+## Addendum A. Living settlements and changing land (2026-10-04)
+
+Implements the owner decisions in game-design §12.13 (constitution: Economy and settlements; Required visual experience). They are part of the runtime step (P3), and the GPU budgets are measured with them on (§6.2).
+
+### A.1 Data
+
+| File | Holds |
+|---|---|
+| `data/cultures.json` | One profile per culture: terrain colors per terrain class (open, forest floor, hills, mountain, pass, coast, settlement), ground tint and snow, tree kit, building kit, wall kit, prop kit, ruin tint, and the climate it prefers. It also holds the conversion numbers (turns to noticeable, very noticeable and full; the speed-up per own building) and the climate yield penalty. Chaos and Hollow Dynasty profiles can be added as data |
+| `data/settlement_sprawl.json` | Footprint per settlement type and level (wall radius, district rings and density, suburb radius, outlying villages, farm belt, converging roads, towers and gates), and per building chain the countryside features and how they grow with level (fields, mine pits and spoil, docks and ships, yards and tents, spires, stalls and caravans, fortifications) |
+| `data/asset_manifest.json` | The kit pieces each culture uses (`kit.<culture>.house_a`, `kit.<culture>.tower`...). Placeholder kits come from the CC0 Kenney and Quaternius packs and share pieces with per-culture tints until each culture gets its own kit |
+| Campaign state (`GameState.land`, saved, schema 5) | Per region: the culture its land belongs to now, the culture it is turning into, and the conversion value 0–1 |
+
+### A.2 Big cities (A)
+
+- `map/sprawl.gd` turns a settlement (type, level, culture, buildings, landmark, terrain) into a placement list of kit pieces:
+  - the wall ring with towers and gates;
+  - district rings packed inside the walls;
+  - suburbs past the gates along the converging roads;
+  - outlying villages and the farm belt.
+- Each piece goes into one MultiMesh per kit mesh, so a whole city is a few dozen draw calls, not hundreds of nodes.
+- Each level enlarges every ring, not just the centre.
+- A landmark's own model sits at the centre and the same rings grow around it.
+- Positions are deterministic: hashed from the settlement ID, so the layout is stable across sessions.
+- Scale target, relative to lords (8.8 m), at level 3:
+  - walls about 24 m in radius;
+  - suburbs to about 36 m;
+  - outlying villages and fields to about 50 m.
+  - That is about 100 m across, against about 30 m for Lothern in the TW:WH3 reference at the same lord size.
+- Great fortresses get double walls, bastions and a keep cluster rather than more houses.
+
+### A.3 The countryside shows what's built (B)
+
+- For each building chain the generator places features in the settlement's region, filtered by the terrain grid:
+  - fields only on open flat ground;
+  - mines on hills and mountain edges;
+  - docks on the coast cell nearest the settlement;
+  - yards and tents on open ground near the gates.
+- The amount grows with the building's level.
+- When a building completes or is demolished, only that settlement's sprawl is rebuilt (`UiData.changed`, keyed by its building list).
+
+### A.4 The land transforms (C)
+
+- **Gameplay** (`core/land.gd`):
+  - Each End Turn, every region whose land culture differs from its owner's moves toward the owner's culture by 1/9 per turn plus a bonus per owner-built building (data).
+  - At 1 it is converted.
+  - The climate yield factor of a settlement is a blend between its owner's preference for the old land and for the new, by the conversion value. A region that was never taken has no penalty: its land starts as its owner's culture.
+- **Visuals:**
+  - the terrain shader reads a region-ID texture and a palette texture (per region: from-culture, to-culture, value), and blends the two cultures' class colors with a noise threshold, so the new look spreads in patches rather than as a uniform tint;
+  - trees swap per instance (each tree keeps a random value; below the conversion value it uses the new culture's tree);
+  - settlement kits swap the same way;
+  - the old owner's pieces turn into ruins (darkened, lowered, fewer) and fade out by 1.
+- **Strategic map:** the Culture layer (until now greyed) shows each region's land culture, with the conversion as a blend.
+
+### A.5 Region sizing (a change to §6.1 and Q3)
+
+- A sprawling level-3 city with its countryside needs about 50 m of radius, so lowland region spacing grows from about 90 m to about 120 m.
+- To keep about 320 regions in V1, the V1 Varos world grows from 4,096 × 2,560 m to 5,632 × 3,584 m (multiples of the 256 m chunk).
+- The synthetic scale map grows the same way (600 regions at about 120 m spacing). Its grid becomes 2,816 × 1,792 cells, so the CPU budgets are re-checked on it.
+- The heightfield texture grows to about 20 MB (R32F); the movement grid and region raster grow by the same factor.
+
+### A.6 Budgets
+
+- Sprawl is built only for settlements within about 700 m of the camera (pooled, built on demand); the strategic map takes over beyond the farthest 3D zoom.
+- Target: a level-3 city at most about 40 draw calls (one MultiMesh per kit mesh plus its features).
+- The §6.2 totals still hold (≤ 1,500 draw calls, ≤ 8 ms GPU, ≤ 2 GB VRAM), measured on the synthetic world with sprawling cities and mixed conversion states.
