@@ -1,0 +1,46 @@
+{
+  "_note": "Procedural settlement sprawl (owner decisions 2026-10-04, game-design §12.13 A and B; docs/map-pipeline-design.md Addendum A; map/sprawl.gd). Presentation only: no gameplay value comes from here. Distances in metres at campaign scale (lords about 8.8 m tall). Per type and level (index 0 = level 1): wall: wall ring radius (0 = none); wall_rings: 2 for double walls; towers_every: wall segments between towers; districts: house rings inside the walls; house_gap: spacing along a ring; suburb: suburbs reach this radius along the roads; villages: outlying villages; village_radius: their distance; farm: farm belt reaches this radius; roads: converging roads (and gates). A level-3 city is about 100 m across, about three times Lothern's footprint in the TW:WH3 reference at the same lord size.",
+  "piece_size": {"_note": "Footprint (m) each piece is spaced by, per role.", "house": 3.4, "wall": 3.2, "field": 7.0},
+  "types": {
+    "city": [
+      {"wall": 14, "wall_rings": 1, "towers_every": 4, "house_gap": 4.2, "plaza": 4.5, "suburb": 20, "villages": 1, "village_radius": 30, "farm": 34, "roads": 3},
+      {"wall": 19, "wall_rings": 1, "towers_every": 4, "house_gap": 3.9, "plaza": 5.0, "suburb": 29, "villages": 2, "village_radius": 40, "farm": 44, "roads": 4},
+      {"wall": 24, "wall_rings": 1, "towers_every": 3, "house_gap": 3.7, "plaza": 5.5, "suburb": 37, "villages": 3, "village_radius": 49, "farm": 54, "roads": 5}
+    ],
+    "fortress": [
+      {"wall": 13, "wall_rings": 1, "towers_every": 2, "house_gap": 5.5, "plaza": 6.0, "suburb": 16, "villages": 1, "village_radius": 26, "farm": 28, "roads": 2, "keeps": 1},
+      {"wall": 17, "wall_rings": 2, "towers_every": 2, "house_gap": 5.0, "plaza": 7.0, "suburb": 22, "villages": 1, "village_radius": 32, "farm": 34, "roads": 3, "keeps": 3},
+      {"wall": 22, "wall_rings": 2, "towers_every": 2, "house_gap": 4.6, "plaza": 8.0, "suburb": 28, "villages": 2, "village_radius": 40, "farm": 42, "roads": 4, "keeps": 5}
+    ],
+    "town": [
+      {"wall": 0, "house_gap": 4.2, "plaza": 3.5, "suburb": 11, "villages": 0, "village_radius": 0, "farm": 22, "roads": 2},
+      {"wall": 12, "palisade": true, "towers_every": 5, "house_gap": 4.0, "plaza": 4.0, "suburb": 16, "villages": 1, "village_radius": 26, "farm": 28, "roads": 3},
+      {"wall": 15, "palisade": true, "towers_every": 4, "house_gap": 3.9, "plaza": 4.5, "suburb": 21, "villages": 1, "village_radius": 32, "farm": 34, "roads": 3}
+    ],
+    "village": [
+      {"wall": 0, "house_gap": 4.6, "plaza": 3.0, "suburb": 8, "villages": 0, "village_radius": 0, "farm": 18, "roads": 2},
+      {"wall": 0, "house_gap": 4.4, "plaza": 3.0, "suburb": 11, "villages": 0, "village_radius": 0, "farm": 22, "roads": 2},
+      {"wall": 0, "house_gap": 4.2, "plaza": 3.5, "suburb": 14, "villages": 1, "village_radius": 24, "farm": 26, "roads": 3}
+    ],
+    "castle": [
+      {"wall": 9, "wall_rings": 1, "towers_every": 2, "house_gap": 5.5, "plaza": 4.0, "suburb": 11, "villages": 0, "village_radius": 0, "farm": 18, "roads": 1, "keeps": 1},
+      {"wall": 11, "wall_rings": 1, "towers_every": 2, "house_gap": 5.0, "plaza": 4.5, "suburb": 14, "villages": 0, "village_radius": 0, "farm": 22, "roads": 2, "keeps": 1},
+      {"wall": 13, "wall_rings": 2, "towers_every": 2, "house_gap": 5.0, "plaza": 5.0, "suburb": 17, "villages": 1, "village_radius": 26, "farm": 26, "roads": 2, "keeps": 2}
+    ]
+  },
+  "chains": {
+    "_note": "Countryside features per building chain, multiplied by the building's level. fields: extra farm fields; mine: mine + spoil heaps + pits + carts in hills (searched up to search metres from the settlement); docks: docks and ships on the nearest coast; yards: tents and fences near the gates; shrines: shrine pillars; stalls/carts: market stalls in the plaza and carts on the roads; towers: extra wall towers; watch: watchtowers on the outer ring; houses: denser districts.",
+    "farm": {"fields": 10, "farmsteads": 1},
+    "mine": {"mines": 1, "spoil": 3, "pits": 2, "carts": 1, "search": 70},
+    "port": {"docks": 2, "ships": 1, "warehouses": 1, "search": 60},
+    "barracks": {"tents": 4, "fences": 4},
+    "archery_range": {"tents": 2, "fences": 6},
+    "stables": {"tents": 2, "fences": 10},
+    "temple": {"shrines": 3, "temples": 1},
+    "market": {"stalls": 5, "carts": 2},
+    "walls": {"towers": 2},
+    "watchtower": {"watch": 2},
+    "houses": {"houses": 0.15}
+  },
+  "colors": {"_note": "Farm field patchwork (instance colours of kit.field) and roads.", "fields": ["#c9b25a", "#a6b74e", "#8fa848", "#d6c27a", "#b59a4e", "#9cbc5c"], "road": "#7a6a52"}
+}

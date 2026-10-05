@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/quaternius/ultimate-fantasy-rts/Houses_SecondAge_1_Level1.gltf" id="1"]
+
+[node name="Kit" type="Node3D"]
+
+[node name="Model" parent="." instance=ExtResource("1")]
+transform = Transform3D(3.6, 0, 0, 0, 3.6, 0, 0, 0, 3.6, 0.33970734477043, 0.02206395938993, 0.39962360262871)

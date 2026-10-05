@@ -12,7 +12,7 @@ const SaveCodec = preload("res://core/save_codec.gd")
 const GameState = preload("res://core/game_state.gd")
 const WorldMap = preload("res://core/world_map.gd")
 const MapRegistry = preload("res://core/map_registry.gd")
-const SCHEMA = 4
+const SCHEMA = 5
 const OLDEST = 1 # oldest schema a migration chain still reaches
 const DIR = "user://saves"
 const AUTOSAVES = 3
@@ -22,7 +22,7 @@ const BACKDROP = Vector2i(960,600)
 # Migration hook: migrations()[n] turns a schema-n save dictionary into schema n+1. Add one each
 # time SCHEMA rises (and keep OLDEST at the first version still convertible).
 static func migrations() -> Dictionary:
- return {1:_v1_to_v2,2:_v2_to_v3,3:_v3_to_v4}
+ return {1:_v1_to_v2,2:_v2_to_v3,3:_v3_to_v4,4:_v4_to_v5}
 
 # Schema 2 (campaign AI block): pending AI attacks on the player and the camera view are saved.
 # A schema-1 save has neither: no pending attacks, and the default camera.
@@ -44,6 +44,11 @@ static func _v3_to_v4(d: Dictionary) -> Dictionary:
  if d.get("state") is Dictionary:
   if not d.state.has("map_id"): d.state.map_id = MapRegistry.DEFAULT
   if not d.state.has("map_version"): d.state.map_version = 1
+ return d
+
+# Schema 5 (land conversion): each region's land culture. Older saves start with every region's land
+# as its owner's culture (GameState.from_dict fills it in when absent).
+static func _v4_to_v5(d: Dictionary) -> Dictionary:
  return d
 
 static var dir := DIR # tests and captures point this elsewhere

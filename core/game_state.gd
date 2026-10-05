@@ -29,6 +29,7 @@ var last_ledgers = {} # faction id -> ledger of the last processed turn
 var pending_battles = [] # AI attacks on the human player awaiting the player's answer (pre-battle data)
 var grace = {}      # faction -> End Turns left to retake a settlement (core/realm.gd)
 var destroyed = []  # factions destroyed (loss condition)
+var land = {}       # region -> {from, to, value, built}: its land's culture and conversion (core/land.gd)
 
 # A new campaign with a random campaign seed (stored in the state; every later random draw is
 # seeded from it, so a campaign replays exactly from its seed).
@@ -72,6 +73,7 @@ static func from_data(path := START,campaign_seed := 0) -> RefCounted:
   var at = Movement.settlement_at(pos)
   if at != "" and s.settlements[at].owner == a.faction: a.garrison = at
   s.army_state[id] = a
+ load("res://core/land.gd").init(s)
  s.chronicle = load("res://core/chronicle.gd").opening_entries()
  return s
 
@@ -101,7 +103,7 @@ func armies_of(faction: String) -> Array:
 # Everything that defines the state: determinism checks and save files (core/save_system.gd).
 # Nothing the campaign needs may live outside these fields.
 func to_dict() -> Dictionary:
- return {"map_id":map_id,"map_version":map_version,"seed":seed,"year":year,"turn":turn,"player_faction":player_faction,"treasury":treasury.duplicate(true),"settlements":settlements.duplicate(true),"armies":armies.duplicate(),"army_state":army_state.duplicate(true),"road_level":road_level,"wars":wars.duplicate(),"battles":battles,"chronicle":chronicle.duplicate(true),"last_ledgers":last_ledgers.duplicate(true),"pending_battles":pending_battles.duplicate(true),"grace":grace.duplicate(),"destroyed":destroyed.duplicate()}
+ return {"map_id":map_id,"map_version":map_version,"seed":seed,"year":year,"turn":turn,"player_faction":player_faction,"treasury":treasury.duplicate(true),"settlements":settlements.duplicate(true),"armies":armies.duplicate(),"army_state":army_state.duplicate(true),"road_level":road_level,"wars":wars.duplicate(),"battles":battles,"chronicle":chronicle.duplicate(true),"last_ledgers":last_ledgers.duplicate(true),"pending_battles":pending_battles.duplicate(true),"grace":grace.duplicate(),"destroyed":destroyed.duplicate(),"land":land.duplicate(true)}
 
 # The inverse of to_dict (a loaded save).
 static func from_dict(d: Dictionary) -> RefCounted:
@@ -124,6 +126,8 @@ static func from_dict(d: Dictionary) -> RefCounted:
  s.pending_battles = d.get("pending_battles",[]).duplicate(true)
  s.grace = d.get("grace",{}).duplicate()
  s.destroyed = d.get("destroyed",[]).duplicate()
+ s.land = d.get("land",{}).duplicate(true)
+ if s.land.is_empty(): load("res://core/land.gd").init(s) # saves from before land conversion
  return s
 
 # A hash of the full state in its saved form: values, int/float types and dictionary order.

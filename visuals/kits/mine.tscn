@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/quaternius/ultimate-fantasy-rts/Mine.gltf" id="1"]
+
+[node name="Kit" type="Node3D"]
+
+[node name="Model" parent="." instance=ExtResource("1")]
+transform = Transform3D(4.0, 0, 0, 0, 4.0, 0, 0, 0, 4.0, -0.4518985748291, 0.06174239516258, -0.12258148193359)

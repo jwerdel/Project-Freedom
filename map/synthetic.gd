@@ -19,6 +19,7 @@ const MapRegistry = preload("res://core/map_registry.gd")
 const PathHierarchy = preload("res://core/path_hierarchy.gd")
 const UNITS = ["spearmen","swordsmen","archers","peasant_levy","cavalry","heavy_infantry"]
 const EMBLEMS = ["spire","wave","wheat"]
+const CULTURES = ["medieval","roman","greek","orc","dwarf","elf","dark_elf","beastmen","ratmen","lizardmen","desert"]
 const TRAITS = ["passive","income_focused","generous","kind","expansionist","cruel","treacherous"]
 # Terrain class indices: the order of data/movement.json terrain (checked by MapBake.write_movement).
 const OPEN = 0
@@ -232,7 +233,7 @@ static func build(map_id: String) -> Dictionary:
  var factions = {}
  for f in nf:
   var col = Color.from_hsv(fmod(f*0.61803,1.0),0.55+0.3*((f*7)%3)/2.0,0.45+0.2*((f*5)%3)/2.0)
-  factions[faction_ids[f]] = {"name":"House Synth %03d" % f,"realm":"Synthetic realm %03d" % f,"seat":region_ids[order[f]],"primary":"#"+col.to_html(false),
+  factions[faction_ids[f]] = {"culture":CULTURES[f%CULTURES.size()],"name":"House Synth %03d" % f,"realm":"Synthetic realm %03d" % f,"seat":region_ids[order[f]],"primary":"#"+col.to_html(false),
    "secondary":"#"+col.lightened(0.5).to_html(false),"emblem":EMBLEMS[f%EMBLEMS.size()],"placeholder_assignment":true,
    "battle_style":{"default":"line"},"general_traits":[],"traits":[TRAITS[f%TRAITS.size()]]}
  var regions = {}

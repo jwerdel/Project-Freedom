@@ -173,3 +173,16 @@ Optional hand-made unit card art, one file per unit type (`assets/cards/<unit_id
 | File | Source | Author | License |
 |---|---|---|---|
 | (none yet) | | | |
+
+## Kenney 3D kits (CC0) — settlement sprawl kit pieces
+
+Author: Kenney (www.kenney.nl). License: CC0 1.0 Universal, http://creativecommons.org/publicdomain/zero/1.0/ (each pack's `License.txt`, copied with it). The owner downloaded the packs into `assets/kenney/` (2026-10-04); only the files below are committed (the rest of each pack stays local, its FBX and OBJ folders hidden from Godot with `.gdignore`). Files unmodified; campaign scale is set in the `visuals/kits/*.tscn` wrappers (asset manifest `kit.*`).
+
+| File(s) | Pack | Used as |
+|---|---|---|
+| `castle-kit/Models/GLB format/wall.glb`, `tower-hexagon-base.glb`, `wall-doorway.glb`, `wall-narrow-wood.glb`, `Textures/colormap.png`; `castle-kit/License.txt` | Castle Kit 2.0 — https://kenney.nl/assets/castle-kit | City walls, wall towers, gates, palisades |
+| `fantasy-town/Models/GLB format/stall-red.glb`, `cart.glb`, `fence.glb`, `pillar-stone.glb`, `Textures/colormap.png`; `fantasy-town/License.txt` | Fantasy Town Kit 2.0 — https://kenney.nl/assets/fantasy-town-kit | Market stalls, carts, paddock fences, shrines |
+
+The Quaternius Medieval Village and Fantasy Props MegaKits (Standard, CC0) the owner added in `assets/quaternius/` are not used yet and not committed.
+
+The other kit pieces reuse the Quaternius Ultimate Fantasy RTS models listed above (houses, tower houses, storage, temple, watchtowers, farm, mine, rocks, dock, port).

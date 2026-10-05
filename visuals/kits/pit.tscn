@@ -1,0 +1,18 @@
+[gd_scene load_steps=3 format=3]
+
+[sub_resource type="StandardMaterial3D" id="m"]
+albedo_color = Color(0.16, 0.13, 0.11, 1)
+roughness = 0.95
+
+[sub_resource type="CylinderMesh" id="s"]
+material = SubResource("m")
+top_radius = 1.6
+bottom_radius = 1.2
+height = 0.3
+radial_segments = 10
+
+[node name="Kit" type="Node3D"]
+
+[node name="Model" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0, 0)
+mesh = SubResource("s")

@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/quaternius/ultimate-fantasy-rts/Dock_FirstAge.gltf" id="1"]
+
+[node name="Kit" type="Node3D"]
+
+[node name="Model" parent="." instance=ExtResource("1")]
+transform = Transform3D(5.0, 0, 0, 0, 5.0, 0, 0, 0, 5.0, -0.00492498278618, 1.76951003074646, 0.0)

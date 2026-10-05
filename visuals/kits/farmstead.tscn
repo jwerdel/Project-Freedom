@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/quaternius/ultimate-fantasy-rts/Farm_FirstAge_Level2_Wheat.gltf" id="1"]
+
+[node name="Kit" type="Node3D"]
+
+[node name="Model" parent="." instance=ExtResource("1")]
+transform = Transform3D(3.5, 0, 0, 0, 3.5, 0, 0, 0, 3.5, -0.01009327173233, -0.00054184364853, 0.47371473908424)

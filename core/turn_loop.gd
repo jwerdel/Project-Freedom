@@ -2,7 +2,8 @@ extends RefCounted
 # End of turn: one turn is one year (constitution). Runs a fixed, deterministic sequence:
 #   1. income   2. expenses   3. construction (completions)   4. population growth
 #   5. armies: movement points refill, standing orders continue   6. recruitment queues complete
-#   7. replenishment   8. sieges and wounded generals   9. calendar + event log (chronicle)
+#   7. replenishment   8. sieges and wounded generals   8b. land conversion (core/land.gd)
+#   9. calendar + event log (chronicle)
 #   2b. debt (desertion, disbanding below the limit)
 #   10. the AI phase (core/ai.gd): every AI faction acts in the new year with full movement. Its
 #       attacks on a human player wait in state.pending_battles for the player's answer.
@@ -18,6 +19,7 @@ const Armies = preload("res://core/armies.gd")
 const Battles = preload("res://core/battles.gd")
 const Ai = preload("res://core/ai.gd")
 const Realm = preload("res://core/realm.gd")
+const Land = preload("res://core/land.gd")
 
 # Returns a report: {year (the year that ended), ledgers, growth, completed, moves (army id ->
 # points walked), recruited, replenished, sieges, entries, ai (Ai.take_turns report)}.
@@ -98,7 +100,7 @@ static func _begin_rest_sliced(state,ended: int,ledgers: Dictionary,slicer) -> D
  return ctx
 
 # Steps 1-9 as stages (end_turn runs them in a row; end_turn_sliced may give a frame back between).
-const BEGIN_STAGES = 9
+const BEGIN_STAGES = 10
 static func _begin_stage(k: int,state,ctx: Dictionary):
  match k:
   0:
@@ -121,7 +123,8 @@ static func _begin_stage(k: int,state,ctx: Dictionary):
    ctx.recruited = Armies.advance_queues(state)
    ctx.replenished = Armies.replenish(state)
   7: ctx.sieges = Battles.end_turn(state) # 8. Sieges advance (starvation, surrender); wounded generals heal.
-  8:
+  8: ctx.land = Land.end_turn(state,ctx.completed) # 8b. The land turns toward its owners' cultures (core/land.gd).
+  9:
    # 9. Calendar and event log.
    state.year += 1
    state.turn += 1
@@ -148,4 +151,4 @@ static func _finish(state,ctx: Dictionary,ai: Dictionary) -> Dictionary:
  var realm_entries = Realm.entries(state,state.year,ctx.debt+realm)
  state.chronicle.append_array(realm_entries)
  entries.append_array(realm_entries)
- return {"year":ctx.ended,"ledgers":ctx.ledgers,"growth":ctx.growth,"completed":ctx.completed,"moves":ctx.moves,"recruited":ctx.recruited,"replenished":ctx.replenished,"sieges":ctx.sieges,"entries":entries,"ai":ai,"debt":ctx.debt,"realm":realm}
+ return {"year":ctx.ended,"ledgers":ctx.ledgers,"growth":ctx.growth,"completed":ctx.completed,"moves":ctx.moves,"recruited":ctx.recruited,"replenished":ctx.replenished,"sieges":ctx.sieges,"land":ctx.land,"entries":entries,"ai":ai,"debt":ctx.debt,"realm":realm}

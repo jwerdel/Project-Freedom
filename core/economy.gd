@@ -13,6 +13,7 @@ extends RefCounted
 
 const UnitTypes = preload("res://core/unit_types.gd")
 const Buildings = preload("res://core/buildings.gd")
+const Land = preload("res://core/land.gd")
 const DATA = "res://data/economy.json"
 
 static var _data = null
@@ -46,9 +47,11 @@ static func settlement_income(state,id: String) -> Dictionary:
  var tax = float(s.population)*float(data().taxes.tax_per_capita)*(1.0+e.tax_pct)
  var bonus = resource_income_bonus(s.resources)
  var factor = float(t.economic_factor)
- var raw = ((base+tax)*(1.0+bonus+e.income_pct)+e.income)*factor
+ # Climate (game-design §10.9): land of another culture yields less until it converts (core/land.gd).
+ var climate = Land.climate_factor(state,id) if state.get("land") != null else 1.0
+ var raw = ((base+tax)*(1.0+bonus+e.income_pct)+e.income)*factor*climate
  var ceiling = float(t.income_ceiling[i])
- return {"total":int(round(minf(raw,ceiling))),"base":base,"tax":tax,"buildings":e.income,"building_pct":e.income_pct,"economic_factor":factor,"resource_bonus":bonus,"ceiling":ceiling,"capped":raw>ceiling}
+ return {"total":int(round(minf(raw,ceiling))),"base":base,"tax":tax,"buildings":e.income,"building_pct":e.income_pct,"economic_factor":factor,"climate":climate,"resource_bonus":bonus,"ceiling":ceiling,"capped":raw>ceiling}
 
 static func building_upkeep(state,id: String) -> int:
  return Buildings.upkeep(state,id)
