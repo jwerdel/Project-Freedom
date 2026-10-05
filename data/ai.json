@@ -18,9 +18,10 @@
     "plan_candidates": 3
   },
   "odds": {
-    "_note": "Battle odds. A power ratio (own / enemy) above sure_ratio or below hopeless_ratio decides without simulating; between them the AI runs odds_runs seeded fast simulations (Battles.odds, the same estimate the player's balance bar uses, with fewer runs; about 3 ms each in the debug build). At most odds_budget such estimates per faction per turn; beyond that the win chance is read off a logistic curve 1 / (1 + exp(-curve_k x (ratio - 1))).",
+    "_note": "Battle odds. A power ratio (own / enemy) above sure_ratio or below hopeless_ratio decides without simulating; between them the AI runs odds_runs seeded fast simulations (Battles.odds, the same estimate the player's balance bar uses, with fewer runs; about 3 ms each in the debug build). At most odds_budget such estimates per faction per turn and turn_budget per AI phase across all factions (with more factions than turn_budget, only a rotating share of them may simulate each turn); beyond that the win chance is read off a logistic curve 1 / (1 + exp(-curve_k x (ratio - 1))).",
     "odds_runs": 5,
     "odds_budget": 1,
+    "turn_budget": 24,
     "curve_k": 3.0,
     "sure_ratio": 2.2,
     "hopeless_ratio": 0.45

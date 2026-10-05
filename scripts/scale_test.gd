@@ -60,23 +60,24 @@ func _initialize():
  t = Time.get_ticks_usec()
  var first = Movement.plan(s,a0,start+Vector2(40,25))
  line("path_first_ms_including_grid_build",(Time.get_ticks_usec()-t)/1000.0)
- var times = []
- var long_times = []
- for i in 20:
-  var aid = ids[(i*37)%ids.size()]
-  var p0 = Movement.position(s,aid)
-  t = Time.get_ticks_usec()
-  Movement.plan(s,aid,p0+Vector2.from_angle(i)*60.0)
-  times.append((Time.get_ticks_usec()-t)/1000.0)
-  t = Time.get_ticks_usec()
-  Movement.plan(s,aid,p0+Vector2.from_angle(i)*400.0)
-  long_times.append((Time.get_ticks_usec()-t)/1000.0)
- times.sort()
- long_times.sort()
- line("path_60m_median_ms",times[times.size()/2],"5 per preview update")
- line("path_60m_max_ms",times[-1])
- line("path_400m_median_ms",long_times[long_times.size()/2],"5 per preview update")
- line("path_400m_max_ms",long_times[-1])
+ # Each plan as a fresh preview update: the blocking sync is forced (a new frame would do it).
+ for dist in [60.0,150.0,400.0,1000.0]:
+  var ts = []
+  var none = 0
+  for i in 100:
+   var aid = ids[(i*37)%ids.size()]
+   var p0 = Movement.position(s,aid)
+   Movement._blk_key = []
+   t = Time.get_ticks_usec()
+   var r = Movement.plan(s,aid,p0+Vector2.from_angle(i*0.7)*dist)
+   ts.append((Time.get_ticks_usec()-t)/1000.0)
+   if not r.ok: none += 1
+  ts.sort()
+  var tag = "path_%dm" % int(dist)
+  line(tag+"_median_ms",snappedf(ts[50],0.01),"5")
+  line(tag+"_p95_ms",snappedf(ts[95],0.01),"5")
+  line(tag+"_max_ms",snappedf(ts[-1],0.01))
+  line(tag+"_not_possible",none)
  # --- End Turn: every faction AI-run (the player's too) ---------------------------------------------
  s.player_faction = "" # no human: all factions run by the AI
  var turn_ms = []
@@ -85,12 +86,32 @@ func _initialize():
   var r = TurnLoop.end_turn(s)
   turn_ms.append((Time.get_ticks_usec()-t)/1000.0)
   line("end_turn_%d_ms" % (k+1),turn_ms[-1],"4000 release build, V1 Varos")
+ # The game spreads End Turn over frames: the longest stretch without a frame is what the player
+ # could notice (budget 12 ms of work per frame).
+ if turns>0:
+  t = Time.get_ticks_usec()
+  var rs = await TurnLoop.end_turn_sliced(s,self,12.0)
+  line("end_turn_sliced_ms",(Time.get_ticks_usec()-t)/1000.0,"10000 release build")
+  line("end_turn_sliced_frames",rs.frames)
+  line("end_turn_sliced_longest_chunk_ms",snappedf(rs.max_chunk_ms,0.1),"UI responsive")
+  var fm = rs.ai.faction_ms.values()
+  fm.sort()
+  line("ai_faction_ms_max",snappedf(fm[-1],0.1))
+  line("ai_faction_ms_p95",snappedf(fm[int(fm.size()*0.95)],0.1))
  line("memory_static_mb_after_turns",snappedf((OS.get_static_memory_usage()-mem0)/1048576.0,0.1),"2500 total RAM")
  # --- Save and load ----------------------------------------------------------------------------------
  SaveSystem.dir = "user://scale_test_saves"
+ SaveSystem.save(s,"scale_warm","Warm-up")
  t = Time.get_ticks_usec()
- var sv = SaveSystem.save(s,"scale","Scale test")
- line("save_ms",(Time.get_ticks_usec()-t)/1000.0,"100")
+ var sv = SaveSystem.save(s,"scale","Scale test","auto",null,false,{},true)
+ line("save_main_thread_ms",(Time.get_ticks_usec()-t)/1000.0,"100 on the main thread")
+ var written = SaveSystem.wait_for_saves()
+ line("save_background_write_ms",snappedf(float(written.get("write_ms",0.0)),0.1))
+ t = Time.get_ticks_usec()
+ SaveSystem.save(s,"scale_sync","Synchronous")
+ line("save_synchronous_ms",(Time.get_ticks_usec()-t)/1000.0)
+ SaveSystem.delete("scale_warm")
+ SaveSystem.delete("scale_sync")
  line("save_kb",FileAccess.get_file_as_bytes(SaveSystem.path_of("scale")).size()/1024,"5120")
  t = Time.get_ticks_usec()
  var ld = SaveSystem.load_save("scale")

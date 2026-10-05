@@ -661,6 +661,7 @@ func make_ui():
  ui.ai_skip.connect(skip_spectating)
  ui.ai_pause_toggled.connect(func(on): ai_paused = on)
  ui_data.changed.connect(refresh_warnings)
+ ui_data.turn_progress.connect(func(d,n): ui.show_turn_progress(d,n))
  ui.settlement_selected.connect(focus_settlement)
  ui.overlay_toggled.connect(set_overlay)
  ui.menu_requested.connect(open_pause_menu)
@@ -1044,7 +1045,14 @@ func update_walk(delta: float):
    refresh_army_overlays()
    if id == selected_army_id(): ui.show_army(id,army_location(id))
 
+var turn_running := false # an End Turn is being processed over several frames
+
+# Interactive play spreads End Turn over frames; headless runs (tests) and captures run it at once.
+func async_turns() -> bool:
+ return not capture_mode and DisplayServer.get_name() != "headless"
+
 func end_turn(_skip_warnings := false):
+ if turn_running: return
  if spectating_now():
   return
  warn_skipped.clear()
@@ -1056,11 +1064,19 @@ func end_turn(_skip_warnings := false):
  # Autosave at the start of End Turn (3 rotating slots), before anything changes.
  var t0 = Time.get_ticks_usec()
  var a = SaveSystem.autosave(ui_data.state,thumbnail(),camera_view())
- if capture_mode: print("AUTOSAVE_MS %.2f (with thumbnail) BYTES %d" % [(Time.get_ticks_usec()-t0)/1000.0,a.get("bytes",0)])
+ if capture_mode: print("AUTOSAVE_MS %.2f main thread (with thumbnail; written in the background)" % ((Time.get_ticks_usec()-t0)/1000.0))
  if not a.ok: ui.toast("Autosave failed: %s" % a.error)
  collecting_moves = true
  collected_moves = {}
- ui_data.end_turn()
+ if async_turns():
+  # Spread over frames: the map keeps rendering (no freeze) while the yearly steps and every AI
+  # faction run; a top-centre line shows the AI's progress, and input waits until it is done.
+  turn_running = true
+  ui.show_turn_progress(0,1)
+  await ui_data.end_turn_async(get_tree())
+  ui.show_turn_progress(-1,0)
+  turn_running = false
+ else: ui_data.end_turn()
  collecting_moves = false
  var r = ui_data.resources()
  ui.toast("Year %d begins. Treasury %s gold." % [r.year,UiKit.format_int(r.treasury)])
@@ -1158,6 +1174,7 @@ func hover_text(hit: String) -> String:
 
 func _unhandled_input(event):
  if pause_menu != null or game_over != null: return
+ if turn_running: return # End Turn in progress (spread over frames)
  if map_open():
   # The strategic map takes the mouse itself; here only Tab and Esc (back to the 3D map).
   if event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_TAB,KEY_ESCAPE]:
@@ -1270,6 +1287,9 @@ func camera_update(delta: float):
  camera.look_at(target)
 
 func _process(delta):
+ # Saves are written in the background (core/save_system.gd): report a failure once it is known.
+ var saved = SaveSystem.poll_saves()
+ if not saved.is_empty() and not saved.ok and ui: ui.toast("Saving failed: %s" % saved.error)
  _update_spectate(delta)
  # Nothing 3D shows behind the opaque strategic map: skip rendering it once the fade is done.
  if map_open() and strategic.fade>=1.0 and not get_viewport().disable_3d: get_viewport().disable_3d = true
@@ -1420,12 +1440,14 @@ func run_checks():
  assert(ui_data.events("turn")[0].year==year+1 and ui_data.events("turn")[1].category=="turn")
  print("END_TURN_MS %.3f" % ui_data.last_turn_ms)
  # Saves: End Turn autosaved; a manual save loads back to the identical state.
+ SaveSystem.wait_for_saves()
  assert(FileAccess.file_exists(SaveSystem.path_of("autosave_1")))
- var sv = SaveSystem.save(ui_data.state,"self_test","Self-test","manual",thumbnail(),false,camera_view())
+ var sv = SaveSystem.save(ui_data.state,"self_test","Self-test","manual",thumbnail(),false,camera_view(),true)
  var ld = SaveSystem.load_save("self_test")
  assert(sv.ok and ld.ok and ld.state.state_hash() == ui_data.state.state_hash())
  assert(ld.view == camera_view()) # the camera comes back with the save
- print("SAVE_MS %.2f LOAD_MS %.2f SAVE_BYTES %d" % [sv.ms,ld.ms,sv.bytes])
+ var written = SaveSystem.wait_for_saves()
+ print("SAVE_MS %.2f (main thread) WRITE_MS %.2f (background) LOAD_MS %.2f SAVE_BYTES %d" % [sv.ms,float(written.get("write_ms",0.0)),ld.ms,int(written.get("bytes",0))])
  # Esc order: panels close first; with nothing open the pause menu opens. Exiting with unsaved
  # progress asks first.
  ui.show_settlement(CITY_ID)
@@ -1683,7 +1705,7 @@ func quicksave():
 
 func save_named(name: String) -> Dictionary:
  var t0 = Time.get_ticks_usec()
- var r = SaveSystem.save(ui_data.state,SaveSystem.file_for(name),name,"manual",thumbnail(),false,camera_view())
+ var r = SaveSystem.save(ui_data.state,SaveSystem.file_for(name),name,"manual",thumbnail(),false,camera_view(),true)
  if capture_mode: print("SAVE_NAMED_MS %.2f (with thumbnail) BYTES %d" % [(Time.get_ticks_usec()-t0)/1000.0,r.get("bytes",0)])
  if r.ok: unsaved = false
  ui.toast("Saved \"%s\"." % name if r.ok else "Save failed: %s" % r.error)

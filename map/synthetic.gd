@@ -16,6 +16,7 @@ extends RefCounted
 
 const MapBake = preload("res://map/map_bake.gd")
 const MapRegistry = preload("res://core/map_registry.gd")
+const PathHierarchy = preload("res://core/path_hierarchy.gd")
 const UNITS = ["spearmen","swordsmen","archers","peasant_levy","cavalry","heavy_infantry"]
 const EMBLEMS = ["spire","wave","wheat"]
 const TRAITS = ["passive","income_focused","generous","kind","expansionist","cruel","treacherous"]
@@ -66,13 +67,17 @@ static func build(map_id: String) -> Dictionary:
  var base = _noise(int(spec.seed)+1,0.006,cols,rows,5)
  var ridge = _noise(int(spec.seed)+2,0.004,cols,rows,3)
  var forest = _noise(int(spec.seed)+3,0.02,cols,rows,3)
+ # Passes (design: ranges are impassable except at passes): where this noise is high, a ridge drops
+ # to a pass corridor; at this frequency a ridge opens every few hundred metres.
+ var gaps = _noise(int(spec.seed)+4,0.012,cols,rows,2)
+ var pass_above = int(spec.get("pass_above",168)) # 256: no passes (the earlier maze-like ridges)
  var heights = PackedFloat32Array()
  heights.resize(n)
  var cls = PackedByteArray()
  cls.resize(n)
  var colors = PackedByteArray()
  colors.resize(n*3)
- var palette = {OPEN:Color("8fae5a"),FOREST:Color("4f7a38"),HILLS:Color("a69a5e"),MOUNTAIN:Color("8a7f72"),WATER:Color("3f6f8e")}
+ var palette = {PASS:Color("b59a6c"),OPEN:Color("8fae5a"),FOREST:Color("4f7a38"),HILLS:Color("a69a5e"),MOUNTAIN:Color("8a7f72"),WATER:Color("3f6f8e")}
  var pal = []
  for k in 7: pal.append(palette.get(k,Color.MAGENTA))
  for i in n:
@@ -85,8 +90,11 @@ static func build(map_id: String) -> Dictionary:
    var r = 1.0-absf(float(ridge[i])/127.5-1.0) # ridged: 1 on the ridge line
    var mtn = maxf(0.0,r-0.86)*7.0*minf(1.0,l*4.0)
    var h = 0.6+b*7.0+mtn*40.0+minf(l,0.3)*6.0
+   var is_pass = h>20.0 and gaps[i]>pass_above
+   if is_pass: h = 12.0+b*4.0
    heights[i] = h
-   if h>20.0: cls[i] = MOUNTAIN
+   if is_pass: cls[i] = PASS
+   elif h>20.0: cls[i] = MOUNTAIN
    elif h>8.5: cls[i] = HILLS
    elif forest[i]>150: cls[i] = FOREST
    else: cls[i] = OPEN
@@ -149,7 +157,8 @@ static func build(map_id: String) -> Dictionary:
    rid[i+cols] = id
    queue[tail] = i+cols
    tail += 1
- # Adjacency (by shared border) and sampled points per region (for hull polygons).
+ # Adjacency (by shared border), with one crossing per pair for hierarchical paths: the passable
+ # border cell nearest the midpoint between the two sites; and sampled points per region (hulls).
  var adj = {}
  var pts = []
  for k in sites.size(): pts.append(PackedVector2Array())
@@ -161,10 +170,10 @@ static func build(map_id: String) -> Dictionary:
    if a == 0: continue
    if x<cols-1:
     var b = rid[i+1]
-    if b != 0 and b != a: adj[mini(a,b)*65536+maxi(a,b)] = true
+    if b != 0 and b != a: _border(adj,a,b,i,i+1,cls,sites,cols)
    if z<rows-1:
     var b2 = rid[i+cols]
-    if b2 != 0 and b2 != a: adj[mini(a,b2)*65536+maxi(a,b2)] = true
+    if b2 != 0 and b2 != a: _border(adj,a,b2,i,i+cols,cls,sites,cols)
    if (x & 3) == 0 and (z & 3) == 0: pts[a-1].append(origin+Vector2(x+0.5,z+0.5)*cell)
  var neighbours = []
  for k in sites.size(): neighbours.append([])
@@ -316,10 +325,35 @@ static func build(map_id: String) -> Dictionary:
  for id in army_files: MapBake.write_json(dir+"armies/"+id+".json",army_files[id])
  MapBake.write_regions(dir,cell,origin,cols,rows,rid,region_ids)
  MapBake.write_movement(dir,cell,origin,cols,rows,cls,road)
+ MapBake.write_components(dir,MapBake.components_of(cls,cols,rows))
+ MapBake.write_parts(dir,MapBake.parts_of(cls,rid,cols,rows))
+ var edges = []
+ for key in adj:
+  if adj[key][1]>=0: edges.append([key/65536-1,key%65536-1,adj[key][1],adj[key][2]])
+ MapBake.write_graph(dir,edges)
  MapBake.write_render_cache(map_id,cell,origin,cols,rows,heights,colors)
  times.write = Time.get_ticks_msec()-t
+ t = Time.get_ticks_msec()
+ var hpa = PathHierarchy.build(map_id)
+ times.hpa = Time.get_ticks_msec()-t
  times.total = Time.get_ticks_msec()-t_all
- return {"regions":sites.size(),"provinces":provinces.size(),"factions":nf,"armies":armies.size(),"roads":network.size(),"cols":cols,"rows":rows,"times":times}
+ return {"regions":sites.size(),"provinces":provinces.size(),"factions":nf,"armies":armies.size(),"hpa_paths":hpa.paths,"roads":network.size(),"cols":cols,"rows":rows,"times":times}
+
+# Record a border between regions a and b (1-based) at cells i and j; keep the passable crossing
+# nearest the sites' midpoint.
+static func _border(adj: Dictionary,a: int,b: int,i: int,j: int,cls: PackedByteArray,sites: Array,cols: int):
+ var key = mini(a,b)*65536+maxi(a,b)
+ var e = adj.get(key)
+ if e == null:
+  e = [INF,-1,-1]
+  adj[key] = e
+ if cls[i] == WATER or cls[i] == MOUNTAIN or cls[j] == WATER or cls[j] == MOUNTAIN: return
+ var mid = Vector2(sites[a-1]+sites[b-1])*0.5
+ var d2 = Vector2(i%cols,i/cols).distance_squared_to(mid)
+ if d2<e[0]:
+  e[0] = d2
+  e[1] = i
+  e[2] = j
 
 # A normalized noise image as bytes (0-255), frequency in cycles per cell.
 static func _noise(seed: int,freq: float,w: int,h: int,octaves: int) -> PackedByteArray:

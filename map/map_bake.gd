@@ -40,6 +40,11 @@ static func write_movement(dir: String,cell: float,origin: Vector2,cols: int,row
  var both = classes.duplicate()
  both.append_array(road)
  _write_zstd(dir+"baked/movement.bin",both)
+ var runs = runs_of(classes,road,cols,rows)
+ write_runs(dir,runs)
+ var meta = JSON.parse_string(FileAccess.get_file_as_string(dir+"baked/movement.json"))
+ meta.runs = runs.size()/4
+ write_json(dir+"baked/movement.json",meta)
 
 static func cache_dir(map_id: String) -> String:
  return CACHE+map_id+"/"
@@ -71,3 +76,122 @@ static func load_render_cache(map_id: String) -> Dictionary:
  if h.size() != cols*rows*4 or c.size() != cols*rows*3: return {}
  return {"cell":float(meta.cell),"origin":Vector2(meta.origin[0],meta.origin[1]),"cols":cols,"rows":rows,
   "heights":Image.create_from_data(cols,rows,false,Image.FORMAT_RF,h),"colors":Image.create_from_data(cols,rows,false,Image.FORMAT_RGB8,c)}
+
+# Row runs of identical cells, for building the pathfinding grid in bulk (core/movement.gd): quads
+# (x0, z, length, code) with code = terrain index + 16 * road. Computed once per map (at build time
+# for pipeline maps, baked/movement_runs.bin; at load for the small test map).
+static func runs_of(classes: PackedByteArray,road: PackedByteArray,cols: int,rows: int) -> PackedInt32Array:
+ var out = PackedInt32Array()
+ for z in rows:
+  var row = z*cols
+  var x0 = 0
+  var code = classes[row]+16*road[row]
+  for x in range(1,cols):
+   var c = classes[row+x]+16*road[row+x]
+   if c != code:
+    out.append_array([x0,z,x-x0,code])
+    x0 = x
+    code = c
+  out.append_array([x0,z,cols-x0,code])
+ return out
+
+static func write_runs(dir: String,runs: PackedInt32Array):
+ _write_zstd(dir+"baked/movement_runs.bin",runs.to_byte_array())
+
+static func read_runs(dir: String,count: int) -> PackedInt32Array:
+ return _read_zstd(dir+"baked/movement_runs.bin",count*16).to_int32_array()
+
+# Region graph for hierarchical paths (core/movement.gd): edges [a, b, crossing cell index] between
+# regions (indices into baked/regions.json names) that share a passable border.
+static func write_graph(dir: String,edges: Array):
+ write_json(dir+"baked/graph.json",{"_note":"GENERATED region graph (map/map_bake.gd): edges [region a, region b, crossing cell] with region indices into baked/regions.json names.","edges":edges})
+
+# Connected components of passable land (terrain classes other than mountain and water), for an
+# instant "no route" when start and goal lie in different components: int32 per cell, 0 =
+# impassable. Movement through blocked cells (armies, settlements) is not considered here.
+static func components_of(classes: PackedByteArray,cols: int,rows: int) -> PackedInt32Array:
+ var n = cols*rows
+ var comp = PackedInt32Array()
+ comp.resize(n)
+ var queue = PackedInt32Array()
+ queue.resize(n)
+ var label = 0
+ for s in n:
+  if comp[s] != 0 or classes[s] >= 5: continue # 5 mountain, 6 water (data/movement.json order)
+  label += 1
+  comp[s] = label
+  var head = 0
+  var tail = 1
+  queue[0] = s
+  while head<tail:
+   var i = queue[head]
+   head += 1
+   var x = i%cols
+   if x>0 and comp[i-1] == 0 and classes[i-1]<5:
+    comp[i-1] = label
+    queue[tail] = i-1
+    tail += 1
+   if x<cols-1 and comp[i+1] == 0 and classes[i+1]<5:
+    comp[i+1] = label
+    queue[tail] = i+1
+    tail += 1
+   if i>=cols and comp[i-cols] == 0 and classes[i-cols]<5:
+    comp[i-cols] = label
+    queue[tail] = i-cols
+    tail += 1
+   if i<n-cols and comp[i+cols] == 0 and classes[i+cols]<5:
+    comp[i+cols] = label
+    queue[tail] = i+cols
+    tail += 1
+ return comp
+
+static func write_components(dir: String,comp: PackedInt32Array):
+ _write_zstd(dir+"baked/components.bin",comp.to_byte_array())
+
+static func read_components(dir: String,count: int) -> PackedInt32Array:
+ return _read_zstd(dir+"baked/components.bin",count*4).to_int32_array()
+
+# Region parts (core/path_hierarchy.gd): connected passable areas within one region (a ridge can
+# cut a region in two). int32 per cell, 0 = impassable or outside every region.
+static func parts_of(classes: PackedByteArray,rid: PackedInt32Array,cols: int,rows: int) -> PackedInt32Array:
+ var n = cols*rows
+ var part = PackedInt32Array()
+ part.resize(n)
+ var queue = PackedInt32Array()
+ queue.resize(n)
+ var label = 0
+ for s in n:
+  if part[s] != 0 or classes[s] >= 5 or rid[s] == 0: continue
+  label += 1
+  part[s] = label
+  var r = rid[s]
+  var head = 0
+  var tail = 1
+  queue[0] = s
+  while head<tail:
+   var i = queue[head]
+   head += 1
+   var x = i%cols
+   if x>0 and part[i-1] == 0 and classes[i-1]<5 and rid[i-1] == r:
+    part[i-1] = label
+    queue[tail] = i-1
+    tail += 1
+   if x<cols-1 and part[i+1] == 0 and classes[i+1]<5 and rid[i+1] == r:
+    part[i+1] = label
+    queue[tail] = i+1
+    tail += 1
+   if i>=cols and part[i-cols] == 0 and classes[i-cols]<5 and rid[i-cols] == r:
+    part[i-cols] = label
+    queue[tail] = i-cols
+    tail += 1
+   if i<n-cols and part[i+cols] == 0 and classes[i+cols]<5 and rid[i+cols] == r:
+    part[i+cols] = label
+    queue[tail] = i+cols
+    tail += 1
+ return part
+
+static func write_parts(dir: String,parts: PackedInt32Array):
+ _write_zstd(dir+"baked/parts.bin",parts.to_byte_array())
+
+static func read_parts(dir: String,count: int) -> PackedInt32Array:
+ return _read_zstd(dir+"baked/parts.bin",count*4).to_int32_array()

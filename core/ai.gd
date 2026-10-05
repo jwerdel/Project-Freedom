@@ -81,10 +81,10 @@ static func settlement_defense(state,sid: String) -> float:
  for u in Battles.garrison_units(state,sid): p += unit_power(u)
  var at = WorldMap.settlement_position(sid)
  var rr = float(Battles.cfg().reinforcement_radius)
- for e in _armies(state):
+ for e in _armies_near(state,at,rr):
   if e.faction != owner: continue
   if e.garrison == sid: p += army_power(state,e.id)
-  elif e.pos.distance_to(at)<=rr: p += army_power(state,e.id)*float(c.reinforce_share)
+  else: p += army_power(state,e.id)*float(c.reinforce_share)
  if walled(state,sid): p *= 1.0+float(c.wall_bonus)
  return p
 
@@ -100,11 +100,32 @@ static func _armies(state) -> Array:
  for id in _sorted(state.army_state.keys()):
   var a = state.army_state[id]
   out.append({"id":id,"faction":a.faction,"pos":Vector2(a.position[0],a.position[1]),"garrison":a.garrison})
+ _snap_buckets = null
  if _in_phase: _snap = out
  return out
 
+# The snapshot's armies within `radius` of a point, in the snapshot's order (by id), found through
+# 64 m buckets instead of a scan of every army (scales to hundreds of armies).
+const ARMY_BUCKET = 64.0
+static var _snap_buckets = null
+static func _armies_near(state,at: Vector2,radius: float) -> Array:
+ var all = _armies(state)
+ if _snap_buckets == null or not _in_phase:
+  _snap_buckets = {}
+  for i in all.size(): _snap_buckets.get_or_add(Vector2i((all[i].pos/ARMY_BUCKET).floor()),[]).append(i)
+ var idx = []
+ var lo = Vector2i(((at-Vector2.ONE*radius)/ARMY_BUCKET).floor())
+ var hi = Vector2i(((at+Vector2.ONE*radius)/ARMY_BUCKET).floor())
+ for bz in range(lo.y,hi.y+1):
+  for bx in range(lo.x,hi.x+1):
+   for i in _snap_buckets.get(Vector2i(bx,bz),[]):
+    if all[i].pos.distance_to(at)<=radius: idx.append(i)
+ idx.sort()
+ return idx.map(func(i): return all[i])
+
 static func _invalidate():
  _snap = null
+ _snap_buckets = null
 
 static func _sorted(a: Array) -> Array:
  var out = a.duplicate()
@@ -127,14 +148,23 @@ static func alive(state,f: String) -> bool:
 # the player), resolve_player (true: battles the AI starts against a human player are resolved at
 # once with the default defender choice instead of being returned as pending).
 # Returns {actions, pending: [battle], entries, moves (army id -> points walked, for the map), ms}.
-static func take_turns(state,opts := {}) -> Dictionary:
- var t0 = Time.get_ticks_usec()
- var report = {"actions":[],"pending":[],"entries":[],"moves":{},"ms":0.0,"faction_ms":{}}
- var controlled = opts.get("factions",state.factions().filter(func(f): return f != state.player_faction))
+# Fresh caches and the odds budget for an AI phase.
+static func _begin_phase(state):
  _odds_cache = {}
  _power_cache = {}
  _in_phase = true
  _snap = null
+ _odds_turn_spent = 0
+ # With more factions than the per-turn budget, only every k-th faction (rotating by year) may run
+ # simulated odds this turn; the others use the curve. Few factions: everyone may.
+ _odds_groups = maxi(1,ceili(float(state.factions().size())/maxf(1.0,float(data().odds.turn_budget))))
+ _odds_year = int(state.year)
+
+static func take_turns(state,opts := {}) -> Dictionary:
+ var t0 = Time.get_ticks_usec()
+ var report = {"actions":[],"pending":[],"entries":[],"moves":{},"ms":0.0,"faction_ms":{}}
+ var controlled = opts.get("factions",state.factions().filter(func(f): return f != state.player_faction))
+ _begin_phase(state)
  for f in _sorted(controlled):
   if not alive(state,f): continue
   var tf = Time.get_ticks_usec()
@@ -145,8 +175,49 @@ static func take_turns(state,opts := {}) -> Dictionary:
  report.ms = (Time.get_ticks_usec()-t0)/1000.0
  return report
 
+# The AI phase spread over frames (TurnLoop.end_turn_sliced): the same factions in the same order
+# as take_turns, handing control back to the engine between factions once the frame budget is spent.
+static func take_turns_sliced(state,opts: Dictionary,slicer,progress := Callable()) -> Dictionary:
+ var t0 = Time.get_ticks_usec()
+ var report = {"actions":[],"pending":[],"entries":[],"moves":{},"ms":0.0,"faction_ms":{}}
+ var controlled = opts.get("factions",state.factions().filter(func(f): return f != state.player_faction))
+ _begin_phase(state)
+ var order = _sorted(controlled)
+ for k in order.size():
+  var f = order[k]
+  if alive(state,f):
+   var tf = Time.get_ticks_usec()
+   var c = _faction_begin(state,f)
+   for step in FACTION_STEPS:
+    _faction_step(step,state,f,c,report,opts,controlled)
+    if slicer.over() and step<FACTION_STEPS-1:
+     _in_phase = false
+     await slicer.next_frame()
+     _in_phase = true
+     _invalidate()
+   report.faction_ms[f] = (Time.get_ticks_usec()-tf)/1000.0
+  if progress.is_valid(): progress.call(k+1,order.size())
+  if slicer.over():
+   # Another frame: the snapshot of army positions is rebuilt after it (the map may have
+   # changed nothing, but the cached lookups must not outlive the frame for safety).
+   _in_phase = false
+   await slicer.next_frame()
+   _in_phase = true
+   _invalidate()
+ _in_phase = false
+ _snap = null
+ report.ms = (Time.get_ticks_usec()-t0)/1000.0
+ return report
+
 static func faction_turn(state,f: String,report: Dictionary,opts := {},controlled := []):
+ var c = _faction_begin(state,f)
+ for k in FACTION_STEPS: _faction_step(k,state,f,c,report,opts,controlled)
+
+# A faction's turn in steps (take_turns_sliced may hand a frame back between them).
+const FACTION_STEPS = 7
+static func _faction_begin(state,f: String) -> Dictionary:
  _odds_spent = 0
+ _odds_faction = f
  _invalidate()
  var rng = RandomNumberGenerator.new()
  rng.seed = hash([state.seed,state.year,f,"ai"])
@@ -158,13 +229,17 @@ static func faction_turn(state,f: String,report: Dictionary,opts := {},controlle
   p.landless = left
   p.boldness = float(p.boldness)*float(data().grace.boldness)
   p.aggression = maxf(float(p.aggression),1.0)
- var look = assess(state,f,p)
- _consider_war(state,f,p,look,rng,report)
- _balance_books(state,f,report)
- _build(state,f,p,look,report)
- _raise(state,f,p,report)
- _recruit(state,f,p,report)
- _command(state,f,p,look,report,opts,controlled)
+ return {"rng":rng,"p":p,"look":{}}
+
+static func _faction_step(k: int,state,f: String,c: Dictionary,report: Dictionary,opts: Dictionary,controlled: Array):
+ match k:
+  0: c.look = assess(state,f,c.p)
+  1: _consider_war(state,f,c.p,c.look,c.rng,report)
+  2: _balance_books(state,f,report)
+  3: _build(state,f,c.p,c.look,report)
+  4: _raise(state,f,c.p,report)
+  5: _recruit(state,f,c.p,report)
+  6: _command(state,f,c.p,c.look,report,opts,controlled)
 
 # Threats to own settlements and the posture they set.
 static func assess(state,f: String,p: Dictionary) -> Dictionary:
@@ -192,29 +267,26 @@ static func targets_for(state,army_id: String,reach := -1.0) -> Array:
  var from = Movement.position(state,army_id)
  if reach<0.0: reach = float(data().reach.reach_meters)
  var out = []
- for sid in _sorted(state.settlements.keys()):
+ for sid in _sorted(WorldMap.settlements_near(from,reach)):
   var s = state.settlements[sid]
   if s.owner == me.faction: continue
   var pos = WorldMap.settlement_position(sid)
-  if pos.distance_to(from)>reach: continue
   out.append({"kind":"settlement","id":sid,"faction":s.owner,"position":pos,"defense":settlement_defense(state,sid)})
- var all = _armies(state)
  var rr = float(Battles.cfg().reinforcement_radius)
  var share = float(data().power.reinforce_share)
- for e in all:
+ for e in _armies_near(state,from,reach):
   if e.faction == me.faction or e.garrison != "": continue
-  if e.pos.distance_to(from)>reach: continue
   # A field army is joined by its friends nearby.
   var def = army_power(state,e.id)
-  for o in all:
-   if o.id != e.id and o.faction == e.faction and o.pos.distance_to(e.pos)<=rr: def += army_power(state,o.id)*share
+  for o in _armies_near(state,e.pos,rr):
+   if o.id != e.id and o.faction == e.faction: def += army_power(state,o.id)*share
   out.append({"kind":"army","id":e.id,"faction":e.faction,"position":e.pos,"defense":def})
  # Own armies close enough to the target join the battle as reinforcements (Battles), so they count.
  var mine = army_power(state,army_id)
  for t in out:
   var help = 0.0
-  for o in all:
-   if o.id != army_id and o.faction == me.faction and o.pos.distance_to(t.position)<=rr: help += army_power(state,o.id)*share
+  for o in _armies_near(state,t.position,rr):
+   if o.id != army_id and o.faction == me.faction: help += army_power(state,o.id)*share
   t.ratio = (mine+help)/maxf(1.0,float(t.defense))
  out.sort_custom(func(a,b): return a.ratio>b.ratio or (a.ratio == b.ratio and a.id<b.id))
  return out
@@ -393,6 +465,10 @@ static func _recruit(state,f: String,p: Dictionary,report: Dictionary):
 # Win chance for an attack: decided by the power ratio when clear, else by seeded quick simulations.
 static var _odds_cache = {} # odds by (year, battle counter, army, target, position, both strengths), reset each AI phase
 static var _odds_spent := 0 # simulated odds estimates this faction has used this turn
+static var _odds_turn_spent := 0 # ... and all factions together this AI phase (odds.turn_budget)
+static var _odds_groups := 1
+static var _odds_year := 0
+static var _odds_faction := ""
 
 static func attack_odds(state,army_id: String,target: Dictionary) -> float:
  var o = data().odds
@@ -401,9 +477,12 @@ static func attack_odds(state,army_id: String,target: Dictionary) -> float:
  if ratio<=float(o.hopeless_ratio): return 0.05
  var key = "%d:%d:%s:%s:%s:%.3f:%.3f" % [state.year,state.battles,army_id,target.id,str(state.army_state[army_id].position),army_power(state,army_id),float(target.defense)]
  if _odds_cache.has(key): return _odds_cache[key]
- # Over this turn's simulation budget: a logistic curve of the power ratio stands in.
- if _odds_spent>=int(o.odds_budget): return curve_odds(ratio)
+ # Over this faction's or this turn's simulation budget, or not this faction's turn to simulate: a
+ # logistic curve of the power ratio stands in.
+ if _odds_spent>=int(o.odds_budget) or _odds_turn_spent>=int(o.turn_budget): return curve_odds(ratio)
+ if _odds_groups>1 and (absi(hash(_odds_faction))+_odds_year)%_odds_groups != 0: return curve_odds(ratio)
  _odds_spent += 1
+ _odds_turn_spent += 1
  var pb = Battles.prebattle(state,army_id,target,false)
  var v = Battles.odds(state,pb,int(o.odds_runs))
  _odds_cache[key] = v

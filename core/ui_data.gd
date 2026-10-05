@@ -82,6 +82,19 @@ func end_turn():
  var before = _alert_snapshot()
  var report = TurnLoop.end_turn(state)
  last_turn_ms = (Time.get_ticks_usec()-t0)/1000.0
+ return _after_turn(report,before)
+
+# End Turn spread over frames (the game): the map keeps rendering and the AI turn bar shows
+# turn_progress(factions done, factions in all). Same result as end_turn.
+signal turn_progress(done: int,total: int)
+func end_turn_async(tree: SceneTree,budget_ms := 12.0):
+ var t0 = Time.get_ticks_usec()
+ var before = _alert_snapshot()
+ var report = await TurnLoop.end_turn_sliced(state,tree,budget_ms,func(d,n): turn_progress.emit(d,n))
+ last_turn_ms = (Time.get_ticks_usec()-t0)/1000.0
+ return _after_turn(report,before)
+
+func _after_turn(report: Dictionary,before: Dictionary) -> Dictionary:
  for e in report.entries: event_added.emit(e)
  # Standing orders walked first, then the AI phase: one path per army for the map to replay.
  var moves = {}

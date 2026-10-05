@@ -2070,3 +2070,18 @@ func _sync_ai_speed():
 func camera_settings_changed():
  _sync_ai_speed()
  if dropdown_visible() and dropdown_kind == "camera": _fill_dropdown()
+
+# While End Turn runs over several frames (main.gd): "The world takes its turn" with the AI's
+# progress, top centre. done < 0 hides it.
+var turn_progress_bar: Control
+var turn_progress_label: Label
+func show_turn_progress(done: int,total: int):
+ if turn_progress_bar == null:
+  turn_progress_bar = Widgets.Framed.new("main",colors.trim,Color(colors.panel,0.95))
+  turn_progress_bar.name = "TurnProgress"
+  turn_progress_label = UiKit.header("",15)
+  turn_progress_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+  turn_progress_bar.add_child(turn_progress_label)
+  _anchor(turn_progress_bar,0.5,0,0.5,0,Rect2(-180,104,180,146))
+ turn_progress_bar.visible = done>=0
+ if done>=0: turn_progress_label.text = "The world takes its turn  %d / %d" % [done,total] if total>1 else "The world takes its turn"

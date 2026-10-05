@@ -15,6 +15,8 @@ extends RefCounted
 const WorldMap = preload("res://core/world_map.gd")
 const UnitTypes = preload("res://core/unit_types.gd")
 const MapRegistry = preload("res://core/map_registry.gd")
+const MapBake = preload("res://map/map_bake.gd")
+const PathHierarchy = preload("res://core/path_hierarchy.gd")
 const DATA = "res://data/movement.json" # global rules; the active map's movement.json overlays it
 const BLOCKED_BATTLE = "Enemy here: attacking means battle"
 const IMPASSABLE = "Impassable terrain"
@@ -25,7 +27,8 @@ static var _data = null
 static var _grid = null
 static var _map := "" # the map the caches belong to
 static var _astar = {} # road level -> AStarGrid2D
-static var _costs = {} # road level -> PackedFloat64Array of cell_cost per cell index
+static var _costs = {} # road level -> cost per cell code (_code_costs)
+static var _runs = null # row runs of the grid (map/map_bake.gd runs_of)
 
 static func _check_map():
  if _map != MapRegistry.active:
@@ -52,7 +55,14 @@ static func reset():
  _map = ""
  _astar = {}
  _costs = {}
- _applied = {}
+ _runs = null
+ _blk = {}
+ _blk_applied = {}
+ _blk_dirty = {}
+ _blk_key = []
+ _graph = null
+ _hpa = null
+ _comp = null
 
 # The baked grid: {cell, origin, cols, rows, terrain (PackedByteArray of terrain indices), names,
 # road (PackedByteArray, 1 where a road crosses the cell)}. A pipeline map stores it in
@@ -102,7 +112,7 @@ static func _load_baked() -> Dictionary:
  var rows = int(meta.rows)
  var terrain = raw.slice(0,n)
  var road = raw.slice(n)
- return {"cell":float(meta.cell),"origin":Vector2(meta.origin[0],meta.origin[1]),"cols":cols,"rows":rows,"terrain":terrain,"names":names,"road":road}
+ return {"cell":float(meta.cell),"origin":Vector2(meta.origin[0],meta.origin[1]),"cols":cols,"rows":rows,"terrain":terrain,"names":names,"road":road,"runs":int(meta.get("runs",0))}
 
 static func _road_mask() -> PackedByteArray:
  var g = _grid
@@ -167,8 +177,34 @@ static func _min_cost() -> float:
  for r in data().roads.multiplier_by_level: m = minf(m,float(r))
  return m
 
-# A* grid per road level. Weights are normalized so the cheapest cell weighs 1, which keeps the
-# Euclidean heuristic admissible (paths are least-cost).
+# Cost per meter for every cell code (terrain index + 16 * road), or -1 if impassable.
+static func _code_costs(road_level: int) -> PackedFloat64Array:
+ if _costs.has(road_level): return _costs[road_level]
+ var g = grid()
+ var t = PackedFloat64Array()
+ t.resize(32)
+ t.fill(-1.0)
+ for i in g.names.size():
+  var c = data().terrain[g.names[i]].cost
+  if c == null: continue
+  t[i] = float(c)
+  t[i+16] = road_multiplier(road_level)
+ _costs[road_level] = t
+ return t
+
+# Row runs of identical cells (map/map_bake.gd runs_of): baked with a pipeline map, computed here
+# for the test map.
+static func _grid_runs() -> PackedInt32Array:
+ if _runs == null:
+  var g = grid()
+  var n = int(g.get("runs",0))
+  if n>0: _runs = MapBake.read_runs(MapRegistry.dir(),n)
+  if _runs == null or _runs.size() != n*4: _runs = MapBake.runs_of(g.terrain,g.road,g.cols,g.rows)
+ return _runs
+
+# A* grid per road level, built in bulk from the row runs (one native fill per run, not one call per
+# cell). Weights are normalized so the cheapest cell weighs 1, which keeps the Euclidean heuristic
+# admissible (paths are least-cost).
 static func _astar_for(road_level: int) -> AStarGrid2D:
  if _astar.has(road_level): return _astar[road_level]
  var g = grid()
@@ -180,14 +216,110 @@ static func _astar_for(road_level: int) -> AStarGrid2D:
  a.default_estimate_heuristic = AStarGrid2D.HEURISTIC_EUCLIDEAN
  a.update()
  var lo = _min_cost()
- for z in g.rows:
-  for x in g.cols:
-   var c = Vector2i(x,z)
-   var cost = cell_cost(c,road_level)
-   if cost<0: a.set_point_solid(c,true)
-   else: a.set_point_weight_scale(c,cost/lo)
+ var costs = _code_costs(road_level)
+ var runs = _grid_runs()
+ for k in range(0,runs.size(),4):
+  var cost = costs[runs[k+3]]
+  var r = Rect2i(runs[k],runs[k+1],runs[k+2],1)
+  if cost<0: a.fill_solid_region(r,true)
+  elif not is_equal_approx(cost,lo): a.fill_weight_scale_region(r,cost/lo)
  _astar[road_level] = a
+ _blk_applied[road_level] = null # no faction's blocking applied yet
  return a
+
+# --- Blocking: enemy armies and foreign settlements ------------------------------------------------
+# A move may not path through another faction's army or settlement (moving onto one is the battle
+# flow instead). The blocked cells are kept as an index updated incrementally (only armies that
+# moved and settlements that changed hands are recomputed), with per-cell counts for every area and
+# for each faction's own areas: a cell blocks faction F when it lies in an area F does not own.
+# Switching the A* grid from one faction to another only touches those two factions' own cells.
+static var _blk = {}            # {"total": {cell: n}, "own": {faction: {cell: n}}, "areas": {key: [faction, at, cells]}}
+static var _blk_applied = {}    # road level -> faction whose blocking is applied to that grid (null: none)
+static var _blk_dirty = {}      # cells whose count changed since the grids were last synced
+static var _blk_faction := "" # the faction the next sync is for (set by its callers)
+
+static func _area_cells(at: Vector2,radius: float) -> PackedInt32Array:
+ var g = grid()
+ var out = PackedInt32Array()
+ var lo = cell_of(at-Vector2.ONE*radius)
+ var hi = cell_of(at+Vector2.ONE*radius)
+ for z in range(maxi(lo.y,0),mini(hi.y,g.rows-1)+1):
+  for x in range(maxi(lo.x,0),mini(hi.x,g.cols-1)+1):
+   if center_of(Vector2i(x,z)).distance_to(at)<=radius: out.append(z*g.cols+x)
+ return out
+
+static func _blk_add(key: String,faction: String,at: Vector2,radius: float,sign: int):
+ var total = _blk.total
+ var own = _blk.own.get_or_add(faction,{})
+ var cells = _area_cells(at,radius) if sign>0 else _blk.areas[key][2]
+ for c in cells:
+  total[c] = total.get(c,0)+sign
+  own[c] = own.get(c,0)+sign
+  if total[c] == 0: total.erase(c)
+  if own[c] == 0: own.erase(c)
+  _blk_dirty[c] = true
+ if sign>0: _blk.areas[key] = [faction,at,cells]
+ else: _blk.areas.erase(key)
+
+# Bring the index up to date with the state: armies that moved, appeared or vanished, settlements
+# that changed hands. Cheap when nothing changed (one pass over armies and settlements).
+static var _blk_key = []
+static func _sync_blocks(state):
+ # Within one frame, for the same faction and with no battle or army change since, nothing that
+ # blocks this faction has moved (only its own armies did), so the last sync still holds.
+ var sync_key = [state.get_instance_id(),Engine.get_process_frames(),state.battles,state.army_state.size(),_blk_faction]
+ if sync_key == _blk_key and not _blk.is_empty(): return
+ _blk_key = sync_key
+ if _blk.is_empty(): _blk = {"total":{},"own":{},"areas":{}}
+ var areas = _blk.areas
+ var seen = {}
+ var sr = float(data().settlements.radius)
+ for sid in WorldMap.settlement_ids():
+  var key = "s:"+sid
+  seen[key] = true
+  var owner = state.settlements[sid].owner
+  var old = areas.get(key)
+  if old != null and old[0] == owner: continue
+  if old != null: _blk_add(key,old[0],old[1],sr,-1)
+  _blk_add(key,owner,WorldMap.settlement_position(sid),sr,1)
+ var ar = float(data().armies.block_radius)
+ for id in state.army_state:
+  var key = "a:"+id
+  seen[key] = true
+  var o = state.army_state[id]
+  var at = Vector2(o.position[0],o.position[1])
+  var old = areas.get(key)
+  if old != null and old[0] == o.faction and old[1] == at: continue
+  if old != null: _blk_add(key,old[0],old[1],ar,-1)
+  _blk_add(key,o.faction,at,ar,1)
+ for key in areas.keys():
+  if not seen.has(key): _blk_add(key,areas[key][0],areas[key][1],0.0,-1)
+
+static func blocked_for(cell: int,faction: String) -> bool:
+ return _blk.total.get(cell,0)-_blk.own.get(faction,{}).get(cell,0)>0
+
+static func _apply_blocks(state,a: AStarGrid2D,faction: String):
+ _blk_faction = faction
+ _sync_blocks(state)
+ var cols = grid().cols
+ var costs = _code_costs(state.road_level)
+ var g = grid()
+ var prev = _blk_applied.get(state.road_level)
+ var touch = {}
+ if prev == null: touch = _blk.total.duplicate()
+ elif prev != faction:
+  touch.merge(_blk.own.get(prev,{}))
+  touch.merge(_blk.own.get(faction,{}))
+ touch.merge(_blk_dirty)
+ for c in touch:
+  var terrain_solid = costs[g.terrain[c]+16*g.road[c]]<0
+  a.set_point_solid(Vector2i(c%cols,c/cols),terrain_solid or blocked_for(c,faction))
+ _blk_applied[state.road_level] = faction
+ # Dirty cells are now synced for this grid; other road levels resync them in full on their next use.
+ if not _blk_dirty.is_empty():
+  for lvl in _blk_applied:
+   if lvl != state.road_level: _blk_applied[lvl] = null
+  _blk_dirty = {}
 
 # --- Army state --------------------------------------------------------------------
 
@@ -208,10 +340,13 @@ static func position(state,army_id: String) -> Vector2:
  return Vector2(p[0],p[1])
 
 static func settlement_at(p: Vector2) -> String:
- var r = float(data().settlements.radius)
- for id in WorldMap.settlement_ids():
-  if WorldMap.settlement_position(id).distance_to(p)<=r: return id
- return ""
+ var near = WorldMap.settlements_near(p,float(data().settlements.radius))
+ if near.is_empty(): return ""
+ # The first in file order, as before.
+ var best = near[0]
+ for id in near:
+  if WorldMap.settlement_ids().find(id)<WorldMap.settlement_ids().find(best): best = id
+ return best
 
 # Armies garrisoned in a settlement.
 static func garrison_of(state,settlement_id: String) -> Array:
@@ -226,57 +361,6 @@ static func garrison_of(state,settlement_id: String) -> Array:
 # A* grid between plans and are re-applied only when the faction, road level, foreign armies'
 # positions or settlement owners change (each application costs O(armies x cells), and the AI
 # plans many paths in a row).
-static var _applied = {} # road level -> {key, cells}
-
-static func _apply_blocks(state,a: AStarGrid2D,faction: String):
- var parts = [faction,str(state.road_level)]
- var ids = state.army_state.keys()
- ids.sort()
- for id in ids:
-  var o = state.army_state[id]
-  if o.faction != faction: parts.append("%s@%s" % [id,str(o.position)])
- for sid in WorldMap.settlement_ids(): parts.append(state.settlements[sid].owner)
- var key = "|".join(parts)
- var ap = _applied.get(state.road_level,{})
- if ap.get("key","") == key: return
- for c in ap.get("cells",[]): a.set_point_solid(c,cell_cost(c,state.road_level)<0)
- var cells = _faction_blocked_cells(state,faction)
- for c in cells: a.set_point_solid(c,true)
- _applied[state.road_level] = {"key":key,"cells":cells}
-
-static func _faction_blocked_cells(state,faction: String) -> Array:
- var out = []
- var areas = []
- for id in WorldMap.settlement_ids():
-  if state.settlements[id].owner != faction: areas.append([WorldMap.settlement_position(id),float(data().settlements.radius)])
- for other in state.army_state:
-  if state.army_state[other].faction != faction: areas.append([position(state,other),float(data().armies.block_radius)])
- for a in areas:
-  var lo = cell_of(a[0]-Vector2.ONE*a[1])
-  var hi = cell_of(a[0]+Vector2.ONE*a[1])
-  for z in range(lo.y,hi.y+1):
-   for x in range(lo.x,hi.x+1):
-    var c = Vector2i(x,z)
-    if in_grid(c) and center_of(c).distance_to(a[0])<=a[1]: out.append(c)
- return out
-
-static func _blocked_cells(state,army_id: String) -> Array:
- var me = army(state,army_id)
- var out = []
- var areas = []
- for id in WorldMap.settlement_ids():
-  if state.settlements[id].owner != me.faction: areas.append([WorldMap.settlement_position(id),float(data().settlements.radius)])
- for other in state.army_state:
-  if other != army_id and state.army_state[other].faction != me.faction: areas.append([position(state,other),float(data().armies.block_radius)])
- for a in areas:
-  var lo = cell_of(a[0]-Vector2.ONE*a[1])
-  var hi = cell_of(a[0]+Vector2.ONE*a[1])
-  for z in range(lo.y,hi.y+1):
-   for x in range(lo.x,hi.x+1):
-    var c = Vector2i(x,z)
-    if in_grid(c) and center_of(c).distance_to(a[0])<=a[1]: out.append(c)
- return out
-
 # Where an order to `target` would end, or why it cannot be given.
 static func destination(state,army_id: String,target: Vector2) -> Dictionary:
  var me = army(state,army_id)
@@ -284,9 +368,12 @@ static func destination(state,army_id: String,target: Vector2) -> Dictionary:
  if sid != "":
   if state.settlements[sid].owner != me.faction: return {"ok":false,"reason":BLOCKED_BATTLE,"settlement":sid}
   return {"ok":true,"point":WorldMap.settlement_position(sid),"settlement":sid}
- for other in state.army_state:
-  if other != army_id and state.army_state[other].faction != me.faction and position(state,other).distance_to(target)<=float(data().armies.block_radius):
-   return {"ok":false,"reason":BLOCKED_BATTLE,"army":other}
+ # Another faction's army near the target: only searched when the blocking index shows a foreign
+ # area within reach of the target cell (any army within block_radius blocks a cell that close).
+ if _foreign_area_near(state,target,me.faction):
+  for other in state.army_state:
+   if other != army_id and state.army_state[other].faction != me.faction and position(state,other).distance_to(target)<=float(data().armies.block_radius):
+    return {"ok":false,"reason":BLOCKED_BATTLE,"army":other}
  if not in_grid(cell_of(target)) or cell_cost(cell_of(target),state.road_level)<0: return {"ok":false,"reason":IMPASSABLE}
  return {"ok":true,"point":target,"settlement":""}
 
@@ -306,14 +393,59 @@ static func plan(state,army_id: String,target: Vector2,retreating := false) -> D
  var to = cell_of(dest.point)
  var was_solid = a.is_point_solid(from)
  a.set_point_solid(from,false)
- var cells = a.get_id_path(from,to) if not a.is_point_solid(to) else []
+ var cells = []
+ if not a.is_point_solid(to) and _same_component(from,to):
+  cells = _hierarchical_path(a,start,dest.point,from,to)
+  if cells.is_empty(): cells = a.get_id_path(from,to)
  a.set_point_solid(from,was_solid)
  if cells.is_empty(): return {"ok":false,"reason":NO_ROUTE}
  var points = [start]
- for i in range(1,cells.size()-1): points.append(center_of(cells[i]))
+ var go: Vector2 = grid().origin+Vector2(0.5,0.5)*grid().cell
+ var gc: float = grid().cell
+ for i in range(1,cells.size()-1): points.append(go+Vector2(cells[i])*gc)
  if dest.point.distance_to(start)>0.001: points.append(dest.point)
  var sim = simulate(points,float(me.points),float(me.max_points),state.road_level)
  return {"ok":true,"points":points,"turns":sim.turns,"reach":sim.reach,"total_turns":sim.turns[-1]+1,"cost":sim.cost,"settlement":dest.settlement}
+
+# --- Hierarchical paths (docs/map-pipeline-design.md §6.3) ---------------------------------------
+# Long moves on a pipeline map go through core/path_hierarchy.gd (HPA*: region crossings joined by
+# stored paths); short moves, the test map and failed hierarchy queries search the grid directly.
+const HIER_MIN_DISTANCE = 100.0 # metres; shorter moves are searched directly
+static var _graph = null      # {index: {region id: graph index}} or {}
+static var _hpa = null        # core/path_hierarchy.gd data, or {}
+
+static func _region_graph() -> Dictionary:
+ _check_map()
+ if _graph == null:
+  _graph = {}
+  if MapRegistry.has_file("baked/graph.json") and MapRegistry.has_file("baked/regions.json"):
+   var names = JSON.parse_string(FileAccess.get_file_as_string(MapRegistry.path("baked/regions.json"))).names
+   var index = {}
+   for i in names.size(): index[names[i]] = i
+   _graph = {"index":index}
+ return _graph
+
+static func _hierarchical_path(a: AStarGrid2D,start: Vector2,goal: Vector2,from: Vector2i,to: Vector2i) -> Array:
+ if start.distance_to(goal)<HIER_MIN_DISTANCE: return []
+ var hg = _region_graph()
+ if hg.is_empty(): return []
+ if _hpa == null: _hpa = PathHierarchy.load_for(load("res://core/movement.gd"))
+ return PathHierarchy.route(load("res://core/movement.gd"),_hpa,a,from,to,_blk_faction)
+
+# False when the baked components show no passable land route between the cells (pipeline maps).
+static var _comp = null
+static func _same_component(a: Vector2i,b: Vector2i) -> bool:
+ if _comp == null:
+  var g = grid()
+  _comp = MapBake.read_components(MapRegistry.dir(),g.cols*g.rows) if MapRegistry.has_file("baked/components.bin") else PackedInt32Array()
+  if _comp.size() != g.cols*g.rows: _comp = PackedInt32Array()
+ if _comp.is_empty(): return true
+ var cols = grid().cols
+ var ca = _comp[a.y*cols+a.x]
+ var cb = _comp[b.y*cols+b.x]
+ # A blocked start (the army stands in a settlement cell) has no component: let the search decide.
+ return ca == 0 or cb == 0 or ca == cb
+
 
 # Turn index of every path point, starting with `points_left` this turn and a full allowance on
 # each later turn. An army stops before a step it cannot afford (Total War style).
@@ -323,8 +455,25 @@ static func simulate(points: Array,points_left: float,full: float,road_level: in
  var budget = points_left
  var total = 0.0
  var reach = 0
+ # Inlined segment_cost (one lookup per point in the per-code cost table): long paths have hundreds
+ # of points and this runs for every preview update.
+ var g = grid()
+ var codes = _code_costs(road_level)
+ var terrain: PackedByteArray = g.terrain
+ var road: PackedByteArray = g.road
+ var cols: int = g.cols
+ var rows: int = g.rows
+ var o: Vector2 = g.origin
+ var cs: float = g.cell
  for i in range(1,points.size()):
-  var c = segment_cost(points[i-1],points[i],road_level)
+  var b: Vector2 = points[i]
+  var cx = floori((b.x-o.x)/cs)
+  var cz = floori((b.y-o.y)/cs)
+  var unit = -1.0
+  if cx>=0 and cz>=0 and cx<cols and cz<rows:
+   var k = cz*cols+cx
+   unit = codes[terrain[k]+16*road[k]]
+  var c = points[i-1].distance_to(b)*unit
   total += c
   if c>budget+0.0001:
    turn += 1
@@ -382,27 +531,28 @@ static func end_turn(state) -> Dictionary:
   if not me.order.is_empty(): moves[id] = advance(state,id)
  return moves
 
-static func _cost_table(road_level: int) -> PackedFloat64Array:
- if _costs.has(road_level): return _costs[road_level]
- var g = grid()
- var t = PackedFloat64Array()
- t.resize(g.cols*g.rows)
- for i in t.size(): t[i] = cell_cost(Vector2i(i%g.cols,i/g.cols),road_level)
- _costs[road_level] = t
- return t
-
 # Cells the army can still reach this turn (Dijkstra limited by its remaining points), with the
 # same step costs and diagonal rule as the path search.
 static func reachable(state,army_id: String) -> Array:
  var g = grid()
  var cols: int = g.cols
  var rows: int = g.rows
- var cost = _cost_table(state.road_level).duplicate()
- for c in _blocked_cells(state,army_id): cost[c.y*cols+c.x] = -1.0
+ var codes = _code_costs(state.road_level)
+ var terrain: PackedByteArray = g.terrain
+ var road: PackedByteArray = g.road
+ var faction = army(state,army_id).faction
+ _blk_faction = faction
+ _sync_blocks(state)
+ var total: Dictionary = _blk.total
+ var own: Dictionary = _blk.own.get(faction,{})
+ # Step cost of a cell (-1 impassable or blocked), looked up only for cells the search reaches.
+ var cost_of = func(i: int) -> float:
+  if total.has(i) and total[i]-own.get(i,0)>0: return -1.0
+  return codes[terrain[i]+16*road[i]]
  var budget = float(army(state,army_id).points)
  var start_cell = cell_of(position(state,army_id))
  var start = start_cell.y*cols+start_cell.x
- cost[start] = maxf(cost[start],0.0)
+ var start_cost = maxf(cost_of.call(start),0.0)
  var best = PackedFloat64Array()
  best.resize(cols*rows)
  best.fill(INF)
@@ -426,9 +576,9 @@ static func reachable(state,army_id: String) -> Array:
     var nx = x+dx
     if (dx == 0 and dz == 0) or nx<0 or nx>=cols: continue
     var n = nz*cols+nx
-    var c = cost[n]
+    var c = start_cost if n == start else cost_of.call(n)
     if c<0: continue
-    if dx != 0 and dz != 0 and (cost[z*cols+nx]<0 or cost[nz*cols+x]<0): continue
+    if dx != 0 and dz != 0 and (cost_of.call(z*cols+nx)<0 or cost_of.call(nz*cols+x)<0): continue
     var nd = d+(diag if dx != 0 and dz != 0 else cell)*c
     if nd<=budget and nd<best[n]:
      best[n] = nd
@@ -463,3 +613,16 @@ static func _heap_pop(heap: Array) -> Array:
    heap[i] = t
    i = m
  return top
+
+# True if a cell within block_radius plus a cell of the target is blocked for `faction` (a foreign
+# army or settlement is that close).
+static func _foreign_area_near(state,target: Vector2,faction: String) -> bool:
+ _blk_faction = faction
+ _sync_blocks(state)
+ var g = grid()
+ var c = cell_of(target)
+ var r = int(ceil(float(data().armies.block_radius)/g.cell))+1
+ for z in range(maxi(c.y-r,0),mini(c.y+r,g.rows-1)+1):
+  for x in range(maxi(c.x-r,0),mini(c.x+r,g.cols-1)+1):
+   if blocked_for(z*g.cols+x,faction): return true
+ return false

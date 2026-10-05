@@ -11,6 +11,10 @@ static var _factions = null
 static var _map := ""
 static var _province_of = {} # region id -> province id
 static var _raster = null     # {cell, origin, cols, rows, ids: PackedInt32Array, names: [region ids]} or null
+static var _settlement_ids = [] # settled regions, in file order (cached; treat as read-only)
+static var _positions = {}      # settlement id -> Vector2
+static var _buckets = {}        # Vector2i(32 m bucket) -> [settlement ids], for settlements_near
+const BUCKET = 32.0
 
 static func _load():
  if _provinces != null and _map == MapRegistry.active: return
@@ -33,6 +37,16 @@ static func _load():
  for prov in p.provinces:
   for rid in prov.regions: _province_of[rid] = prov.id
  _raster = _load_raster()
+ _settlement_ids = []
+ _positions = {}
+ _buckets = {}
+ for id in p.regions:
+  var s = p.regions[id].settlement
+  if s == null: continue
+  _settlement_ids.append(id)
+  var pos = Vector2(s.position[0],s.position[1])
+  _positions[id] = pos
+  _buckets.get_or_add(Vector2i((pos/BUCKET).floor()),[]).append(id)
 
 static func reset():
  _provinces = null
@@ -84,11 +98,10 @@ static func province_of(region_id: String) -> String:
 static func owner_of(region_id: String) -> String:
  return region(region_id).get("owner","")
 
+# Every settled region (cached: do not modify the returned array).
 static func settlement_ids() -> Array:
- var out = []
- for id in regions():
-  if regions()[id].settlement != null: out.append(id)
- return out
+ _load()
+ return _settlement_ids
 
 static func settlements_in(province_id: String) -> Array:
  var out = []
@@ -97,8 +110,20 @@ static func settlements_in(province_id: String) -> Array:
  return out
 
 static func settlement_position(region_id: String) -> Vector2:
- var pos = region(region_id).settlement.position
- return Vector2(pos[0],pos[1])
+ _load()
+ return _positions[region_id]
+
+# Settlements within `radius` of a point (bucketed, so the cost does not grow with the map).
+static func settlements_near(p: Vector2,radius: float) -> Array:
+ _load()
+ var out = []
+ var lo = Vector2i(((p-Vector2.ONE*radius)/BUCKET).floor())
+ var hi = Vector2i(((p+Vector2.ONE*radius)/BUCKET).floor())
+ for bz in range(lo.y,hi.y+1):
+  for bx in range(lo.x,hi.x+1):
+   for id in _buckets.get(Vector2i(bx,bz),[]):
+    if _positions[id].distance_to(p)<=radius: out.append(id)
+ return out
 
 # The region-ID raster of a pipeline map, or null. baked/regions.bin: zstd-compressed little-endian
 # int32 ids, row by row (0 = no region, i = names[i-1]); baked/regions.json: {cell, origin, cols,

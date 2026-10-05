@@ -70,18 +70,27 @@ static func file_for(name: String) -> String:
 # Save the state. kind: manual, auto or quick. thumbnail: an Image (scaled down here) or null.
 # _interrupt (tests only): stop after writing the temp file, as a crash would.
 # view: the camera ({target: [x,y,z], yaw, pitch, distance}), restored on load.
-static func save(state,file: String,name: String,kind := "manual",thumbnail: Image = null,_interrupt := false,view := {}) -> Dictionary:
+# background: encode and write on a worker thread (the game: autosave, quicksave, manual saves);
+# otherwise the save is complete on return (tests, tools).
+static func save(state,file: String,name: String,kind := "manual",thumbnail: Image = null,_interrupt := false,view := {},background := false) -> Dictionary:
+ # One write at a time, in order (a later save of the same slot must land last).
+ wait_for_saves()
  DirAccess.make_dir_recursive_absolute(dir)
  var t0 = Time.get_ticks_usec()
  var now = Time.get_datetime_dict_from_system()
  var meta = {"name":name,"kind":kind,"faction":state.player_faction,"faction_name":WorldMap.faction(state.player_faction).get("name",state.player_faction),
   "year":state.year,"turn":state.turn,"seed":state.seed,"saved_at":Time.get_unix_time_from_system(),
   "saved_text":"%04d-%02d-%02d %02d:%02d" % [now.year,now.month,now.day,now.hour,now.minute],"seq":_next_seq()}
- var text = JSON.stringify({"schema":SCHEMA,"meta":meta,"view":SaveCodec.encode(view),"state":SaveCodec.encode(state.to_dict())},"",false,true)
- var path = path_of(file)
- var err = _write_atomic(path,text.to_utf8_buffer(),_interrupt)
- if err != OK: return {"ok":false,"error":"Could not write the save (%s)." % error_string(err)}
- if _interrupt: return {"ok":false,"error":"interrupted"}
+ # The main thread only copies the state; encoding and writing run on a worker thread (the game
+ # keeps running), and every reader (load, list, meta, delete) waits for the write first.
+ var job = {"meta":meta,"view":view.duplicate(true),"state":state.to_dict(),"path":path_of(file),"file":file,"interrupt":_interrupt}
+ var main_ms = (Time.get_ticks_usec()-t0)/1000.0
+ if _interrupt or not background:
+  _write_save(job)
+  var r = _save_result.duplicate()
+  if r.ok: r.ms = (Time.get_ticks_usec()-t0)/1000.0
+  if not r.ok or _interrupt: return r
+ else: _save_task = WorkerThreadPool.add_task(_write_save.bind(job))
  if thumbnail != null and not thumbnail.is_empty():
   # Scaling and encoding the pictures runs on a worker thread so End Turn does not hitch; each
   # file still lands atomically. wait_for_images() waits for them (tests, quitting).
@@ -91,7 +100,37 @@ static func save(state,file: String,name: String,kind := "manual",thumbnail: Ima
    return false)
   _pending.append(WorkerThreadPool.add_task(_write_images.bind(thumb_of(file),backdrop_path(),thumbnail)))
  elif FileAccess.file_exists(thumb_of(file)): DirAccess.remove_absolute(thumb_of(file))
- return {"ok":true,"file":file,"path":path,"bytes":text.length(),"ms":(Time.get_ticks_usec()-t0)/1000.0,"meta":meta}
+ if not background: return _save_result.merged({"ms":(Time.get_ticks_usec()-t0)/1000.0},true)
+ return {"ok":true,"file":file,"path":path_of(file),"ms":main_ms,"meta":meta,"background":true}
+
+static var _save_task := -1
+static var _save_result = {}
+
+# Worker: encode, write the save atomically, then its small meta sidecar (read by lists and slots
+# without parsing the whole save).
+static func _write_save(job: Dictionary):
+ var t0 = Time.get_ticks_usec()
+ var text = JSON.stringify({"schema":SCHEMA,"meta":job.meta,"view":SaveCodec.encode(job.view),"state":SaveCodec.encode(job.state)},"",false,true)
+ var err = _write_atomic(job.path,text.to_utf8_buffer(),job.interrupt)
+ if err != OK:
+  _save_result = {"ok":false,"error":"Could not write the save (%s)." % error_string(err)}
+  return
+ if job.interrupt:
+  _save_result = {"ok":false,"error":"interrupted"}
+  return
+ var side = JSON.stringify({"schema":SCHEMA,"meta":SaveCodec.encode(job.meta)})
+ _write_atomic(meta_of(job.file),side.to_utf8_buffer())
+ _save_result = {"ok":true,"file":job.file,"path":job.path,"bytes":text.length(),"write_ms":(Time.get_ticks_usec()-t0)/1000.0,"meta":job.meta}
+
+# Wait for the save being written (if any); its result ({ok, bytes, write_ms, ...} or the error).
+static func wait_for_saves() -> Dictionary:
+ if _save_task >= 0:
+  WorkerThreadPool.wait_for_task_completion(_save_task)
+  _save_task = -1
+ return _save_result
+
+static func meta_of(file: String) -> String:
+ return "%s/%s.meta" % [dir,file]
 
 static func _write_atomic(path: String,bytes: PackedByteArray,interrupt := false,tmp_tag := "") -> int:
  var tmp = path+tmp_tag+".tmp"
@@ -106,6 +145,7 @@ static func _write_atomic(path: String,bytes: PackedByteArray,interrupt := false
 
 # Load a save: {ok, state, meta} or {ok: false, error}.
 static func load_save(file: String) -> Dictionary:
+ wait_for_saves()
  var path = path_of(file)
  if not FileAccess.file_exists(path): return {"ok":false,"error":"The save \"%s\" no longer exists." % file}
  var t0 = Time.get_ticks_usec()
@@ -148,6 +188,7 @@ static func migrate(data: Dictionary,table = null,current := SCHEMA,oldest := OL
 
 # All saves, newest first: [{file, name, kind, faction, faction_name, year, turn, saved_text, thumb}].
 static func list() -> Array:
+ wait_for_saves()
  var out = []
  var d = DirAccess.open(dir)
  if d == null: return out
@@ -165,8 +206,18 @@ static func list() -> Array:
 # A save's meta block without decoding its state ({} if unreadable). Unreadable saves still list,
 # marked damaged, so the player can delete them.
 static func read_meta(file: String) -> Dictionary:
+ wait_for_saves()
  var path = path_of(file)
  if not FileAccess.file_exists(path): return {}
+ # The sidecar holds the meta of saves made since the background-write change; older saves are
+ # parsed in full.
+ if FileAccess.file_exists(meta_of(file)) and FileAccess.get_modified_time(meta_of(file)) >= FileAccess.get_modified_time(path):
+  var sj = JSON.parse_string(FileAccess.get_file_as_string(meta_of(file)))
+  if sj is Dictionary and sj.has("meta"):
+   var sm = SaveCodec.decode(sj.meta)
+   if sm is Dictionary and sm.has("name"):
+    sm.schema = int(sj.get("schema",0))
+    return sm
  var j = JSON.new()
  if j.parse(FileAccess.get_file_as_string(path)) != OK or not (j.data is Dictionary):
   return {"name":file,"kind":"damaged","faction":"","faction_name":"Damaged save","year":0,"turn":0,"saved_text":"","seq":0}
@@ -181,17 +232,25 @@ static func latest() -> Dictionary:
  return l[0] if not l.is_empty() else {}
 
 static func delete(file: String) -> bool:
+ wait_for_saves()
+ if FileAccess.file_exists(meta_of(file)): DirAccess.remove_absolute(meta_of(file))
  var ok = DirAccess.remove_absolute(path_of(file)) == OK
  if FileAccess.file_exists(thumb_of(file)): DirAccess.remove_absolute(thumb_of(file))
  return ok
 
+# Save order: one more than the highest seq in the save folder, scanned once per folder and then
+# counted up (the scan reads the meta sidecars, so it stays cheap).
+static var _seq = {} # save folder -> last seq used
 static func _next_seq() -> int:
- var n = 0
- var d = DirAccess.open(dir)
- if d == null: return 1
- for f in d.get_files():
-  if f.ends_with(".json"): n = maxi(n,int(read_meta(f.get_basename()).get("seq",0)))
- return n+1
+ if not _seq.has(dir):
+  var n = 0
+  var d = DirAccess.open(dir)
+  if d != null:
+   for f in d.get_files():
+    if f.ends_with(".json"): n = maxi(n,int(read_meta(f.get_basename()).get("seq",0)))
+  _seq[dir] = n
+ _seq[dir] += 1
+ return _seq[dir]
 
 # Autosave at the start of End Turn into the oldest of AUTOSAVES rotating slots.
 static func autosave(state,thumbnail: Image = null,view := {}) -> Dictionary:
@@ -205,10 +264,10 @@ static func autosave(state,thumbnail: Image = null,view := {}) -> Dictionary:
   if int(m.get("seq",0))<oldest:
    oldest = int(m.get("seq",0))
    slot = i
- return save(state,"autosave_%d" % slot,"Autosave, year %d" % state.year,"auto",thumbnail,false,view)
+ return save(state,"autosave_%d" % slot,"Autosave, year %d" % state.year,"auto",thumbnail,false,view,true)
 
 static func quicksave(state,thumbnail: Image = null,view := {}) -> Dictionary:
- return save(state,QUICKSAVE,"Quicksave","quick",thumbnail,false,view)
+ return save(state,QUICKSAVE,"Quicksave","quick",thumbnail,false,view,true)
 
 # Thumbnail (load screen) and the main menu's backdrop (the latest saved view, larger).
 static func _write_images(thumb_path: String,backdrop: String,source: Image):
@@ -221,5 +280,12 @@ static func _write_images(thumb_path: String,backdrop: String,source: Image):
  _write_atomic(backdrop,big.save_jpg_to_buffer(0.85),false,tag)
 
 static func wait_for_images():
+ wait_for_saves()
  for task in _pending: WorkerThreadPool.wait_for_task_completion(task)
  _pending.clear()
+
+# Non-blocking: the result of the background write once it has finished ({} while still writing or
+# when nothing is pending). The map polls this to report a failed save.
+static func poll_saves() -> Dictionary:
+ if _save_task >= 0 and WorkerThreadPool.is_task_completed(_save_task): return wait_for_saves()
+ return {}
