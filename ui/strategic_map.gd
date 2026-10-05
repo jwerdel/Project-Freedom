@@ -408,7 +408,28 @@ func _region_raster() -> Dictionary:
    cols = mini(POLY_RASTER_MAX,rs.cols*8)
    rows = maxi(1,int(round(cols*float(rs.rows)/rs.cols)))
    var key = "%s|%d|%d" % [MapRegistry.active,cols,rows]
-   if not _poly_raster.has(key): _poly_raster[key] = rasterize(names,origin,span,cols,rows)
+   if not _poly_raster.has(key):
+    # Keep the polygon's id where it agrees with the baked raster within one baked cell (smooth
+    # borders); elsewhere the baked id (flood-filled regions only have convex hulls, and polygons
+    # may reach into the sea).
+    var fine = rasterize(names,origin,span,cols,rows)
+    var sx = float(rs.cols)/cols
+    var sz = float(rs.rows)/rows
+    for z in rows:
+     var bz = mini(rs.rows-1,int(z*sz))
+     for x in cols:
+      var bx = mini(rs.cols-1,int(x*sx))
+      var f = fine[z*cols+x]
+      var b = rs.ids[bz*rs.cols+bx]
+      if f == b: continue
+      var near = false
+      for dz in [-1,0,1]:
+       for dx in [-1,0,1]:
+        var nz = bz+dz
+        var nx = bx+dx
+        if nz>=0 and nx>=0 and nz<rs.rows and nx<rs.cols and rs.ids[nz*rs.cols+nx] == f: near = true
+      if not near: fine[z*cols+x] = b
+    _poly_raster[key] = fine
    ids = _poly_raster[key]
   else:
    ids = rs.ids
@@ -546,18 +567,28 @@ func _layout_glyphs():
    0:
     var xf = Transform2D(0.0,Vector2(s*(1.3+gl[3]*0.3),s*1.35),0.0,p)
     sets.m_back.append([xf,ink])
-    sets.m.append([xf,Color.WHITE.darkened(gl[3]*0.12)])
-    if gl[2]>1.05: sets.snow.append([xf,Color.WHITE])
+    sets.m.append([xf,_glyph_tint(gl,0.55).darkened(gl[3]*0.12)])
+    var ground = _glyph_tint(gl,1.0)
+    if gl[2]>1.05 and ground.get_luminance()>0.62 and ground.s<0.25: sets.snow.append([xf,Color.WHITE])
    1:
     var xf = Transform2D(0.0,Vector2(s,s*0.8),0.0,p)
     sets.h_back.append([xf,ink])
-    sets.h.append([xf,Color.WHITE.darkened(gl[3]*0.1)])
+    sets.h.append([xf,_glyph_tint(gl,0.45).darkened(gl[3]*0.1)])
    2:
     var xf = Transform2D(0.0,Vector2(s,s)*0.55,0.0,p)
     sets.t_back.append([xf,ink])
-    sets.t.append([xf,Color.WHITE.darkened(gl[3]*0.18)])
+    sets.t.append([xf,_glyph_tint(gl,0.35).darkened(gl[3]*0.18)])
  for k in [["h_back","hill_back"],["h","hill"],["t_back","tree_back"],["t","tree"],["m_back","mountain_back"],["m","mountain"],["snow","snow"]]:
   if not sets[k[0]].is_empty(): _glyph_layer.add_child(_multimesh(meshes[k[1]],sets[k[0]]))
+
+
+# A glyph's colour: white (its own painted colours) pulled toward the ground under it by `amount`,
+# kept light so the glyph still reads (red peaks, dark ash walls, pale snowfields).
+func _glyph_tint(gl: Array,amount: float) -> Color:
+ if gl.size()<5: return Color.WHITE
+ var g: Color = gl[4]
+ var t = Color.WHITE.lerp(g.lightened(0.35),amount)
+ return t
 
 static var _gmeshes := {}
 static func _glyph_meshes() -> Dictionary:

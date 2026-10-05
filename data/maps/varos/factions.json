@@ -1,0 +1,561 @@
+{
+  "_note": "Varos factions for the outline (map-pipeline-design §8.3: 3 playable, 11 major AI, 20 minor, 8 generated placeholders). Names are placeholders the owner can rename; colours and emblems are placeholders; kind: playable, major, minor, generated. House Verrin of Highbloom is a Roman minor house; the Lannetids are Silverfall's tyrants (world bible Appendix A).",
+  "factions": {
+    "house_varn": {
+      "name": "House Varn of Frosthold",
+      "culture": "medieval",
+      "primary": "#4a5d78",
+      "secondary": "#d8dde3",
+      "emblem": "faction",
+      "kind": "playable",
+      "traits": [
+        "devout",
+        "honourable"
+      ],
+      "seat": "frosthold",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "house_varrenus": {
+      "name": "House Varrenus",
+      "culture": "roman",
+      "primary": "#6d2a5e",
+      "secondary": "#e0c25a",
+      "emblem": "lords",
+      "kind": "playable",
+      "traits": [
+        "schemer"
+      ],
+      "seat": "varrenum",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "the_aurekids": {
+      "name": "The Aurekids of Goldspire Rock",
+      "culture": "greek",
+      "primary": "#7a1c1c",
+      "secondary": "#d9ad45",
+      "emblem": "spire",
+      "kind": "playable",
+      "traits": [
+        "income_focused",
+        "cruel_when_crossed"
+      ],
+      "seat": "goldspire_rock",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "house_aldane": {
+      "name": "House Aldane of Skyreach",
+      "culture": "medieval",
+      "primary": "#5f8fb0",
+      "secondary": "#f0f0ea",
+      "emblem": "objectives",
+      "kind": "major",
+      "traits": [
+        "passive"
+      ],
+      "seat": "skyreach",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "wardens": {
+      "name": "The Wardens of the Greywall",
+      "culture": "medieval",
+      "primary": "#2b2b2e",
+      "secondary": "#9a9a9a",
+      "emblem": "borders",
+      "kind": "major",
+      "traits": [
+        "honourable"
+      ],
+      "seat": "wardens_gate",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "house_corvinus": {
+      "name": "House Corvinus",
+      "culture": "roman",
+      "primary": "#3a3a6e",
+      "secondary": "#c9a54a",
+      "emblem": "lords",
+      "kind": "major",
+      "traits": [
+        "expansionist"
+      ],
+      "seat": "crownhaven",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "house_aemerius": {
+      "name": "House Aemerius",
+      "culture": "roman",
+      "primary": "#8a4a1c",
+      "secondary": "#e6d39a",
+      "emblem": "coin",
+      "kind": "major",
+      "traits": [
+        "income_focused"
+      ],
+      "seat": "aemerium",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "house_durran": {
+      "name": "House Durran of Tempest Keep",
+      "culture": "roman",
+      "primary": "#2f4f4f",
+      "secondary": "#e8c040",
+      "emblem": "armies",
+      "kind": "major",
+      "traits": [
+        "expansionist",
+        "honourable"
+      ],
+      "seat": "tempest_keep",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "theros": {
+      "name": "The Free City of Theros",
+      "culture": "greek",
+      "primary": "#1f5c8a",
+      "secondary": "#f2f2f2",
+      "emblem": "wave",
+      "kind": "major",
+      "traits": [
+        "generous"
+      ],
+      "seat": "theros",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "kyme": {
+      "name": "The Philandrid Tyranny of Kyme",
+      "culture": "greek",
+      "primary": "#5a1f6e",
+      "secondary": "#c9b06a",
+      "emblem": "faction",
+      "kind": "major",
+      "traits": [
+        "cruel"
+      ],
+      "seat": "kyme",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "throne_church": {
+      "name": "Caeloth, the Throne Church",
+      "culture": "church",
+      "primary": "#e8e2cf",
+      "secondary": "#b08a2e",
+      "emblem": "year",
+      "kind": "major",
+      "traits": [
+        "untouchable"
+      ],
+      "seat": "caeloth",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "hold_emberdeep": {
+      "name": "Hold Emberdeep",
+      "culture": "dwarf",
+      "primary": "#7a3b1c",
+      "secondary": "#e0a040",
+      "emblem": "settlements",
+      "kind": "major",
+      "traits": [
+        "honourable"
+      ],
+      "seat": "emberdeep",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "reavers_brinecrag": {
+      "name": "The Reavers of Brinecrag",
+      "culture": "dark_elf",
+      "primary": "#2a1f3d",
+      "secondary": "#b02a4a",
+      "emblem": "wave",
+      "kind": "major",
+      "traits": [
+        "treacherous",
+        "cruel"
+      ],
+      "seat": "brinecrag",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "skulkmire_brood": {
+      "name": "The Skulkmire Brood",
+      "culture": "ratmen",
+      "primary": "#3f4a1f",
+      "secondary": "#9fd04a",
+      "emblem": "chronicle",
+      "kind": "major",
+      "traits": [
+        "treacherous"
+      ],
+      "seat": "skulkmire",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "house_dunmoor": {
+      "name": "House Dunmoor",
+      "culture": "medieval",
+      "primary": "#5a4a3a",
+      "secondary": "#c8b48a",
+      "emblem": "faction",
+      "kind": "minor",
+      "traits": [
+        "cruel"
+      ],
+      "seat": "dunmoor_keep",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "house_kells": {
+      "name": "House Kells of the Barrowlands",
+      "culture": "medieval",
+      "primary": "#3f5a3a",
+      "secondary": "#d0c8a0",
+      "emblem": "borders",
+      "kind": "minor",
+      "traits": [],
+      "seat": "kellsford",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "house_rowen": {
+      "name": "House Rowen",
+      "culture": "medieval",
+      "primary": "#6a5a7a",
+      "secondary": "#e0d8c8",
+      "emblem": "objectives",
+      "kind": "minor",
+      "traits": [],
+      "seat": "rowenhold",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "barrow_lords": {
+      "name": "The Barrow-lords",
+      "culture": "medieval",
+      "primary": "#2f3a3a",
+      "secondary": "#a0b0a8",
+      "emblem": "chronicle",
+      "kind": "minor",
+      "traits": [],
+      "seat": "barrowmere",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "house_tollan": {
+      "name": "House Tollan of Harrow Crossing",
+      "culture": "medieval",
+      "primary": "#7a6a2a",
+      "secondary": "#2a2a2a",
+      "emblem": "settlements",
+      "kind": "minor",
+      "traits": [],
+      "seat": "harrow_crossing",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "house_merrow": {
+      "name": "House Merrow of Stillwater",
+      "culture": "medieval",
+      "primary": "#3a6a7a",
+      "secondary": "#e0e8e8",
+      "emblem": "wave",
+      "kind": "minor",
+      "traits": [],
+      "seat": "stillwater",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "house_bracke": {
+      "name": "House Bracke",
+      "culture": "medieval",
+      "primary": "#5a6a2a",
+      "secondary": "#d8d0a0",
+      "emblem": "wheat",
+      "kind": "minor",
+      "traits": [],
+      "seat": "bracke_hall",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "house_ashford": {
+      "name": "House Ashford",
+      "culture": "medieval",
+      "primary": "#8a7a6a",
+      "secondary": "#3a2a2a",
+      "emblem": "faction",
+      "kind": "minor",
+      "traits": [],
+      "seat": "ashford",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "tullan_estates": {
+      "name": "The Tullan Estates",
+      "culture": "roman",
+      "primary": "#8a2a3a",
+      "secondary": "#e0d0b0",
+      "emblem": "wheat",
+      "kind": "minor",
+      "traits": [
+        "cruel"
+      ],
+      "seat": "tullanum",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "port_dallow": {
+      "name": "Port Dallow",
+      "culture": "roman",
+      "primary": "#2a5a6a",
+      "secondary": "#e8e0c8",
+      "emblem": "wave",
+      "kind": "minor",
+      "traits": [
+        "income_focused"
+      ],
+      "seat": "oldstone_citadel",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "house_fossa": {
+      "name": "House Fossa",
+      "culture": "roman",
+      "primary": "#6a3a2a",
+      "secondary": "#d8c8a0",
+      "emblem": "coin",
+      "kind": "minor",
+      "traits": [],
+      "seat": "fossum",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "house_verrin": {
+      "name": "House Verrin of Highbloom",
+      "culture": "roman",
+      "primary": "#2c5526",
+      "secondary": "#dcc66a",
+      "emblem": "wheat",
+      "kind": "minor",
+      "traits": [
+        "generous",
+        "income_focused",
+        "levy_heavy"
+      ],
+      "seat": "highbloom",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "the_lannetids": {
+      "name": "The Lannetids of Silverfall",
+      "culture": "greek",
+      "primary": "#244469",
+      "secondary": "#c9d2db",
+      "emblem": "wave",
+      "kind": "minor",
+      "traits": [
+        "cruel"
+      ],
+      "seat": "silverfall",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "delos_minor": {
+      "name": "The Island Colony of Delos Minor",
+      "culture": "greek",
+      "primary": "#3a7a8a",
+      "secondary": "#f0e8d0",
+      "emblem": "wave",
+      "kind": "minor",
+      "traits": [],
+      "seat": "delos_minor",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "lykourgids": {
+      "name": "The Lykourgids of Lykon",
+      "culture": "greek",
+      "primary": "#7a5a1a",
+      "secondary": "#e8e0c0",
+      "emblem": "spire",
+      "kind": "minor",
+      "traits": [],
+      "seat": "lykon",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "stonefast": {
+      "name": "The Stonefast Outpost",
+      "culture": "dwarf",
+      "primary": "#5a4a3a",
+      "secondary": "#c08040",
+      "emblem": "settlements",
+      "kind": "minor",
+      "traits": [],
+      "seat": "stonefast",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "snowtusk": {
+      "name": "The Snowtusk Tribe",
+      "culture": "orc",
+      "primary": "#4a6a4a",
+      "secondary": "#d0d8d0",
+      "emblem": "armies",
+      "kind": "minor",
+      "traits": [
+        "expansionist"
+      ],
+      "seat": "snowtusk_camp",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "grimhollow": {
+      "name": "The Grimhollow Tribe",
+      "culture": "orc",
+      "primary": "#3a4a2a",
+      "secondary": "#8a2a1a",
+      "emblem": "armies",
+      "kind": "minor",
+      "traits": [
+        "expansionist"
+      ],
+      "seat": "grimhollow",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "reaver_captain_drak": {
+      "name": "Reaver Captain of Drakhaven",
+      "culture": "dark_elf",
+      "primary": "#3a1f2a",
+      "secondary": "#c0c0d0",
+      "emblem": "wave",
+      "kind": "minor",
+      "traits": [
+        "treacherous"
+      ],
+      "seat": "drakhaven",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "reaver_captain_vael": {
+      "name": "Reaver Captain of Vael-Shoal",
+      "culture": "dark_elf",
+      "primary": "#1f2a3a",
+      "secondary": "#c04060",
+      "emblem": "wave",
+      "kind": "minor",
+      "traits": [
+        "treacherous"
+      ],
+      "seat": "vael_shoal",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "gen_blackpine": {
+      "name": "Northern house of Blackpine (generated)",
+      "culture": "medieval",
+      "primary": "#2f4a3a",
+      "secondary": "#c8c0a8",
+      "emblem": "faction",
+      "kind": "generated",
+      "traits": [],
+      "seat": "blackpine_hold",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "gen_long_lakes": {
+      "name": "Northern house of the Long Lakes (generated)",
+      "culture": "medieval",
+      "primary": "#3a5a7a",
+      "secondary": "#d8d0b8",
+      "emblem": "wave",
+      "kind": "generated",
+      "traits": [],
+      "seat": "lakewick",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "gen_lower_vale": {
+      "name": "Vale house of the Lower Vale (generated)",
+      "culture": "medieval",
+      "primary": "#6a8aa0",
+      "secondary": "#f0e8d8",
+      "emblem": "objectives",
+      "kind": "generated",
+      "traits": [],
+      "seat": "brightmere",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "gen_riverforks": {
+      "name": "Marches house of the Riverforks (generated)",
+      "culture": "medieval",
+      "primary": "#5a6a5a",
+      "secondary": "#e0c890",
+      "emblem": "wave",
+      "kind": "generated",
+      "traits": [],
+      "seat": "forkwatch",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "gen_elaia": {
+      "name": "The Elaian League (generated)",
+      "culture": "greek",
+      "primary": "#5a7a3a",
+      "secondary": "#f0f0e0",
+      "emblem": "spire",
+      "kind": "generated",
+      "traits": [],
+      "seat": "elaia",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "gen_sabellum": {
+      "name": "Roman family of Sabellum (generated)",
+      "culture": "roman",
+      "primary": "#7a3a5a",
+      "secondary": "#e8d8b0",
+      "emblem": "lords",
+      "kind": "generated",
+      "traits": [],
+      "seat": "sabellum",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "gen_via_septem": {
+      "name": "Roman family of the Via Septem (generated)",
+      "culture": "roman",
+      "primary": "#4a3a2a",
+      "secondary": "#d0b070",
+      "emblem": "lords",
+      "kind": "generated",
+      "traits": [],
+      "seat": "septimium",
+      "general_traits": [],
+      "placeholder_assignment": true
+    },
+    "gen_rainwick": {
+      "name": "Stormlands house of Rainwick (generated)",
+      "culture": "roman",
+      "primary": "#2a4a5a",
+      "secondary": "#c0d0d8",
+      "emblem": "armies",
+      "kind": "generated",
+      "traits": [],
+      "seat": "rainwick",
+      "general_traits": [],
+      "placeholder_assignment": true
+    }
+  }
+}

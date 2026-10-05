@@ -7,7 +7,8 @@ extends RefCounted
 #  - rivers: the render cache's river raster (empty when missing)
 #  - coast: signed distance to the coast in cells (+ land, - water) from the movement grid's water,
 #    at most COAST_MAX cells on the long side, for inked coastlines and sea ripple contours
-#  - glyphs: [world position, kind (0 mountain, 1 hill, 2 tree), scale, seed] on a jittered grid
+#  - glyphs: [world position, kind (0 mountain, 1 hill, 2 tree), scale, seed, ground colour] on a
+#    jittered grid
 # Built once per map and cached (static), so opening the map or rebuilding it costs nothing.
 
 const Movement = preload("res://core/movement.gd")
@@ -146,9 +147,17 @@ static func _glyphs(g: Dictionary,world_rect: Rect2,rc: Dictionary) -> Array:
    if gx<0 or gz<0 or gx>=g.cols or gz>=g.rows: continue
    var t = g.terrain[gz*g.cols+gx]
    var s = rng.randf()
-   if (t == idx.mountain and rng.randf()<0.8) or t == idx.pass: out.append([p,0,rng.randf_range(0.9,1.25) if t == idx.mountain else 0.75,s])
+   if (t == idx.mountain and rng.randf()<0.8) or t == idx.pass: out.append([p,0,rng.randf_range(0.9,1.25) if t == idx.mountain else 0.75,s,_ground(rc,p)])
    elif t == idx.hills:
-    if rng.randf()<0.3: out.append([p,1,rng.randf_range(0.8,1.05),s])
-   elif t == idx.forest: out.append([p,2,rng.randf_range(0.8,1.1),s])
+    if rng.randf()<0.3: out.append([p,1,rng.randf_range(0.8,1.05),s,_ground(rc,p)])
+   elif t == idx.forest: out.append([p,2,rng.randf_range(0.8,1.1),s,_ground(rc,p)])
  out.sort_custom(func(a,b): return a[0].y<b[0].y)
  return out
+
+# The render cache's ground colour under a glyph (white when there is no cache), so mountains and
+# trees take their land's tint: red peaks, ash walls, snowy ranges.
+static func _ground(rc: Dictionary,p: Vector2) -> Color:
+ if rc.is_empty(): return Color.WHITE
+ var x = clampi(int((p.x-rc.origin.x)/rc.cell),0,rc.cols-1)
+ var z = clampi(int((p.y-rc.origin.y)/rc.cell),0,rc.rows-1)
+ return rc.colors.get_pixel(x,z)

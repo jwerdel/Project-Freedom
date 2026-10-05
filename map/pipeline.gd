@@ -9,7 +9,8 @@ extends RefCounted
 #  land (closed shapes), lakes (closed), hills (closed), forests (closed, data-density 0-1),
 #  ranges (open paths, data-height, data-width), passes (open paths or circles, data-width),
 #  rivers (open paths, source to mouth, data-width), sites (circles, id = region id), roads (open
-#  paths, pinned), borders (optional).
+#  paths, pinned), borders (optional), climates (closed, data-climate: ground colours only).
+#  Other layers (e.g. "stages") are kept in the sketch for tools and ignored here.
 # world.json: {"provinces": [...], "regions": {id: {name, province, owner, major: {name, type,
 # level, port, landmark, path}, resources, polygon (optional: pinned region outline)}},
 # "factions_file", "start_file", "armies_dir", "allow_legacy_majors"}.
@@ -28,6 +29,8 @@ const MOUNTAIN = 5
 const WATER = 6
 const MOUNTAIN_ABOVE = 22.0
 const HILLS_ABOVE = 8.0
+# Ground tints of the sketch's "climates" layer (render colours only).
+const CLIMATE_TINTS = {"snow":Color("e8ecef"),"tundra":Color("a3ab92"),"taiga":Color("5f7a52"),"mediterranean":Color("b3aa66"),"desert":Color("dcbb7c"),"redrock":Color("a4523a"),"swamp":Color("56653f"),"steppe":Color("c8b26a"),"ash":Color("5f5b58"),"jungle":Color("2f6a32"),"white":Color("e4e4dc"),"marsh":Color("6d7a4c")}
 
 static func sources_hash(map_id: String) -> String:
  var parts = []
@@ -158,6 +161,24 @@ static func build(map_id: String,bakes := true) -> Dictionary:
     if range_mask[j]>0.6 and pass_mask[j] == 0 and range_mask[i]<0.6: continue # ridges stop the fill
     rid[j] = rid[i]
     queue.append(j)
+  # Ridge cores the fill never entered (mountains and walls between two regions) join the nearest
+  # region on either side, so every land cell has a region.
+  var front = []
+  for i in n:
+   if rid[i] == 0: continue
+   for j in [i-1,i+1,i-cols,i+cols]:
+    if j>=0 and j<n and rid[j] == 0 and land[j] == 1 and absi(j%cols-i%cols)<=1:
+     front.append(i)
+     break
+  head = 0
+  while head<front.size():
+   var i = front[head]
+   head += 1
+   for j in [i-1,i+1,i-cols,i+cols]:
+    if j<0 or j>=n or rid[j] != 0 or land[j] == 0: continue
+    if absi(j%cols-i%cols)>1: continue
+    rid[j] = rid[i]
+    front.append(j)
  report.times.regions = Time.get_ticks_msec()-t
  # --- 4. Classes ------------------------------------------------------------------------------------
  t = Time.get_ticks_msec()
@@ -192,6 +213,22 @@ static func build(map_id: String,bakes := true) -> Dictionary:
   colors[i*3+1] = col.g8
   colors[i*3+2] = col.b8
  report.times.classes = Time.get_ticks_msec()-t
+ # Climates (sketch layer "climates", closed shapes with data-climate): ground colours only, in the
+ # render cache; the gameplay climate of each region comes with the map's content. Later shapes win.
+ for e in L.get("climates",[]):
+  var cname = str(e.data.get("climate",""))
+  if not CLIMATE_TINTS.has(cname):
+   report.warnings.append("climate '%s' on '%s' is unknown (known: %s)" % [cname,e.id,", ".join(CLIMATE_TINTS.keys())])
+   continue
+  var tint: Color = CLIMATE_TINTS[cname]
+  var m = _fill([e],origin,cell,cols,rows)
+  for i in n:
+   if m[i] == 0 or cls[i] == WATER: continue
+   var base = Color8(colors[i*3],colors[i*3+1],colors[i*3+2])
+   var col = base.lerp(tint,0.95 if cls[i] == MOUNTAIN and cname in ["snow","redrock","ash","white"] else 0.72)
+   colors[i*3] = col.r8
+   colors[i*3+1] = col.g8
+   colors[i*3+2] = col.b8
  # --- 5. Roads (pinned lines) -------------------------------------------------------------------------
  var road = PackedByteArray()
  road.resize(n)

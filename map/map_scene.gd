@@ -332,6 +332,19 @@ func _open_strategic():
  if _arg("--debug-layer=","") != "": strategic.set_debug(_arg("--debug-layer=",""))
  strategic.open_map(true)
  if args.has("--strategic-hidden"): strategic.visible = false # baseline: the empty 2D frame, for the strategic map's own GPU cost
+ # --strategic-rect=x0,z0,x1,z1: frame that part of the world (zoomed in); --outline: the world
+ # outline's overlay (Stage A boundary, locked lands, the Rift, faction start positions).
+ var sr = _arg("--strategic-rect=","")
+ if sr != "":
+  var v = sr.split(",")
+  var rect = Rect2(Vector2(float(v[0]),float(v[1])),Vector2(float(v[2])-float(v[0]),float(v[3])-float(v[1])))
+  strategic._layout()
+  var area = strategic.frame_rect()
+  var fit = minf(area.size.x/size.x,area.size.y/size.y)
+  strategic.zoom = clampf(minf(area.size.x/(rect.size.x*fit),area.size.y/(rect.size.y*fit)),1.0,StrategicMap.MAX_ZOOM)
+  strategic.center = rect.get_center()
+  strategic._layout()
+ if args.has("--outline"): _outline_overlay(layer)
  # Stress: N copies of the territory pass (the GPU clocks down on a light 2D frame, which inflates its
  # measured time; per-copy cost under load = (time with N - time with 1) / (N - 1)).
  var stress = int(_arg("--strategic-stress=","1"))
@@ -413,3 +426,102 @@ func _occluded(cam: Vector3) -> bool:
   var q = cam.lerp(target,k/8.0)
   if q.y<view.height_at(q.x,q.z)+3.0: return true
  return false
+
+# --- World outline overlay (captures for the owner's approval of the outline) -------------------
+# The sketch's "stages" layer (the Stage A boundary, locked lands), rift lines from its ranges, and
+# each faction's start (its seat): playable houses large and named, major factions named, minor
+# and generated ones as small marks.
+const Sketch = preload("res://map/sketch.gd")
+const UiKit = preload("res://ui/ui_kit.gd")
+
+func _outline_overlay(layer: CanvasLayer):
+ var sk = Sketch.parse_file(MapRegistry.path("sketch.svg"))
+ var o = Control.new()
+ o.name = "Outline"
+ o.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ o.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+ layer.add_child(o)
+ get_tree().create_timer(0.4).timeout.connect(o.queue_redraw) # after the strategic map's layout
+ var origin = Vector2(MapRegistry.meta().origin[0],MapRegistry.meta().origin[1])
+ o.draw.connect(_draw_outline.bind(o,sk,origin))
+ # The legend.
+ var lg = PanelContainer.new()
+ lg.add_theme_stylebox_override("panel",UiKit.flat(Color(0.08,0.06,0.04,0.88),10))
+ var v = VBoxContainer.new()
+ lg.add_child(v)
+ var counts = {}
+ for f in WorldMap.factions(): counts[str(WorldMap.factions()[f].get("kind",""))] = int(counts.get(str(WorldMap.factions()[f].get("kind","")),0))+1
+ for line in ["VAROS — world outline (pending approval)","%d regions, %d provinces" % [WorldMap.regions().size(),WorldMap.provinces().size()],
+  "◉ playable start (%d)   ● major AI (%d)" % [counts.get("playable",0),counts.get("major",0)],"■ minor (%d) and generated (%d) houses" % [counts.get("minor",0),counts.get("generated",0)],
+  "- - Stage A boundary     red: the Rift"]:
+  v.add_child(UiKit.label(line,14,Color("eadfc4")))
+ lg.anchor_top = 1.0
+ lg.anchor_bottom = 1.0
+ lg.offset_left = 24
+ lg.offset_top = -24
+ lg.offset_bottom = -24
+ lg.grow_vertical = Control.GROW_DIRECTION_BEGIN
+ layer.add_child(lg)
+
+func _label(o: Control,at: Vector2,text: String,size: int,col: Color,shadow := false):
+ var f = UiKit.FONT_BOLD
+ var w = f.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,size).x
+ var p = at-Vector2(w*0.5,0)
+ if shadow: o.draw_string_outline(f,p,text,HORIZONTAL_ALIGNMENT_LEFT,-1,size,4,Color(0,0,0,0.85))
+ o.draw_string(f,p,text,HORIZONTAL_ALIGNMENT_LEFT,-1,size,col)
+
+func _draw_outline(o: Control,sk: Dictionary,origin: Vector2):
+ var clip = strategic.frame_rect()
+ var to = func(p: Vector2) -> Vector2: return strategic.to_screen(origin+p)
+ for e in sk.layers.get("stages",[]):
+  var poly = PackedVector2Array()
+  for p in e.points: poly.append(to.call(p))
+  poly.append(poly[0])
+  if e.id.begins_with("locked"):
+   var inner = PackedVector2Array(poly.slice(0,poly.size()-1))
+   o.draw_colored_polygon(inner,Color(0.08,0.05,0.05,0.45))
+   o.draw_polyline(poly,Color("8a2a20"),3.0)
+   var c = Vector2.ZERO
+   for p in inner: c += p
+   c /= inner.size()
+   _label(o,c,"THE ASHLANDS",18,Color("f0d0c0"),true)
+   _label(o,c+Vector2(0,22),"locked in V1",14,Color("f0d0c0"),true)
+  else:
+   for i in poly.size()-1:
+    var a = poly[i]
+    var b = poly[i+1]
+    var len = a.distance_to(b)
+    var k = 0.0
+    while k<len:
+     o.draw_line(a.lerp(b,k/len),a.lerp(b,minf(len,k+12.0)/len),Color("f2cf6a"),3.0)
+     k += 20.0
+   _label(o,poly[0].lerp(poly[1],0.5)+Vector2(0,-10),"STAGE A",18,Color("f2cf6a"),true)
+ for e in sk.layers.get("ranges",[]):
+  if str(e.data.get("kind","")) != "rift": continue
+  var line = PackedVector2Array()
+  for p in e.points: line.append(to.call(p))
+  o.draw_polyline(line,Color(0.1,0.02,0.02),7.0)
+  o.draw_polyline(line,Color("ff4a1a"),3.0)
+ var factions = WorldMap.factions()
+ for f in factions:
+  var seat = str(factions[f].get("seat",""))
+  if seat == "" or not WorldMap.region(seat).get("settlement") is Dictionary: continue
+  var p = strategic.to_screen(WorldMap.settlement_position(seat))
+  if not clip.has_point(p): continue
+  var kind = str(factions[f].get("kind",""))
+  var col = Color(factions[f].primary)
+  match kind:
+   "playable":
+    o.draw_circle(p,13.0,Color(0.08,0.06,0.04))
+    o.draw_circle(p,10.0,col)
+    o.draw_arc(p,13.0,0,TAU,32,Color("f2cf6a"),3.0)
+    _label(o,p+Vector2(0,30),str(factions[f].name).to_upper(),15,Color("fff2c8"),true)
+    _label(o,p+Vector2(0,47),"PLAYABLE START",11,Color("f2cf6a"),true)
+   "major":
+    o.draw_circle(p,9.0,Color(0.08,0.06,0.04))
+    o.draw_circle(p,6.5,col)
+    o.draw_arc(p,9.0,0,TAU,24,Color("e8e0c8"),1.5)
+    _label(o,p+Vector2(0,24),str(factions[f].name),12,Color("fff2c8"),true)
+   _:
+    o.draw_rect(Rect2(p-Vector2(4,4),Vector2(8,8)),Color(0.08,0.06,0.04))
+    o.draw_rect(Rect2(p-Vector2(3,3),Vector2(6,6)),col)

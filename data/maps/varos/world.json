@@ -1,0 +1,2500 @@
+{
+  "_note": "Varos world outline (block A1, pending the owner's approval). Stage A regions, provinces and holders from docs/world-bible-v2.md Appendix A (placeholders, renamable); later stages are coarse unowned areas so the outline tiles the world (stage: B Frostwaste/Red Peaks south/Sahren, C Ossara, D Sothmire, locked = the Ashlands, not in V1). No armies, buildings or rosters yet (Stage A content).",
+  "provinces": [
+    {
+      "id": "snowtusk_fells",
+      "name": "Snowtusk Fells",
+      "capital": "snowtusk_camp",
+      "regions": [
+        "snowtusk_camp",
+        "rimefang"
+      ]
+    },
+    {
+      "id": "grimhollow_barrens",
+      "name": "Grimhollow Barrens",
+      "capital": "grimhollow",
+      "regions": [
+        "grimhollow",
+        "skullcairn"
+      ]
+    },
+    {
+      "id": "the_wall",
+      "name": "The Wall",
+      "capital": "wardens_gate",
+      "regions": [
+        "ashen_tower",
+        "wardens_gate",
+        "rimeguard"
+      ]
+    },
+    {
+      "id": "frosthold_vale",
+      "name": "Frosthold Vale",
+      "capital": "frosthold",
+      "regions": [
+        "frosthold",
+        "hearthwick"
+      ]
+    },
+    {
+      "id": "dunmoor",
+      "name": "Dunmoor",
+      "capital": "dunmoor_keep",
+      "regions": [
+        "dunmoor_keep",
+        "mirewick"
+      ]
+    },
+    {
+      "id": "barrowlands",
+      "name": "The Barrowlands",
+      "capital": "kellsford",
+      "regions": [
+        "kellsford",
+        "barrowmere",
+        "coldbarrow"
+      ]
+    },
+    {
+      "id": "rowen_moors",
+      "name": "Rowen Moors",
+      "capital": "rowenhold",
+      "regions": [
+        "rowenhold",
+        "greymere"
+      ]
+    },
+    {
+      "id": "blackpine",
+      "name": "Blackpine",
+      "capital": "blackpine_hold",
+      "regions": [
+        "blackpine_hold",
+        "elkford"
+      ]
+    },
+    {
+      "id": "long_lakes",
+      "name": "The Long Lakes",
+      "capital": "lakewick",
+      "regions": [
+        "lakewick",
+        "osricmere"
+      ]
+    },
+    {
+      "id": "skyreach",
+      "name": "Skyreach",
+      "capital": "skyreach",
+      "regions": [
+        "skyreach",
+        "highford"
+      ]
+    },
+    {
+      "id": "lower_vale",
+      "name": "The Lower Vale",
+      "capital": "brightmere",
+      "regions": [
+        "brightmere",
+        "stonewick"
+      ]
+    },
+    {
+      "id": "caeloth",
+      "name": "Caeloth",
+      "capital": "caeloth",
+      "regions": [
+        "caeloth",
+        "pilgrims_ford"
+      ]
+    },
+    {
+      "id": "harrow",
+      "name": "Harrow",
+      "capital": "harrow_crossing",
+      "regions": [
+        "harrow_crossing",
+        "harrowfield"
+      ]
+    },
+    {
+      "id": "stillwater",
+      "name": "Stillwater",
+      "capital": "stillwater",
+      "regions": [
+        "stillwater",
+        "merrowmere"
+      ]
+    },
+    {
+      "id": "brackenmoor",
+      "name": "Brackenmoor",
+      "capital": "bracke_hall",
+      "regions": [
+        "bracke_hall",
+        "fennick"
+      ]
+    },
+    {
+      "id": "ashford",
+      "name": "Ashford",
+      "capital": "ashford",
+      "regions": [
+        "ashford",
+        "ashwick"
+      ]
+    },
+    {
+      "id": "riverforks",
+      "name": "The Riverforks",
+      "capital": "forkwatch",
+      "regions": [
+        "forkwatch",
+        "twinford"
+      ]
+    },
+    {
+      "id": "goldspire",
+      "name": "Goldspire",
+      "capital": "goldspire_rock",
+      "regions": [
+        "goldspire_rock",
+        "silverfall"
+      ]
+    },
+    {
+      "id": "theros",
+      "name": "Theros",
+      "capital": "theros",
+      "regions": [
+        "theros",
+        "kallipolis"
+      ]
+    },
+    {
+      "id": "kyme",
+      "name": "Kyme",
+      "capital": "kyme",
+      "regions": [
+        "kyme",
+        "lykon"
+      ]
+    },
+    {
+      "id": "elaia",
+      "name": "Elaia",
+      "capital": "elaia",
+      "regions": [
+        "elaia",
+        "myrtos"
+      ]
+    },
+    {
+      "id": "delos_minor",
+      "name": "Delos Minor",
+      "capital": "delos_minor",
+      "regions": [
+        "delos_minor"
+      ]
+    },
+    {
+      "id": "brinecrag",
+      "name": "Brinecrag",
+      "capital": "brinecrag",
+      "regions": [
+        "brinecrag",
+        "mor_skerry"
+      ]
+    },
+    {
+      "id": "grey_stacks",
+      "name": "The Grey Stacks",
+      "capital": "drakhaven",
+      "regions": [
+        "drakhaven",
+        "vael_shoal"
+      ]
+    },
+    {
+      "id": "highbloom",
+      "name": "Highbloom",
+      "capital": "highbloom",
+      "regions": [
+        "highbloom",
+        "orchardium"
+      ]
+    },
+    {
+      "id": "oldstone",
+      "name": "Oldstone",
+      "capital": "oldstone_citadel",
+      "regions": [
+        "oldstone_citadel",
+        "port_dallow"
+      ]
+    },
+    {
+      "id": "fossa",
+      "name": "Fossa",
+      "capital": "fossum",
+      "regions": [
+        "fossum",
+        "vinaria"
+      ]
+    },
+    {
+      "id": "seven_hills",
+      "name": "The Seven Hills",
+      "capital": "crownhaven",
+      "regions": [
+        "crownhaven",
+        "varrenum"
+      ]
+    },
+    {
+      "id": "tullia",
+      "name": "Tullia",
+      "capital": "tullanum",
+      "regions": [
+        "tullanum",
+        "aquilia"
+      ]
+    },
+    {
+      "id": "corvinia",
+      "name": "Corvinia",
+      "capital": "corvinium",
+      "regions": [
+        "corvinium",
+        "sabellum"
+      ]
+    },
+    {
+      "id": "aemeria",
+      "name": "Aemeria",
+      "capital": "aemerium",
+      "regions": [
+        "aemerium",
+        "lucentia"
+      ]
+    },
+    {
+      "id": "via_septem",
+      "name": "The Via Septem",
+      "capital": "septimium",
+      "regions": [
+        "septimium",
+        "castra_nova"
+      ]
+    },
+    {
+      "id": "tempest_coast",
+      "name": "Tempest Coast",
+      "capital": "tempest_keep",
+      "regions": [
+        "tempest_keep",
+        "stormhaven"
+      ]
+    },
+    {
+      "id": "rainwood",
+      "name": "The Rainwood",
+      "capital": "skulkmire",
+      "regions": [
+        "skulkmire",
+        "rainwick"
+      ]
+    },
+    {
+      "id": "emberdeep",
+      "name": "Emberdeep",
+      "capital": "emberdeep",
+      "regions": [
+        "emberdeep",
+        "karak_durn"
+      ]
+    },
+    {
+      "id": "stonefast",
+      "name": "Stonefast",
+      "capital": "stonefast",
+      "regions": [
+        "stonefast",
+        "redgate_pass"
+      ]
+    },
+    {
+      "id": "frostwaste_w",
+      "name": "The Frostwaste (west)",
+      "capital": "",
+      "regions": [
+        "frostwaste_w"
+      ]
+    },
+    {
+      "id": "frostwaste_glacier",
+      "name": "The Glacier",
+      "capital": "",
+      "regions": [
+        "frostwaste_glacier"
+      ]
+    },
+    {
+      "id": "frostwaste_e",
+      "name": "The Frostwaste (east)",
+      "capital": "",
+      "regions": [
+        "frostwaste_e"
+      ]
+    },
+    {
+      "id": "ghurmak_reach",
+      "name": "Ghurmak's reach",
+      "capital": "",
+      "regions": [
+        "ghurmak_reach"
+      ]
+    },
+    {
+      "id": "red_peaks_south",
+      "name": "Red Peaks (south)",
+      "capital": "",
+      "regions": [
+        "red_peaks_south"
+      ]
+    },
+    {
+      "id": "sunforge_karvak",
+      "name": "Sunforge and Karvak",
+      "capital": "",
+      "regions": [
+        "sunforge_karvak"
+      ]
+    },
+    {
+      "id": "sahren_north",
+      "name": "Sahren (north)",
+      "capital": "",
+      "regions": [
+        "sahren_north"
+      ]
+    },
+    {
+      "id": "sahren_oasis",
+      "name": "The Oasis River",
+      "capital": "",
+      "regions": [
+        "sahren_oasis"
+      ]
+    },
+    {
+      "id": "sahren_east",
+      "name": "Sahren (east)",
+      "capital": "",
+      "regions": [
+        "sahren_east"
+      ]
+    },
+    {
+      "id": "sahren_west",
+      "name": "Sahren (west)",
+      "capital": "",
+      "regions": [
+        "sahren_west"
+      ]
+    },
+    {
+      "id": "sahren_south",
+      "name": "Sahren (south)",
+      "capital": "",
+      "regions": [
+        "sahren_south"
+      ]
+    },
+    {
+      "id": "sahren_cape",
+      "name": "Sahren (cape)",
+      "capital": "",
+      "regions": [
+        "sahren_cape"
+      ]
+    },
+    {
+      "id": "sahren_isle_a",
+      "name": "Sahren isle",
+      "capital": "",
+      "regions": [
+        "sahren_isle_a"
+      ]
+    },
+    {
+      "id": "sahren_isle_b",
+      "name": "Sahren isle",
+      "capital": "",
+      "regions": [
+        "sahren_isle_b"
+      ]
+    },
+    {
+      "id": "burning_isle",
+      "name": "The Burning Isle",
+      "capital": "",
+      "regions": [
+        "burning_isle"
+      ]
+    },
+    {
+      "id": "elven_north",
+      "name": "Elven Coast (north)",
+      "capital": "",
+      "regions": [
+        "elven_north"
+      ]
+    },
+    {
+      "id": "elven_lysar",
+      "name": "Elven Coast (Lysar)",
+      "capital": "",
+      "regions": [
+        "elven_lysar"
+      ]
+    },
+    {
+      "id": "elven_aelthas",
+      "name": "Elven Coast (Aelthas)",
+      "capital": "",
+      "regions": [
+        "elven_aelthas"
+      ]
+    },
+    {
+      "id": "elven_therin",
+      "name": "Elven Coast (Therin)",
+      "capital": "",
+      "regions": [
+        "elven_therin"
+      ]
+    },
+    {
+      "id": "gulf_isle_a",
+      "name": "Gulf isle",
+      "capital": "",
+      "regions": [
+        "gulf_isle_a"
+      ]
+    },
+    {
+      "id": "gulf_isle_b",
+      "name": "Gulf isle",
+      "capital": "",
+      "regions": [
+        "gulf_isle_b"
+      ]
+    },
+    {
+      "id": "gulf_isle_c",
+      "name": "Gulf isle",
+      "capital": "",
+      "regions": [
+        "gulf_isle_c"
+      ]
+    },
+    {
+      "id": "gulf_isle_d",
+      "name": "Gulf isle",
+      "capital": "",
+      "regions": [
+        "gulf_isle_d"
+      ]
+    },
+    {
+      "id": "horned_nw",
+      "name": "Horned Sea (north-west)",
+      "capital": "",
+      "regions": [
+        "horned_nw"
+      ]
+    },
+    {
+      "id": "horned_ne",
+      "name": "Horned Sea (north-east)",
+      "capital": "",
+      "regions": [
+        "horned_ne"
+      ]
+    },
+    {
+      "id": "horned_w",
+      "name": "Horned Sea (west)",
+      "capital": "",
+      "regions": [
+        "horned_w"
+      ]
+    },
+    {
+      "id": "hornstone",
+      "name": "Hornstone",
+      "capital": "",
+      "regions": [
+        "hornstone"
+      ]
+    },
+    {
+      "id": "horned_e",
+      "name": "Horned Sea (east)",
+      "capital": "",
+      "regions": [
+        "horned_e"
+      ]
+    },
+    {
+      "id": "horned_s",
+      "name": "Horned Sea (south)",
+      "capital": "",
+      "regions": [
+        "horned_s"
+      ]
+    },
+    {
+      "id": "horned_se",
+      "name": "Horned Sea (south-east)",
+      "capital": "",
+      "regions": [
+        "horned_se"
+      ]
+    },
+    {
+      "id": "ashlands_n",
+      "name": "The Ashlands (north)",
+      "capital": "",
+      "regions": [
+        "ashlands_n"
+      ]
+    },
+    {
+      "id": "ashlands_rift",
+      "name": "The Rift",
+      "capital": "",
+      "regions": [
+        "ashlands_rift"
+      ]
+    },
+    {
+      "id": "ashlands_s",
+      "name": "The Ashlands (south)",
+      "capital": "",
+      "regions": [
+        "ashlands_s"
+      ]
+    },
+    {
+      "id": "gnawing_coast",
+      "name": "The Gnawing Coast",
+      "capital": "",
+      "regions": [
+        "gnawing_coast"
+      ]
+    },
+    {
+      "id": "serpent_coast",
+      "name": "The Serpent Coast",
+      "capital": "",
+      "regions": [
+        "serpent_coast"
+      ]
+    },
+    {
+      "id": "jungle_heart",
+      "name": "The Jungle Heart",
+      "capital": "",
+      "regions": [
+        "jungle_heart"
+      ]
+    },
+    {
+      "id": "sothmire_east",
+      "name": "Sothmire (east)",
+      "capital": "",
+      "regions": [
+        "sothmire_east"
+      ]
+    },
+    {
+      "id": "sothmire_south",
+      "name": "Sothmire (south)",
+      "capital": "",
+      "regions": [
+        "sothmire_south"
+      ]
+    },
+    {
+      "id": "sothmire_west",
+      "name": "Sothmire (south-west)",
+      "capital": "",
+      "regions": [
+        "sothmire_west"
+      ]
+    },
+    {
+      "id": "sothmire_cape",
+      "name": "Sothmire (south-east)",
+      "capital": "",
+      "regions": [
+        "sothmire_cape"
+      ]
+    },
+    {
+      "id": "chain_isle_a",
+      "name": "Island chain",
+      "capital": "",
+      "regions": [
+        "chain_isle_a"
+      ]
+    },
+    {
+      "id": "chain_isle_b",
+      "name": "Island chain",
+      "capital": "",
+      "regions": [
+        "chain_isle_b"
+      ]
+    },
+    {
+      "id": "chain_isle_c",
+      "name": "Island chain",
+      "capital": "",
+      "regions": [
+        "chain_isle_c"
+      ]
+    }
+  ],
+  "regions": {
+    "snowtusk_camp": {
+      "name": "Snowtusk Camp",
+      "province": "snowtusk_fells",
+      "owner": "snowtusk",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Snowtusk Camp",
+        "type": "fortress",
+        "level": 1,
+        "port": false
+      }
+    },
+    "rimefang": {
+      "name": "Rimefang",
+      "province": "snowtusk_fells",
+      "owner": "snowtusk",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Rimefang",
+        "type": "fortress",
+        "level": 1,
+        "port": false
+      }
+    },
+    "grimhollow": {
+      "name": "Grimhollow",
+      "province": "grimhollow_barrens",
+      "owner": "grimhollow",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Grimhollow",
+        "type": "fortress",
+        "level": 1,
+        "port": false
+      }
+    },
+    "skullcairn": {
+      "name": "Skullcairn",
+      "province": "grimhollow_barrens",
+      "owner": "grimhollow",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Skullcairn",
+        "type": "fortress",
+        "level": 1,
+        "port": false
+      }
+    },
+    "ashen_tower": {
+      "name": "Ashen Tower",
+      "province": "the_wall",
+      "owner": "",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      }
+    },
+    "wardens_gate": {
+      "name": "Wardens' Gate",
+      "province": "the_wall",
+      "owner": "wardens",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Wardens' Gate",
+        "type": "fortress",
+        "level": 1,
+        "port": false
+      }
+    },
+    "rimeguard": {
+      "name": "Rimeguard",
+      "province": "the_wall",
+      "owner": "wardens",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Rimeguard",
+        "type": "fortress",
+        "level": 1,
+        "port": false
+      }
+    },
+    "frosthold": {
+      "name": "Frosthold",
+      "province": "frosthold_vale",
+      "owner": "house_varn",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Frosthold",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "hearthwick": {
+      "name": "Hearthwick",
+      "province": "frosthold_vale",
+      "owner": "house_varn",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Hearthwick",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "dunmoor_keep": {
+      "name": "Dunmoor Keep",
+      "province": "dunmoor",
+      "owner": "house_dunmoor",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Dunmoor Keep",
+        "type": "fortress",
+        "level": 1,
+        "port": false
+      }
+    },
+    "mirewick": {
+      "name": "Mirewick",
+      "province": "dunmoor",
+      "owner": "house_dunmoor",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Mirewick",
+        "type": "city",
+        "level": 2,
+        "port": true
+      }
+    },
+    "kellsford": {
+      "name": "Kellsford",
+      "province": "barrowlands",
+      "owner": "house_kells",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Kellsford",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "barrowmere": {
+      "name": "Barrowmere",
+      "province": "barrowlands",
+      "owner": "barrow_lords",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Barrowmere",
+        "type": "fortress",
+        "level": 1,
+        "port": false
+      }
+    },
+    "coldbarrow": {
+      "name": "Coldbarrow",
+      "province": "barrowlands",
+      "owner": "house_kells",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Coldbarrow",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "rowenhold": {
+      "name": "Rowenhold",
+      "province": "rowen_moors",
+      "owner": "house_rowen",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Rowenhold",
+        "type": "fortress",
+        "level": 1,
+        "port": false
+      }
+    },
+    "greymere": {
+      "name": "Greymere",
+      "province": "rowen_moors",
+      "owner": "house_rowen",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Greymere",
+        "type": "city",
+        "level": 2,
+        "port": true
+      }
+    },
+    "blackpine_hold": {
+      "name": "Blackpine Hold",
+      "province": "blackpine",
+      "owner": "gen_blackpine",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Blackpine Hold",
+        "type": "fortress",
+        "level": 1,
+        "port": false
+      }
+    },
+    "elkford": {
+      "name": "Elkford",
+      "province": "blackpine",
+      "owner": "gen_blackpine",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Elkford",
+        "type": "city",
+        "level": 2,
+        "port": true
+      }
+    },
+    "lakewick": {
+      "name": "Lakewick",
+      "province": "long_lakes",
+      "owner": "gen_long_lakes",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Lakewick",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "osricmere": {
+      "name": "Osricmere",
+      "province": "long_lakes",
+      "owner": "gen_long_lakes",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Osricmere",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "skyreach": {
+      "name": "Skyreach",
+      "province": "skyreach",
+      "owner": "house_aldane",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Skyreach",
+        "type": "fortress",
+        "level": 1,
+        "port": false
+      }
+    },
+    "highford": {
+      "name": "Highford",
+      "province": "skyreach",
+      "owner": "house_aldane",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Highford",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "brightmere": {
+      "name": "Brightmere",
+      "province": "lower_vale",
+      "owner": "gen_lower_vale",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Brightmere",
+        "type": "city",
+        "level": 2,
+        "port": true
+      }
+    },
+    "stonewick": {
+      "name": "Stonewick",
+      "province": "lower_vale",
+      "owner": "gen_lower_vale",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Stonewick",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "caeloth": {
+      "name": "Caeloth",
+      "province": "caeloth",
+      "owner": "throne_church",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Caeloth",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "pilgrims_ford": {
+      "name": "Pilgrim's Ford",
+      "province": "caeloth",
+      "owner": "throne_church",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Pilgrim's Ford",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "harrow_crossing": {
+      "name": "Harrow Crossing",
+      "province": "harrow",
+      "owner": "house_tollan",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Harrow Crossing",
+        "type": "fortress",
+        "level": 1,
+        "port": false
+      }
+    },
+    "harrowfield": {
+      "name": "Harrowfield",
+      "province": "harrow",
+      "owner": "house_tollan",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Harrowfield",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "stillwater": {
+      "name": "Stillwater",
+      "province": "stillwater",
+      "owner": "house_merrow",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Stillwater",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "merrowmere": {
+      "name": "Merrowmere",
+      "province": "stillwater",
+      "owner": "house_merrow",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Merrowmere",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "bracke_hall": {
+      "name": "Bracke Hall",
+      "province": "brackenmoor",
+      "owner": "house_bracke",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Bracke Hall",
+        "type": "fortress",
+        "level": 1,
+        "port": false
+      }
+    },
+    "fennick": {
+      "name": "Fennick",
+      "province": "brackenmoor",
+      "owner": "house_bracke",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Fennick",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "ashford": {
+      "name": "Ashford",
+      "province": "ashford",
+      "owner": "house_ashford",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Ashford",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "ashwick": {
+      "name": "Ashwick",
+      "province": "ashford",
+      "owner": "house_ashford",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Ashwick",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "forkwatch": {
+      "name": "Forkwatch",
+      "province": "riverforks",
+      "owner": "gen_riverforks",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Forkwatch",
+        "type": "fortress",
+        "level": 1,
+        "port": false
+      }
+    },
+    "twinford": {
+      "name": "Twinford",
+      "province": "riverforks",
+      "owner": "gen_riverforks",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Twinford",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "goldspire_rock": {
+      "name": "Goldspire Rock",
+      "province": "goldspire",
+      "owner": "the_aurekids",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Goldspire Rock",
+        "type": "city",
+        "level": 2,
+        "port": true
+      }
+    },
+    "silverfall": {
+      "name": "Silverfall",
+      "province": "goldspire",
+      "owner": "the_lannetids",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Silverfall",
+        "type": "city",
+        "level": 2,
+        "port": true
+      }
+    },
+    "theros": {
+      "name": "Theros",
+      "province": "theros",
+      "owner": "theros",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Theros",
+        "type": "city",
+        "level": 2,
+        "port": true
+      }
+    },
+    "kallipolis": {
+      "name": "Kallipolis",
+      "province": "theros",
+      "owner": "theros",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Kallipolis",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "kyme": {
+      "name": "Kyme",
+      "province": "kyme",
+      "owner": "kyme",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Kyme",
+        "type": "city",
+        "level": 2,
+        "port": true
+      }
+    },
+    "lykon": {
+      "name": "Lykon",
+      "province": "kyme",
+      "owner": "lykourgids",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Lykon",
+        "type": "city",
+        "level": 2,
+        "port": true
+      }
+    },
+    "elaia": {
+      "name": "Elaia",
+      "province": "elaia",
+      "owner": "gen_elaia",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Elaia",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "myrtos": {
+      "name": "Myrtos",
+      "province": "elaia",
+      "owner": "gen_elaia",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Myrtos",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "delos_minor": {
+      "name": "Delos Minor",
+      "province": "delos_minor",
+      "owner": "delos_minor",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Delos Minor",
+        "type": "city",
+        "level": 2,
+        "port": true
+      }
+    },
+    "brinecrag": {
+      "name": "Brinecrag",
+      "province": "brinecrag",
+      "owner": "reavers_brinecrag",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Brinecrag",
+        "type": "fortress",
+        "level": 1,
+        "port": true
+      }
+    },
+    "mor_skerry": {
+      "name": "Mor-Skerry",
+      "province": "brinecrag",
+      "owner": "reavers_brinecrag",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Mor-Skerry",
+        "type": "city",
+        "level": 2,
+        "port": true
+      }
+    },
+    "drakhaven": {
+      "name": "Drakhaven",
+      "province": "grey_stacks",
+      "owner": "reaver_captain_drak",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Drakhaven",
+        "type": "fortress",
+        "level": 1,
+        "port": true
+      }
+    },
+    "vael_shoal": {
+      "name": "Vael-Shoal",
+      "province": "grey_stacks",
+      "owner": "reaver_captain_vael",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Vael-Shoal",
+        "type": "fortress",
+        "level": 1,
+        "port": true
+      }
+    },
+    "highbloom": {
+      "name": "Highbloom",
+      "province": "highbloom",
+      "owner": "house_verrin",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Highbloom",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "orchardium": {
+      "name": "Orchardium",
+      "province": "highbloom",
+      "owner": "house_verrin",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Orchardium",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "oldstone_citadel": {
+      "name": "Oldstone Citadel",
+      "province": "oldstone",
+      "owner": "port_dallow",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Oldstone Citadel",
+        "type": "city",
+        "level": 2,
+        "port": true
+      }
+    },
+    "port_dallow": {
+      "name": "Port Dallow",
+      "province": "oldstone",
+      "owner": "port_dallow",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Port Dallow",
+        "type": "city",
+        "level": 2,
+        "port": true
+      }
+    },
+    "fossum": {
+      "name": "Fossum",
+      "province": "fossa",
+      "owner": "house_fossa",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Fossum",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "vinaria": {
+      "name": "Vinaria",
+      "province": "fossa",
+      "owner": "house_fossa",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Vinaria",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "crownhaven": {
+      "name": "Crownhaven",
+      "province": "seven_hills",
+      "owner": "house_corvinus",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Crownhaven",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "varrenum": {
+      "name": "Varrenum",
+      "province": "seven_hills",
+      "owner": "house_varrenus",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Varrenum",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "tullanum": {
+      "name": "Tullanum",
+      "province": "tullia",
+      "owner": "tullan_estates",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Tullanum",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "aquilia": {
+      "name": "Aquilia",
+      "province": "tullia",
+      "owner": "tullan_estates",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Aquilia",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "corvinium": {
+      "name": "Corvinium",
+      "province": "corvinia",
+      "owner": "house_corvinus",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Corvinium",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "sabellum": {
+      "name": "Sabellum",
+      "province": "corvinia",
+      "owner": "gen_sabellum",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Sabellum",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "aemerium": {
+      "name": "Aemerium",
+      "province": "aemeria",
+      "owner": "house_aemerius",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Aemerium",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "lucentia": {
+      "name": "Lucentia",
+      "province": "aemeria",
+      "owner": "house_aemerius",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Lucentia",
+        "type": "city",
+        "level": 2,
+        "port": true
+      }
+    },
+    "septimium": {
+      "name": "Septimium",
+      "province": "via_septem",
+      "owner": "gen_via_septem",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Septimium",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "castra_nova": {
+      "name": "Castra Nova",
+      "province": "via_septem",
+      "owner": "gen_via_septem",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Castra Nova",
+        "type": "fortress",
+        "level": 1,
+        "port": false
+      }
+    },
+    "tempest_keep": {
+      "name": "Tempest Keep",
+      "province": "tempest_coast",
+      "owner": "house_durran",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Tempest Keep",
+        "type": "fortress",
+        "level": 1,
+        "port": true
+      }
+    },
+    "stormhaven": {
+      "name": "Stormhaven",
+      "province": "tempest_coast",
+      "owner": "house_durran",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Stormhaven",
+        "type": "city",
+        "level": 2,
+        "port": true
+      }
+    },
+    "skulkmire": {
+      "name": "The Skulkmire",
+      "province": "rainwood",
+      "owner": "skulkmire_brood",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "The Skulkmire",
+        "type": "fortress",
+        "level": 1,
+        "port": false
+      }
+    },
+    "rainwick": {
+      "name": "Rainwick",
+      "province": "rainwood",
+      "owner": "gen_rainwick",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Rainwick",
+        "type": "city",
+        "level": 2,
+        "port": false
+      }
+    },
+    "emberdeep": {
+      "name": "Emberdeep",
+      "province": "emberdeep",
+      "owner": "hold_emberdeep",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Emberdeep",
+        "type": "fortress",
+        "level": 1,
+        "port": false
+      }
+    },
+    "karak_durn": {
+      "name": "Karak Durn",
+      "province": "emberdeep",
+      "owner": "hold_emberdeep",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Karak Durn",
+        "type": "fortress",
+        "level": 1,
+        "port": false
+      }
+    },
+    "stonefast": {
+      "name": "Stonefast",
+      "province": "stonefast",
+      "owner": "stonefast",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Stonefast",
+        "type": "fortress",
+        "level": 1,
+        "port": false
+      }
+    },
+    "redgate_pass": {
+      "name": "Redgate Pass",
+      "province": "stonefast",
+      "owner": "stonefast",
+      "stage": "A",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 1.0,
+        "minerals": 0.0
+      },
+      "major": {
+        "name": "Redgate Pass",
+        "type": "fortress",
+        "level": 1,
+        "port": false
+      }
+    },
+    "frostwaste_w": {
+      "name": "The Frostwaste (west)",
+      "province": "frostwaste_w",
+      "owner": "",
+      "stage": "B",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "frostwaste_glacier": {
+      "name": "The Glacier",
+      "province": "frostwaste_glacier",
+      "owner": "",
+      "stage": "B",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "frostwaste_e": {
+      "name": "The Frostwaste (east)",
+      "province": "frostwaste_e",
+      "owner": "",
+      "stage": "B",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "ghurmak_reach": {
+      "name": "Ghurmak's reach",
+      "province": "ghurmak_reach",
+      "owner": "",
+      "stage": "B",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "red_peaks_south": {
+      "name": "Red Peaks (south)",
+      "province": "red_peaks_south",
+      "owner": "",
+      "stage": "B",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "sunforge_karvak": {
+      "name": "Sunforge and Karvak",
+      "province": "sunforge_karvak",
+      "owner": "",
+      "stage": "B",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "sahren_north": {
+      "name": "Sahren (north)",
+      "province": "sahren_north",
+      "owner": "",
+      "stage": "B",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "sahren_oasis": {
+      "name": "The Oasis River",
+      "province": "sahren_oasis",
+      "owner": "",
+      "stage": "B",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "sahren_east": {
+      "name": "Sahren (east)",
+      "province": "sahren_east",
+      "owner": "",
+      "stage": "B",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "sahren_west": {
+      "name": "Sahren (west)",
+      "province": "sahren_west",
+      "owner": "",
+      "stage": "B",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "sahren_south": {
+      "name": "Sahren (south)",
+      "province": "sahren_south",
+      "owner": "",
+      "stage": "B",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "sahren_cape": {
+      "name": "Sahren (cape)",
+      "province": "sahren_cape",
+      "owner": "",
+      "stage": "B",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "sahren_isle_a": {
+      "name": "Sahren isle",
+      "province": "sahren_isle_a",
+      "owner": "",
+      "stage": "B",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "sahren_isle_b": {
+      "name": "Sahren isle",
+      "province": "sahren_isle_b",
+      "owner": "",
+      "stage": "B",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "burning_isle": {
+      "name": "The Burning Isle",
+      "province": "burning_isle",
+      "owner": "",
+      "stage": "A2",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "elven_north": {
+      "name": "Elven Coast (north)",
+      "province": "elven_north",
+      "owner": "",
+      "stage": "C",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "elven_lysar": {
+      "name": "Elven Coast (Lysar)",
+      "province": "elven_lysar",
+      "owner": "",
+      "stage": "C",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "elven_aelthas": {
+      "name": "Elven Coast (Aelthas)",
+      "province": "elven_aelthas",
+      "owner": "",
+      "stage": "C",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "elven_therin": {
+      "name": "Elven Coast (Therin)",
+      "province": "elven_therin",
+      "owner": "",
+      "stage": "C",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "gulf_isle_a": {
+      "name": "Gulf isle",
+      "province": "gulf_isle_a",
+      "owner": "",
+      "stage": "C",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "gulf_isle_b": {
+      "name": "Gulf isle",
+      "province": "gulf_isle_b",
+      "owner": "",
+      "stage": "C",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "gulf_isle_c": {
+      "name": "Gulf isle",
+      "province": "gulf_isle_c",
+      "owner": "",
+      "stage": "C",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "gulf_isle_d": {
+      "name": "Gulf isle",
+      "province": "gulf_isle_d",
+      "owner": "",
+      "stage": "C",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "horned_nw": {
+      "name": "Horned Sea (north-west)",
+      "province": "horned_nw",
+      "owner": "",
+      "stage": "C",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "horned_ne": {
+      "name": "Horned Sea (north-east)",
+      "province": "horned_ne",
+      "owner": "",
+      "stage": "C",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "horned_w": {
+      "name": "Horned Sea (west)",
+      "province": "horned_w",
+      "owner": "",
+      "stage": "C",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "hornstone": {
+      "name": "Hornstone",
+      "province": "hornstone",
+      "owner": "",
+      "stage": "C",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "horned_e": {
+      "name": "Horned Sea (east)",
+      "province": "horned_e",
+      "owner": "",
+      "stage": "C",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "horned_s": {
+      "name": "Horned Sea (south)",
+      "province": "horned_s",
+      "owner": "",
+      "stage": "C",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "horned_se": {
+      "name": "Horned Sea (south-east)",
+      "province": "horned_se",
+      "owner": "",
+      "stage": "C",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "ashlands_n": {
+      "name": "The Ashlands (north)",
+      "province": "ashlands_n",
+      "owner": "",
+      "stage": "locked",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "ashlands_rift": {
+      "name": "The Rift",
+      "province": "ashlands_rift",
+      "owner": "",
+      "stage": "locked",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "ashlands_s": {
+      "name": "The Ashlands (south)",
+      "province": "ashlands_s",
+      "owner": "",
+      "stage": "locked",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "gnawing_coast": {
+      "name": "The Gnawing Coast",
+      "province": "gnawing_coast",
+      "owner": "",
+      "stage": "D",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "serpent_coast": {
+      "name": "The Serpent Coast",
+      "province": "serpent_coast",
+      "owner": "",
+      "stage": "D",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "jungle_heart": {
+      "name": "The Jungle Heart",
+      "province": "jungle_heart",
+      "owner": "",
+      "stage": "D",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "sothmire_east": {
+      "name": "Sothmire (east)",
+      "province": "sothmire_east",
+      "owner": "",
+      "stage": "D",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "sothmire_south": {
+      "name": "Sothmire (south)",
+      "province": "sothmire_south",
+      "owner": "",
+      "stage": "D",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "sothmire_west": {
+      "name": "Sothmire (south-west)",
+      "province": "sothmire_west",
+      "owner": "",
+      "stage": "D",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "sothmire_cape": {
+      "name": "Sothmire (south-east)",
+      "province": "sothmire_cape",
+      "owner": "",
+      "stage": "D",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "chain_isle_a": {
+      "name": "Island chain",
+      "province": "chain_isle_a",
+      "owner": "",
+      "stage": "D",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "chain_isle_b": {
+      "name": "Island chain",
+      "province": "chain_isle_b",
+      "owner": "",
+      "stage": "D",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    },
+    "chain_isle_c": {
+      "name": "Island chain",
+      "province": "chain_isle_c",
+      "owner": "",
+      "stage": "D",
+      "resources": {
+        "wood": 0.0,
+        "stone": 0.0,
+        "food": 0.0,
+        "minerals": 0.0
+      }
+    }
+  }
+}
