@@ -55,7 +55,7 @@ Everything already built (economy, construction, recruitment, movement, battles 
 
 - Playable non-human races (elves first)
 - Ashlands content and endgame crises
-- Free deployment and the spatial battle simulation (constitution, Post-V1 roadmap)
+- Typed battle orders through a local model (post-V1 idea, constitution). Free deployment and the spatial battle simulation were removed from the roadmap (2026-10-04).
 - Deep underground travel
 - Ascension details
 - Schemes against the Throne City itself

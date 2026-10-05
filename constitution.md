@@ -151,6 +151,29 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
   - The old owner's buildings become ruins that linger and decay over the conversion period (flavor).
   - The climate yield penalty for the new owner fades over the same period; once converted, the region is foreign climate for the original culture if they retake it, which starts converting it back.
   - This is the land, not the people: the culture and faith mix of a region still shifts on its own (game-design §11.4).
+- Confirmed (owner, 2026-10-04, game-design §12.13 D): specialization paths.
+  - A town commits to exactly one path (military, farming, mining, lumber or market), available to all 11 cultures.
+  - The town's look follows the path in its city and countryside: a fixed, designed appearance per culture, with one signature building per path per culture.
+  - All buildings stay available. Changing path means demolishing and rebuilding from scratch.
+  - Any town can take any path; missing resources are added (a mine pit opens beside a mining town with no hills).
+  - Mining looks gritty, lumber towns keep their forests, and markets are rich and crowded when populous.
+  - Big cities have no path, only growth.
+  - Gameplay effects are open (to be proposed).
+- Proposed (2026-10-04, game-design §12.13 E): settlement levels 3 → 5 as in TW:WH3, likely post-V1. Not approved for implementation.
+- Confirmed (owner, 2026-10-04, game-design §12.13 F–J):
+  - The map is alive at scale: tiny details (specks of people, smoke, carts, birds as brush strokes).
+  - The overall style is vivid and colorful, TW-style even for grim races, with grimdark gothic, colossal, almost unrealistically epic architecture.
+  - Every faction has its own crest, colors and feel and sits on a good-to-evil spectrum, within every race.
+  - Extreme land conversions are allowed (orcs can turn desert to snow, lizardmen tundra to jungle).
+  - Regions with mixed populations show a blend of cultures.
+  - Desert magic is benevolent and visible; elves and dark elves are fully high-fantasy and magical; beastmen architecture grows from the wild; ratmen pollution is mild; orc lands are lively, not barren; the Medieval north is mostly green.
+- Confirmed (owner, 2026-10-04, game-design §12.13 K): settlement layouts follow culture and terrain, never a default circular walled fort.
+  - Each culture has its own layout (Roman grid and forum; Greek terraces down to a harbour; Medieval organic streets around castle and church; dwarven holds carved into cliffs; orc camps around a stronghold; elven spires and bridges; dark elf towers on rock and sea; beastmen woven into the wild; ratmen stacks over ruins; lizardmen plazas and pyramids; desert along the river with processional roads).
+  - Settlements use the terrain, and walls follow the terrain and the city's shape.
+  - Every settlement is dense and asymmetric, with no empty ground inside the walls and suburbs spilling outside.
+  - Gemini reference images guide palette, materials and style only, never layout.
+- Confirmed in concept (owner, 2026-10-04, game-design §12.13 L): long, irregular Game of Thrones seasons (summers of about 7 years, winters of 1–2 years), visible on the map. Mechanics are open; nothing is implemented until they are designed.
+- Confirmed (owner, 2026-10-04, game-design §12.13 M): Goldspire Rock's castle is carved into the rock (halls, colonnades and towers emerging from the cliff, mines glowing inside), with the Greek city at its foot and the harbour below.
 
 ## Characters, dynasties, and governing
 
@@ -200,6 +223,7 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 
 - Before resolution, players deploy units and assign standing orders such as hold ground, act aggressively, or attempt to flank.
 - Battle design (approved direction, 2026-10-01): docs/battle-design.md. Its numbers are placeholders and its open questions (section 13) are not decided until the owner answers them.
+- Confirmed (owner, 2026-10-04): Quick Resolve is the default; the deployment screen is an optional button.
 - Implementation note (2026-10-01): battles are fought from the campaign with the slot-based deployment screen or quick resolve. TEMPORARY war rule until diplomacy: attacking another faction's army or settlement declares war after a confirmation, and there is no peace yet. Captured settlements are occupied only; sack, raze and expel stay open. A dead or wounded general is replaced by a captain who cannot move the army (placeholder until the character system).
 - Resolve the battle through simulation without displaying animated combat in V1.
 - Detailed figures with minimal animation can be used in deployment; presentation specifics remain open.
@@ -271,16 +295,10 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 
 ## Post-V1 roadmap
 
-Not V1 scope. Recorded 2026-10-01 so the direction is known; nothing here is built for V1. V1 keeps the current slot-based deployment (lanes × front/back, reserve, general's slot).
+Not V1 scope; nothing here is built for V1. V1 keeps the current slot-based deployment (lanes × front/back, reserve, general's slot), with Quick Resolve as the default.
 
-1. **Total War-style free deployment** (the first post-V1 item). Units are placed freely on a real 3D battlefield inside the deployment zone.
-   - Right-click-drag sets a unit's position, frontage width and facing, with a preview.
-   - Whole formations can be grouped and locked, moved with Alt-drag and rotated with Ctrl.
-   - Each army's last deployment is remembered.
-   - Positions snap to the existing lane model behind the scenes, so the battle simulation and its tuned win rates stay unchanged.
-2. **True spatial battle simulation** (a V2 decision). Units get real 2D positions, distances and facing, with geometric flanking, replacing the lane model.
-   - All win-rate targets must be re-tuned.
-   - It is the natural step toward watchable battles.
+- Removed (owner, 2026-10-04): TW-style free deployment and the true spatial battle simulation are no longer on the roadmap.
+- Idea, recorded only (owner, 2026-10-04): typed battle orders. The player types orders in plain words; a local model (for example Ollama; free and offline) translates them into a deployment and orders, which the player confirms. Not designed and not scheduled.
 
 ## Priority questions for the next discussion
 

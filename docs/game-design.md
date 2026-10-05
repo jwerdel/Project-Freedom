@@ -49,7 +49,7 @@
 7. **Sandbox forever.** No victory conditions. The joy is building an empire over hundreds or thousands of years and watching decisions play out. Freshness over time is a design requirement (Section 15).
 
 ### 1.3 What we are not
-- Not a tactical battle game. Battles are simulated and considered complete for V1 (deployment, orders, auto-resolve, report). Post-V1 roadmap holds free deployment and a possible spatial simulation.
+- Not a tactical battle game. Battles are simulated and considered complete for V1 (deployment, orders, auto-resolve, report). Quick Resolve is the default; the deployment screen is an optional button (confirmed 2026-10-04). Free deployment and a spatial simulation are no longer on the roadmap.
 - Not a Crusader Kings clone. No opinion-modifier spreadsheets, no realm-splitting factions against the player, no succession-law micromanagement.
 - Not a Total War clone. Politics, intrigue, dynasty, and religion are deeper than anything in Total War.
 
@@ -683,6 +683,9 @@ Wild legendary monsters roam certain regions (dragons, giants, frost-beasts). Ma
 
 ### 12.12 Battles **(Confirmed: complete for V1)**
 No further battle work in V1 except bugs. Magic and new unit types feed the existing simulation as data.
+- **Quick Resolve is the default** (confirmed 2026-10-04, owner): a battle resolves at once with the default deployment; the deployment screen is an optional button for players who want to place units and give orders.
+- **Removed from the roadmap** (2026-10-04): TW-style free deployment and the true spatial battle simulation.
+- **Post-V1 idea, recorded only** (2026-10-04): typed battle orders. The player types orders in plain words ("hold the ford with the spears, cavalry round the left"); a local model (for example Ollama, free and offline) translates them into a deployment and orders, which the player confirms before the battle. Not designed, not scheduled.
 
 ### 12.13 Living settlements and changing land **(Confirmed 2026-10-04, owner)**
 **A. Big cities feel big.**
@@ -716,17 +719,17 @@ The features are placed procedurally in the region around the settlement, respec
 
 | Culture | Biome |
 |---|---|
-| Medieval | Green temperate, oaks |
+| Medieval | Mostly green north: meadows, pine and oak, grey stone |
 | Roman | Warm, vineyards, cypress |
 | Greek | Dry hills, olives, white stone |
-| Orcs | Snow, frozen ground, pines, crude huts |
+| Orcs | Lively northern wilderness: dark pines, mossy tundra, rivers, old snow in hollows, crude timber and bone camps |
 | Dwarves | Bare rock, stone works |
-| Elves | Lush, white stone |
-| Dark elves | Dark stone, black sails, grim coasts |
+| Elves | Lush, magical: emerald meadows, white stone, slender spires |
+| Dark elves | Black rock, purple heather, witchlight, spiked towers, grim coasts |
 | Beastmen | Wild overgrowth, bones, herdstones |
-| Ratmen | Polluted swamp, green glow |
+| Ratmen | Drowned swamp forest, mildly polluted, crooked scrap towers |
 | Lizardmen | Jungle |
-| Tomb-King desert | Sand, red stone |
+| Tomb-King desert | Sand, red stone, a green river ribbon, benevolent visible magic |
 
   Chaos and Hollow Dynasty profiles (twisted, corrupted land) come after V1, but the system supports them.
 - When any faction takes a region from another culture, the region transforms toward the new owner's profile (data values):
@@ -740,6 +743,81 @@ The features are placed procedurally in the region around the settlement, respec
   - the climate yield penalty for the new owner (§10.9) fades over the same period;
   - once converted, the region is foreign climate for the original culture if they retake it, which starts converting it back.
 - This is the land, not the people: a region's culture and faith mix (§11.4) still shifts on its own over decades.
+
+**D. Specialization paths** **(Confirmed 2026-10-04, owner; notes in `docs/reference/specializations/specialization-prompts.md`)**
+- **The commitment:**
+  - A town commits to exactly one path: **military, farming, mining, lumber or market**.
+  - Paths exist for all 11 cultures.
+  - Any town can take any path. Missing resources are added; for example, a mine pit opens beside a mining town with no hills.
+- **The look:**
+  - The town's look follows its path, in its countryside and its city.
+  - Each path has a **fixed, designed appearance per culture**, never generated on the fly.
+  - Every culture has one signature building per path.
+- **Buildings and changes:**
+  - All buildings stay available whatever the path.
+  - Changing path means demolishing and rebuilding from scratch.
+- **Path characters:**
+  - Mining looks gritty.
+  - Lumber towns keep their forests.
+  - Markets are rich and crowded when populous.
+- **Big cities have no path,** only growth.
+- **Gameplay effects:** proposed later (not designed).
+
+**E. Settlement levels 3 → 5** **(Proposed, likely post-V1)**: five settlement levels as in TW:WH3, instead of three. Needs approval before any work.
+
+**F. Alive at scale** **(Confirmed 2026-10-04, owner)**: the map feels alive through tiny details: specks of people on the roads, chimney smoke, carts, and birds as a couple of brush strokes.
+
+**G. Overall visual style** **(Confirmed 2026-10-04, owner)**
+- Vivid and colourful, TW style, even for grim races: menace through shapes and details, not murk.
+- Architecture is grimdark gothic, colossal, almost unrealistically epic.
+
+**H. Faction identity within races** **(Confirmed 2026-10-04, owner)**
+- Every faction has its own crest, colours and feel.
+- Every faction sits somewhere on a good-to-evil spectrum: some Roman houses are noble, others cruel. The same holds for every race.
+
+**I. Land conversion extremes and mixed populations** **(Confirmed 2026-10-04, owner)**
+- Extreme conversions are allowed: orcs can turn desert to snow, and lizardmen can turn tundra to jungle.
+- A region with a mixed population shows a blend of both cultures' land and architecture.
+
+**J. Biome specifics** **(Confirmed 2026-10-04, owner; targets `docs/reference/biomes/`, palette and style only)**
+- Desert magic is benevolent and visible (enchanted crops, glowing springs).
+- Elves and dark elves are fully high-fantasy and magical.
+- Beastmen architecture grows from the wild.
+- Ratmen pollution is mild.
+- Orc lands are lively, not barren.
+- The Medieval north is mostly green.
+
+**K. Settlement layouts** **(Confirmed 2026-10-04, owner)**
+- **Never default to circular walled forts.** Layouts follow terrain and culture:
+
+| Culture | Layout |
+|---|---|
+| Roman | A grid with straight roads and a forum |
+| Greek | Terraced hillside down to a harbour |
+| Medieval | Organic streets around a castle and church |
+| Dwarves | Vertical, carved into cliffs and mountains |
+| Orcs | Sprawling camps around a stronghold |
+| Elves | Vertical spires and bridges |
+| Dark elves | Jagged towers on rock and sea |
+| Beastmen | Woven into wild growth |
+| Ratmen | Crooked stacks over ruins |
+| Lizardmen | Monumental plazas and pyramids |
+| Desert | Along the river, with processional roads |
+
+- **Use the terrain:** settlements built into mountainsides, on hilltops with districts sloping down to lower towns, along rivers and coasts, across valleys, against cliffs. A citadel on high ground with the city spilling downhill should be common.
+- **Walls** follow the terrain and the city's shape (irregular outlines, ridgelines, riverbanks), with proper curtain walls, towers and gatehouses.
+- Every settlement is **dense and asymmetric**, with no empty ground inside the walls and suburbs spilling outside.
+- The Gemini reference images are references for palette, materials and architectural style, **not layout**; never copy their composition.
+
+**L. Seasons** **(Confirmed in concept 2026-10-04; mechanics to be designed; NOT implemented)**
+- Long, irregular Game of Thrones seasons: a summer can last about 7 years, a winter 1–2 years.
+- Seasons are visible on the map.
+- Gameplay effects are to be designed; nothing is built until then.
+
+**M. Goldspire Rock redesign** **(Confirmed 2026-10-04, owner; reference `docs/reference/landmarks/goldspire rock.jpg`)**: the castle is carved INTO the rock:
+- halls, colonnades and towers emerge from the cliff;
+- mines glow inside it;
+- the Greek city lies at its foot and the harbour below.
 
 ---
 
@@ -850,7 +928,7 @@ All screens follow TW:WH3 layout conventions.
 Everything already built, plus: TW parity pass; court, dynasty, careers; agents and spymaster; the three priority schemes plus core intrigue; reputation, decrees, suspicion; diplomacy (embassies, dossiers, commandable allies, vassals, puppets, treaties, betrayal); religion and the Throne City (influence, missions, elections, Holy Wars, Anathema); three human culture mechanics; research; public order, culture/faith mix, capture options; outposts, captains, trade routes and raiding, naval transport, shroud, the Greywall, legendary monsters (basic), campaign magic (basic); events with art, quests, items, chronicle; Realm Standing; difficulty and settings; illustrated intro and guidance.
 
 ### 19.4 Deferred past V1
-Playable non-human races (elves first), Ashlands content and crises, free deployment and spatial battle sim, deep underground travel, ascension details, schemes against the Throne City itself, Hollow Dynasty transformation event.
+Playable non-human races (elves first), Ashlands content and crises, typed battle orders through a local model (idea only; free deployment and the spatial battle sim were dropped 2026-10-04), deep underground travel, ascension details, schemes against the Throne City itself, Hollow Dynasty transformation event.
 
 ### 19.5 Changes vs. the approved `docs/v1-scope.md`
 - Map: southern Aldryn only → full world (staged), minus Ashlands.
