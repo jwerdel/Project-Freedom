@@ -1,0 +1,17 @@
+{
+  "_note": "PLACEHOLDER army composition for the prototype; unit strengths are mock values.",
+  "id": "aurek_host",
+  "display_name": "The Host of Goldspire",
+  "faction": "house_aurek",
+  "commander": {"unit": "commander", "name": "Ser Alaric Aurek", "rank": 3},
+  "units": [
+    {"unit": "spearmen", "strength": 1.0},
+    {"unit": "spearmen", "strength": 0.85},
+    {"unit": "swordsmen", "strength": 0.95},
+    {"unit": "heavy_infantry", "strength": 0.9},
+    {"unit": "archers", "strength": 1.0},
+    {"unit": "archers", "strength": 0.7},
+    {"unit": "peasant_levy", "strength": 0.6},
+    {"unit": "cavalry", "strength": 0.8}
+  ]
+}

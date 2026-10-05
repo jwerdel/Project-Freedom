@@ -48,6 +48,8 @@ var chunks = {}       # Vector2i -> {"node": Node3D, "trees": Node3D or null, "k
 var settlements = {}  # id -> SprawlNode
 var sea_level := 0.0
 var spec_overrides = {} # settlement id -> spec fields to override (showcases: a town's path)
+var landmarks = {} # settlement id -> its landmark model (asset manifest landmarks)
+const LANDMARK_RADIUS = 20.0
 var only := "" # build only this settlement (showcases)
 var _last_focus := Vector3(INF,0,INF)
 
@@ -214,9 +216,24 @@ func update(focus: Vector3):
    if settlements[sid].key != key:
     settlements[sid].build(s,terrain_at,height_at,sea_level,BUILD_RADIUS)
     settlements[sid].key = key
+    if AssetManifest.is_landmark(sid): _landmark(sid,int(s.level))
   elif d>DROP_RADIUS and settlements.has(sid):
    settlements[sid].queue_free()
    settlements.erase(sid)
+   if landmarks.has(sid):
+    landmarks[sid].queue_free()
+    landmarks.erase(sid)
+
+# A landmark settlement's own model at its growth stage (AssetManifest.instantiate_settlement), built
+# on the terrain. Local space: origin at sea level under the site.
+func _landmark(sid: String,level: int):
+ if landmarks.has(sid): landmarks[sid].queue_free()
+ var p = WorldMap.settlement_position(sid)
+ var n = AssetManifest.instantiate_settlement(sid,clampi(level,1,3))
+ add_child(n)
+ n.position = Vector3(p.x,sea_level,p.y)
+ if n.has_method("build"): n.build({"height":func(x,z): return height_at(p.x+x,p.y+z)-sea_level})
+ landmarks[sid] = n
 
 # What map/sprawl.gd needs to lay a settlement out, from the campaign state.
 func settlement_spec(sid: String) -> Dictionary:
@@ -224,6 +241,11 @@ func settlement_spec(sid: String) -> Dictionary:
  var e = Land.entry(state,sid)
  var spec = {"id":sid,"type":st.type,"level":int(st.level),"position":WorldMap.settlement_position(sid),"from":e.from,"to":e.to,
   "value":snappedf(float(e.value),0.05),"buildings":st.buildings.filter(func(b): return b.has("chain")),"landmark_radius":0.0}
+ # A landmark keeps its own model at the centre; the town grows around it.
+ if AssetManifest.is_landmark(sid): spec.landmark_radius = LANDMARK_RADIUS
+ # The specialization path, from the map data until the path system exists (game-design §12.13 D).
+ var rs = WorldMap.region(sid).get("settlement")
+ if rs is Dictionary and str(rs.get("path","")) != "": spec.path = str(rs.path)
  spec.merge(spec_overrides.get(sid,{}),true)
  return spec
 

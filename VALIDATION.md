@@ -1032,3 +1032,48 @@ The three budgets that failed in the previous run, fixed without cutting content
 - On flat ground the Greek terraces still form a rounded blob (a hill gives them their shape).
 - Small towns read sparse at the showcase distance.
 - The kits are first-pass shapes. The colossus and breakwater are blocky.
+
+## Map pipeline: authoring, validator, debug overlay, test map (2026-10-04)
+
+**Built** (design `docs/map-pipeline-design.md` §2–5):
+- **Sketch parser** (`map/sketch.gd`): the SVG subset (layers; path M/L/H/V/C/Q/Z absolute and relative, circle, ellipse, polygon; data attributes). Transforms and anything else are errors naming the element.
+- **Pipeline build** (`map/pipeline.gd`, via `scripts/build_map.gd`):
+  - land, lakes, hills, forests, ranges, passes, rivers, sites, pinned roads and pinned region outlines, from `sketch.svg` + `world.json`;
+  - outputs the same committed bakes and render cache as the synthetic maps;
+  - deterministic (tested).
+- **Validator** (`map/validator.gd`, `scripts/validate_map.gd`, run by the build):
+  - Checks:
+    - ids and references;
+    - every land cell in a region;
+    - regions in one piece;
+    - provinces contiguous;
+    - major types;
+    - landmarks with three stages;
+    - settlement spacing;
+    - settlements on water or mountains;
+    - majors reachable by land or port;
+    - faction start regions and seats;
+    - culture, faith and race shares;
+    - province budgets;
+    - committed bakes matching their sources.
+  - **Skipped** until their systems exist: sea graph and port anchors, Greywall continuity, start positions against the world bible, minor factions, names by culture.
+- **Debug overlay** on the strategic map (F9 with debug keys; `--debug-layer=`): region IDs, movement classes, validator problems as red markers (hover for the message).
+- **The test map rebuilt through the pipeline** (`data/maps/testmap_pipeline/`):
+  - The sources were converted once from the legacy map: same region IDs and pinned borders, settlements, factions, armies, the Greyspine range and pass, the coast, Goldspire.
+  - New: a river (Silverrun) and two forests.
+  - It builds in 0.35 s.
+  - `--demo` shows the specialization looks (Willowmere farming, Crownwatch military), industry (Greyhaven port and market, Goldspire mine and port), Willowmere mid-conversion (Roman to Greek), and Goldspire's landmark with sprawl.
+  - The legacy `testmap` stays the default for tests, the self-test and `Main.tscn` until the campaign scene runs on pipeline maps.
+
+**Validator results:**
+
+| Map | Errors | Warnings | Notes |
+|---|---|---|---|
+| testmap_pipeline | 0 | 0 | |
+| testmap (legacy) | 0 | 0 | |
+| synthetic600 | 4 | 114 | 241 land cells outside every region (islands without a site); provinces p059, p159 and p175 split across impassable ridges; 114 factions start with more than 2 regions |
+| synthetic_tiny | 14 | 5 | majors closer than 30 m (the tiny map is dense on purpose) |
+
+The synthetic maps are performance fixtures, so their findings are recorded, not fixed.
+
+**Captures** (`captures/`): `p5_testmap_overview.png`, `p5_testmap_goldspire.png`, `p5_testmap_willowmere.png`, `p5_testmap_crownwatch.png`, `p5_debug_regions.png`, `p5_debug_movement.png`, `p5_debug_problems_synthetic600.png`.

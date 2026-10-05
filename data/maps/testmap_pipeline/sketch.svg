@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The test map (the prototype world) as pipeline sources: converted once from the legacy data/maps/testmap/ (coast, Greyspine range and pass, the hill by Crownwatch, settlement sites, roads); edit this file from now on. 1 unit = 1 m, origin at the north-west corner (world -140, -140). -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="280" height="280" viewBox="0 0 280 280">
+ <g inkscape:groupmode="layer" id="land">
+  <polygon id="mainland" points="0.0,0.0 280.0,0.0 280.0,164.7 275.0,164.2 270.0,163.7 265.0,163.5 260.0,163.8 255.0,164.7 250.0,166.2 245.0,168.1 240.0,170.4 235.0,172.7 230.0,174.8 225.0,176.4 220.0,177.5 215.0,178.0 210.0,178.1 205.0,177.7 200.0,177.3 195.0,176.9 190.0,176.8 185.0,176.9 180.0,177.3 175.0,177.8 170.0,178.2 165.0,178.3 160.0,177.9 155.0,176.9 150.0,175.3 145.0,173.3 140.0,171.0 135.0,168.7 130.0,166.7 125.0,165.1 120.0,164.1 115.0,163.7 110.0,163.8 105.0,164.2 100.0,164.7 95.0,165.1 90.0,165.2 85.0,165.1 80.0,164.7 75.0,164.3 70.0,163.9 65.0,164.0 60.0,164.5 55.0,165.6 50.0,167.2 45.0,169.3 40.0,171.6 35.0,173.9 30.0,175.8 25.0,177.3 20.0,178.2 15.0,178.5 10.0,178.3 5.0,177.8 0.0,177.3"/>
+ </g>
+ <g inkscape:groupmode="layer" id="ranges">
+  <path id="greyspine" data-height="44" data-width="58" d="M 0.0,50.0 L 100.0,54.0 L 200.0,50.0 L 280.0,53.0"/>
+ </g>
+ <g inkscape:groupmode="layer" id="passes">
+  <path id="greyspine_pass" data-name="Greyspine Pass" data-width="7" d="M 188.0,94.0 L 184.0,70.0 L 182.0,45.0 L 180.0,4.0"/>
+ </g>
+ <g inkscape:groupmode="layer" id="hills">
+  <ellipse id="crownwatch_hill" cx="192" cy="105" rx="19" ry="15"/>
+ </g>
+ <g inkscape:groupmode="layer" id="forests">
+  <polygon id="willow_wood" data-density="0.8" points="20,80 70,70 95,95 80,125 40,130 15,110"/>
+  <polygon id="crown_wood" data-density="0.8" points="150,60 230,62 250,85 215,100 165,92"/>
+ </g>
+ <g inkscape:groupmode="layer" id="rivers">
+  <path id="silverrun" data-width="4" d="M 95,62 C 98,90 88,110 100,130 C 110,150 104,160 108,171"/>
+ </g>
+ <g inkscape:groupmode="layer" id="sites">
+  <circle id="greyhaven" cx="128.0" cy="146.0" r="4" data-flat="6"/>
+  <circle id="willowmere" cx="84.0" cy="116.0" r="4" data-flat="6"/>
+  <circle id="crownwatch" cx="188.0" cy="105.0" r="4" data-flat="6"/>
+  <circle id="goldspire_rock" cx="184.0" cy="176.5" r="4" data-flat="3"/>
+ </g>
+ <g inkscape:groupmode="layer" id="roads">
+  <path id="greyhaven_crownwatch" d="M 128.0,146.0 L 140.0,135.0 L 155.0,126.0 L 170.0,118.0 L 188.0,105.0"/>
+  <path id="greyhaven_willowmere" d="M 128.0,146.0 L 116.0,132.0 L 99.0,127.0 L 84.0,116.0"/>
+  <path id="greyhaven_harbour" d="M 128.0,146.0 L 123.0,157.0 L 122.0,167.0"/>
+ </g>
+</svg>

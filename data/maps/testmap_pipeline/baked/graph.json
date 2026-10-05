@@ -1,0 +1,47 @@
+{
+  "_note": "GENERATED region graph (map/map_bake.gd): edges [region a, region b, crossing cell] with region indices into baked/regions.json names.",
+  "edges": [
+    [
+      3,
+      4,
+      21039,
+      21319
+    ],
+    [
+      0,
+      3,
+      21714,
+      21994
+    ],
+    [
+      2,
+      3,
+      21676,
+      21956
+    ],
+    [
+      2,
+      4,
+      36517,
+      36518
+    ],
+    [
+      0,
+      2,
+      35155,
+      35156
+    ],
+    [
+      0,
+      1,
+      43026,
+      43306
+    ],
+    [
+      1,
+      2,
+      45240,
+      45241
+    ]
+  ]
+}

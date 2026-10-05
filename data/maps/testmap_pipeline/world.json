@@ -1,0 +1,403 @@
+{
+  "_note": "The test map's provinces and regions (pipeline source; converted once from the legacy data/maps/testmap/provinces.json, region outlines pinned so IDs and borders match). Settlement types follow the prototype (village and town majors are allowed on the test map only: map.json allow_legacy_majors). demo: the map scene's --demo showcase (specialization looks, industry, a region mid-conversion); presentation only.",
+  "provinces": [
+    {
+      "id": "greywater_march",
+      "name": "The Greywater March",
+      "capital": "greyhaven",
+      "regions": [
+        "greyhaven",
+        "willowmere"
+      ]
+    },
+    {
+      "id": "crownwatch_pass",
+      "name": "Crownwatch Pass",
+      "capital": "crownwatch",
+      "regions": [
+        "crownwatch"
+      ]
+    },
+    {
+      "id": "goldspire",
+      "name": "Goldspire",
+      "capital": "goldspire_rock",
+      "regions": [
+        "goldspire_rock"
+      ]
+    },
+    {
+      "id": "greyspine_peaks",
+      "name": "The Greyspine Peaks",
+      "capital": "",
+      "regions": [
+        "greyspine"
+      ]
+    }
+  ],
+  "regions": {
+    "greyhaven": {
+      "name": "Greyhaven",
+      "owner": "house_lannet",
+      "resources": {
+        "wood": 1.0,
+        "stone": 1.0,
+        "food": 2.0,
+        "minerals": 0.0
+      },
+      "polygon": [
+        [
+          -26.0,
+          -62.0
+        ],
+        [
+          14.0,
+          -62.0
+        ],
+        [
+          10.0,
+          -40.0
+        ],
+        [
+          18.0,
+          -22.0
+        ],
+        [
+          12.0,
+          -4.0
+        ],
+        [
+          20.0,
+          12.0
+        ],
+        [
+          22.0,
+          26.0
+        ],
+        [
+          18.0,
+          40.0
+        ],
+        [
+          20.0,
+          60.0
+        ],
+        [
+          -28.0,
+          60.0
+        ],
+        [
+          -24.0,
+          34.0
+        ],
+        [
+          -26.0,
+          14.0
+        ],
+        [
+          -21.0,
+          -6.0
+        ],
+        [
+          -24.0,
+          -24.0
+        ],
+        [
+          -20.0,
+          -38.0
+        ]
+      ],
+      "major": {
+        "name": "Greyhaven",
+        "type": "city",
+        "level": 2.0,
+        "port": true
+      }
+    },
+    "willowmere": {
+      "name": "Willowmere",
+      "owner": "house_verrin",
+      "resources": {
+        "wood": 2.0,
+        "stone": 0.0,
+        "food": 4.0,
+        "minerals": 0.0
+      },
+      "polygon": [
+        [
+          -140.0,
+          -58.0
+        ],
+        [
+          -100.0,
+          -64.0
+        ],
+        [
+          -60.0,
+          -60.0
+        ],
+        [
+          -26.0,
+          -62.0
+        ],
+        [
+          -20.0,
+          -38.0
+        ],
+        [
+          -24.0,
+          -24.0
+        ],
+        [
+          -21.0,
+          -6.0
+        ],
+        [
+          -26.0,
+          14.0
+        ],
+        [
+          -24.0,
+          34.0
+        ],
+        [
+          -28.0,
+          60.0
+        ],
+        [
+          -140.0,
+          60.0
+        ]
+      ],
+      "major": {
+        "name": "Willowmere",
+        "type": "village",
+        "level": 1.0,
+        "port": false
+      }
+    },
+    "crownwatch": {
+      "name": "Crownwatch",
+      "owner": "house_aurek",
+      "resources": {
+        "wood": 2.0,
+        "stone": 3.0,
+        "food": 1.0,
+        "minerals": 1.0
+      },
+      "polygon": [
+        [
+          14.0,
+          -62.0
+        ],
+        [
+          50.0,
+          -58.0
+        ],
+        [
+          90.0,
+          -63.0
+        ],
+        [
+          140.0,
+          -60.0
+        ],
+        [
+          140.0,
+          22.0
+        ],
+        [
+          90.0,
+          16.0
+        ],
+        [
+          66.0,
+          20.0
+        ],
+        [
+          48.0,
+          14.0
+        ],
+        [
+          30.0,
+          16.0
+        ],
+        [
+          20.0,
+          12.0
+        ],
+        [
+          12.0,
+          -4.0
+        ],
+        [
+          18.0,
+          -22.0
+        ],
+        [
+          10.0,
+          -40.0
+        ]
+      ],
+      "major": {
+        "name": "Crownwatch",
+        "type": "fortress",
+        "level": 2.0,
+        "port": false
+      }
+    },
+    "goldspire_rock": {
+      "name": "Goldspire Rock",
+      "owner": "house_aurek",
+      "resources": {
+        "wood": 0.0,
+        "stone": 2.0,
+        "food": 1.0,
+        "minerals": 5.0
+      },
+      "polygon": [
+        [
+          20.0,
+          12.0
+        ],
+        [
+          30.0,
+          16.0
+        ],
+        [
+          48.0,
+          14.0
+        ],
+        [
+          66.0,
+          20.0
+        ],
+        [
+          90.0,
+          16.0
+        ],
+        [
+          140.0,
+          22.0
+        ],
+        [
+          140.0,
+          60.0
+        ],
+        [
+          20.0,
+          60.0
+        ],
+        [
+          18.0,
+          40.0
+        ],
+        [
+          22.0,
+          26.0
+        ]
+      ],
+      "major": {
+        "name": "Goldspire Rock",
+        "type": "city",
+        "level": 2.0,
+        "port": true,
+        "landmark": "goldspire_rock"
+      }
+    },
+    "greyspine": {
+      "name": "The Greyspine",
+      "owner": "",
+      "resources": {
+        "wood": 3.0,
+        "stone": 4.0,
+        "food": 0.0,
+        "minerals": 2.0
+      },
+      "polygon": [
+        [
+          -140.0,
+          -140.0
+        ],
+        [
+          140.0,
+          -140.0
+        ],
+        [
+          140.0,
+          -60.0
+        ],
+        [
+          90.0,
+          -63.0
+        ],
+        [
+          50.0,
+          -58.0
+        ],
+        [
+          14.0,
+          -62.0
+        ],
+        [
+          -26.0,
+          -62.0
+        ],
+        [
+          -60.0,
+          -60.0
+        ],
+        [
+          -100.0,
+          -64.0
+        ],
+        [
+          -140.0,
+          -58.0
+        ]
+      ]
+    }
+  },
+  "demo": {
+    "paths": {
+      "willowmere": "farming",
+      "crownwatch": "military"
+    },
+    "chains": {
+      "greyhaven": [
+        {
+          "chain": "port",
+          "level": 2
+        },
+        {
+          "chain": "market",
+          "level": 2
+        },
+        {
+          "chain": "temple",
+          "level": 2
+        },
+        {
+          "chain": "walls",
+          "level": 2
+        }
+      ],
+      "goldspire_rock": [
+        {
+          "chain": "mine",
+          "level": 3
+        },
+        {
+          "chain": "port",
+          "level": 2
+        }
+      ]
+    },
+    "conversion": {
+      "region": "willowmere",
+      "from": "roman",
+      "to": "greek",
+      "value": 0.5
+    }
+  }
+}

@@ -28,6 +28,7 @@ var pitch := 0.75
 var args := []
 var strategic: Control
 var lord: Node3D
+var pending_overrides = {} # spec overrides set up before the map view exists (--demo)
 
 func _ready():
  args = Array(OS.get_cmdline_user_args())
@@ -37,9 +38,11 @@ func _ready():
  SprawlNode.merge = not args.has("--instanced") # the old one-MultiMesh-per-kit-mesh drawing, for comparisons
  if args.has("--sprawl-max"): _sprawl_max()
  if args.has("--land-demo"): _land_demo()
+ if args.has("--demo"): _map_demo()
  var sc = _arg("--showcase=","")
  _environment()
  view = MapView.new()
+ view.spec_overrides = pending_overrides
  view.tree_shadows = not args.has("--no-tree-shadows")
  add_child(view)
  var focus_id = ""
@@ -153,6 +156,16 @@ func _sprawl_max():
   s.level = 3
   s.buildings = [{"chain":"main_"+s.type,"level":3},{"chain":"farm","level":3},{"chain":"mine","level":3},{"chain":"port","level":3},
    {"chain":"market","level":3},{"chain":"temple","level":3},{"chain":"barracks","level":3},{"chain":"walls","level":3}]
+
+# The map's own showcase (world.json "demo"): specialization paths, industry and a region mid-conversion.
+func _map_demo():
+ if not MapRegistry.has_file("world.json"): return
+ var demo = JSON.parse_string(FileAccess.get_file_as_string(MapRegistry.path("world.json"))).get("demo",{})
+ for sid in demo.get("paths",{}): pending_overrides[sid] = {"path":demo.paths[sid]}
+ for sid in demo.get("chains",{}):
+  if state.settlements.has(sid): state.settlements[sid].buildings.append_array(demo.chains[sid])
+ var c = demo.get("conversion",{})
+ if c.has("region"): state.land[c.region] = {"from":c.from,"to":c.to,"value":float(c.value),"built":0}
 
 # Mixed conversion states: every region's land from another culture, 0 to 1 of the way.
 func _land_demo():
@@ -314,6 +327,7 @@ func _open_strategic():
  var size = Vector2(MapRegistry.meta().size[0],MapRegistry.meta().size[1])
  strategic.setup(UiData.new(state),Rect2(Vector2(MapRegistry.meta().origin[0],MapRegistry.meta().origin[1]),size))
  strategic.set_layer(_arg("--layer=","affiliation"))
+ if _arg("--debug-layer=","") != "": strategic.set_debug(_arg("--debug-layer=",""))
  strategic.open_map(true)
  if args.has("--strategic-hidden"): strategic.visible = false # baseline: the empty 2D frame, for the strategic map's own GPU cost
  # Stress: N copies of the territory pass (the GPU clocks down on a light 2D frame, which inflates its

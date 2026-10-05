@@ -268,3 +268,15 @@ func test_palette_holds_the_layer_fills_and_owners():
  assert_eq(m._palette.get_pixel(m._index[sid],1).a,1.0,"owned: border colour in row 1")
  m.set_layer("climate")
  assert_eq(m._palette.get_pixel(m._index[sid],0).a,0.0,"climate: no fills")
+
+func test_debug_layers_show_regions_movement_and_validator_problems():
+ var m = build_map(UiData.new(GameState.from_data()))
+ m._layout()
+ m.set_debug("regions")
+ assert_eq(m._fills.size(),WorldMap.regions().size(),"every region coloured")
+ m.set_debug("movement")
+ assert_eq(m._surface.texture,m.base_vivid,"the movement classes")
+ m.set_debug("problems")
+ assert_true(m._problems is Array)
+ m.cycle_debug()
+ assert_eq(m.debug,"","F9 cycles back to off")

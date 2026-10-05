@@ -1,0 +1,14 @@
+{
+  "_note": "The test map rebuilt through the map pipeline (docs/map-pipeline-design.md §7.2): the prototype world's regions, settlements, factions and armies from authored sources (sketch.svg, world.json), built by scripts/build_map.gd (map/pipeline.gd) and checked by map/validator.gd. The legacy data/maps/testmap stays the default for tests, the self-test and Main.tscn until the campaign scene runs on pipeline maps. Committed: sources and baked/ (gameplay); the render cache is local.",
+  "id": "testmap_pipeline",
+  "name": "Test map (pipeline)",
+  "version": 1,
+  "kind": "pipeline",
+  "size": [280, 280],
+  "origin": [-140, -140],
+  "cell": 1.0,
+  "chunk": 256,
+  "sea_level": 0.0,
+  "detail_seed": 1201,
+  "allow_legacy_majors": true
+}

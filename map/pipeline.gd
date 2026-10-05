@@ -1,0 +1,317 @@
+extends RefCounted
+# The map pipeline's build for authored maps (map.json "kind": "pipeline"; design
+# docs/map-pipeline-design.md §4.1): sketch.svg (map/sketch.gd) + world.json -> the committed bakes
+# (provinces.json, movement.json overlay, baked/ movement grid, region raster, components, parts,
+# graph, hierarchy) and the render cache (heights, colours, rivers). Deterministic: randomness only
+# from map.json detail_seed. Then the validator (map/validator.gd) runs and its report is returned.
+#
+# Sketch layers used (world coordinates = map origin + SVG units, 1 unit = 1 m):
+#  land (closed shapes), lakes (closed), hills (closed), forests (closed, data-density 0-1),
+#  ranges (open paths, data-height, data-width), passes (open paths or circles, data-width),
+#  rivers (open paths, source to mouth, data-width), sites (circles, id = region id), roads (open
+#  paths, pinned), borders (optional).
+# world.json: {"provinces": [...], "regions": {id: {name, province, owner, major: {name, type,
+# level, port, landmark, path}, resources, polygon (optional: pinned region outline)}},
+# "factions_file", "start_file", "armies_dir", "allow_legacy_majors"}.
+
+const Sketch = preload("res://map/sketch.gd")
+const MapBake = preload("res://map/map_bake.gd")
+const MapRegistry = preload("res://core/map_registry.gd")
+const PathHierarchy = preload("res://core/path_hierarchy.gd")
+const Synthetic = preload("res://map/synthetic.gd")
+const OPEN = 0
+const FOREST = 1
+const HILLS = 2
+const PASS = 3
+const SETTLEMENT = 4
+const MOUNTAIN = 5
+const WATER = 6
+const MOUNTAIN_ABOVE = 22.0
+const HILLS_ABOVE = 8.0
+
+static func sources_hash(map_id: String) -> String:
+ var parts = []
+ for f in ["map.json","sketch.svg","world.json"]:
+  parts.append(FileAccess.get_file_as_string(MapRegistry.path(f,map_id)) if MapRegistry.has_file(f,map_id) else "")
+ return str(hash("\n".join(parts)))
+
+static func build(map_id: String) -> Dictionary:
+ var t_all = Time.get_ticks_msec()
+ var meta = MapRegistry.meta(map_id)
+ var dir = MapRegistry.dir(map_id)
+ var report = {"map":map_id,"errors":[],"warnings":[],"times":{}}
+ var sketch = Sketch.parse_file(dir+"sketch.svg")
+ report.errors.append_array(sketch.errors)
+ var world = JSON.parse_string(FileAccess.get_file_as_string(dir+"world.json")) if FileAccess.file_exists(dir+"world.json") else null
+ if world == null: report.errors.append("world.json missing or invalid")
+ if not report.errors.is_empty(): return report
+ var cell = float(meta.cell)
+ var origin = Vector2(meta.origin[0],meta.origin[1])
+ var cols = int(float(meta.size[0])/cell)
+ var rows = int(float(meta.size[1])/cell)
+ var n = cols*rows
+ var L = sketch.layers
+ var to_w = func(p: Vector2) -> Vector2: return origin+p
+ var cell_of = func(w: Vector2) -> Vector2i: return Vector2i(((w-origin)/cell).floor())
+ var center_of = func(i: int) -> Vector2: return origin+(Vector2(i%cols,i/cols)+Vector2(0.5,0.5))*cell
+ var seed = int(meta.get("detail_seed",1))
+ # --- 1. Land and lakes -------------------------------------------------------------------------
+ var t = Time.get_ticks_msec()
+ var land = _fill(L.get("land",[]),origin,cell,cols,rows)
+ var lakes = _fill(L.get("lakes",[]),origin,cell,cols,rows)
+ for i in n: if lakes[i] == 1: land[i] = 0
+ var hills = _fill(L.get("hills",[]),origin,cell,cols,rows)
+ var forest_mask = _fill(L.get("forests",[]),origin,cell,cols,rows)
+ report.times.land = Time.get_ticks_msec()-t
+ # --- 2. Heights -----------------------------------------------------------------------------------
+ t = Time.get_ticks_msec()
+ var fn = Synthetic._fnl(seed,0.02*cell,FastNoiseLite.FRACTAL_FBM,4)
+ var ridged = Synthetic._fnl(seed+1,0.035*cell,FastNoiseLite.FRACTAL_RIDGED,4)
+ var h = PackedFloat32Array()
+ h.resize(n)
+ var hill_soft = _blur(hills,cols,rows,int(8.0/cell))
+ var land_soft = _blur(land,cols,rows,int(6.0/cell))
+ for i in n:
+  var x = i%cols
+  var z = i/cols
+  var b = fn.get_noise_2d(x,z)*0.5+0.5
+  h[i] = lerpf(-3.0,2.0+b*4.0,land_soft[i])+hill_soft[i]*(4.0+b*7.0)
+ # Ranges: ridges along their lines, lumpy, falling off over their width.
+ var range_mask = PackedFloat32Array()
+ range_mask.resize(n)
+ for e in L.get("ranges",[]):
+  var height = float(e.data.get("height",40))
+  var width = float(e.data.get("width",30))
+  var near = _near(e.points,cell,cols,rows,width)
+  for i in near:
+   var k = exp(-pow(near[i]/(width*0.45),2.0))
+   var r = ridged.get_noise_2d(i%cols,i/cols)*0.5+0.5
+   h[i] += height*k*(0.55+0.7*r)
+   range_mask[i] = maxf(range_mask[i],k)
+ # Passes: a valley floor through the range.
+ var pass_mask = PackedByteArray()
+ pass_mask.resize(n)
+ for e in L.get("passes",[]):
+  var width = float(e.data.get("width",8))
+  var pts = e.points if e.kind == "path" else PackedVector2Array([e.center,e.center+Vector2(0.01,0)])
+  var near = _near(pts,cell,cols,rows,width*1.6)
+  for i in near:
+   var d = near[i]
+   var k = 1.0-smoothstep(width*0.5,width*1.6,d)
+   h[i] = lerpf(h[i],minf(h[i],12.0+fn.get_noise_2d(i%cols,i/cols)*2.0),k)
+   if d<width*0.5: pass_mask[i] = 1
+ # Rivers: valleys whose bed only descends from source to mouth.
+ var rivers = PackedByteArray()
+ rivers.resize(n)
+ for e in L.get("rivers",[]):
+  var width = float(e.data.get("width",6))
+  var near = _near(e.points,cell,cols,rows,width*2.5)
+  for i in near:
+   var d = near[i]
+   var k = 1.0-smoothstep(width*0.5,width*2.5,d)
+   h[i] = lerpf(h[i],minf(h[i],0.3+d*0.15),k)
+   if d<width*0.5: rivers[i] = 255
+   elif d<width*0.8: rivers[i] = maxi(rivers[i],140)
+ # Settlements: flattened plateaus.
+ var sites = {}
+ for e in L.get("sites",[]):
+  sites[e.id] = to_w.call(e.center)
+  var flat = float(e.data.get("flat",9))
+  var c = cell_of.call(sites[e.id])
+  var ci = clampi(c.y,0,rows-1)*cols+clampi(c.x,0,cols-1)
+  var level = maxf(1.2,h[ci])
+  var near = _near(PackedVector2Array([e.center,e.center+Vector2(0.01,0)]),cell,cols,rows,flat*1.8)
+  for i in near: h[i] = lerpf(h[i],level,1.0-smoothstep(flat,flat*1.8,near[i]))
+ report.times.heights = Time.get_ticks_msec()-t
+ # --- 3. Regions ------------------------------------------------------------------------------------
+ t = Time.get_ticks_msec()
+ var region_ids = world.regions.keys()
+ region_ids.sort()
+ var rid = PackedInt32Array()
+ rid.resize(n)
+ var pinned = region_ids.filter(func(r): return world.regions[r].has("polygon"))
+ for k in region_ids.size():
+  var r = world.regions[region_ids[k]]
+  if not r.has("polygon"): continue
+  var poly = PackedVector2Array()
+  for v in r.polygon: poly.append(Vector2(v[0],v[1])-origin)
+  var m = _fill([{"points":poly,"closed":true}],origin,cell,cols,rows)
+  for i in n: if m[i] == 1 and land[i] == 1: rid[i] = k+1
+ if pinned.size()<region_ids.size():
+  # Flood fill from the sites of the regions without a pinned outline; ranges slow it, so borders
+  # follow the ridges.
+  var queue = []
+  for k in region_ids.size():
+   if pinned.has(region_ids[k]) or not sites.has(region_ids[k]): continue
+   var c = cell_of.call(sites[region_ids[k]])
+   queue.append(c.y*cols+c.x)
+   rid[c.y*cols+c.x] = k+1
+  var head = 0
+  while head<queue.size():
+   var i = queue[head]
+   head += 1
+   for j in [i-1,i+1,i-cols,i+cols]:
+    if j<0 or j>=n or rid[j] != 0 or land[j] == 0: continue
+    if absi(j%cols-i%cols)>1: continue
+    if range_mask[j]>0.6 and pass_mask[j] == 0 and range_mask[i]<0.6: continue # ridges stop the fill
+    rid[j] = rid[i]
+    queue.append(j)
+ report.times.regions = Time.get_ticks_msec()-t
+ # --- 4. Classes ------------------------------------------------------------------------------------
+ t = Time.get_ticks_msec()
+ var cls = PackedByteArray()
+ cls.resize(n)
+ var colors = PackedByteArray()
+ colors.resize(n*3)
+ var pal = [Color("8fae5a"),Color("4f7a38"),Color("a69a5e"),Color("b59a6c"),Color("8a8466"),Color("8a7f72"),Color("3f6f8e")]
+ var forest_n = Synthetic._fnl(seed+2,0.05*cell,FastNoiseLite.FRACTAL_FBM,3)
+ for i in n:
+  var x = i%cols
+  var z = i/cols
+  var c = OPEN
+  if land[i] == 0: c = WATER
+  else:
+   var dx = h[mini(i+1,n-1)]-h[maxi(i-1,0)]
+   var dz = h[mini(i+cols,n-1)]-h[maxi(i-cols,0)]
+   var slope = sqrt(dx*dx+dz*dz)/(2.0*cell)
+   if pass_mask[i] == 1: c = PASS
+   elif h[i]>MOUNTAIN_ABOVE or (range_mask[i]>0.5 and slope>0.9): c = MOUNTAIN
+   elif h[i]>HILLS_ABOVE or slope>0.5 or hills[i] == 1: c = HILLS
+   if c in [OPEN,HILLS] and rivers[i]<128:
+    var fd = forest_n.get_noise_2d(x,z)*0.5+0.5
+    if forest_mask[i] == 1 and fd>0.35: c = FOREST
+  cls[i] = c
+ for id in sites:
+  var cc = cell_of.call(sites[id])
+  if cc.x>=0 and cc.y>=0 and cc.x<cols and cc.y<rows: cls[cc.y*cols+cc.x] = SETTLEMENT
+ for i in n:
+  var col: Color = pal[cls[i]]
+  colors[i*3] = col.r8
+  colors[i*3+1] = col.g8
+  colors[i*3+2] = col.b8
+ report.times.classes = Time.get_ticks_msec()-t
+ # --- 5. Roads (pinned lines) -------------------------------------------------------------------------
+ var road = PackedByteArray()
+ road.resize(n)
+ var network = []
+ for e in L.get("roads",[]):
+  var pts = []
+  for p in e.points:
+   var w = to_w.call(p)
+   pts.append([snappedf(w.x,0.1),snappedf(w.y,0.1)])
+  network.append({"id":e.id,"points":pts})
+  for i in _near(e.points,cell,cols,rows,1.0):
+   if cls[i] != WATER: road[i] = 1
+ var passes = []
+ for e in L.get("passes",[]):
+  if e.kind != "path": continue
+  var pts = []
+  for p in e.points:
+   var w = to_w.call(p)
+   pts.append([snappedf(w.x,0.1),snappedf(w.y,0.1)])
+  passes.append({"name":str(e.data.get("name",e.id)),"points":pts,"width":float(e.data.get("width",8))})
+ # --- 6. Outputs -----------------------------------------------------------------------------------
+ t = Time.get_ticks_msec()
+ var regions = {}
+ var pts_of = {}
+ for i in n:
+  if rid[i]>0 and (i%cols)%3 == 0 and (i/cols)%3 == 0: pts_of.get_or_add(rid[i],PackedVector2Array()).append(center_of.call(i))
+ for k in region_ids.size():
+  var id = region_ids[k]
+  var r = world.regions[id].duplicate(true)
+  var poly = r.get("polygon",[])
+  if poly.is_empty() and pts_of.has(k+1):
+   var hull = Geometry2D.convex_hull(pts_of[k+1])
+   for v in hull.slice(0,hull.size()-1): poly.append([snappedf(v.x,0.1),snappedf(v.y,0.1)])
+  var out = {"name":r.get("name",id),"owner":r.get("owner",""),"resources":r.get("resources",{"wood":0,"stone":0,"food":0,"minerals":0}),"polygon":poly}
+  if r.has("major") and sites.has(id):
+   var m = r.major
+   var p = sites[id]
+   out.settlement = {"name":m.get("name",out.name),"type":m.get("type","city"),"level":int(m.get("level",1)),"coastal":bool(m.get("port",false)),"position":[snappedf(p.x,0.1),snappedf(p.y,0.1)]}
+   for k2 in ["landmark","path"]: if m.has(k2): out.settlement[k2] = m[k2]
+  else: out.settlement = null
+  regions[id] = out
+ MapBake.write_json(dir+"provinces.json",{"_note":"GENERATED by the map pipeline (map/pipeline.gd) from sketch.svg and world.json; do not edit.","provinces":world.provinces,"regions":regions})
+ MapBake.write_json(dir+"movement.json",{"_note":"GENERATED by the map pipeline: pinned roads and passes from sketch.svg.","roads":{"network":network},"passes":{"list":passes}})
+ DirAccess.make_dir_recursive_absolute(dir+"baked")
+ MapBake.write_regions(dir,cell,origin,cols,rows,rid,region_ids)
+ MapBake.write_movement(dir,cell,origin,cols,rows,cls,road)
+ MapBake.write_components(dir,MapBake.components_of(cls,cols,rows))
+ MapBake.write_parts(dir,MapBake.parts_of(cls,rid,cols,rows))
+ var adj = {}
+ var site_cells = []
+ for k in region_ids.size():
+  var p = sites.get(region_ids[k],origin)
+  site_cells.append(cell_of.call(p))
+ for z in rows:
+  for x in cols:
+   var i = z*cols+x
+   var a = rid[i]
+   if a == 0: continue
+   if x<cols-1 and rid[i+1] != 0 and rid[i+1] != a: Synthetic._border(adj,a,rid[i+1],i,i+1,cls,site_cells,cols)
+   if z<rows-1 and rid[i+cols] != 0 and rid[i+cols] != a: Synthetic._border(adj,a,rid[i+cols],i,i+cols,cls,site_cells,cols)
+ var edges = []
+ for key in adj:
+  if adj[key][1]>=0: edges.append([key/65536-1,key%65536-1,adj[key][1],adj[key][2]])
+ MapBake.write_graph(dir,edges)
+ MapBake.write_json(dir+"baked/sources.json",{"_note":"Hash of map.json, sketch.svg and world.json when the bakes were built (the validator checks it).","hash":sources_hash(map_id)})
+ MapBake.write_render_cache(map_id,cell,origin,cols,rows,h,colors,rivers)
+ report.times.write = Time.get_ticks_msec()-t
+ PathHierarchy.build(map_id)
+ report.regions = region_ids.size()
+ report.cols = cols
+ report.rows = rows
+ report.times.total = Time.get_ticks_msec()-t_all
+ return report
+
+# Closed shapes (sketch elements, SVG coordinates) scanned into a 0/1 mask.
+static func _fill(elements: Array,origin: Vector2,cell: float,cols: int,rows: int) -> PackedByteArray:
+ var m = PackedByteArray()
+ m.resize(cols*rows)
+ for e in elements:
+  var pts: PackedVector2Array = e.points
+  if pts.size()<3: continue
+  var lo = INF
+  var hi = -INF
+  for p in pts:
+   lo = minf(lo,p.y)
+   hi = maxf(hi,p.y)
+  for z in range(maxi(0,int(lo/cell)),mini(rows,int(hi/cell)+1)):
+   var y = (z+0.5)*cell
+   var xs = []
+   for k in pts.size():
+    var a = pts[k]
+    var b = pts[(k+1)%pts.size()]
+    if (a.y<=y and b.y>y) or (b.y<=y and a.y>y): xs.append(a.x+(y-a.y)/(b.y-a.y)*(b.x-a.x))
+   xs.sort()
+   for k in range(0,xs.size()-1,2):
+    for x in range(maxi(0,int(ceil(xs[k]/cell-0.5))),mini(cols-1,int(floor(xs[k+1]/cell-0.5)))+1): m[z*cols+x] = 1
+ return m
+
+# {cell index: distance in metres} for every cell within `reach` of a polyline (SVG coordinates).
+static func _near(pts: PackedVector2Array,cell: float,cols: int,rows: int,reach: float) -> Dictionary:
+ var best = {}
+ for k in pts.size()-1:
+  var a = pts[k]
+  var b = pts[k+1]
+  var lo = Vector2i(((a.min(b)-Vector2.ONE*reach)/cell).floor())
+  var hi = Vector2i(((a.max(b)+Vector2.ONE*reach)/cell).ceil())
+  for z in range(maxi(lo.y,0),mini(hi.y,rows-1)+1):
+   for x in range(maxi(lo.x,0),mini(hi.x,cols-1)+1):
+    var p = (Vector2(x,z)+Vector2(0.5,0.5))*cell
+    var d = p.distance_to(Geometry2D.get_closest_point_to_segment(p,a,b))
+    if d<=reach:
+     var i = z*cols+x
+     if d<best.get(i,INF): best[i] = d
+ return best
+
+# A 0/1 mask softened to 0-1 over r cells (box blur, separable).
+static func _blur(m: PackedByteArray,cols: int,rows: int,r: int) -> PackedFloat32Array:
+ var a = PackedFloat32Array()
+ a.resize(cols*rows)
+ for i in m.size(): a[i] = float(m[i])
+ if r<1: return a
+ var img = Image.create_from_data(cols,rows,false,Image.FORMAT_RF,a.to_byte_array())
+ img.resize(maxi(1,cols/r),maxi(1,rows/r),Image.INTERPOLATE_BILINEAR)
+ img.resize(cols,rows,Image.INTERPOLATE_BILINEAR)
+ return img.get_data().to_float32_array()

@@ -18,6 +18,7 @@ const UiKit = preload("res://ui/ui_kit.gd")
 const Widgets = preload("res://ui/widgets.gd")
 const WorldMap = preload("res://core/world_map.gd")
 const Movement = preload("res://core/movement.gd")
+const Settings = preload("res://core/settings.gd")
 const MapShader = preload("res://ui/strategic_map.gdshader")
 const FADE = 0.35
 # Map layers (TW:WH3 overlays). available: false = greyed until its system exists.
@@ -187,7 +188,9 @@ func refresh():
 func _rebuild_fills():
  _fills.clear()
  if data == null: return
- if layer != "climate":
+ if debug == "regions":
+  for id in WorldMap.regions(): _fills[id] = _debug_fill(id)
+ elif layer != "climate" and debug != "movement":
   for id in WorldMap.regions():
    var c = region_color(id)
    if c.a>0.0: _fills[id] = c
@@ -387,7 +390,7 @@ func _update_palette():
   var o = _owners[id]
   if o != "" and _index.has(id): _palette.set_pixel(_index[id],1,Color(Color(data.faction(o).primary).darkened(0.2),1.0))
  _palette_tex.update(_palette)
- _surface.texture = base_vivid if layer == "climate" else base_parchment
+ _surface.texture = base_vivid if layer == "climate" or debug == "movement" else base_parchment
 
 # Positions follow the screen: the surface, the icons and the names are laid out again when the
 # size or the campaign state changes.
@@ -509,6 +512,7 @@ func _take(taken: Dictionary,box: Rect2):
  for b in _buckets_of(box): taken.get_or_add(b,[]).append(box)
 
 func _draw_overlay():
+ _draw_debug()
  var font = UiKit.FONT_BOLD
  for l in _labels: _overlay.draw_string(font,l[0]+Vector2(1,1),l[1],HORIZONTAL_ALIGNMENT_LEFT,-1,l[2],Color(0,0,0,0.7))
  for l in _labels: _overlay.draw_string(font,l[0],l[1],HORIZONTAL_ALIGNMENT_LEFT,-1,l[2],Color("2a1c10"))
@@ -520,9 +524,66 @@ func _draw_overlay():
 
 func _gui_input(e):
  if not showing: return
+ if e is InputEventMouseMotion and debug == "problems": tooltip_text = _debug_tooltip(e.position)
  if e is InputEventMouseButton and e.pressed:
   var r = map_rect()
   if not r.has_point(e.position): return
   if e.button_index == MOUSE_BUTTON_LEFT or e.button_index == MOUSE_BUTTON_WHEEL_UP:
    location_chosen.emit(to_world(e.position))
    accept_event()
+
+# --- Debug overlay (docs/map-pipeline-design.md §5.2; debug keys on: F9 cycles) ------------------
+# regions: every region in its own colour with its ID; movement: the movement classes; problems:
+# the validator's problems as red markers (hover for the message).
+const DEBUG_LAYERS = ["","regions","movement","problems"]
+const Validator = preload("res://map/validator.gd")
+const MapRegistry = preload("res://core/map_registry.gd")
+var debug := ""
+var _problems := []
+
+func set_debug(kind: String):
+ debug = kind
+ if kind == "problems": _problems = Validator.validate(MapRegistry.active).problems.filter(func(p): return p.pos != null)
+ _rebuild_fills()
+ if _overlay != null: _overlay.queue_redraw()
+
+func cycle_debug():
+ set_debug(DEBUG_LAYERS[(DEBUG_LAYERS.find(debug)+1)%DEBUG_LAYERS.size()])
+
+func _unhandled_key_input(e):
+ if showing and e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_F9 and Settings.debug_keys():
+  cycle_debug()
+  get_viewport().set_input_as_handled()
+
+func _debug_fill(id: String) -> Color:
+ var h = float(hash(id)%997)/997.0
+ return Color.from_hsv(h,0.65,0.95,0.7)
+
+func _draw_debug():
+ var font = UiKit.FONT_BOLD
+ match debug:
+  "regions":
+   for id in WorldMap.regions():
+    var pts = WorldMap.regions()[id].points
+    if pts.is_empty(): continue
+    var c = Vector2.ZERO
+    for p in pts: c += p
+    var at = to_screen(c/pts.size())
+    var w = font.get_string_size(id,HORIZONTAL_ALIGNMENT_LEFT,-1,11).x
+    _overlay.draw_rect(Rect2(at-Vector2(w*0.5+3,12),Vector2(w+6,16)),Color(0,0,0,0.6))
+    _overlay.draw_string(font,at-Vector2(w*0.5,0),id,HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color.WHITE)
+  "problems":
+   for p in _problems:
+    var at = to_screen(p.pos)
+    _overlay.draw_circle(at,7.0,Color(0.9,0.1,0.1,0.9))
+    _overlay.draw_circle(at,3.0,Color.WHITE)
+ if debug != "":
+  var label = "Debug: %s (F9)" % debug
+  if debug == "problems": label += " — %d with a position" % _problems.size()
+  _overlay.draw_string(font,map_rect().position+Vector2(8,20),label,HORIZONTAL_ALIGNMENT_LEFT,-1,14,Color(1,0.3,0.3))
+
+# Hover over a problem marker: its message as the tooltip.
+func _debug_tooltip(at: Vector2) -> String:
+ for p in _problems:
+  if to_screen(p.pos).distance_to(at)<9.0: return "%s (%s): %s" % [p.level.capitalize(),p.check,p.message]
+ return ""

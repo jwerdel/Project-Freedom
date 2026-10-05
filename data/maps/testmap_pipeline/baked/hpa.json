@@ -1,0 +1,8 @@
+{
+  "_note": "GENERATED (core/path_hierarchy.gd): stored cell paths between the border crossings of each region, for hierarchical pathfinding.",
+  "paths": 14,
+  "ints": 966,
+  "weights": 57,
+  "sample": 16,
+  "road_level": 1
+}

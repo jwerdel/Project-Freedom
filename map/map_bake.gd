@@ -46,6 +46,15 @@ static func write_movement(dir: String,cell: float,origin: Vector2,cols: int,row
  meta.runs = runs.size()/4
  write_json(dir+"baked/movement.json",meta)
 
+# The committed movement grid: {cols, rows, classes, road} (bytes per cell), or {} when missing.
+static func read_movement(dir: String) -> Dictionary:
+ if not FileAccess.file_exists(dir+"baked/movement.json"): return {}
+ var meta = JSON.parse_string(FileAccess.get_file_as_string(dir+"baked/movement.json"))
+ var n = int(meta.cols)*int(meta.rows)
+ var raw = _read_zstd(dir+"baked/movement.bin",2*n)
+ if raw.size() != 2*n: return {}
+ return {"cols":int(meta.cols),"rows":int(meta.rows),"classes":raw.slice(0,n),"road":raw.slice(n)}
+
 static func cache_dir(map_id: String) -> String:
  return CACHE+map_id+"/"
 
