@@ -62,7 +62,7 @@ Open:
 
 ## Peoples and factions
 
-Every race has multiple factions, with all intended factions available for player selection, including potential crisis factions. Consolidating the other factions of the player's race is an early objective; whether optional or mandatory remains open. Routes include conquest, peaceful confederation, dynastic inheritance/marriage, subordination, and removing hostile rulers to install friendly ones. The player decides whether absorbed ruling families enter court, retain lands, or are removed; retained families may seek independence.
+Every race has multiple factions, with all intended factions available for player selection, including potential crisis factions. Consolidating the other factions of the player's race is an early objective; whether optional or mandatory remains open. Routes include conquest, peaceful confederation, dynastic inheritance/marriage, subordination, and removing hostile rulers to install friendly ones. Confirmed (owner, 2026-10-05, war-and-realm §0.2, §4): confederation means fealty; the house swears to the player and stays its own faction as a loyal vassal (not absorbed). The player decides whether absorbed ruling families enter court, retain lands, or are removed; retained families may seek independence.
 
 Geographic references:
 
@@ -89,7 +89,7 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
   - war weariness as the way wars end
   - explicit declarations of war, with a reputation cost for unjustified wars and a heavier penalty from the victim's allies; this replaces the temporary war rule once implemented
   - military access and trespass (game-design §12.1)
-  - embassies requiring prior contact
+  - embassies requiring prior contact *Superseded 2026-10-05 (docs/war-and-realm.md §0.2):* envoys can reach anyone, travelling automatically; contact happens on arrival.
   - commandable allies (defend themselves first) and vassals (put the overlord's orders first)
   Its numbers are placeholders.
 - Confirmed (2026-10-02, game-design §7.1, §7.2, §7.4, §7.6), reputation:
@@ -103,7 +103,7 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 - Alliances and dynastic marriages can improve relations.
 - Negotiations should support bundled offers using a faction's available means, including land, gold, resource tribute, troop transfers, marriage, alliances, and ceasefires. Eligibility and valuation are defined in docs/diplomacy-design.md §6 (approved 2026-10-02); captives and secrets are also tradable.
 - Army tribute means sending actual troops.
-- Attacking during a ceasefire/peace treaty or within its protected post-treaty period causes irreversible war with every faction and permanent loss of allies and trade partners; only loading an earlier save reverses it. Cancelling trade is permitted at any time and does not trigger this punishment.
+- Attacking during a ceasefire/peace treaty or within its protected post-treaty period causes irreversible war with every faction and permanent loss of allies and trade partners; only loading an earlier save reverses it. Cancelling trade is permitted at any time and does not trigger this punishment. (Still the V1 rule, flagged as the future Chaos trigger: post-V1, betraying an ally during an invasion turns the faction to Chaos; docs/war-and-realm.md §0.2, §6.3.)
 - Confirmed (2026-10-01): after peace or a ceasefire the treaty is protected for 20 turns; attacking during the treaty or that protection triggers the betrayal rule above.
 - AI suffers the same betrayal penalty. Confirmed (2026-10-01): the AI never triggers the betrayal rule (hardcoded). Treacherous AI factions show treachery in other ways: breaking trade agreements, abandoning allies, refusing alliance calls.
 - Courts may contain multiple races, independently of reproduction. An orc faction rejected by other orcs can join a welcoming human faction.
@@ -115,9 +115,10 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 ## Economy and settlements
 
 - Confirmed (2026-10-01), debt: a faction may go into debt down to a limit (data). While in debt it cannot start construction or recruit, and its units lose a share of their men to desertion each turn (data). Below the limit, its worst-upkeep units disband.
-- Gold is the currency. Income and expenses are calculated per turn; buildings, units, and upgrades cost gold.
-- Construction should not require manually managing material inventories. Resources such as stone increase economic potential rather than serving as direct construction requirements.
-- Candidate resources: wood, stone, food, and minerals; final categories and any exceptional uses remain open.
+- *Superseded 2026-10-05 (docs/war-and-realm.md §0.2):* Gold is the currency. Income and expenses are calculated per turn; buildings, units, and upgrades cost gold.
+- *Superseded 2026-10-05 (docs/war-and-realm.md §0.2):* Construction should not require manually managing material inventories. Resources such as stone increase economic potential rather than serving as direct construction requirements.
+- *Superseded 2026-10-05 (docs/war-and-realm.md §0.2):* Candidate resources: wood, stone, food, and minerals; final categories and any exceptional uses remain open.
+- Confirmed (owner, 2026-10-05, war-and-realm §0.2, §7): gold, food, wood and stone are real stockpiles. Gold rules and can buy the others at regional markets (prices vary by scarcity). Minerals fold into gold (mines) and stone (quarries). Specialization paths map to production (farming food, mining gold and stone, lumber wood, market gold and trade, military troops). Numbers are open.
 - Regional resource endowments differ and should make some places intrinsically richer. A Casterly Rock-like resource center should have unusually high earning potential.
 - Cities prioritize economic potential; fortresses prioritize defensibility and have a lower economic ceiling even when developed economically. The user's 50K city / 20K fortress example illustrates the intended tradeoff, not approved balance numbers.
 - Markets are dynamic: goods are more valuable where scarce. Selling wood to a desert region should be more lucrative than selling it to an abundant woodland region, all else equal.
@@ -221,13 +222,14 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 
 ## Battles and armies
 
-- Before resolution, players deploy units and assign standing orders such as hold ground, act aggressively, or attempt to flank.
+- *Superseded 2026-10-05 (docs/war-and-realm.md §0.2):* Before resolution, players deploy units and assign standing orders such as hold ground, act aggressively, or attempt to flank.
+- Confirmed (owner, 2026-10-05, war-and-realm §0.2, §1): battles are stance only. Before a battle the player picks one stance for the whole force (Aggressive, Balanced, Defensive), then the battle auto-resolves. The simulation weighs terrain, unit types, generals, walls, weather and stance, and treats each army as a block so many stacks can fight on each side. The pre-battle panel shows both forces, terrain, the balance-of-power bar, the stance choice, Withdraw (defender) and Besiege (settlements). The report keeps the "why you won or lost" summary and casualties; the 2D replay and the deployment screen leave V1 (deployment code may stay dormant). Proposed: general traits interact with stances.
 - Battle design (approved direction, 2026-10-01): docs/battle-design.md. Its numbers are placeholders and its open questions (section 13) are not decided until the owner answers them.
-- Confirmed (owner, 2026-10-04): Quick Resolve is the default; the deployment screen is an optional button.
+- *Superseded 2026-10-05 (docs/war-and-realm.md §0.2):* Confirmed (owner, 2026-10-04): Quick Resolve is the default; the deployment screen is an optional button.
 - Implementation note (2026-10-01): battles are fought from the campaign with the slot-based deployment screen or quick resolve. TEMPORARY war rule until diplomacy: attacking another faction's army or settlement declares war after a confirmation, and there is no peace yet. Captured settlements are occupied only; sack, raze and expel stay open. A dead or wounded general is replaced by a captain who cannot move the army (placeholder until the character system).
 - Resolve the battle through simulation without displaying animated combat in V1.
-- Detailed figures with minimal animation can be used in deployment; presentation specifics remain open.
-- Deployment and orders must have meaningful consequences. A useful explanation of results has been proposed; report format and simulation mechanics are not yet decided.
+- *Superseded 2026-10-05 (docs/war-and-realm.md §0.2):* Detailed figures with minimal animation can be used in deployment; presentation specifics remain open.
+- *Superseded 2026-10-05 (docs/war-and-realm.md §0.2):* Deployment and orders must have meaningful consequences. A useful explanation of results has been proposed; report format and simulation mechanics are not yet decided.
 - Troops, commanders, and casualties must relate back to the campaign; detailed persistence and replenishment rules remain open.
 - Replenishment is automatic in friendly regions and costs payment in enemy territory. It does not deduct regional population, but populous regions replenish faster. This is an explicit accessibility exception to the recruitment population model; replacement costs and disbanding must later be balanced to avoid unlimited population creation.
 - Implementation note (2026-10-01), placeholders in data/recruitment.json: recruitment (per settlement until 2026-10-02, now province-wide, see below) takes men from a settlement's population, with a minimum population, and units unlocked by buildings (every main building unlocks peasant levies); gold and men are taken when a unit is queued and cancelling refunds both; disbanded men return to the population of the region the army stands in. Replenishment regains a share of each unit's max strength per turn, more in populous friendly regions, and costs gold per man anywhere the faction does not own. Army cap: 20 cards per army including the general, a Total War-style placeholder pending the army performance test (the earlier 6-10 cap stays rejected).
@@ -250,7 +252,8 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 - Wars are centered on the opposing factions. Allies choose whether to join the war or support it through gold, resources, or troop tribute without themselves becoming belligerents. Supporting an ally does not automatically mean joining its war.
 - Campaign movement uses a per-turn movement allowance in the Total War style. An army may fight multiple battles while its allowance permits; no separate fixed battle count is intended.
 - Implementation note (2026-10-01): the allowance is implemented with placeholder numbers (data/movement.json): points refill each End Turn, terrain changes the cost (forest, hills and passes slower; water and mountains impassable except at passes), multi-turn orders continue automatically, and ending a move in one's own settlement garrisons the army. That roads speed movement, scaling with road level, is a placeholder rule, not a confirmed mechanic.
-- Confirmed (2026-10-01): until diplomacy exists, armies may move freely through other factions' territory. Diplomacy will later add trespass penalties and military access agreements.
+- *Superseded 2026-10-05 (docs/war-and-realm.md §0.2):* Confirmed (2026-10-01): until diplomacy exists, armies may move freely through other factions' territory. Diplomacy will later add trespass penalties and military access agreements.
+- Confirmed (owner, 2026-10-05, war-and-realm §0.2, §2.6): movement is fast in friendly and allied territory and slow in enemy territory, and large armies block passage: enemy forces cannot slip past a large army in a pass, valley or open ground near it; the zone of control scales with army size. Rivers are crossable only at fords and bridges. Numbers are open.
 - Confirmed (2026-10-02, game-design §12.1 and §12.5):
   - Movement is full in one's own and allied territory and drastically reduced in foreign territory, as a baseline rule. Not yet implemented; the prototype still uses one allowance everywhere.
   - Outposts extend home-territory movement into regions you do not own.
@@ -295,7 +298,7 @@ Lean strongly into fantasy. Each race/faction has massed troops and distinctive 
 
 ## Post-V1 roadmap
 
-Not V1 scope; nothing here is built for V1. V1 keeps the current slot-based deployment (lanes × front/back, reserve, general's slot), with Quick Resolve as the default.
+Not V1 scope; nothing here is built for V1. V1 battles are stance only (2026-10-05, see Rule changes below); the slot-based deployment code stays dormant.
 
 - Removed (owner, 2026-10-04): TW-style free deployment and the true spatial battle simulation are no longer on the roadmap.
 - Idea, recorded only (owner, 2026-10-04): typed battle orders. The player types orders in plain words; a local model (for example Ollama; free and offline) translates them into a deployment and orders, which the player confirms. Not designed and not scheduled.
@@ -312,3 +315,15 @@ The world vision above is not yet a promise that every race and system ships in 
 - research, courts, careers and agents in V1
 
 Development milestones and acceptance criteria remain to be agreed. Keep confirmed requirements separate from suggestions and unresolved mechanics as the constitution evolves.
+
+## Rule changes 2026-10-05 (docs/war-and-realm.md §0.2)
+
+Confirmed by the owner (2026-10-05); `docs/war-and-realm.md` and `docs/v1-content.md` are approved direction, and their items marked Proposed still need approval before implementation. Lines these rules replace are marked *Superseded* above.
+- Battles are stance only (Aggressive / Balanced / Defensive), then auto-resolve; multi-army battles treat each army as a block.
+- Gold, food, wood and stone are real stockpiles; gold can buy the others.
+- Confederation = fealty: the house stays its own faction as a loyal vassal.
+- Envoys can reach anyone, travelling automatically; contact happens on arrival.
+- Trade continues during war with tariffs and disruption, unless raided, blockaded or cancelled.
+- Betraying an ally during an invasion turns the faction to Chaos (post-V1); in V1 the current betrayal rule stays and is flagged as the future Chaos trigger.
+- Fast movement in friendly land, slow in enemy land; large armies block passage.
+- The campaign moves through condition-driven Ages that repeat and escalate (war-and-realm §8; triggers Proposed).

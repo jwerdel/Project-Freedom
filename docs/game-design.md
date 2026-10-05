@@ -5,6 +5,22 @@
 **Precedence:** `constitution.md` remains the source of truth for confirmed mechanics. This document records owner decisions from the design brainstorm (marked **Confirmed**) and design proposals that still need approval (marked **Proposed**). Numbers are placeholders unless stated.
 **Already built (prototype):** economy with population taxes, construction, recruitment, movement, lane-based battles with deployment and replay, campaign AI, save/load, TW-style UI shell.
 
+
+## 0. Rule changes (owner, 2026-10-05; `docs/war-and-realm.md` §0.2)
+
+`docs/war-and-realm.md` and `docs/v1-content.md` are approved direction (2026-10-05). Their items marked **Proposed** still need the owner's approval before implementation. These rules replace earlier text in this document; the old text is kept below, marked *Superseded*.
+
+| Earlier rule | New rule (Confirmed) |
+|---|---|
+| Deployment screen with lanes and orders; Quick Resolve default | **Battles are stance only** (Aggressive / Balanced / Defensive), then auto-resolve. The deployment screen and 2D replay leave V1's UI (code may stay dormant). The simulation treats each army as a block, so many stacks can fight on each side. |
+| Gold is the only spendable currency; resources only raise income | **Gold, food, wood and stone** are real stockpiles. Gold rules and can buy the others at regional markets. |
+| Confederation absorbs a faction | **Confederation = fealty.** The house swears to you and stays its own faction as a loyal vassal. |
+| Embassies require prior contact | **Envoys can reach anyone**, travelling automatically; contact happens on arrival. |
+| War ends trade | **Trade continues during war** with tariffs and disruption, unless raided, blockaded or cancelled. |
+| Betrayal: permanent war with every faction | **Betraying an ally during an invasion turns you to Chaos** (a post-V1 playstyle). In V1 the current betrayal rule stays, flagged as the future Chaos trigger. |
+| Free movement through foreign land until diplomacy | Fast in friendly land, slow in enemy land, and **large armies block passage** (zone of control scales with army size). |
+| Campaign arc as fixed turn numbers | **Condition-driven Ages** that repeat and escalate (`war-and-realm.md` §8). |
+
 ---
 
 ## Contents
@@ -49,7 +65,7 @@
 7. **Sandbox forever.** No victory conditions. The joy is building an empire over hundreds or thousands of years and watching decisions play out. Freshness over time is a design requirement (Section 15).
 
 ### 1.3 What we are not
-- Not a tactical battle game. Battles are simulated and considered complete for V1 (deployment, orders, auto-resolve, report). Quick Resolve is the default; the deployment screen is an optional button (confirmed 2026-10-04). Free deployment and a spatial simulation are no longer on the roadmap.
+- Not a tactical battle game. Battles are simulated and stance-only (Aggressive / Balanced / Defensive, then auto-resolve; confirmed 2026-10-05, §0). *Superseded: deployment, orders and Quick Resolve as the default (2026-10-04).* Free deployment and a spatial simulation are no longer on the roadmap.
 - Not a Crusader Kings clone. No opinion-modifier spreadsheets, no realm-splitting factions against the player, no succession-law micromanagement.
 - Not a Total War clone. Politics, intrigue, dynasty, and religion are deeper than anything in Total War.
 
@@ -81,6 +97,8 @@ Our start sequence:
 4. **Guided first turns (if enabled):** bite-size prompts across the first 10 to 15 turns covering movement, construction, recruitment, the spymaster, diplomacy, the Liberator's Call, and the Throne Church. Each prompt explains one thing and asks for one action.
 
 ### 2.4 Campaign arc **(Proposed)**
+*Superseded (2026-10-05, §0): the campaign moves through condition-driven Ages (`docs/war-and-realm.md` §8). The phase table below is kept for history.*
+
 | Phase | Turns (approx.) | Player focus | Event density |
 |---|---|---|---|
 | Opening | 1 to 10 | Absorb neighboring minor factions (war, marriage, diplomacy, Liberator's Call). Set children's careers. | High (front-loaded) |
@@ -405,10 +423,11 @@ Decrees have mechanical effects and shift reputation; during the first-impressio
 - **Bundled offers:** land, gold, resource tribute, troop transfers (actual troops), marriage, alliances, ceasefires, peace, trade, embassies, captives, secrets (Proposed addition).
 - **Allies choose** whether to join a war or only support it (gold, resources, troops) without becoming belligerents.
 - **Treaty protection: 20 turns** after peace or ceasefire.
-- **Betrayal rule:** attacking during a ceasefire/peace or its 20-turn protection causes irreversible war with every faction and permanent loss of allies and trade partners. Cancelling trade is allowed anytime. **AI never triggers it** (hardcoded); treacherous AI shows treachery in other ways (breaking trade, abandoning allies, refusing calls).
+- **Betrayal rule:** attacking during a ceasefire/peace or its 20-turn protection causes irreversible war with every faction and permanent loss of allies and trade partners. *(Still the V1 rule; flagged as the future Chaos trigger: betraying an ally during an invasion turns you to Chaos post-V1, §0.)* Cancelling trade is allowed anytime. **AI never triggers it** (hardcoded); treacherous AI shows treachery in other ways (breaking trade, abandoning allies, refusing calls).
 - **Military access (Confirmed 2026-10-02):** movement is drastically reduced in foreign territory (§12.1); a military access agreement (or an alliance) restores home-territory movement in the partner's land, and entering foreign land without one at peace is trespass (attitude penalty, no automatic war). See docs/diplomacy-design.md §11.
 
 ### 8.2 Embassies **(Confirmed)**
+- **Envoys can reach anyone** on the map, travelling automatically; contact happens on arrival (confirmed 2026-10-05, §0). *Superseded: embassies requiring prior contact.*
 - Sending an **embassy** is a diplomatic action. Any faction with no reason to refuse will accept.
 - An embassy reveals that faction's **full court** (members, blurbs, who hates whom and why).
 - Factions **at war with you** require **spies** to see their court.
@@ -631,6 +650,7 @@ Rome II reference: Imperium level rose with conquest and wealth and raised caps 
 ### 12.1 Movement **(Confirmed)**
 - TW-style controls (TW parity block): select, hold right-click to preview a colored path with no numbers, range boundary, Q/E rotation.
 - **Full movement in your own and allied territory; drastically reduced in foreign territory.** (Note: TW:WH3 mostly grants own-territory bonuses through skills, technologies, and roads; we make it a baseline rule.)
+- **Large armies block passage** (confirmed 2026-10-05, §0): enemy forces cannot slip past a large army in a pass, valley or open ground near it; the blocking radius scales with army size. Rivers are crossable only at fords and bridges.
 - Roads speed movement (built).
 
 ### 12.2 Lord armies **(Confirmed)**
@@ -682,6 +702,7 @@ Wild legendary monsters roam certain regions (dragons, giants, frost-beasts). Ma
 - **Counter:** assassinate the wizard, counter-magic from your own wizards.
 
 ### 12.12 Battles **(Confirmed: complete for V1)**
+- **Stance only** (confirmed 2026-10-05, §0; `docs/war-and-realm.md` §1): the pre-battle panel shows both forces, terrain, the balance-of-power bar, the stance choice (Aggressive / Balanced / Defensive), Withdraw (defender) and Besiege (settlements). The battle report keeps the "why you won or lost" summary and casualties. *Superseded below: Quick Resolve as the default and the optional deployment screen.*
 No further battle work in V1 except bugs. Magic and new unit types feed the existing simulation as data.
 - **Quick Resolve is the default** (confirmed 2026-10-04, owner): a battle resolves at once with the default deployment; the deployment screen is an optional button for players who want to place units and give orders.
 - **Removed from the roadmap** (2026-10-04): TW-style free deployment and the true spatial battle simulation.
