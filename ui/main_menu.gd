@@ -14,6 +14,7 @@ const Settings = preload("res://core/settings.gd")
 const LoadScreen = preload("res://ui/load_screen.gd")
 const SettingsPanel = preload("res://ui/settings_panel.gd")
 const CAMPAIGN_FLAGS = ["--capture","--self-test","--bake-movement-grid","--campaign"]
+const CREDITS = "Icons by Lorc, Delapouite and contributors, game-icons.net (CC BY 3.0) · 3D models by Quaternius and Kenney (CC0) · Textures: Poly Haven (CC0) · Fonts: SIL OFL · Full list: ASSETS.md"
 
 var trim := Color("c9a45a")
 var overlay: Control
@@ -131,6 +132,16 @@ func _build():
  ver.offset_bottom = -14
  ver.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
  add_child(ver)
+ # Credits (ASSETS.md): CC BY assets need attribution in the game itself.
+ var credits = UiKit.label(CREDITS,11,Color(UiKit.TEXT_DIM,0.55))
+ credits.name = "Credits"
+ credits.anchor_top = 1.0
+ credits.anchor_bottom = 1.0
+ credits.offset_left = 20
+ credits.offset_top = -36
+ credits.offset_right = 1100
+ credits.offset_bottom = -14
+ add_child(credits)
 
 func _button(parent: Control,text: String,cb: Callable) -> Button:
  var b = Button.new()

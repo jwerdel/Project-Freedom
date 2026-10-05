@@ -39,3 +39,6 @@ $RECYCLE.BIN/
 # Synthetic scale-test maps: only map.json is committed (scripts/build_map.gd regenerates the rest).
 data/maps/synthetic*/*
 !data/maps/synthetic*/map.json
+
+# Unused asset pack contents (only used files are copied into assets/)
+asset_staging/*

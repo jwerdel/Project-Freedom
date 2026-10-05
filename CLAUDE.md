@@ -65,6 +65,7 @@ Godot 4.7.2 fantasy strategy game. Personal project; free and local only.
 - Allowed licenses: CC0; SIL Open Font License (fonts only); CC BY, only with the required attribution recorded in `ASSETS.md`. Anything else (including "free" custom licenses such as the Quaternius Asset License) needs the user's approval first.
 - Record source URL, author, and license for every third-party asset in `ASSETS.md` in the same commit that adds it.
 - Ask before downloading asset packs or adding dependencies.
+- Only files the game uses live in `assets/`. The rest of a downloaded pack waits in the git-ignored `asset_staging/` (with `.gdignore`, so Godot neither imports nor exports it); copy a file into `assets/` and record it in `ASSETS.md` when it is first used. CC BY assets also need the in-game credits line (`ui/main_menu.gd` `CREDITS`).
 
 ## Repository hygiene
 

@@ -183,6 +183,47 @@ Author: Kenney (www.kenney.nl). License: CC0 1.0 Universal, http://creativecommo
 | `castle-kit/Models/GLB format/wall.glb`, `tower-hexagon-base.glb`, `wall-doorway.glb`, `wall-narrow-wood.glb`, `Textures/colormap.png`; `castle-kit/License.txt` | Castle Kit 2.0 — https://kenney.nl/assets/castle-kit | City walls, wall towers, gates, palisades |
 | `fantasy-town/Models/GLB format/stall-red.glb`, `cart.glb`, `fence.glb`, `pillar-stone.glb`, `Textures/colormap.png`; `fantasy-town/License.txt` | Fantasy Town Kit 2.0 — https://kenney.nl/assets/fantasy-town-kit | Market stalls, carts, paddock fences, shrines |
 
-The Quaternius Medieval Village and Fantasy Props MegaKits (Standard, CC0) the owner added in `assets/quaternius/` are not used yet and not committed.
+The Quaternius Medieval Village and Fantasy Props MegaKits (Standard, CC0) and the rest of each Kenney pack are not used yet. They wait in the git-ignored `asset_staging/` folder (`.gdignore`: Godot neither imports nor exports it). Only files the game uses are copied into `assets/` and listed here.
 
-The other kit pieces reuse the Quaternius Ultimate Fantasy RTS models listed above (houses, tower houses, storage, temple, watchtowers, farm, mine, rocks, dock, port).
+**Proposal for the Medieval Village MegaKit (textured; not used yet):**
+- *The mismatch:* its 176 modular pieces (walls, floors, roofs, trims) use tiling PBR textures (brick, plaster, round tiles, wood trim; base colour, normal, roughness/ORM). Next to the flat-coloured, low-poly campaign pieces they look busy and noisy at campaign scale.
+- *Proposed fix:* flatten each material to its texture's average colour when the kit cache bakes a piece (`map/kit_cache.gd baked()` already folds material colours into vertex colours), and drop the normal and roughness maps. The terrain-style mottling then adds the only detail.
+- *Where to use it:* only where the pieces fit, i.e. close-up medieval landmarks. The procedural culture kits cover the sprawl.
+
+## Quaternius Stylized Nature MegaKit (CC0): trees, bushes and rocks
+
+Author: Quaternius (https://quaternius.com). License: CC0 1.0 Universal (`assets/quaternius/stylized-nature/License_Standard.txt`). Standard (free) version, glTF.
+
+**Committed** (`assets/quaternius/stylized-nature/glTF/`): `CommonTree_1-5`, `Pine_1-5`, `TwistedTree_1-5`, `DeadTree_1-3`, `Bush_Common`, `Bush_Common_Flowers`, `Fern_1` and `Rock_Medium_1-3` (`.gltf` + `.bin`), plus the textures they use.
+
+**Used as:**
+- the asset manifest's `nature.*` (wrappers in `visuals/nature/kit/`);
+- the culture biome forests (`data/cultures.json` `forest.trees`);
+- boulders on the hills.
+
+**Modified (allowed by CC0):**
+- Textures were downscaled for campaign scale: bark and rocks to 256 px, normal maps to 128 px, leaves and flowers to 512 px.
+- `Leaves_TwistedTree_C.png` was recoloured from the pack's red mask to the common tree's leaf green. The Standard version leaves that mask for a custom shader that only the paid versions include.
+
+## game-icons.net (CC BY 3.0): UI icons
+
+**Source:** https://game-icons.net. **License:** Creative Commons Attribution 3.0 (https://creativecommons.org/licenses/by/3.0/); a few authors' icons are CC0, as marked in the pack's `license.txt`.
+
+**Authors** (one folder each in the pack): Lorc, Delapouite, John Colburn, Felbrigg, John Redman, Carl Olsen, Sbed, PriorBlue, Willdabeast, Viscious Speed (CC0), Lord Berandas, Irongamer, HeavenlyDog, Lucas, Faithtoken, Skoll, Andy Meneely, Cathelineau, Kier Heyl, Aussiesim, Sparker, Zeromancer (CC0), Rihlsul, Quoting, Guard13007, DarkZaitzev and others listed in the pack.
+
+**Attribution:**
+- The in-game credits line on the main menu (`ui/main_menu.gd` `CREDITS`) names game-icons.net, its main authors and the license.
+- This file ships with the game (the export include filter).
+
+**Status:** the whole pack (4,180 SVGs) is staged in `asset_staging/game-icons/`. No icon is used yet. Each icon copied into `assets/game-icons/` gets a row here (file, author) in the same commit.
+
+## Reference art (owner's Gemini images; not game assets)
+
+| Folder | Contents | Status |
+|---|---|---|
+| `docs/reference/landmarks/` | 12 landmark concept images, `landmark-prompts.md` | Reference only: never shipped or imported (`docs/reference/.gdignore`). Metadata stripped by re-encoding. Palette, materials and style only, not layout (`docs/reference/README.md`). |
+| `docs/reference/biomes/` | 10 culture biome boards (no orc board yet), `biome-prompts.md` | as above |
+| `docs/reference/specializations/` | 11 specialization sheets, `specialization-prompts.md` | as above |
+| `docs/reference/tw/` | Total War: Warhammer III screenshots | Never committed (copyrighted); kept locally only. |
+
+The other kit pieces reuse the Quaternius Ultimate Fantasy RTS models listed above (houses, tower houses, storage, temple, watchtowers, farm, mine, rocks, dock, port). The farmstead kit piece is now built from one of those houses plus simple shapes: the RTS farm model had 10,000 triangles and no usable LOD.

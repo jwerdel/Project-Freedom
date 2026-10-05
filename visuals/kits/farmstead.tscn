@@ -1,8 +1,60 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=9 format=3]
 
-[ext_resource type="PackedScene" path="res://assets/quaternius/ultimate-fantasy-rts/Farm_FirstAge_Level2_Wheat.gltf" id="1"]
+[ext_resource type="PackedScene" path="res://assets/quaternius/ultimate-fantasy-rts/Houses_SecondAge_3_Level1.gltf" id="1"]
+
+[sub_resource type="StandardMaterial3D" id="barn"]
+albedo_color = Color(0.55, 0.32, 0.22, 1)
+roughness = 0.95
+
+[sub_resource type="StandardMaterial3D" id="roof"]
+albedo_color = Color(0.42, 0.30, 0.20, 1)
+roughness = 0.95
+
+[sub_resource type="StandardMaterial3D" id="hay"]
+albedo_color = Color(0.86, 0.72, 0.38, 1)
+roughness = 1.0
+
+[sub_resource type="BoxMesh" id="barn_box"]
+material = SubResource("barn")
+size = Vector3(3.2, 1.8, 2.2)
+
+[sub_resource type="PrismMesh" id="barn_roof"]
+material = SubResource("roof")
+size = Vector3(3.4, 1.1, 2.4)
+
+[sub_resource type="CylinderMesh" id="stack"]
+material = SubResource("hay")
+top_radius = 0.2
+bottom_radius = 0.6
+height = 1.0
+radial_segments = 8
+rings = 1
+
+[sub_resource type="BoxMesh" id="fence"]
+material = SubResource("roof")
+size = Vector3(6.0, 0.35, 0.12)
 
 [node name="Kit" type="Node3D"]
 
-[node name="Model" parent="." instance=ExtResource("1")]
-transform = Transform3D(3.5, 0, 0, 0, 3.5, 0, 0, 0, 3.5, -0.01009327173233, -0.00054184364853, 0.47371473908424)
+[node name="House" parent="." instance=ExtResource("1")]
+transform = Transform3D(3.4, 0, 0, 0, 3.4, 0, 0, 0, 3.4, -2.05, 0, 1.55)
+
+[node name="Barn" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.8, 0.9, -0.6)
+mesh = SubResource("barn_box")
+
+[node name="BarnRoof" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.8, 2.35, -0.6)
+mesh = SubResource("barn_roof")
+
+[node name="Stack1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.6, 0.5, 1.6)
+mesh = SubResource("stack")
+
+[node name="Stack2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.6, 0.5, 2.2)
+mesh = SubResource("stack")
+
+[node name="Fence" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.3, 3.2)
+mesh = SubResource("fence")
