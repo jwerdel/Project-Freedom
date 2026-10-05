@@ -221,3 +221,50 @@ func test_culture_layer_blends_a_converting_region():
  assert_ne(mid,before)
  var l = data.land("goldspire_rock")
  assert_true(Color(mid,1.0).is_equal_approx(Color(l.from_color).lerp(Color(l.to_color),0.5)),"halfway between the two cultures")
+
+func test_region_raster_matches_region_lookup():
+ # The shader's region-ID texture (scanned from the test map's polygons) agrees with region_at.
+ var m = build_map(UiData.new(GameState.from_data()))
+ var names = WorldMap.regions().keys()
+ var cols = 256
+ var ids = StrategicMap.rasterize(names,m.world_rect.position,m.world_rect.size,cols,cols)
+ var agree = 0
+ var total = 0
+ for z in range(3,cols,7):
+  for x in range(3,cols,7):
+   var w = m.world_rect.position+(Vector2(x,z)+Vector2(0.5,0.5))/cols*m.world_rect.size
+   var i = ids[z*cols+x]
+   total += 1
+   if (names[i-1] if i>0 else "") == WorldMap.region_at(w): agree += 1
+ assert_gt(float(agree)/total,0.98,"raster and polygons agree (edges may differ by a cell)")
+
+func test_names_never_overlap_and_more_fit_on_a_larger_map():
+ var data = UiData.new(GameState.from_data())
+ var m = build_map(data)
+ m._layout()
+ var font = load("res://ui/ui_kit.gd").FONT_BOLD
+ var boxes = []
+ for l in m._labels:
+  var w = font.get_string_size(l[1],HORIZONTAL_ALIGNMENT_LEFT,-1,l[2]).x
+  boxes.append(Rect2(l[0]-Vector2(0,l[2]),Vector2(w,l[2])))
+ for i in boxes.size():
+  for j in range(i+1,boxes.size()): assert_false(boxes[i].intersects(boxes[j]),"names %d and %d overlap" % [i,j])
+ assert_gt(m._labels.size(),0)
+ # Crowd the map: a tiny screen keeps fewer names than a large one.
+ m.size = Vector2(420,300)
+ m._layout()
+ var small = m._labels.size()
+ m.size = Vector2(1600,1000)
+ m._layout()
+ assert_lte(small,m._labels.size())
+
+func test_palette_holds_the_layer_fills_and_owners():
+ var data = UiData.new(GameState.from_data())
+ var m = build_map(data)
+ m.set_layer("affiliation")
+ var sid = data.state.settlements_of(data.player_faction_id())[0]
+ var px = m._palette.get_pixel(m._index[sid],0)
+ assert_true(px.is_equal_approx(m._fills[sid]) or px.to_html() == m._fills[sid].to_html(),"fill in row 0")
+ assert_eq(m._palette.get_pixel(m._index[sid],1).a,1.0,"owned: border colour in row 1")
+ m.set_layer("climate")
+ assert_eq(m._palette.get_pixel(m._index[sid],0).a,0.0,"climate: no fills")

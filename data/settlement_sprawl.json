@@ -42,5 +42,7 @@
     "watchtower": {"watch": 2},
     "houses": {"houses": 0.15}
   },
+  "no_shadow": ["kit.field", "kit.road", "kit.pit", "kit.spoil", "kit.cart", "kit.fence", "kit.stall", "kit.shrine", "kit.tent"],
+  "_no_shadow_note": "Pieces drawn without casting shadows (flat or small at campaign scale; fewer shadow draw calls).",
   "colors": {"_note": "Farm field patchwork (instance colours of kit.field) and roads.", "fields": ["#c9b25a", "#a6b74e", "#8fa848", "#d6c27a", "#b59a4e", "#9cbc5c"], "road": "#7a6a52"}
 }

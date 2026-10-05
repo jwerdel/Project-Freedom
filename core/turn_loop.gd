@@ -40,9 +40,11 @@ static func end_turn_sliced(state,tree: SceneTree,budget_ms := 12.0,progress := 
  var ai = {"actions":[],"pending":[],"entries":[],"moves":{},"ms":0.0,"ran":false}
  if opts.get("ai",true): ai = await Ai.take_turns_sliced(state,opts,slicer,progress)
  var report = _finish(state,ctx,ai)
- slicer.max_chunk_us = maxi(slicer.max_chunk_us,Time.get_ticks_usec()-slicer.start_us)
+ slicer.at = "finish"
+ slicer.note_chunk()
  report.frames = slicer.frames
  report.max_chunk_ms = slicer.max_chunk_us/1000.0
+ report.max_chunk_at = slicer.max_chunk_at
  return report
 
 # Hands control back to the engine once a frame's work budget is spent.
@@ -52,6 +54,9 @@ class Slicer extends RefCounted:
  var start_us := 0
  var frames := 0
  var max_chunk_us := 0 # the longest stretch of work between two frames
+ var at := "" # what is running (set by the steps; names the longest chunk in reports)
+ var max_chunk_at := ""
+ var _chunk_from := ""
  func _init(t: SceneTree,ms: float):
   tree = t
   budget_us = int(ms*1000.0)
@@ -59,10 +64,16 @@ class Slicer extends RefCounted:
  func over() -> bool:
   return Time.get_ticks_usec()-start_us>=budget_us
  func next_frame():
-  max_chunk_us = maxi(max_chunk_us,Time.get_ticks_usec()-start_us)
+  note_chunk()
   await tree.process_frame
   frames += 1
   start_us = Time.get_ticks_usec()
+  _chunk_from = at
+ func note_chunk():
+  var us = Time.get_ticks_usec()-start_us
+  if us>max_chunk_us:
+   max_chunk_us = us
+   max_chunk_at = at if _chunk_from == at else "%s .. %s" % [_chunk_from,at]
 
 # Steps 1-9 (everything before the AI phase).
 static func _begin(state,_unused) -> Dictionary:
@@ -75,6 +86,7 @@ static func _begin(state,_unused) -> Dictionary:
 static func _begin_sliced(state,slicer) -> Dictionary:
  var ended = state.year
  var ledgers = {}
+ slicer.at = "ledgers"
  for f in state.factions():
   ledgers[f] = Economy.faction_ledger(state,f)
   if slicer.over(): await slicer.next_frame()
@@ -88,6 +100,7 @@ static func _begin_rest(state,ended: int,ledgers: Dictionary) -> Dictionary:
 static func _begin_rest_sliced(state,ended: int,ledgers: Dictionary,slicer) -> Dictionary:
  var ctx = {"ended":ended,"ledgers":ledgers,"growth":{}}
  for k in BEGIN_STAGES:
+  slicer.at = "stage %d" % k
   if k == 3:
    # Growth is computed settlement by settlement (the largest step on a big map), then applied.
    var ids = state.settlements.keys()

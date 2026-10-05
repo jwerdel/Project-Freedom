@@ -4,13 +4,14 @@ extends Node3D
 # runs on Main.tscn (the test map) until the map-agnostic map scene replaces it.
 #   runtime\Godot.exe --path . map/map_scene.tscn -- [--map=synthetic600] [--sprawl-max] [--land-demo]
 #     [--focus=<settlement>|dense] [--view=x,z,distance,yaw,pitch] [--showcase=city1|city3|farm|mine|convert:N]
-#     [--strategic [--layer=culture]] [--gpu=<label> --out=<file>] [--capture --name=<file>]
+#     [--strategic [--layer=culture]] [--gpu=<label> --out=<file>] [--capture --name=<file>] [--instanced]
 
 const MapRegistry = preload("res://core/map_registry.gd")
 const GameState = preload("res://core/game_state.gd")
 const WorldMap = preload("res://core/world_map.gd")
 const Movement = preload("res://core/movement.gd")
 const MapView = preload("res://map/map_view.gd")
+const SprawlNode = preload("res://map/sprawl_node.gd")
 const Land = preload("res://core/land.gd")
 const UiData = preload("res://core/ui_data.gd")
 const StrategicMap = preload("res://ui/strategic_map.gd")
@@ -33,6 +34,7 @@ func _ready():
  var map_id = _arg("--map=","synthetic600")
  MapRegistry.set_active(map_id)
  state = GameState.from_data()
+ SprawlNode.merge = not args.has("--instanced") # the old one-MultiMesh-per-kit-mesh drawing, for comparisons
  if args.has("--sprawl-max"): _sprawl_max()
  if args.has("--land-demo"): _land_demo()
  var sc = _arg("--showcase=","")
@@ -222,6 +224,18 @@ func _open_strategic():
  strategic.setup(UiData.new(state),Rect2(Vector2(MapRegistry.meta().origin[0],MapRegistry.meta().origin[1]),size))
  strategic.set_layer(_arg("--layer=","affiliation"))
  strategic.open_map(true)
+ if args.has("--strategic-hidden"): strategic.visible = false # baseline: the empty 2D frame, for the strategic map's own GPU cost
+ # Stress: N copies of the territory pass (the GPU clocks down on a light 2D frame, which inflates its
+ # measured time; per-copy cost under load = (time with N - time with 1) / (N - 1)).
+ var stress = int(_arg("--strategic-stress=","1"))
+ if stress>1:
+  strategic._layout()
+  for i in stress-1:
+   var c = strategic._surface.duplicate()
+   strategic.add_child(c)
+   strategic.move_child(c,strategic._surface.get_index())
+   c.position = strategic._surface.position
+   c.size = strategic._surface.size
  # As in the game (main.gd): nothing 3D renders behind the opaque strategic map.
  get_viewport().disable_3d = true
 

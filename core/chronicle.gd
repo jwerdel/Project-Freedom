@@ -36,15 +36,26 @@ static func year_entries(state,ended: int,ledgers: Dictionary,growth: Dictionary
  var d = data()
  var lines = [_pick(d.summary_open,rng)]
  var richest = ""
+ # Settlements and armies by faction in one pass (a loop per faction is slow with 150 factions).
+ var owned = {}
+ var ids = state.settlements.keys()
+ ids.sort()
+ for id in ids: owned.get_or_add(state.settlements[id].owner,[]).append(id)
+ var armed = {}
+ for id in state.army_state: armed[state.army_state[id].faction] = true
  for f in state.factions():
   # A faction with no settlements and no armies is gone from the map: the scribes stop counting it.
-  if state.settlements_of(f).is_empty() and not state.army_state.values().any(func(a): return a.faction == f): continue
+  var mine = owned.get(f,[])
+  if mine.is_empty() and not armed.has(f): continue
   if richest == "" or state.treasury[f]>state.treasury[richest]: richest = f
   var change = 0.0
-  for id in state.settlements_of(f): change += growth[id].delta
+  var pop = 0.0
+  for id in mine:
+   change += growth[id].delta
+   pop += state.settlements[id].population
   lines.append(_fill(_pick(d.faction_line,rng),{
    "faction":WorldMap.faction(f).name,"treasury":_num(state.treasury[f]),"net":_signed(ledgers[f].net),
-   "population":_num(state.population_of(f)),"growth":_signed(int(round(change)))+" souls"}))
+   "population":_num(int(round(pop))),"growth":_signed(int(round(change)))+" souls"}))
  lines.append(_fill(_pick(d.richest_line,rng),{"faction":WorldMap.faction(richest).name}))
  var vars = {"year":str(ended),"ordinal":_ordinal(ended+1)}
  return [

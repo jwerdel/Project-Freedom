@@ -62,6 +62,7 @@ static func reset():
  _blk_key = []
  _graph = null
  _hpa = null
+ _row_start = null
  _comp = null
 
 # The baked grid: {cell, origin, cols, rows, terrain (PackedByteArray of terrain indices), names,
@@ -235,7 +236,8 @@ static func _astar_for(road_level: int) -> AStarGrid2D:
 # moved and settlements that changed hands are recomputed), with per-cell counts for every area and
 # for each faction's own areas: a cell blocks faction F when it lies in an area F does not own.
 # Switching the A* grid from one faction to another only touches those two factions' own cells.
-static var _blk = {}            # {"total": {cell: n}, "own": {faction: {cell: n}}, "areas": {key: [faction, at, cells]}}
+static var _blk = {}            # {"total": {cell: n}, "own": {faction: {cell: n}}, "areas": {key: [faction, at, cells]}, "buckets": {cell / BLK_BUCKET: {key: true}}}
+const BLK_BUCKET = 32
 static var _blk_applied = {}    # road level -> faction whose blocking is applied to that grid (null: none)
 static var _blk_dirty = {}      # cells whose count changed since the grids were last synced
 static var _blk_faction := "" # the faction the next sync is for (set by its callers)
@@ -260,6 +262,9 @@ static func _blk_add(key: String,faction: String,at: Vector2,radius: float,sign:
   if total[c] == 0: total.erase(c)
   if own[c] == 0: own.erase(c)
   _blk_dirty[c] = true
+ var bucket = _blk.buckets.get_or_add(cell_of(at if sign>0 else _blk.areas[key][1])/BLK_BUCKET,{})
+ if sign>0: bucket[key] = true
+ else: bucket.erase(key)
  if sign>0: _blk.areas[key] = [faction,at,cells]
  else: _blk.areas.erase(key)
 
@@ -272,7 +277,7 @@ static func _sync_blocks(state):
  var sync_key = [state.get_instance_id(),Engine.get_process_frames(),state.battles,state.army_state.size(),_blk_faction]
  if sync_key == _blk_key and not _blk.is_empty(): return
  _blk_key = sync_key
- if _blk.is_empty(): _blk = {"total":{},"own":{},"areas":{}}
+ if _blk.is_empty(): _blk = {"total":{},"own":{},"areas":{},"buckets":{}}
  var areas = _blk.areas
  var seen = {}
  var sr = float(data().settlements.radius)
@@ -398,7 +403,7 @@ static func plan(state,army_id: String,target: Vector2,retreating := false) -> D
  var cells = []
  if not a.is_point_solid(to) and _same_component(from,to):
   cells = _hierarchical_path(a,start,dest.point,from,to)
-  if cells.is_empty(): cells = a.get_id_path(from,to)
+  if cells.is_empty(): cells = _window_path(state,me.faction,from,to) if ai_cap else Array(a.get_id_path(from,to))
  a.set_point_solid(from,was_solid)
  if cells.is_empty(): return {"ok":false,"reason":NO_ROUTE}
  var points = [start]
@@ -408,6 +413,81 @@ static func plan(state,army_id: String,target: Vector2,retreating := false) -> D
  if dest.point.distance_to(start)>0.001: points.append(dest.point)
  var sim = simulate(points,float(me.points),float(me.max_points),state.road_level)
  return {"ok":true,"points":points,"turns":sim.turns,"reach":sim.reach,"total_turns":sim.turns[-1]+1,"cost":sim.cost,"settlement":dest.settlement}
+
+# --- Window-limited searches (the AI) ---------------------------------------------------------------
+# A direct search that fails explores everything it can reach (on a big map, hundreds of ms). The
+# AI plans many moves per turn and simply picks another goal when one fails, so its direct searches
+# run on a local grid around start and goal (WINDOW_PAD cells of margin): a failure costs a few ms.
+# The player's moves keep the full search. Set by the AI phase (Ai._begin_phase / its end).
+const WINDOW_PAD = 40
+static var ai_cap := false
+static var _row_start = null # PackedInt32Array: index of each row's first run in _grid_runs()
+
+static func _row_starts() -> PackedInt32Array:
+ if _row_start == null:
+  var runs = _grid_runs()
+  var g = grid()
+  _row_start = PackedInt32Array()
+  _row_start.resize(g.rows+1)
+  # Runs are sorted by row: a binary search per row (a loop over every run costs about a second).
+  var n = runs.size()/4
+  for z in g.rows+1:
+   var lo = 0
+   var hi = n
+   while lo<hi:
+    var mid = (lo+hi)/2
+    if runs[mid*4+1]<z: lo = mid+1
+    else: hi = mid
+   _row_start[z] = lo*4
+ return _row_start
+
+static func _window_path(state,faction: String,from: Vector2i,to: Vector2i) -> Array:
+ var g = grid()
+ var lo = Vector2i(maxi(mini(from.x,to.x)-WINDOW_PAD,0),maxi(mini(from.y,to.y)-WINDOW_PAD,0))
+ var hi = Vector2i(mini(maxi(from.x,to.x)+WINDOW_PAD,g.cols-1),mini(maxi(from.y,to.y)+WINDOW_PAD,g.rows-1))
+ var a = AStarGrid2D.new()
+ a.region = Rect2i(lo,hi-lo+Vector2i.ONE)
+ a.cell_size = Vector2.ONE
+ a.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+ a.default_compute_heuristic = AStarGrid2D.HEURISTIC_EUCLIDEAN
+ a.default_estimate_heuristic = AStarGrid2D.HEURISTIC_EUCLIDEAN
+ a.update()
+ var lw = _min_cost()
+ var costs = _code_costs(state.road_level)
+ var runs = _grid_runs()
+ var rs = _row_starts()
+ for z in range(lo.y,hi.y+1):
+  # The row's first run reaching the window (runs in a row are sorted by x), up to its right edge.
+  var lo_k = rs[z]/4
+  var hi_k = rs[z+1]/4
+  while lo_k<hi_k:
+   var mid = (lo_k+hi_k)/2
+   if runs[mid*4]+runs[mid*4+2]<=lo.x: lo_k = mid+1
+   else: hi_k = mid
+  var k = lo_k*4
+  while k<rs[z+1] and runs[k]<=hi.x:
+   var x0 = maxi(runs[k],lo.x)
+   var x1 = mini(runs[k]+runs[k+2]-1,hi.x)
+   if x1>=x0:
+    var cost = costs[runs[k+3]]
+    var r = Rect2i(x0,z,x1-x0+1,1)
+    if cost<0: a.fill_solid_region(r,true)
+    elif not is_equal_approx(cost,lw): a.fill_weight_scale_region(r,cost/lw)
+   k += 4
+ # Foreign armies and settlements inside the window.
+ var b0 = (lo-Vector2i(8,8)).maxi(0)/BLK_BUCKET
+ var b1 = (hi+Vector2i(8,8))/BLK_BUCKET
+ for by in range(b0.y,b1.y+1):
+  for bx in range(b0.x,b1.x+1):
+   for key in _blk.buckets.get(Vector2i(bx,by),{}):
+    var ar = _blk.areas[key]
+    if ar[0] == faction: continue
+    for c in ar[2]:
+     var v = Vector2i(c%g.cols,c/g.cols)
+     if v.x>=lo.x and v.x<=hi.x and v.y>=lo.y and v.y<=hi.y: a.set_point_solid(v,true)
+ a.set_point_solid(from,false)
+ if a.is_point_solid(to): return []
+ return Array(a.get_id_path(from,to))
 
 # --- Hierarchical paths (docs/map-pipeline-design.md §6.3) ---------------------------------------
 # Long moves on a pipeline map go through core/path_hierarchy.gd (HPA*: region crossings joined by

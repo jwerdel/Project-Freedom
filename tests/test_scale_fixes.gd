@@ -170,3 +170,47 @@ func test_background_save_returns_at_once_and_lands_intact():
  assert_eq(ld.state.state_hash(),s.state_hash())
  assert_true(SaveSystem.delete("bg"))
  assert_false(FileAccess.file_exists(SaveSystem.meta_of("bg")),"the sidecar goes with the save")
+
+func test_ai_window_search_matches_the_full_search_and_fails_cheaply():
+ # The AI's direct searches (Movement.ai_cap) run on a window around start and goal: a nearby
+ # path costs what the full search finds, foreign armies still block, and an unreachable goal
+ # fails fast instead of exploring the whole map.
+ MapRegistry.set_active(MAP)
+ var s = GameState.from_data()
+ s.road_level = 1
+ var f = s.army_state[s.army_state.keys()[0]].faction
+ Movement._blk_faction = f
+ Movement._blk_key = []
+ Movement._sync_blocks(s)
+ var a = Movement._astar_for(1)
+ Movement._apply_blocks(s,a,f)
+ var rng = RandomNumberGenerator.new()
+ rng.seed = 11
+ var g = Movement.grid()
+ var tested = 0
+ for i in 60:
+  var from = Vector2i(rng.randi_range(10,g.cols-11),rng.randi_range(10,g.rows-11))
+  var to = from+Vector2i(rng.randi_range(-15,15),rng.randi_range(-15,15))
+  if to.x<0 or to.y<0 or to.x>=g.cols or to.y>=g.rows or a.is_point_solid(from) or a.is_point_solid(to): continue
+  var full = Array(a.get_id_path(from,to))
+  var win = Movement._window_path(s,f,from,to)
+  if full.is_empty(): continue
+  tested += 1
+  assert_false(win.is_empty(),"a short route is found in the window")
+  for c in win: assert_false(a.is_point_solid(c),"walkable and not blocked")
+  assert_almost_eq(path_cost(win),path_cost(full),0.01,"same cost as the full search")
+ assert_gt(tested,10)
+ # A goal ringed by a foreign army's blocking: no route, and quickly.
+ var goal = Vector2i(g.cols/2,g.rows/2)
+ while a.is_point_solid(goal) or a.is_point_solid(goal+Vector2i(40,0)): goal.x = (goal.x+7)%(g.cols-50)
+ var ring = {}
+ for c in Movement._area_cells(Movement.center_of(goal),12.0): ring[c] = true
+ for c in Movement._area_cells(Movement.center_of(goal),6.0): ring.erase(c)
+ var foe = "ringer"
+ for c in ring:
+  var key = "a:ring%d" % c
+  Movement._blk_add(key,foe,Movement.center_of(Vector2i(c%g.cols,c/g.cols)),0.1,1)
+ var t0 = Time.get_ticks_usec()
+ assert_eq(Movement._window_path(s,f,goal+Vector2i(40,0),goal),[],"ringed goal unreachable")
+ assert_lt((Time.get_ticks_usec()-t0)/1000.0,50.0)
+ Movement.reset()

@@ -100,6 +100,7 @@ func _ready():
   line("end_turn_sliced_ms",(Time.get_ticks_usec()-t)/1000.0,"10000 release build")
   line("end_turn_sliced_frames",rs.frames)
   line("end_turn_sliced_longest_chunk_ms",snappedf(rs.max_chunk_ms,0.1),"UI responsive")
+  line("end_turn_sliced_longest_chunk_at",rs.max_chunk_at)
   var fm = rs.ai.faction_ms.values()
   fm.sort()
   line("ai_faction_ms_max",snappedf(fm[-1],0.1))

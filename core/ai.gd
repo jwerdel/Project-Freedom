@@ -159,6 +159,16 @@ static func _begin_phase(state):
  # simulated odds this turn; the others use the curve. Few factions: everyone may.
  _odds_groups = maxi(1,ceili(float(state.factions().size())/maxf(1.0,float(data().odds.turn_budget))))
  _odds_year = int(state.year)
+ # The AI's direct searches stay in a window (Movement.ai_cap), and the blocking index catches up
+ # with the yearly moves here, once, rather than inside some army's turn.
+ Movement.ai_cap = true
+ Movement._blk_key = []
+ Movement._sync_blocks(state)
+
+static func _end_phase():
+ _in_phase = false
+ _snap = null
+ Movement.ai_cap = false
 
 static func take_turns(state,opts := {}) -> Dictionary:
  var t0 = Time.get_ticks_usec()
@@ -170,8 +180,7 @@ static func take_turns(state,opts := {}) -> Dictionary:
   var tf = Time.get_ticks_usec()
   faction_turn(state,f,report,opts,controlled)
   report.faction_ms[f] = (Time.get_ticks_usec()-tf)/1000.0
- _in_phase = false
- _snap = null
+ _end_phase()
  report.ms = (Time.get_ticks_usec()-t0)/1000.0
  return report
 
@@ -181,18 +190,23 @@ static func take_turns_sliced(state,opts: Dictionary,slicer,progress := Callable
  var t0 = Time.get_ticks_usec()
  var report = {"actions":[],"pending":[],"entries":[],"moves":{},"ms":0.0,"faction_ms":{}}
  var controlled = opts.get("factions",state.factions().filter(func(f): return f != state.player_faction))
+ slicer.at = "ai: phase start"
  _begin_phase(state)
+ if slicer.over(): await slicer.next_frame()
  var order = _sorted(controlled)
  for k in order.size():
   var f = order[k]
   if alive(state,f):
+   slicer.at = "ai: %s start" % f
    var tf = Time.get_ticks_usec()
    var c = _faction_begin(state,f)
    for step in FACTION_STEPS:
+    slicer.at = "ai: %s step %d" % [f,step]
     if step == 6:
      # Army orders one army at a time (a big faction's orders can take a while).
      var busy = _command_prelude(state,f,c.look,report)
      for id in field_armies(state,f):
+      slicer.at = "ai: %s army %s" % [f,id]
       _army_order(state,id,f,c.p,c.look,report,opts,controlled,busy)
       if slicer.over():
        _in_phase = false
@@ -215,8 +229,7 @@ static func take_turns_sliced(state,opts: Dictionary,slicer,progress := Callable
    await slicer.next_frame()
    _in_phase = true
    _invalidate()
- _in_phase = false
- _snap = null
+ _end_phase()
  report.ms = (Time.get_ticks_usec()-t0)/1000.0
  return report
 
