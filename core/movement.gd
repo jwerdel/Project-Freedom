@@ -225,6 +225,8 @@ static func _astar_for(road_level: int) -> AStarGrid2D:
   elif not is_equal_approx(cost,lo): a.fill_weight_scale_region(r,cost/lo)
  _astar[road_level] = a
  _blk_applied[road_level] = null # no faction's blocking applied yet
+ # The hierarchy (pipeline maps) loads with the first grid, so no later plan pays for it.
+ if _hpa == null and not _region_graph().is_empty(): _hpa = PathHierarchy.load_for(load("res://core/movement.gd"))
  return a
 
 # --- Blocking: enemy armies and foreign settlements ------------------------------------------------
@@ -410,7 +412,7 @@ static func plan(state,army_id: String,target: Vector2,retreating := false) -> D
 # --- Hierarchical paths (docs/map-pipeline-design.md §6.3) ---------------------------------------
 # Long moves on a pipeline map go through core/path_hierarchy.gd (HPA*: region crossings joined by
 # stored paths); short moves, the test map and failed hierarchy queries search the grid directly.
-const HIER_MIN_DISTANCE = 100.0 # metres; shorter moves are searched directly
+const HIER_MIN_DISTANCE = 0.0 # metres; the hierarchy is used whenever start and goal lie in different region parts (a ridge or border between them), however close
 static var _graph = null      # {index: {region id: graph index}} or {}
 static var _hpa = null        # core/path_hierarchy.gd data, or {}
 

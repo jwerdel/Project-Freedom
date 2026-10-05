@@ -38,9 +38,10 @@ func test_layers_available_and_greyed():
  var m = build_map(UiData.new(GameState.from_data()))
  var ids = StrategicMap.LAYERS.map(func(l): return l.id)
  assert_eq(ids,["affiliation","diplomatic","attitude","order","development","climate","faith","culture"])
- for id in ["attitude","faith","culture"]:
+ for id in ["attitude","faith"]:
   assert_true(m.layer_buttons[id].disabled,id+" greyed")
   assert_string_contains(m.layer_buttons[id].tooltip_text,"Coming later")
+ assert_false(m.layer_buttons.culture.disabled,"the Culture layer works (land conversion, 2026-10-04)")
  m.set_layer("attitude")
  assert_eq(m.layer,"affiliation","a greyed layer cannot be chosen")
  m.set_layer("development")
@@ -209,3 +210,14 @@ func test_map_scene_hotkeys_and_strategic_transition():
  key(main,KEY_R)
  assert_eq(Settings.army_speed(),1)
  SaveSystem.dir = SaveSystem.DIR
+
+func test_culture_layer_blends_a_converting_region():
+ var data = UiData.new(GameState.from_data())
+ var m = build_map(data)
+ m.set_layer("culture")
+ var before = m.region_color("goldspire_rock")
+ data.state.land.goldspire_rock = {"from":"greek","to":"roman","value":0.5,"built":0}
+ var mid = m.region_color("goldspire_rock")
+ assert_ne(mid,before)
+ var l = data.land("goldspire_rock")
+ assert_true(Color(mid,1.0).is_equal_approx(Color(l.from_color).lerp(Color(l.to_color),0.5)),"halfway between the two cultures")

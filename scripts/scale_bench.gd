@@ -62,9 +62,10 @@ func _ready():
  ids.sort()
  var a0 = ids[0]
  var start = Movement.position(s,a0)
+ # One-time per session: the pathfinding grid from the baked runs, plus the path hierarchy.
  t = Time.get_ticks_usec()
- var first = Movement.plan(s,a0,start+Vector2(40,25))
- line("path_first_ms_including_grid_build",(Time.get_ticks_usec()-t)/1000.0)
+ Movement._astar_for(s.road_level)
+ line("path_grid_and_hierarchy_build_ms_once",(Time.get_ticks_usec()-t)/1000.0)
  # Each plan as a fresh preview update: the blocking sync is forced (a new frame would do it).
  for dist in [60.0,150.0,400.0,1000.0]:
   var ts = []

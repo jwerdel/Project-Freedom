@@ -24,7 +24,7 @@ const LAYERS = [
  {"id":"development","name":"Development","available":true,"tip":"Settlement level of each region"},
  {"id":"climate","name":"Climate and terrain","available":true,"tip":"Terrain: plains, forest, hills, mountains, passes and water"},
  {"id":"faith","name":"Faith","available":false,"tip":"The faiths of each region"},
- {"id":"culture","name":"Culture","available":false,"tip":"The cultures of each region"},
+ {"id":"culture","name":"Culture","available":true,"tip":"The culture each region's land belongs to; a region being converted shows both, blended by how far it has turned (game-design §12.13)"},
 ]
 const TERRAIN_PARCHMENT = {"open":Color("e6d4ab"),"settlement":Color("e6d4ab"),"forest":Color("c5c48f"),"hills":Color("d8c08a"),"mountain":Color("a58f6c"),"pass":Color("c6ad83"),"water":Color("9fb3ad")}
 const TERRAIN_VIVID = {"open":Color("b8cf7e"),"settlement":Color("b8cf7e"),"forest":Color("5f8f4a"),"hills":Color("c9b16a"),"mountain":Color("8c7a64"),"pass":Color("b59a6c"),"water":Color("4f7f9c")}
@@ -221,6 +221,9 @@ func region_color(id: String) -> Color:
    return Color("c8382c").lerp(Color("4fb34a"),clampf((po+100.0)/200.0,0,1))*Color(1,1,1,0.6)
   "development":
    return Color("f4e2a6").lerp(Color("8a5a12"),clampf((int(s.level)-1)/2.0,0,1))*Color(1,1,1,0.65)
+  "culture":
+   var l = data.land(id)
+   return Color(Color(l.from_color).lerp(Color(l.to_color),float(l.value)),0.62)
  return Color(0,0,0,0)
 
 func _fill_legend():
@@ -238,6 +241,14 @@ func _fill_legend():
   "diplomatic": rows = [[Color("4fb34a"),"Yours"],[Color("c8382c"),"At war with you"],[Color("8a97a8"),"Not at war"]]
   "order": rows = [[Color("4fb34a"),"High"],[Color("c9a43a"),"Neutral"],[Color("c8382c"),"Low (unrest)"]]
   "development": rows = [[Color("f4e2a6"),"Level 1"],[Color("bf9a5a"),"Level 2"],[Color("8a5a12"),"Level 3"]]
+  "culture":
+   var seen = {}
+   for sid in data.settlement_ids():
+    var l = data.land(sid)
+    for k in [[l.from,l.from_color],[l.to,l.to_color]]:
+     if not seen.has(k[0]):
+      seen[k[0]] = true
+      rows.append([Color(k[1]),data.culture_name(k[0])])
   "climate":
    for t in ["open","forest","hills","mountain","pass","water"]: rows.append([TERRAIN_VIVID[t],{"open":"Plains"}.get(t,t.capitalize())])
  for r in rows:

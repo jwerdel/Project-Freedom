@@ -25,6 +25,7 @@ const TurnLoop = preload("res://core/turn_loop.gd")
 const Chronicle = preload("res://core/chronicle.gd")
 const Ai = preload("res://core/ai.gd")
 const Realm = preload("res://core/realm.gd")
+const Land = preload("res://core/land.gd")
 const MOCK = "res://data/mock_ui.json"
 const CATEGORIES = [{"id":"turn","name":"Turn Summary"},{"id":"buildings","name":"Buildings Constructed"},{"id":"war","name":"Wars and Battles"},{"id":"world","name":"World Events"}]
 
@@ -722,3 +723,17 @@ func alerts_since(before: Dictionary) -> Array:
  if now.destroyed and not before.destroyed: out.append({"kind":"destroyed","title":"Your house is destroyed","text":"No settlement was retaken in time. The Grey Scribes close your house's chronicle."})
  elif now.grace>=0 and before.grace<0: out.append({"kind":"landless","title":"Your house is landless","text":"Retake a settlement within %d turn%s or your house is destroyed." % [now.grace,"" if now.grace == 1 else "s"]})
  return out
+
+# --- Land and culture (core/land.gd; game-design §12.13 C) ------------------------------------------
+
+# A region's land: {from, to, value (0-1), stage (0 none, 1 noticeable, 2 very, 3 converted),
+# from_color, to_color (strategic map), climate (yield factor for its owner)}.
+func land(settlement_id: String) -> Dictionary:
+ var e = Land.entry(state,settlement_id)
+ var cul = Land.data().cultures
+ return {"from":e.from,"to":e.to,"value":float(e.value),"stage":Land.stage(state,settlement_id),
+  "from_color":cul.get(e.from,{}).get("map_color","#888888"),"to_color":cul.get(e.to,{}).get("map_color","#888888"),
+  "climate":Land.climate_factor(state,settlement_id)}
+
+func culture_name(culture: String) -> String:
+ return str(Land.data().cultures.get(culture,{}).get("name",culture.capitalize()))
