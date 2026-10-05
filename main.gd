@@ -12,6 +12,7 @@ const CampaignUI = preload("res://ui/campaign_ui.gd")
 const StrategicMap = preload("res://ui/strategic_map.gd")
 const UiKit = preload("res://ui/ui_kit.gd")
 const SettlementBanner = preload("res://ui/settlement_banner.gd")
+const ArmyBanner = preload("res://ui/army_banner.gd")
 const TerritoryOverlay = preload("res://visuals/terrain/territory_overlay.gd")
 const MovementOverlay = preload("res://ui/movement_overlay.gd")
 const Battles = preload("res://core/battles.gd")
@@ -903,13 +904,64 @@ func sync_army_figures():
   f.set_banner_color(Color(ui_data.army(id).faction_data.primary))
   f.visible = overlays.armies
   army_figures[id] = f
+  # TW-style floating faction banner (screen space; ui/army_banner.gd).
+  var a = ui_data.army(id)
+  var b = ArmyBanner.new(id,a.faction_data,"%s
+%s · %s" % [a.commander.name,a.faction_data.name,a.display_name])
+  b.pressed.connect(func():
+   select_army(id))
+  pins_root.add_child(b)
+  army_banners[id] = b
  for id in army_figures.keys():
   if not id in ui_data.army_ids():
    army_figures[id].queue_free()
    army_figures.erase(id)
+   if army_banners.has(id):
+    army_banners[id].queue_free()
+    army_banners.erase(id)
  place_commander()
 
 # Put each figure where the campaign state says its army is (garrisoned armies stand in the town).
+# --- Lords on the map (data/campaign_view.json) ----------------------------------------------
+# Lords are oversized for readability (about 2x the prototype figure), never smaller on screen than
+# min_figure_px, and carry a floating faction banner that shrinks a little far out and fades when the
+# camera is very close.
+var army_banners = {}
+var view_cfg = {}
+
+func campaign_view() -> Dictionary:
+ if view_cfg.is_empty(): view_cfg = JSON.parse_string(FileAccess.get_file_as_string("res://data/campaign_view.json"))
+ return view_cfg
+
+# The figure scale for an army figure at its position (lord_scale, raised to keep min_figure_px).
+func figure_scale(at: Vector3) -> float:
+ var v = campaign_view()
+ var s = float(v.lord_scale)
+ if camera == null or camera.is_position_behind(at): return s
+ var px_per_m = camera.unproject_position(at).distance_to(camera.unproject_position(at+Vector3.UP))
+ var px = px_per_m*float(v.figure_height)*s
+ if px>0.01 and px<float(v.min_figure_px): s *= float(v.min_figure_px)/px
+ return s
+
+func update_army_presentation():
+ var v = campaign_view()
+ var near_far = clampf(inverse_lerp(18.0,210.0,distance),0.0,1.0)
+ var bscale = maxf(float(v.banner_min_scale),lerpf(float(v.banner_scale_near),float(v.banner_scale_far),near_far))
+ var fade = clampf(inverse_lerp(float(v.banner_fade_end),float(v.banner_fade_start),distance),0.0,1.0)
+ for id in army_figures:
+  var f = army_figures[id]
+  var s = figure_scale(f.position)
+  f.scale = Vector3.ONE*s
+  if not army_banners.has(id): continue
+  var b = army_banners[id]
+  var top = f.position+Vector3(0,float(v.figure_height)*s+float(v.banner_lift)*s,0)
+  b.visible = f.visible and overlays.armies and fade>0.01 and not camera.is_position_behind(top)
+  if not b.visible: continue
+  b.set_banner_scale(bscale)
+  b.modulate.a = fade
+  b.position = camera.unproject_position(top)-b.anchor_offset()
+  b.set_selected(selected_army_id() == id)
+
 func place_commander():
  for id in army_figures:
   if walks.has(id): continue
@@ -1164,8 +1216,10 @@ func pick(screen: Vector2) -> String:
  for id in army_figures:
   var f = army_figures[id]
   if not f.visible or camera.is_position_behind(f.position): continue
-  var c = camera.unproject_position(f.position+Vector3(0,2.2,0))
-  if c.distance_to(screen)<_screen_radius(f.position,2.6,26): return "army:"+id
+  # The figure is scaled (lords are oversized): its click target scales with it.
+  var fs = f.scale.x
+  var c = camera.unproject_position(f.position+Vector3(0,2.2*fs,0))
+  if c.distance_to(screen)<_screen_radius(f.position,2.6*fs,26): return "army:"+id
  for id in settlement_anchors:
   var a = settlement_anchors[id]
   var center = ground(Vector2(a.x,a.z),2.0) if id != GOLDSPIRE_ID else Vector3(a.x,12,a.z)
@@ -1336,6 +1390,7 @@ func _process(delta):
   var c = army_figures[follow_id].position
   target = target.lerp(Vector3(c.x,c.y+2.2,c.z),minf(1,delta*4))
  camera_update(delta)
+ update_army_presentation()
  for p in pins:
   var b = p.button
   # Hold Space (TW:WH3 overlays): settlement banners at any zoom.

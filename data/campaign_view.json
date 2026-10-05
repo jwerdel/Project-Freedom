@@ -1,0 +1,12 @@
+{
+  "_note": "Campaign-map presentation (not gameplay). Lord and hero figures are deliberately oversized (constitution, Art direction: campaign map scale); lord_scale multiplies the prototype commander figure (about 4.4 m to the helmet top at scale 1). min_figure_px keeps a figure at least this tall on screen when zoomed out. Army banners (ui/army_banner.gd) float banner_lift metres above the figure's top, at banner_scale_near (camera closest) to banner_scale_far (farthest 3D zoom), never below banner_min_scale, and fade out between banner_fade_start and banner_fade_end metres of camera distance when zoomed very close. Owner, 2026-10-04: lords about 2x, tuned against the TW:WH3 reference (docs/reference/tw/).",
+  "lord_scale": 2.0,
+  "figure_height": 4.4,
+  "min_figure_px": 56,
+  "banner_lift": 1.2,
+  "banner_scale_near": 1.15,
+  "banner_scale_far": 0.8,
+  "banner_min_scale": 0.75,
+  "banner_fade_start": 30.0,
+  "banner_fade_end": 16.0
+}
