@@ -167,6 +167,21 @@ func _ready():
   distance = desired_distance
  for arg in OS.get_cmdline_user_args():
   if arg.begins_with("--select="): select_settlement(arg.get_slice("=",1))
+ # --lord-at=<settlement>,<dx>,<dz>[,<distance>] (captures): the host's lord stands at that offset from the
+ # settlement, framed with it from a fixed camera (lord-scale comparisons).
+ for arg in OS.get_cmdline_user_args():
+  if arg.begins_with("--lord-at="):
+   var parts = arg.get_slice("=",1).split(",")
+   var sp = WorldMap.settlement_position(parts[0])
+   var lp = sp+Vector2(float(parts[1]),float(parts[2]))
+   ui_data.state.army_state[COMMANDER_ARMY].position = [lp.x,lp.y]
+   ui_data.state.army_state[COMMANDER_ARMY].garrison = ""
+   place_commander()
+   target = ground(sp.lerp(lp,0.4),3.0)
+   desired_distance = float(parts[3]) if parts.size()>3 else 46.0
+   distance = desired_distance
+   yaw = 0.42
+   set_pitch(0.40)
  for arg in OS.get_cmdline_user_args():
   if arg.begins_with("--build=") and ui.selected_settlement != "":
    var b = arg.get_slice("=",1)
