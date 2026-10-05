@@ -189,6 +189,17 @@ static func take_turns_sliced(state,opts: Dictionary,slicer,progress := Callable
    var tf = Time.get_ticks_usec()
    var c = _faction_begin(state,f)
    for step in FACTION_STEPS:
+    if step == 6:
+     # Army orders one army at a time (a big faction's orders can take a while).
+     var busy = _command_prelude(state,f,c.look,report)
+     for id in field_armies(state,f):
+      _army_order(state,id,f,c.p,c.look,report,opts,controlled,busy)
+      if slicer.over():
+       _in_phase = false
+       await slicer.next_frame()
+       _in_phase = true
+       _invalidate()
+     continue
     _faction_step(step,state,f,c,report,opts,controlled)
     if slicer.over() and step<FACTION_STEPS-1:
      _in_phase = false
@@ -492,7 +503,7 @@ static func attack_odds(state,army_id: String,target: Dictionary) -> float:
 static func curve_odds(ratio: float) -> float:
  return 1.0/(1.0+exp(-float(data().odds.curve_k)*(ratio-1.0)))
 
-static func _command(state,f: String,p: Dictionary,look: Dictionary,report: Dictionary,opts: Dictionary,controlled: Array):
+static func _command(state,f: String,p: Dictionary,look: Dictionary,report: Dictionary,opts: Dictionary,controlled: Array,prelude_only = null):
  var d = data()
  var busy = {}
  # 0. Armies besieging hold while the siege can still win.
@@ -525,13 +536,24 @@ static func _command(state,f: String,p: Dictionary,look: Dictionary,report: Dict
    if r.ok:
     busy[id] = true
     report.actions.append({"action":"defend","faction":f,"army":id,"settlement":sid})
+ if prelude_only != null:
+  prelude_only.busy = busy
+  return
  # 2.-5. Every other army: attack or besiege, flee, stage, rest.
- for id in field_armies(state,f):
-  if busy.has(id) or not state.army_state.has(id): continue
-  if _try_attack(state,id,f,p,look,report,opts,controlled): continue
-  if _flee(state,id,f,report): continue
-  if _stage(state,id,f,p,look,report): continue
-  _rest(state,id,f,report)
+ for id in field_armies(state,f): _army_order(state,id,f,p,look,report,opts,controlled,busy)
+
+# Steps 0-1 of _command; returns the armies they took (the sliced turn then orders the rest one by one).
+static func _command_prelude(state,f: String,look: Dictionary,report: Dictionary) -> Dictionary:
+ var c = {"busy":{}}
+ _command(state,f,{},look,report,{},[],c)
+ return c.busy
+
+static func _army_order(state,id: String,f: String,p: Dictionary,look: Dictionary,report: Dictionary,opts: Dictionary,controlled: Array,busy: Dictionary):
+ if busy.has(id) or not state.army_state.has(id): return
+ if _try_attack(state,id,f,p,look,report,opts,controlled): return
+ if _flee(state,id,f,report): return
+ if _stage(state,id,f,p,look,report): return
+ _rest(state,id,f,report)
 
 static func _try_attack(state,id: String,f: String,p: Dictionary,look: Dictionary,report: Dictionary,opts: Dictionary,controlled: Array) -> bool:
  var d = data()

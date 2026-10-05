@@ -23,6 +23,11 @@ var frames := 0
 
 func _ready():
  var args = Array(OS.get_cmdline_user_args())
+ # The release benchmark export (preset "Windows Benchmark", feature tag "benchmark") runs the scale
+ # benchmark instead of the menu (scripts/scale_bench.gd).
+ if OS.has_feature("benchmark"):
+  get_tree().root.add_child.call_deferred(load("res://scripts/scale_bench.gd").new())
+  return
  var direct = args.any(func(a): return a in CAMPAIGN_FLAGS or a.begins_with("--seed="))
  if direct and not "--menu" in args:
   get_tree().change_scene_to_file.call_deferred(Session.CAMPAIGN_SCENE)

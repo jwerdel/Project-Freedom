@@ -752,6 +752,46 @@ The screenshots were taken before three small follow-ups, which have not been re
 
 **Not built:** the SVG and JSON authoring parser, the validator and debug overlay, the runtime map scene (P3), and the test map rebuilt through the pipeline (P5).
 
+## Scale fixes and final CPU budgets (2026-10-04)
+
+Option 3 (owner): fix first, then set final budgets from measured numbers. Measured on synthetic600 (mid-game worst case: every region owned, 150 factions, 500 armies), headless, Ryzen 7 5700X3D. Release numbers come from the "Windows Benchmark" export (official 4.7.2 templates, SHA-512 verified, `scripts/get_export_templates.ps1`).
+
+**The five planned fixes:**
+1. **Enemy blocking:** cached as an incremental index, per faction. Cell counts for every area and per faction; only armies that moved and settlements that changed hands are recomputed; synced once per frame per faction. Switching factions touches only their own cells.
+2. **Pathfinding grid:** built in bulk from row runs baked at map build time, one native fill per run.
+3. **Hierarchical pathing (HPA\*):**
+   - stored least-cost paths between every pair of border crossings of a region (6,791 on synthetic600, 8 s at build);
+   - region parts (ridge-separated areas), so start and goal legs stay short;
+   - a connected-components raster for an instant "no route".
+4. **AI:**
+   - a per-turn odds budget (`data/ai.json` odds.turn_budget 24, rotating eligibility when factions outnumber it);
+   - End Turn spread over frames (yearly steps, each faction's seven AI steps, and army orders one army at a time), with identical results to the one-frame version (tested) and a "The world takes its turn n / N" line.
+5. **Saves:**
+   - the main thread copies the state; encoding and the atomic write run on a worker thread;
+   - every reader waits for pending writes;
+   - a small `.meta` sidecar replaces parsing whole saves for slot lists and the save counter.
+
+Also: spatial buckets for AI target scans and settlement lookups, and inlined path costing.
+
+**Synthetic map change:** the generator now cuts passes through its ridges, following the design rule "ranges impassable except at passes". The earlier ridges formed closed mazes no authored map will have. Path numbers on the old maze-like map (debug, after fixes 1–2): 95th percentile 64–164 ms.
+
+**Results:**
+
+| Measurement | Before (debug) | After, debug | After, release | Final budget (release) | |
+|---|---|---|---|---|---|
+| End Turn, all AI, one frame | 14.1–28.8 s | 4.6–5.0 s | 3.1–3.6 s | — | |
+| End Turn as the game runs it (spread over frames) | — | 4.4 s, 265 frames | 3.0 s, 190 frames | ≤ 10 s, UI responsive | met |
+| Longest stretch without a frame during End Turn | whole turn | 75 ms | 58 ms | UI responsive | met (one ~58 ms stall per turn; ordinary frames do ≤ 12 ms of turn work) |
+| Path plan, 95th percentile (60 / 150 / 400 / 1,000 m) | 127–137 ms median | 2.8 / 4.1 / 3.3 / 3.5 ms | 2.0 / 3.1 / 2.9 / 3.4 ms | ≤ 5 ms | met |
+| Path plan, median | — | 1.2–1.9 ms | 1.0–1.7 ms | | |
+| Path plan, worst of 100 | — | 18 / 63 / 4 / 4 ms | 20 / 54 / 4 / 4 ms | | over 5 ms for a few short moves across a ridge |
+| First plan of a session (builds the grid) | 11.4–12.4 s | 166 ms | 152 ms | | |
+| Save, main thread | 213–221 ms | 10.8 ms | 9.8 ms | ≤ 100 ms | met (background write 133 ms) |
+| Load save | 467 ms | 120–230 ms | 155 ms | ≤ 3 s | met |
+| Campaign load (gameplay data) | 0.92 s | 0.27 s | 0.11 s | ≤ 10 s | met |
+| Memory after 3 turns | 226 MB | 266 MB | not measured (the counter is debug-only) | ≤ 2.5 GB | met |
+
+
 ## Remaining limitations
 
 - Artwork is a prototype and has not been approved against the desired 2016 Total War campaign-map benchmark.

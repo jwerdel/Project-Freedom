@@ -84,7 +84,8 @@ Godot 4.7.2 fantasy strategy game. Personal project; free and local only.
 - Prototype self-test and screenshot capture (quits when done, writes `captures/overview.png`):
   `runtime\Godot.exe --path . -- --capture --self-test` (add `--developed`, `--closeup`, or `--hero` for other views). Set `APPDATA`/`LOCALAPPDATA` to `.local\...` as the launcher does to keep runtime data in the project.
 - When a change must not alter visuals, compare before/after captures.
-- Export preset "Windows Desktop" (`export_presets.cfg`) includes `*.json` so the manifest ships, and excludes `addons/gut/*`, `tests/*` and the synthetic test maps (`data/maps/synthetic*/*`). Keep non-resource data files covered by its include filter. A full `.exe` export needs Godot 4.7.2 export templates (not installed); `--export-pack "Windows Desktop" build/x.pck` works without them.
+- Export preset "Windows Desktop" (`export_presets.cfg`) includes `*.json` so the manifest ships, and excludes `addons/gut/*`, `tests/*` and the synthetic test maps (`data/maps/synthetic*/*`). Keep non-resource data files covered by its include filter. Export templates for 4.7.2 install with `powershell -ExecutionPolicy Bypass -File scriptsget_export_templates.ps1` (official .tpz, SHA-512 pinned, Windows templates only, into `runtimeditor_dataxport_templates`, outside git); then `runtimeGodot.exe --headless --path . --export-release "Windows Desktop" build/windows/ProjectFreedom.exe`.
+- Scale benchmark (synthetic 600-region map; build it first with `-s scripts/build_map.gd -- --map=synthetic600`): debug `runtimeGodot.exe --headless --path . -s scripts/scale_test.gd -- --turns=2 --out=<file>`; release: export the "Windows Benchmark" preset (feature tag `benchmark`: the main menu hands over to `scripts/scale_bench.gd`) and run `buildenchmarkProjectFreedomBench.exe --headless -- --turns=2 --out=<file>` (release builds print no console output, so use `--out`).
 
 ## Godot windows
 
