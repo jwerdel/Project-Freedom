@@ -222,6 +222,8 @@ func _open_strategic():
  strategic.setup(UiData.new(state),Rect2(Vector2(MapRegistry.meta().origin[0],MapRegistry.meta().origin[1]),size))
  strategic.set_layer(_arg("--layer=","affiliation"))
  strategic.open_map(true)
+ # As in the game (main.gd): nothing 3D renders behind the opaque strategic map.
+ get_viewport().disable_3d = true
 
 # --- Measurement and capture -----------------------------------------------------------------------
 

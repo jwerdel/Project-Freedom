@@ -792,6 +792,68 @@ Also: spatial buckets for AI target scans and settlement lookups, and inlined pa
 | Memory after 3 turns | 226 MB | 266 MB | not measured (the counter is debug-only) | ≤ 2.5 GB | met |
 
 
+## Lords, living settlements and changing land (2026-10-04) — STOPPED on GPU budgets
+
+**Lords (Part 2):**
+- Figures are drawn 2x on the campaign map (`data/campaign_view.json`), never below 56 px on screen.
+- Every army has a floating faction banner that is clickable, shrinks a little far out and fades very close.
+- Click targets scale with the figure.
+- Before/after captures from the same cameras: `captures/lord_city_compare.png`, `lord_overview_compare.png`, `lord_goldspire_compare.png`.
+
+**Living settlements and changing land (Part 3):**
+- **Decisions:** confirmed in game-design §12.13 and the constitution; implementation in design Addendum A.
+- **Built:**
+  - culture biome profiles (`data/cultures.json`);
+  - procedural sprawl (`map/sprawl.gd`, `data/settlement_sprawl.json`) with countryside features per building chain, drawn as MultiMeshes of low-poly kit pieces (`visuals/kits/`, manifest `kit.*`: Quaternius RTS models plus Kenney CC0 castle and town pieces);
+  - land conversion with the climate yield factor (`core/land.gd`, an End Turn stage, save schema 5);
+  - the pipeline 3D runtime: chunked GPU-displaced terrain with four LODs, a culture and conversion terrain shader, sea, streamed trees and settlements (`map/map_view.gd`, `map/map_scene.tscn`);
+  - the strategic map's Culture layer.
+- **Region sizing (Addendum A.5):** the synthetic world grew to 5,632 × 3,584 m (regions about 120 m apart).
+
+**CPU on the larger world** (release build): see the table below. The hierarchy now serves any move between region parts, and loads with the grid.
+
+**GPU** (RTX 4060, 1440×900; synthetic600; "worst" = every settlement a level-3 city or fortress with farms, mines, port, market, temple, barracks and walls, and mixed conversion states, over the densest area):
+
+| View | GPU ms | Draw calls | Primitives | VRAM | |
+|---|---|---|---|---|---|
+| Farthest 3D zoom (210 m), worst | 5.35 | **2,071** | 1.46 M | 245 MB | draw calls over the 1,500 budget |
+| Middle zoom (120 m), worst | 5.75 | **2,245** | 1.57 M | 245 MB | over |
+| Close (60 m), worst | 5.87 | **1,910** | 1.38 M | 245 MB | over |
+| Normal campaign view (150 m) | 7.48 | 1,314 | 1.05 M | 243 MB | met |
+| Strategic map, Culture layer (3D off, as in the game) | **5.79** | 5,803 (2D) | 0.22 M | 209 MB | over the 3 ms budget |
+| Strategic map, Affiliation layer (3D off) | **5.85** | 5,876 (2D) | 0.22 M | 206 MB | over |
+
+GPU time is within the 8 ms 3D budget everywhere. VRAM is far below 2 GB.
+
+**Budgets blown:**
+- **3D draw calls in the worst case** (about 93 sprawling cities built near the camera, 28,000 kit pieces): the cities draw one MultiMesh per kit mesh, and each is drawn again in the four shadow cascades.
+- **The strategic map:** it still draws one polygon, border and label per region on the CPU (fine at 4 regions). The design (§6.4) already planned an ID-texture shader for V1 Varos.
+
+Stopped before Part 4, as instructed. Nothing was cut.
+
+**Visual state (honest):**
+- The sprawl, industry and conversion work and read clearly bigger than Lothern.
+- Still a first pass:
+  - the terrain is pale and washed out;
+  - fields and road strips are flat quads that do not follow slopes;
+  - Kenney's wall piece reads as a chunky block at this scale;
+  - strategic-map labels pile up at 600 regions.
+- Screenshots: `captures/city_small_large.png`, `farm_vs_mine.png`, `convert_grid.png` (0 / 3 / 6 / 9 turns, Greek to orc), `lothern_vs_level3.png`, `gpu_close_worst.png`, `synthetic_view.png`, `strategic_culture.png`, `strategic_affiliation.png`.
+
+**Also found and fixed:**
+- Headless imports had silently imported nothing since 2026-10-01. Godot tried to import `art_source/general_aurek/general_aurek.blend` through Blender and stalled. Fixed with `filesystem/import/blender/enabled=false` in project.godot; `art_source/` is untouched.
+
+**CPU on the larger world** (release build, after the pathfinding fix):
+
+| Measurement | Result | Budget | |
+|---|---|---|---|
+| Path plan 95th percentile, 60 / 150 / 400 / 1,000 m | 1.7 / 3.1 / 2.9 / 4.2 ms | ≤ 5 ms | met |
+| Path plan, worst of 100 | 48 / 99 / 7 / 8 ms | | a few short moves across a ridge |
+| Grid and hierarchy build, once per session | 245 ms | | |
+| End Turn as the game runs it | 2.9 s over 180 frames | ≤ 10 s | met |
+| Longest stall during End Turn | **192 ms** (one faction's step) | UI responsive | **regressed** from 58 ms on the smaller world. Debug comparison: 107 ms with the hierarchy for every cross-part move, 94 ms with the old 100 m threshold, so the cause is the larger world's AI steps, not the threshold |
+| Save, main thread | 12 ms | ≤ 100 ms | met |
+
 ## Remaining limitations
 
 - Artwork is a prototype and has not been approved against the desired 2016 Total War campaign-map benchmark.
