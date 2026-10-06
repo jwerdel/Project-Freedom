@@ -5,7 +5,7 @@
   "faction": "house_kells",
   "commander": {
     "unit": "commander",
-    "name": "Ser Edric Kells",
+    "name": "Ser Rowena Kells",
     "rank": 1
   },
   "units": [
@@ -15,15 +15,11 @@
     },
     {
       "unit": "archers",
-      "strength": 0.9
+      "strength": 0.95
     },
     {
       "unit": "peasant_levy",
-      "strength": 1.0
-    },
-    {
-      "unit": "peasant_levy",
-      "strength": 0.9
+      "strength": 0.85
     }
   ]
 }

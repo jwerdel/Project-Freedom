@@ -5,25 +5,21 @@
   "faction": "house_dunmoor",
   "commander": {
     "unit": "commander",
-    "name": "Ser Aldous Dunmoor",
+    "name": "Ser Osric Dunmoor",
     "rank": 1
   },
   "units": [
     {
       "unit": "spearmen",
-      "strength": 0.95
-    },
-    {
-      "unit": "archers",
-      "strength": 1.0
-    },
-    {
-      "unit": "peasant_levy",
       "strength": 0.9
     },
     {
-      "unit": "peasant_levy",
+      "unit": "archers",
       "strength": 0.95
+    },
+    {
+      "unit": "peasant_levy",
+      "strength": 0.8
     }
   ]
 }

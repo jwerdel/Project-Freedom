@@ -5,17 +5,13 @@
   "faction": "gen_sabellum",
   "commander": {
     "unit": "commander",
-    "name": "Cassia Sabellus",
+    "name": "Aulus Sabellus",
     "rank": 1
   },
   "units": [
     {
       "unit": "spearmen",
       "strength": 0.85
-    },
-    {
-      "unit": "archers",
-      "strength": 0.95
     },
     {
       "unit": "peasant_levy",

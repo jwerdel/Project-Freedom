@@ -5,7 +5,7 @@
   "faction": "theros",
   "commander": {
     "unit": "commander",
-    "name": "Demetria of Theros",
+    "name": "Phaedra of Theros",
     "rank": 2
   },
   "units": [
@@ -15,15 +15,15 @@
     },
     {
       "unit": "swordsmen",
-      "strength": 0.95
+      "strength": 0.9
     },
     {
       "unit": "archers",
-      "strength": 1.0
+      "strength": 0.9
     },
     {
       "unit": "heavy_infantry",
-      "strength": 0.95
+      "strength": 0.9
     },
     {
       "unit": "peasant_levy",
@@ -31,11 +31,11 @@
     },
     {
       "unit": "peasant_levy",
-      "strength": 0.9
+      "strength": 0.85
     },
     {
       "unit": "cavalry",
-      "strength": 0.9
+      "strength": 0.8
     }
   ]
 }

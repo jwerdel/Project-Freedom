@@ -5,29 +5,17 @@
   "faction": "snowtusk",
   "commander": {
     "unit": "commander",
-    "name": "Gruk Snowtusk",
+    "name": "Mogrot Snowtusk",
     "rank": 1
   },
   "units": [
     {
       "unit": "peasant_levy",
-      "strength": 0.9
-    },
-    {
-      "unit": "peasant_levy",
       "strength": 0.85
     },
     {
       "unit": "swordsmen",
-      "strength": 0.9
-    },
-    {
-      "unit": "swordsmen",
       "strength": 0.85
-    },
-    {
-      "unit": "spearmen",
-      "strength": 1.0
     }
   ]
 }

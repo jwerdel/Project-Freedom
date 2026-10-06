@@ -5,21 +5,17 @@
   "faction": "gen_elaia",
   "commander": {
     "unit": "commander",
-    "name": "Phaedra of Elaia",
+    "name": "Kallias of Elaia",
     "rank": 1
   },
   "units": [
     {
       "unit": "spearmen",
-      "strength": 0.95
-    },
-    {
-      "unit": "archers",
       "strength": 0.8
     },
     {
       "unit": "peasant_levy",
-      "strength": 0.9
+      "strength": 0.85
     }
   ]
 }

@@ -5,21 +5,17 @@
   "faction": "house_merrow",
   "commander": {
     "unit": "commander",
-    "name": "Ser Gareth Merrow",
+    "name": "Ser Osric Merrow",
     "rank": 1
   },
   "units": [
     {
       "unit": "spearmen",
-      "strength": 0.95
-    },
-    {
-      "unit": "archers",
       "strength": 0.9
     },
     {
-      "unit": "peasant_levy",
-      "strength": 0.8
+      "unit": "archers",
+      "strength": 0.85
     },
     {
       "unit": "peasant_levy",

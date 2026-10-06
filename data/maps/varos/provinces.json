@@ -1354,7 +1354,7 @@
       "settlement": {
         "name": "Barrowmere",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "coastal": false,
         "position": [
           4646.4,
@@ -1420,7 +1420,7 @@
       "settlement": {
         "name": "Blackpine Hold",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "coastal": false,
         "position": [
           5280.0,
@@ -1482,7 +1482,7 @@
       "settlement": {
         "name": "Bracke Hall",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "coastal": false,
         "position": [
           3590.4,
@@ -2428,7 +2428,7 @@
       "settlement": {
         "name": "Drakhaven",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "coastal": true,
         "position": [
           732.2,
@@ -2482,7 +2482,7 @@
       "settlement": {
         "name": "Dunmoor Keep",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "coastal": false,
         "position": [
           1689.6,
@@ -3084,7 +3084,7 @@
       "settlement": {
         "name": "Forkwatch",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "coastal": false,
         "position": [
           4012.8,
@@ -3863,7 +3863,7 @@
       "settlement": {
         "name": "Grimhollow",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "coastal": false,
         "position": [
           3308.8,
@@ -4209,7 +4209,7 @@
       "settlement": {
         "name": "Harrow Crossing",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "coastal": false,
         "position": [
           3449.6,
@@ -6424,7 +6424,7 @@
       "settlement": {
         "name": "Rowenhold",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "coastal": false,
         "position": [
           2182.4,
@@ -7511,7 +7511,7 @@
       "settlement": {
         "name": "Snowtusk Camp",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "coastal": false,
         "position": [
           1478.4,
@@ -7947,7 +7947,7 @@
       "settlement": {
         "name": "Stonefast",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "coastal": false,
         "position": [
           4646.4,
@@ -8522,7 +8522,7 @@
       "settlement": {
         "name": "Vael-Shoal",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "coastal": true,
         "position": [
           1379.8,

@@ -5,13 +5,13 @@
   "faction": "house_ashford",
   "commander": {
     "unit": "commander",
-    "name": "Ser Wendel Ashford",
+    "name": "Ser Harlan Ashford",
     "rank": 1
   },
   "units": [
     {
       "unit": "spearmen",
-      "strength": 0.8
+      "strength": 0.9
     },
     {
       "unit": "archers",
@@ -19,11 +19,7 @@
     },
     {
       "unit": "peasant_levy",
-      "strength": 1.0
-    },
-    {
-      "unit": "peasant_levy",
-      "strength": 0.95
+      "strength": 0.85
     }
   ]
 }

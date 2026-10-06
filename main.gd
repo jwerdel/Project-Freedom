@@ -131,6 +131,9 @@ func _ready():
  Settings.apply(get_tree())
  # First start with this map version: build its render cache behind the preparation screen (a
  # worker thread), then load the campaign again. Headless runs build it inline (map/map_view.gd).
+ # --map=<id> (captures, soaks): play that map instead of the default (New Campaign picks Varos itself).
+ for arg in OS.get_cmdline_user_args():
+  if arg.begins_with("--map=") and Session.pending_state == null: MapRegistry.set_active(arg.get_slice("=",1))
  if _needs_world_prep():
   preparing = true
   var prep = WorldPrepScreen.new(MapRegistry.active)
@@ -138,6 +141,9 @@ func _ready():
   add_child(prep)
   return
  early_state = _campaign()
+ # --faction=<id> (captures): play another house of the start (New Campaign chooses on its own screen).
+ for arg in OS.get_cmdline_user_args():
+  if arg.begins_with("--faction=") and loaded_from in ["","new"]: early_state.player_faction = arg.get_slice("=",1)
  pipeline = str(MapRegistry.meta().get("kind","")) == "pipeline"
  if pipeline and WorldMap.region(GOLDSPIRE_ID).get("settlement") is Dictionary: GOLDSPIRE = WorldMap.settlement_position(GOLDSPIRE_ID)
  var mine = early_state.armies_of(early_state.player_faction)
@@ -180,6 +186,7 @@ func _ready():
   return
  make_commander()
  make_ui()
+ if MapRegistry.active != MapRegistry.DEFAULT: target = overview_target()
  camera_update(1.0)
  if "--developed" in OS.get_cmdline_user_args():
   city_level = 3
@@ -1353,7 +1360,7 @@ func toggle_light():
  environment.ambient_light_energy = 0.42 if dusk else 0.60
 
 func reset_camera():
- target = OVERVIEW_TARGET
+ target = overview_target()
  yaw = OVERVIEW_YAW
  desired_distance = OVERVIEW_DISTANCE
  set_pitch(OVERVIEW_PITCH)
@@ -2259,3 +2266,17 @@ func _needs_world_prep() -> bool:
  if DisplayServer.get_name() == "headless": return false
  if str(MapRegistry.meta().get("kind","")) != "pipeline": return false
  return not load("res://map/map_bake.gd").render_cache_valid(MapRegistry.active)
+
+# Where the overview looks: the prototype's view on the test map; elsewhere the player's first army
+# (or seat), so a campaign opens on the player's own lands.
+func overview_target() -> Vector3:
+ if MapRegistry.active == MapRegistry.DEFAULT or ui_data == null: return OVERVIEW_TARGET
+ var s = ui_data.state
+ if s.army_state.has(COMMANDER_ARMY):
+  var p = Movement.position(s,COMMANDER_ARMY)
+  return Vector3(p.x,height_at(p.x,p.y),p.y)
+ var own = s.settlements_of(s.player_faction)
+ if not own.is_empty():
+  var q = WorldMap.settlement_position(own[0])
+  return Vector3(q.x,height_at(q.x,q.y),q.y)
+ return OVERVIEW_TARGET

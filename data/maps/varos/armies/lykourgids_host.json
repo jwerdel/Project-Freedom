@@ -15,15 +15,11 @@
     },
     {
       "unit": "archers",
-      "strength": 0.95
-    },
-    {
-      "unit": "peasant_levy",
       "strength": 0.9
     },
     {
       "unit": "peasant_levy",
-      "strength": 0.8
+      "strength": 1.0
     }
   ]
 }

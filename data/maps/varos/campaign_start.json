@@ -269,16 +269,24 @@
   "road_level": 1,
   "settlements": {
     "snowtusk_camp": {
-      "population": 1567,
+      "population": 2415,
       "buildings": [
         {
+          "chain": "mine",
+          "level": 1
+        },
+        {
           "chain": "walls",
+          "level": 2
+        },
+        {
+          "chain": "temple",
           "level": 1
         }
       ]
     },
     "rimefang": {
-      "population": 1331,
+      "population": 1490,
       "buildings": [
         {
           "chain": "walls",
@@ -287,16 +295,24 @@
       ]
     },
     "grimhollow": {
-      "population": 1272,
+      "population": 2800,
       "buildings": [
         {
+          "chain": "mine",
+          "level": 1
+        },
+        {
           "chain": "walls",
+          "level": 2
+        },
+        {
+          "chain": "temple",
           "level": 1
         }
       ]
     },
     "skullcairn": {
-      "population": 1219,
+      "population": 1367,
       "buildings": [
         {
           "chain": "walls",
@@ -305,8 +321,12 @@
       ]
     },
     "wardens_gate": {
-      "population": 4762,
+      "population": 5093,
       "buildings": [
+        {
+          "chain": "farm",
+          "level": 1
+        },
         {
           "chain": "walls",
           "level": 2
@@ -318,7 +338,7 @@
       ]
     },
     "rimeguard": {
-      "population": 1399,
+      "population": 1449,
       "buildings": [
         {
           "chain": "walls",
@@ -327,8 +347,12 @@
       ]
     },
     "frosthold": {
-      "population": 6964,
+      "population": 6649,
       "buildings": [
+        {
+          "chain": "farm",
+          "level": 1
+        },
         {
           "chain": "temple",
           "level": 1
@@ -336,20 +360,28 @@
       ]
     },
     "hearthwick": {
-      "population": 3057,
+      "population": 2860,
       "buildings": []
     },
     "dunmoor_keep": {
-      "population": 1435,
+      "population": 2939,
       "buildings": [
         {
+          "chain": "farm",
+          "level": 1
+        },
+        {
           "chain": "walls",
+          "level": 2
+        },
+        {
+          "chain": "temple",
           "level": 1
         }
       ]
     },
     "mirewick": {
-      "population": 3224,
+      "population": 3499,
       "buildings": [
         {
           "chain": "port",
@@ -358,7 +390,7 @@
       ]
     },
     "kellsford": {
-      "population": 6455,
+      "population": 6648,
       "buildings": [
         {
           "chain": "temple",
@@ -367,29 +399,45 @@
       ]
     },
     "barrowmere": {
-      "population": 1445,
+      "population": 2815,
       "buildings": [
         {
+          "chain": "farm",
+          "level": 1
+        },
+        {
           "chain": "walls",
+          "level": 2
+        },
+        {
+          "chain": "temple",
           "level": 1
         }
       ]
     },
     "coldbarrow": {
-      "population": 2770,
+      "population": 3170,
       "buildings": []
     },
     "rowenhold": {
-      "population": 1310,
+      "population": 2537,
       "buildings": [
         {
+          "chain": "farm",
+          "level": 1
+        },
+        {
           "chain": "walls",
+          "level": 2
+        },
+        {
+          "chain": "temple",
           "level": 1
         }
       ]
     },
     "greymere": {
-      "population": 3019,
+      "population": 3114,
       "buildings": [
         {
           "chain": "port",
@@ -398,16 +446,24 @@
       ]
     },
     "blackpine_hold": {
-      "population": 1579,
+      "population": 2662,
       "buildings": [
         {
+          "chain": "farm",
+          "level": 1
+        },
+        {
           "chain": "walls",
+          "level": 2
+        },
+        {
+          "chain": "temple",
           "level": 1
         }
       ]
     },
     "elkford": {
-      "population": 3124,
+      "population": 3608,
       "buildings": [
         {
           "chain": "port",
@@ -416,7 +472,7 @@
       ]
     },
     "lakewick": {
-      "population": 6919,
+      "population": 7479,
       "buildings": [
         {
           "chain": "temple",
@@ -425,12 +481,16 @@
       ]
     },
     "osricmere": {
-      "population": 2795,
+      "population": 3067,
       "buildings": []
     },
     "skyreach": {
-      "population": 5082,
+      "population": 4774,
       "buildings": [
+        {
+          "chain": "farm",
+          "level": 1
+        },
         {
           "chain": "walls",
           "level": 2
@@ -442,7 +502,7 @@
       ]
     },
     "highford": {
-      "population": 6954,
+      "population": 6445,
       "buildings": [
         {
           "chain": "temple",
@@ -451,7 +511,7 @@
       ]
     },
     "brightmere": {
-      "population": 6572,
+      "population": 8548,
       "buildings": [
         {
           "chain": "port",
@@ -464,11 +524,11 @@
       ]
     },
     "stonewick": {
-      "population": 2841,
+      "population": 3081,
       "buildings": []
     },
     "caeloth": {
-      "population": 12022,
+      "population": 15897,
       "buildings": [
         {
           "chain": "walls",
@@ -481,7 +541,7 @@
       ]
     },
     "pilgrims_ford": {
-      "population": 7437,
+      "population": 7406,
       "buildings": [
         {
           "chain": "temple",
@@ -490,20 +550,28 @@
       ]
     },
     "harrow_crossing": {
-      "population": 1415,
+      "population": 2505,
       "buildings": [
         {
+          "chain": "farm",
+          "level": 1
+        },
+        {
           "chain": "walls",
+          "level": 2
+        },
+        {
+          "chain": "temple",
           "level": 1
         }
       ]
     },
     "harrowfield": {
-      "population": 3497,
+      "population": 3419,
       "buildings": []
     },
     "stillwater": {
-      "population": 7077,
+      "population": 8342,
       "buildings": [
         {
           "chain": "temple",
@@ -512,24 +580,32 @@
       ]
     },
     "merrowmere": {
-      "population": 3496,
+      "population": 3037,
       "buildings": []
     },
     "bracke_hall": {
-      "population": 1486,
+      "population": 2764,
       "buildings": [
         {
+          "chain": "farm",
+          "level": 1
+        },
+        {
           "chain": "walls",
+          "level": 2
+        },
+        {
+          "chain": "temple",
           "level": 1
         }
       ]
     },
     "fennick": {
-      "population": 3319,
+      "population": 3184,
       "buildings": []
     },
     "ashford": {
-      "population": 7496,
+      "population": 7464,
       "buildings": [
         {
           "chain": "temple",
@@ -538,25 +614,38 @@
       ]
     },
     "ashwick": {
-      "population": 3260,
+      "population": 3509,
       "buildings": []
     },
     "forkwatch": {
-      "population": 1361,
+      "population": 2692,
       "buildings": [
         {
+          "chain": "farm",
+          "level": 1
+        },
+        {
           "chain": "walls",
+          "level": 2
+        },
+        {
+          "chain": "temple",
           "level": 1
         }
       ]
     },
     "twinford": {
-      "population": 3331,
+      "population": 3594,
       "buildings": []
     },
     "goldspire_rock": {
-      "population": 6633,
+      "population": 7190,
       "buildings": [
+        {
+          "chain": "mine",
+          "level": 2,
+          "name": "Gold Mines"
+        },
         {
           "chain": "port",
           "level": 1
@@ -568,7 +657,7 @@
       ]
     },
     "silverfall": {
-      "population": 7241,
+      "population": 7272,
       "buildings": [
         {
           "chain": "port",
@@ -581,7 +670,7 @@
       ]
     },
     "theros": {
-      "population": 12600,
+      "population": 15052,
       "buildings": [
         {
           "chain": "port",
@@ -598,7 +687,7 @@
       ]
     },
     "kallipolis": {
-      "population": 7115,
+      "population": 6913,
       "buildings": [
         {
           "chain": "temple",
@@ -607,7 +696,7 @@
       ]
     },
     "kyme": {
-      "population": 15151,
+      "population": 12438,
       "buildings": [
         {
           "chain": "port",
@@ -624,7 +713,7 @@
       ]
     },
     "lykon": {
-      "population": 7862,
+      "population": 6911,
       "buildings": [
         {
           "chain": "port",
@@ -637,7 +726,7 @@
       ]
     },
     "elaia": {
-      "population": 6422,
+      "population": 6872,
       "buildings": [
         {
           "chain": "temple",
@@ -646,11 +735,11 @@
       ]
     },
     "myrtos": {
-      "population": 2839,
+      "population": 3326,
       "buildings": []
     },
     "delos_minor": {
-      "population": 8181,
+      "population": 7746,
       "buildings": [
         {
           "chain": "port",
@@ -663,8 +752,12 @@
       ]
     },
     "brinecrag": {
-      "population": 5428,
+      "population": 5132,
       "buildings": [
+        {
+          "chain": "farm",
+          "level": 1
+        },
         {
           "chain": "port",
           "level": 1
@@ -680,7 +773,7 @@
       ]
     },
     "mor_skerry": {
-      "population": 6470,
+      "population": 8017,
       "buildings": [
         {
           "chain": "port",
@@ -693,33 +786,41 @@
       ]
     },
     "drakhaven": {
-      "population": 1266,
+      "population": 3012,
       "buildings": [
+        {
+          "chain": "farm",
+          "level": 1
+        },
         {
           "chain": "port",
           "level": 1
         },
         {
           "chain": "walls",
-          "level": 1
+          "level": 2
         }
       ]
     },
     "vael_shoal": {
-      "population": 1214,
+      "population": 2477,
       "buildings": [
+        {
+          "chain": "farm",
+          "level": 1
+        },
         {
           "chain": "port",
           "level": 1
         },
         {
           "chain": "walls",
-          "level": 1
+          "level": 2
         }
       ]
     },
     "highbloom": {
-      "population": 6891,
+      "population": 7681,
       "buildings": [
         {
           "chain": "temple",
@@ -728,11 +829,11 @@
       ]
     },
     "orchardium": {
-      "population": 2918,
+      "population": 3567,
       "buildings": []
     },
     "oldstone_citadel": {
-      "population": 8484,
+      "population": 8186,
       "buildings": [
         {
           "chain": "port",
@@ -745,7 +846,7 @@
       ]
     },
     "port_dallow": {
-      "population": 3084,
+      "population": 2871,
       "buildings": [
         {
           "chain": "port",
@@ -754,7 +855,7 @@
       ]
     },
     "fossum": {
-      "population": 7637,
+      "population": 8026,
       "buildings": [
         {
           "chain": "temple",
@@ -763,11 +864,11 @@
       ]
     },
     "vinaria": {
-      "population": 3444,
+      "population": 3487,
       "buildings": []
     },
     "crownhaven": {
-      "population": 15036,
+      "population": 14276,
       "buildings": [
         {
           "chain": "walls",
@@ -780,8 +881,16 @@
       ]
     },
     "varrenum": {
-      "population": 6488,
+      "population": 7293,
       "buildings": [
+        {
+          "chain": "market",
+          "level": 1
+        },
+        {
+          "chain": "farm",
+          "level": 1
+        },
         {
           "chain": "temple",
           "level": 1
@@ -789,7 +898,7 @@
       ]
     },
     "tullanum": {
-      "population": 7800,
+      "population": 7366,
       "buildings": [
         {
           "chain": "temple",
@@ -798,11 +907,11 @@
       ]
     },
     "aquilia": {
-      "population": 3287,
+      "population": 3576,
       "buildings": []
     },
     "corvinium": {
-      "population": 6641,
+      "population": 8401,
       "buildings": [
         {
           "chain": "temple",
@@ -811,7 +920,7 @@
       ]
     },
     "sabellum": {
-      "population": 6409,
+      "population": 6418,
       "buildings": [
         {
           "chain": "temple",
@@ -820,7 +929,7 @@
       ]
     },
     "aemerium": {
-      "population": 14663,
+      "population": 15670,
       "buildings": [
         {
           "chain": "walls",
@@ -833,7 +942,7 @@
       ]
     },
     "lucentia": {
-      "population": 7575,
+      "population": 7133,
       "buildings": [
         {
           "chain": "port",
@@ -846,7 +955,7 @@
       ]
     },
     "septimium": {
-      "population": 7872,
+      "population": 6815,
       "buildings": [
         {
           "chain": "temple",
@@ -855,7 +964,7 @@
       ]
     },
     "castra_nova": {
-      "population": 1602,
+      "population": 1219,
       "buildings": [
         {
           "chain": "walls",
@@ -864,8 +973,12 @@
       ]
     },
     "tempest_keep": {
-      "population": 4186,
+      "population": 4762,
       "buildings": [
+        {
+          "chain": "farm",
+          "level": 1
+        },
         {
           "chain": "port",
           "level": 1
@@ -881,7 +994,7 @@
       ]
     },
     "stormhaven": {
-      "population": 7161,
+      "population": 7499,
       "buildings": [
         {
           "chain": "port",
@@ -894,8 +1007,12 @@
       ]
     },
     "skulkmire": {
-      "population": 5357,
+      "population": 4457,
       "buildings": [
+        {
+          "chain": "farm",
+          "level": 1
+        },
         {
           "chain": "walls",
           "level": 2
@@ -907,7 +1024,7 @@
       ]
     },
     "rainwick": {
-      "population": 8298,
+      "population": 7166,
       "buildings": [
         {
           "chain": "temple",
@@ -916,8 +1033,12 @@
       ]
     },
     "emberdeep": {
-      "population": 4359,
+      "population": 4922,
       "buildings": [
+        {
+          "chain": "mine",
+          "level": 1
+        },
         {
           "chain": "walls",
           "level": 2
@@ -929,7 +1050,7 @@
       ]
     },
     "karak_durn": {
-      "population": 1586,
+      "population": 1410,
       "buildings": [
         {
           "chain": "walls",
@@ -938,16 +1059,24 @@
       ]
     },
     "stonefast": {
-      "population": 1235,
+      "population": 2410,
       "buildings": [
         {
+          "chain": "mine",
+          "level": 1
+        },
+        {
           "chain": "walls",
+          "level": 2
+        },
+        {
+          "chain": "temple",
           "level": 1
         }
       ]
     },
     "redgate_pass": {
-      "population": 1441,
+      "population": 1445,
       "buildings": [
         {
           "chain": "walls",

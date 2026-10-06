@@ -5,7 +5,7 @@
   "faction": "gen_rainwick",
   "commander": {
     "unit": "commander",
-    "name": "Marius Rainwick",
+    "name": "Octavia Rainwick",
     "rank": 1
   },
   "units": [
@@ -14,12 +14,8 @@
       "strength": 0.9
     },
     {
-      "unit": "archers",
-      "strength": 0.9
-    },
-    {
       "unit": "peasant_levy",
-      "strength": 0.85
+      "strength": 0.95
     }
   ]
 }

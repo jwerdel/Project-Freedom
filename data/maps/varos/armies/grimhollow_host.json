@@ -14,20 +14,8 @@
       "strength": 0.9
     },
     {
-      "unit": "peasant_levy",
-      "strength": 0.85
-    },
-    {
-      "unit": "swordsmen",
-      "strength": 0.85
-    },
-    {
       "unit": "swordsmen",
       "strength": 1.0
-    },
-    {
-      "unit": "spearmen",
-      "strength": 0.9
     }
   ]
 }

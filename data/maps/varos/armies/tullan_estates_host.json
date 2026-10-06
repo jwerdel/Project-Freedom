@@ -5,25 +5,21 @@
   "faction": "tullan_estates",
   "commander": {
     "unit": "commander",
-    "name": "Octavia Tullan",
+    "name": "Aulus Tullan",
     "rank": 1
   },
   "units": [
     {
       "unit": "spearmen",
-      "strength": 1.0
+      "strength": 0.95
     },
     {
       "unit": "archers",
-      "strength": 0.85
+      "strength": 0.95
     },
     {
       "unit": "peasant_levy",
-      "strength": 0.8
-    },
-    {
-      "unit": "peasant_levy",
-      "strength": 1.0
+      "strength": 0.9
     }
   ]
 }

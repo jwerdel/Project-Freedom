@@ -15,19 +15,19 @@
     },
     {
       "unit": "swordsmen",
-      "strength": 0.9
+      "strength": 1.0
     },
     {
       "unit": "archers",
-      "strength": 0.9
+      "strength": 0.95
     },
     {
       "unit": "heavy_infantry",
-      "strength": 0.9
+      "strength": 0.85
     },
     {
       "unit": "peasant_levy",
-      "strength": 0.85
+      "strength": 0.9
     },
     {
       "unit": "peasant_levy",

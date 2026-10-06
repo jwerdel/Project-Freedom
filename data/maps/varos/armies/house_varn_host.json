@@ -5,7 +5,7 @@
   "faction": "house_varn",
   "commander": {
     "unit": "commander",
-    "name": "Ser Edric Varn",
+    "name": "Ser Wendel Varn",
     "rank": 3
   },
   "units": [
@@ -26,20 +26,12 @@
       "strength": 0.95
     },
     {
-      "unit": "archers",
+      "unit": "peasant_levy",
       "strength": 1.0
     },
     {
-      "unit": "heavy_infantry",
-      "strength": 0.9
-    },
-    {
-      "unit": "peasant_levy",
-      "strength": 0.85
-    },
-    {
       "unit": "cavalry",
-      "strength": 0.85
+      "strength": 0.9
     }
   ]
 }

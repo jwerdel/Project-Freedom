@@ -37,7 +37,8 @@
         "cavalry_min": 2
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The North"
     },
     "house_varrenus": {
       "name": "House Varrenus",
@@ -72,7 +73,8 @@
         "default": "line"
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Crownlands"
     },
     "the_aurekids": {
       "name": "The Aurekids of Goldspire Rock",
@@ -107,7 +109,8 @@
       },
       "general_traits": [],
       "placeholder_assignment": true,
-      "patron": "merovan"
+      "patron": "merovan",
+      "realm": "The Westerlands Coast"
     },
     "house_aldane": {
       "name": "House Aldane of Skyreach",
@@ -139,7 +142,8 @@
         "cavalry_min": 2
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Vale"
     },
     "wardens": {
       "name": "The Wardens of the Greywall",
@@ -171,7 +175,8 @@
         "cavalry_min": 2
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Greywall"
     },
     "house_corvinus": {
       "name": "House Corvinus",
@@ -202,7 +207,8 @@
         "default": "line"
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Crownlands"
     },
     "house_aemerius": {
       "name": "House Aemerius",
@@ -232,7 +238,8 @@
         "default": "line"
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Crownlands"
     },
     "house_durran": {
       "name": "House Durran of Tempest Keep",
@@ -263,7 +270,8 @@
         "default": "line"
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Stormlands"
     },
     "theros": {
       "name": "The Free City of Theros",
@@ -294,7 +302,8 @@
       },
       "general_traits": [],
       "placeholder_assignment": true,
-      "patron": "thalor"
+      "patron": "thalor",
+      "realm": "The Westerlands Coast"
     },
     "kyme": {
       "name": "The Philandrid Tyranny of Kyme",
@@ -325,7 +334,8 @@
       },
       "general_traits": [],
       "placeholder_assignment": true,
-      "patron": "kael"
+      "patron": "kael",
+      "realm": "The Westerlands Coast"
     },
     "throne_church": {
       "name": "Caeloth, the Throne Church",
@@ -356,6 +366,7 @@
       },
       "general_traits": [],
       "placeholder_assignment": true,
+      "realm": "The Middle Marches",
       "untouchable": true
     },
     "hold_emberdeep": {
@@ -384,7 +395,8 @@
         "default": "shield_wall"
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Red Peaks"
     },
     "reavers_brinecrag": {
       "name": "The Reavers of Brinecrag",
@@ -417,7 +429,8 @@
         "cavalry_min": 1
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Western Isles"
     },
     "skulkmire_brood": {
       "name": "The Skulkmire Brood",
@@ -447,7 +460,8 @@
         "default": "levy_swarm"
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Stormlands"
     },
     "house_dunmoor": {
       "name": "House Dunmoor",
@@ -478,7 +492,8 @@
         "cavalry_min": 2
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The North"
     },
     "house_kells": {
       "name": "House Kells of the Barrowlands",
@@ -507,7 +522,8 @@
         "cavalry_min": 2
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The North"
     },
     "house_rowen": {
       "name": "House Rowen",
@@ -534,7 +550,8 @@
         "cavalry_min": 2
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The North"
     },
     "barrow_lords": {
       "name": "The Barrow-lords",
@@ -561,7 +578,8 @@
         "cavalry_min": 2
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The North"
     },
     "house_tollan": {
       "name": "House Tollan of Harrow Crossing",
@@ -588,7 +606,8 @@
         "cavalry_min": 2
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Middle Marches"
     },
     "house_merrow": {
       "name": "House Merrow of Stillwater",
@@ -615,7 +634,8 @@
         "cavalry_min": 2
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Middle Marches"
     },
     "house_bracke": {
       "name": "House Bracke",
@@ -642,7 +662,8 @@
         "cavalry_min": 2
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Middle Marches"
     },
     "house_ashford": {
       "name": "House Ashford",
@@ -669,7 +690,8 @@
         "cavalry_min": 2
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Middle Marches"
     },
     "tullan_estates": {
       "name": "The Tullan Estates",
@@ -698,7 +720,8 @@
         "default": "line"
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Crownlands"
     },
     "port_dallow": {
       "name": "Port Dallow",
@@ -727,7 +750,8 @@
         "default": "line"
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Reach"
     },
     "house_fossa": {
       "name": "House Fossa",
@@ -752,7 +776,8 @@
         "default": "line"
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Reach"
     },
     "house_verrin": {
       "name": "House Verrin of Highbloom",
@@ -781,7 +806,8 @@
         "default": "line"
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Reach"
     },
     "the_lannetids": {
       "name": "The Lannetids of Silverfall",
@@ -811,7 +837,8 @@
       },
       "general_traits": [],
       "placeholder_assignment": true,
-      "patron": "aurel"
+      "patron": "aurel",
+      "realm": "The Westerlands Coast"
     },
     "delos_minor": {
       "name": "The Island Colony of Delos Minor",
@@ -839,7 +866,8 @@
       },
       "general_traits": [],
       "placeholder_assignment": true,
-      "patron": "thalor"
+      "patron": "thalor",
+      "realm": "The Westerlands Coast"
     },
     "lykourgids": {
       "name": "The Lykourgids of Lykon",
@@ -865,7 +893,8 @@
       },
       "general_traits": [],
       "placeholder_assignment": true,
-      "patron": "ilith"
+      "patron": "ilith",
+      "realm": "The Westerlands Coast"
     },
     "stonefast": {
       "name": "The Stonefast Outpost",
@@ -890,7 +919,8 @@
         "default": "shield_wall"
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Red Peaks"
     },
     "snowtusk": {
       "name": "The Snowtusk Tribe",
@@ -917,7 +947,8 @@
         "default": "levy_swarm"
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "Beyond the Wall"
     },
     "grimhollow": {
       "name": "The Grimhollow Tribe",
@@ -944,7 +975,8 @@
         "default": "levy_swarm"
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "Beyond the Wall"
     },
     "reaver_captain_drak": {
       "name": "Reaver Captain of Drakhaven",
@@ -973,7 +1005,8 @@
         "cavalry_min": 1
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Western Isles"
     },
     "reaver_captain_vael": {
       "name": "Reaver Captain of Vael-Shoal",
@@ -1002,7 +1035,8 @@
         "cavalry_min": 1
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Western Isles"
     },
     "gen_blackpine": {
       "name": "Northern house of Blackpine (generated)",
@@ -1029,7 +1063,8 @@
         "cavalry_min": 2
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The North"
     },
     "gen_long_lakes": {
       "name": "Northern house of the Long Lakes (generated)",
@@ -1056,7 +1091,8 @@
         "cavalry_min": 2
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The North"
     },
     "gen_lower_vale": {
       "name": "Vale house of the Lower Vale (generated)",
@@ -1083,7 +1119,8 @@
         "cavalry_min": 2
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Vale"
     },
     "gen_riverforks": {
       "name": "Marches house of the Riverforks (generated)",
@@ -1110,7 +1147,8 @@
         "cavalry_min": 2
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Middle Marches"
     },
     "gen_elaia": {
       "name": "The Elaian League (generated)",
@@ -1136,7 +1174,8 @@
       },
       "general_traits": [],
       "placeholder_assignment": true,
-      "patron": "vessa"
+      "patron": "vessa",
+      "realm": "The Westerlands Coast"
     },
     "gen_sabellum": {
       "name": "Roman family of Sabellum (generated)",
@@ -1161,7 +1200,8 @@
         "default": "line"
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Crownlands"
     },
     "gen_via_septem": {
       "name": "Roman family of the Via Septem (generated)",
@@ -1186,7 +1226,8 @@
         "default": "line"
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Crownlands"
     },
     "gen_rainwick": {
       "name": "Stormlands house of Rainwick (generated)",
@@ -1211,7 +1252,8 @@
         "default": "line"
       },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "realm": "The Stormlands"
     }
   }
 }

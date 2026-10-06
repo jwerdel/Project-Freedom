@@ -1,6 +1,6 @@
 # Varos world outline (block A1)
 
-**Status:** **Approved** (owner, 2026-10-06): the frame, the shapes, the Stage A eastern edge and the Western Isles layout. The owner then had the whole world enlarged 2.5x (§1). Stage A content follows in its own block.
+**Status:** **Approved** (owner, 2026-10-06): the frame, the shapes, the Stage A eastern edge and the Western Isles layout. The owner then had the whole world enlarged 2.5x (§1). **Stage A content built** (2026-10-06): factions with faiths, tendencies, crests and lore relations; armies, populations, buildings; roads with bridges and fords; the Greywall; the 13 landmarks; faction selection, intro and court. New Campaign plays on Varos.
 **Sources:**
 - shapes after `docs/reference/world/varos_map.jpg` (shapes only; the reference's labels are not used);
 - content after `docs/world-bible-v2.md` §6–§8 and Appendix A;

@@ -5,13 +5,13 @@
   "faction": "port_dallow",
   "commander": {
     "unit": "commander",
-    "name": "Aulus Dallow",
+    "name": "Quintus Dallow",
     "rank": 1
   },
   "units": [
     {
       "unit": "spearmen",
-      "strength": 0.85
+      "strength": 1.0
     },
     {
       "unit": "archers",
@@ -19,11 +19,7 @@
     },
     {
       "unit": "peasant_levy",
-      "strength": 0.8
-    },
-    {
-      "unit": "peasant_levy",
-      "strength": 1.0
+      "strength": 0.9
     }
   ]
 }

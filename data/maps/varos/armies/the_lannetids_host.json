@@ -5,21 +5,17 @@
   "faction": "the_lannetids",
   "commander": {
     "unit": "commander",
-    "name": "Phaedra Lannetos",
+    "name": "Iolanthe Lannetos",
     "rank": 1
   },
   "units": [
     {
       "unit": "spearmen",
-      "strength": 0.8
+      "strength": 0.95
     },
     {
       "unit": "archers",
-      "strength": 1.0
-    },
-    {
-      "unit": "peasant_levy",
-      "strength": 0.8
+      "strength": 0.95
     },
     {
       "unit": "peasant_levy",

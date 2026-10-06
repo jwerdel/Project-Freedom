@@ -5,21 +5,17 @@
   "faction": "gen_long_lakes",
   "commander": {
     "unit": "commander",
-    "name": "Ser Aldous Osric",
+    "name": "Ser Rowena Osric",
     "rank": 1
   },
   "units": [
     {
       "unit": "spearmen",
-      "strength": 0.85
-    },
-    {
-      "unit": "archers",
-      "strength": 0.9
+      "strength": 0.8
     },
     {
       "unit": "peasant_levy",
-      "strength": 0.85
+      "strength": 1.0
     }
   ]
 }

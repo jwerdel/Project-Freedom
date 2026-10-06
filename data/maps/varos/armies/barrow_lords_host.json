@@ -5,24 +5,16 @@
   "faction": "barrow_lords",
   "commander": {
     "unit": "commander",
-    "name": "Ser Wendel of the Barrows",
+    "name": "Ser Berthold of the Barrows",
     "rank": 1
   },
   "units": [
     {
       "unit": "spearmen",
-      "strength": 0.9
+      "strength": 0.95
     },
     {
       "unit": "archers",
-      "strength": 0.9
-    },
-    {
-      "unit": "peasant_levy",
-      "strength": 0.8
-    },
-    {
-      "unit": "peasant_levy",
       "strength": 0.95
     }
   ]

@@ -286,7 +286,7 @@ func settlement_spec(sid: String) -> Dictionary:
  var spec = {"id":sid,"type":st.type,"level":int(st.level),"position":WorldMap.settlement_position(sid),"from":e.from,"to":e.to,
   "value":snappedf(float(e.value),0.05),"buildings":st.buildings.filter(func(b): return b.has("chain")),"landmark_radius":0.0}
  # A landmark keeps its own model at the centre; the town grows around it.
- if AssetManifest.is_landmark(sid): spec.landmark_radius = LANDMARK_RADIUS
+ if AssetManifest.is_landmark(sid): spec.landmark_radius = float(AssetManifest.landmarks()[sid].get("radius",LANDMARK_RADIUS))
  # The specialization path, from the map data until the path system exists (game-design §12.13 D).
  var rs = WorldMap.region(sid).get("settlement")
  if rs is Dictionary and str(rs.get("path","")) != "": spec.path = str(rs.path)

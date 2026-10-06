@@ -5,7 +5,7 @@
   "faction": "reavers_brinecrag",
   "commander": {
     "unit": "commander",
-    "name": "Captain Drazhul of Brinecrag",
+    "name": "Captain Seryth of Brinecrag",
     "rank": 2
   },
   "units": [
@@ -15,7 +15,7 @@
     },
     {
       "unit": "swordsmen",
-      "strength": 0.95
+      "strength": 0.9
     },
     {
       "unit": "archers",
@@ -23,18 +23,10 @@
     },
     {
       "unit": "heavy_infantry",
-      "strength": 0.9
+      "strength": 0.95
     },
     {
       "unit": "peasant_levy",
-      "strength": 0.9
-    },
-    {
-      "unit": "peasant_levy",
-      "strength": 1.0
-    },
-    {
-      "unit": "cavalry",
       "strength": 0.9
     }
   ]

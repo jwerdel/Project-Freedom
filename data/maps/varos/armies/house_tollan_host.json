@@ -5,25 +5,21 @@
   "faction": "house_tollan",
   "commander": {
     "unit": "commander",
-    "name": "Ser Wendel Tollan",
+    "name": "Ser Cerwyn Tollan",
     "rank": 1
   },
   "units": [
     {
       "unit": "spearmen",
-      "strength": 0.95
+      "strength": 0.9
     },
     {
       "unit": "archers",
-      "strength": 0.85
+      "strength": 1.0
     },
     {
       "unit": "peasant_levy",
-      "strength": 0.95
-    },
-    {
-      "unit": "peasant_levy",
-      "strength": 0.95
+      "strength": 0.9
     }
   ]
 }

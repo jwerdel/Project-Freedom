@@ -686,7 +686,7 @@
       "major": {
         "name": "Snowtusk Camp",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "port": false
       }
     },
@@ -722,7 +722,7 @@
       "major": {
         "name": "Grimhollow",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "port": false
       }
     },
@@ -842,7 +842,7 @@
       "major": {
         "name": "Dunmoor Keep",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "port": false
       }
     },
@@ -896,7 +896,7 @@
       "major": {
         "name": "Barrowmere",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "port": false
       }
     },
@@ -932,7 +932,7 @@
       "major": {
         "name": "Rowenhold",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "port": false
       }
     },
@@ -968,7 +968,7 @@
       "major": {
         "name": "Blackpine Hold",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "port": false
       }
     },
@@ -1148,7 +1148,7 @@
       "major": {
         "name": "Harrow Crossing",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "port": false
       }
     },
@@ -1220,7 +1220,7 @@
       "major": {
         "name": "Bracke Hall",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "port": false
       }
     },
@@ -1292,7 +1292,7 @@
       "major": {
         "name": "Forkwatch",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "port": false
       }
     },
@@ -1526,7 +1526,7 @@
       "major": {
         "name": "Drakhaven",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "port": true
       }
     },
@@ -1544,7 +1544,7 @@
       "major": {
         "name": "Vael-Shoal",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "port": true
       }
     },
@@ -1958,7 +1958,7 @@
       "major": {
         "name": "Stonefast",
         "type": "fortress",
-        "level": 1,
+        "level": 2,
         "port": false
       }
     },

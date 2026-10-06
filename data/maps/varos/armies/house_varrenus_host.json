@@ -15,31 +15,23 @@
     },
     {
       "unit": "spearmen",
-      "strength": 0.95
+      "strength": 0.9
     },
     {
       "unit": "swordsmen",
+      "strength": 0.9
+    },
+    {
+      "unit": "archers",
       "strength": 0.95
     },
     {
-      "unit": "archers",
-      "strength": 0.85
-    },
-    {
-      "unit": "archers",
-      "strength": 0.85
-    },
-    {
-      "unit": "heavy_infantry",
-      "strength": 0.8
-    },
-    {
       "unit": "peasant_levy",
-      "strength": 0.8
+      "strength": 0.95
     },
     {
       "unit": "cavalry",
-      "strength": 0.9
+      "strength": 0.85
     }
   ]
 }
