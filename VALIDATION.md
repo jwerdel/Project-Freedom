@@ -1222,3 +1222,45 @@ All GPU rows are within budget (≤ 8 ms 3D, ≤ 3 ms strategic, ≤ 1,500 draw 
   - 5.25–6.09 ms GPU, 280–630 draw calls, 590 MB VRAM: within budget.
   - Triangles: 4.0–4.3 M, a little over the 4 M guideline but below the 4.74 M measured before this change.
 - **Tests:** 300 GUT tests pass; the self-test passes.
+
+## Stage A content (2026-10-06, Part 3) — stopped for the owner's playtest
+
+**Map:**
+- Varos at 14,080 × 11,520 m; Stage A's 73 regions in 36 provinces.
+- Rivers are barriers, crossed only at bridges (where a planned road crosses) and fords.
+- `scripts/plan_roads.gd` routes 123 roads on the built grid (A* around mountains and sea, few river crossings), with 30 bridge crossings and 16 fords. The 8 unrouted links are to islands.
+- The Greywall is drawn as a wall (24 m, battlemented, towers every 160 m, open at Wardens' Gate).
+- Builds in about 63 s with 0 validator errors.
+
+**Factions (42):**
+- culture, faith (Throne Church, the Radiant Seven with city patrons, the race faiths);
+- tendencies mapped to the AI's personalities;
+- original crests (field, division, charge; no real-world symbols);
+- the lore friendships and rivalries of v1-content §3.2, mutual.
+- The Throne Church is `untouchable`: the AI never targets or declares war on Caeloth (constitution).
+
+**Start:**
+- one army per faction at its seat (placeholder rosters; the shared human units stand in for dwarves, orcs, dark elves and ratmen);
+- populations and buildings by type and level;
+- starting generals' skills pre-allocated.
+- Economy: the playable houses start in surplus (Varn +211, Varrenus +39, the Aurekids +211 a turn). Four AI factions start in small deficits (−24 to −164 a turn, their treasuries last 36+ turns): placeholder balance.
+
+**Landmarks:** all 13 Stage A landmarks have their own three growth stages: Caeloth, Crownhaven, Frosthold, Wardens' Gate, Skyreach, Harrow Crossing, Highbloom, Oldstone Citadel, Tempest Keep, the Skulkmire, Emberdeep, Brinecrag, and Goldspire. `tests/test_landmarks.gd` checks them.
+- The reference image `docs/reference/landmarks/brinecrag.jpg` shows a dwarf hold. It was used for Emberdeep, which had none; Brinecrag follows the world bible's text.
+- There is no Emberdeep image of its own.
+
+**Biomes and specializations:** every Stage A culture already has its biome (`data/cultures.json`: ground, forests, tints) and kit with specialization buildings. Unchanged in this block.
+
+**Screens:**
+- the faction selection (three houses with crests, founder, tradition, culture, start, and the start on the parchment map);
+- the illustrated intro (three panels per house, placeholder art slots);
+- the court introduction (a placeholder until the character system).
+- New Campaign plays on Varos; tests, the self-test and captures stay on the test map.
+
+**AI soak** (`scripts/ai_soak.gd -- 50 11,22,33,44 --map=varos`, all 42 factions AI-run, 50 turns, debug build):
+- stable: no script errors, deterministic, no desertion, no stuck armies;
+- 3–4 wars, 1–3 battles, 1–2 sieges and 2–3 captures per seed;
+- End Turn 145–154 ms on average, worst 584 ms.
+- **The world is quiet:** about 17 of 42 factions take no action for 10 turns or more. A tuning question for the playtest.
+
+**Tests:** 306 GUT tests pass; the self-test passes.
