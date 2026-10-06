@@ -73,13 +73,155 @@ static func build(culture: String,piece: String) -> Node3D:
     var p = Vector3(cos(i*2.4)*0.7,0,sin(i*2.4)*0.7)
     S.cylinder(root,0.14,0.18,0.62,p,cols[i%cols.size()],5)
     S.cylinder(root,0.12,0.12,0.2,p+Vector3(0,0.62,0),Color("e0b898"),5)
-  "plinth": # a 1 m block of terrace stone, scaled under a building (Greek acropolis terraces)
-   S.box(root,Vector3(1.0,1.0,1.0),Vector3.ZERO,st.stone.darkened(0.06))
+  "plinth": # a 1 m block of terrace stone, scaled under a building (Greek acropolis terraces): warm
+   # limestone retaining walls with coursed bands, not white blocks
+   var lime = Color("c4b28c")
+   S.box(root,Vector3(1.0,1.0,1.0),Vector3.ZERO,lime)
+   for y in [0.3,0.62]: S.box(root,Vector3(1.012,0.025,1.012),Vector3(0,y,0),lime.darkened(0.22))
    S.box(root,Vector3(1.04,0.08,1.04),Vector3(0,0.96,0),st.wall)
   "bridge": # a 1 m beam along x, scaled to span two towers (elf bridges, ratmen walkways)
    S.box(root,Vector3(1.0,0.35,1.0),Vector3(0,-0.17,0),st.trim if culture == "elf" else st.timber)
   _: push_error("Unknown kit piece "+piece)
  return root
+
+# --- Architectural details (owner, 2026-10-06: real architecture, not cubes) --------------------
+
+const WINDOW = Color("2a2420")
+
+# Rows of windows on the long faces (both, or the front only), and on the short sides when asked.
+static func _windows(root: Node3D,w: float,d: float,y0: float,floors: int,fh: float,c: Color,sides := false,both := true):
+ for f in floors:
+  var y = y0+f*fh+fh*0.38
+  var n = maxi(1,int(w/1.05))
+  for i in n:
+   var x = -w*0.5+(i+0.5)*w/n
+   S.box(root,Vector3(0.34,0.46,0.08),Vector3(x,y,d*0.5+0.01),c)
+   if both: S.box(root,Vector3(0.34,0.46,0.08),Vector3(x,y,-d*0.5-0.01),c)
+  if sides:
+   var m = maxi(1,int(d/1.2))
+   for i in m:
+    var z = -d*0.5+(i+0.5)*d/m
+    for sx in [-1.0,1.0]: S.box(root,Vector3(0.08,0.46,0.34),Vector3(sx*(w*0.5+0.01),y,z),c)
+
+static func _door(root: Node3D,x: float,d: float,c: Color,h := 1.1):
+ S.box(root,Vector3(0.62,h,0.08),Vector3(x,0,d*0.5+0.02),c)
+
+static func _chimney(root: Node3D,p: Vector3,h: float,c: Color):
+ S.box(root,Vector3(0.42,h,0.42),p,c)
+ S.box(root,Vector3(0.52,0.12,0.52),p+Vector3(0,h,0),c.darkened(0.2))
+
+# Half-timbering on the long faces: corner and middle posts, a floor beam and diagonal braces.
+static func _timber_frame(root: Node3D,w: float,d: float,y0: float,h: float,c: Color):
+ for zs in [-1.0,1.0]:
+  var z = zs*(d*0.5+0.03)
+  var n = maxi(2,int(w/1.0))
+  for i in n+1: S.box(root,Vector3(0.11,h,0.05),Vector3(-w*0.5+i*w/n,y0,z),c)
+  S.box(root,Vector3(w+0.06,0.11,0.05),Vector3(0,y0,z),c)
+  S.box(root,Vector3(w+0.06,0.11,0.05),Vector3(0,y0+h-0.11,z),c)
+  for i in n:
+   var x = -w*0.5+(i+0.5)*w/n
+   S.box(root,Vector3(0.09,h*0.95,0.04),Vector3(x,y0+0.02,z),c,Vector3(0,0,0.55 if i%2 == 0 else -0.55))
+
+# A roof border: a low parapet around a flat roof.
+static func _parapet(root: Node3D,w: float,d: float,y: float,c: Color):
+ for zs in [-1.0,1.0]: S.box(root,Vector3(w,0.32,0.14),Vector3(0,y,zs*(d*0.5-0.07)),c)
+ for xs in [-1.0,1.0]: S.box(root,Vector3(0.14,0.32,d),Vector3(xs*(w*0.5-0.07),y,0),c)
+
+# Houses of the human cultures: walls with windows and a door, the culture's roof and details.
+static func _human_house(root: Node3D,st: Dictionary,cu: String,size: Vector3,v: int):
+ var w = size.x
+ var d = size.z
+ var floors = 2 if v == 2 or (v == 1 and cu in ["medieval","roman"]) else 1
+ var fh = 1.25
+ var h = maxf(size.y,floors*fh+0.25)
+ match cu:
+  "medieval":
+   # Stone ground floor, a jettied half-timbered upper floor, a steep slate roof and a chimney.
+   S.box(root,Vector3(w,fh,d),Vector3.ZERO,st.stone)
+   var up = h-fh
+   var ww = w+(0.22 if floors>1 else 0.0)
+   var dd = d+(0.22 if floors>1 else 0.0)
+   S.box(root,Vector3(ww,up,dd),Vector3(0,fh,0),st.wall)
+   _timber_frame(root,ww,dd,fh,up,st.timber)
+   _windows(root,w,d,0.0,1,fh,WINDOW)
+   _windows(root,ww,dd,fh,1,up,WINDOW,true)
+   _door(root,-w*0.25,d,st.timber.darkened(0.3))
+   S.gable(root,ww+0.35,dd+0.35,dd*0.95,Vector3(0,h,0),st.roof if v != 1 else st.roof.darkened(0.12))
+   _chimney(root,Vector3(w*0.3,h,-d*0.15),dd*0.85,st.stone.darkened(0.1))
+  "roman":
+   # Cream walls, small windows, a low hipped terracotta roof with wide eaves.
+   S.box(root,Vector3(w,h,d),Vector3.ZERO,st.wall)
+   S.box(root,Vector3(w+0.04,0.18,d+0.04),Vector3(0,0,0),st.stone.darkened(0.1)) # plinth course
+   if floors>1: S.box(root,Vector3(w+0.04,0.12,d+0.04),Vector3(0,fh,0),st.stone)
+   _windows(root,w,d,0.0,floors,fh,WINDOW)
+   _door(root,0.0,d,st.timber.darkened(0.2),1.2)
+   S.hip(root,w+0.5,d+0.5,d*0.38,Vector3(0,h,0),st.roof if v != 1 else st.roof2)
+   if v == 0: _chimney(root,Vector3(-w*0.25,h,0.0),d*0.4,st.stone)
+  "greek":
+   # Whitewashed walls with blue doors and shutters; flat roofs with parapets or low red tiles.
+   S.box(root,Vector3(w,h,d),Vector3.ZERO,st.wall)
+   _windows(root,w,d,0.0,floors,fh,st.roof2)
+   _door(root,w*0.2,d,st.roof2,1.15)
+   if v == 1:
+    S.hip(root,w+0.35,d+0.35,d*0.32,Vector3(0,h,0),Color("b8573a"))
+   else:
+    _parapet(root,w,d,h,st.wall.darkened(0.04))
+    if v == 2:
+     S.box(root,Vector3(w*0.5,1.1,d*0.5),Vector3(-w*0.2,h,-d*0.15),st.wall) # a room on the roof
+     _windows(root,w*0.5,d*0.5,h,1,1.1,st.roof2,false,false)
+    S.box(root,Vector3(w+0.05,0.1,d+0.05),Vector3(0,h-0.1,0),st.roof2) # blue cornice
+  "desert":
+   # Sandstone, deep small windows, flat roof with parapet; a dome on the larger houses.
+   S.box(root,Vector3(w,h,d),Vector3.ZERO,st.wall)
+   _windows(root,w,d,0.0,floors,fh,WINDOW)
+   _door(root,0.0,d,st.roof2,1.2)
+   _parapet(root,w,d,h,st.wall.darkened(0.06))
+   if v == 1: S.dome(root,minf(w,d)*0.32,Vector3(w*0.15,h,0),st.trim,0.9)
+   if v == 2: S.box(root,Vector3(w*0.45,1.1,d*0.45),Vector3(w*0.2,h,0),st.wall.darkened(0.04))
+
+static func _human_tall(root: Node3D,st: Dictionary,cu: String):
+ match cu:
+  "medieval":
+   # A tower house: stone base, two timbered floors, a steep roof and chimney.
+   S.box(root,Vector3(2.6,1.6,2.6),Vector3.ZERO,st.stone)
+   S.box(root,Vector3(2.9,3.2,2.9),Vector3(0,1.6,0),st.wall)
+   _timber_frame(root,2.9,2.9,1.6,3.2,st.timber)
+   _windows(root,2.6,2.6,0.0,1,1.6,WINDOW)
+   _windows(root,2.9,2.9,1.6,2,1.6,WINDOW,true)
+   _door(root,0.0,2.6,st.timber.darkened(0.3))
+   S.gable(root,3.3,3.3,3.0,Vector3(0,4.8,0),st.roof)
+   _chimney(root,Vector3(0.9,4.8,0.5),2.4,st.stone.darkened(0.1))
+  "roman":
+   # An insula: three floors of windows over shop arches, a hipped tile roof.
+   S.box(root,Vector3(3.4,5.4,2.8),Vector3.ZERO,st.wall)
+   for i in 3: S.box(root,Vector3(0.7,1.0,0.08),Vector3(-1.1+i*1.1,0,1.42),WINDOW) # shop openings
+   _windows(root,3.4,2.8,1.4,3,1.3,WINDOW,true)
+   for y in [1.35,2.65,3.95]: S.box(root,Vector3(3.45,0.1,2.85),Vector3(0,y,0),st.stone)
+   S.hip(root,3.9,3.3,1.1,Vector3(0,5.4,0),st.roof)
+  "greek":
+   S.box(root,Vector3(2.8,3.0,2.6),Vector3.ZERO,st.wall)
+   S.box(root,Vector3(1.8,1.6,1.8),Vector3(0.4,3.0,0.3),st.wall)
+   _windows(root,2.8,2.6,0.0,2,1.4,st.roof2,true)
+   _door(root,-0.6,2.6,st.roof2,1.15)
+   _parapet(root,2.8,2.6,3.0,st.wall.darkened(0.04))
+   S.hip(root,2.1,2.1,0.6,Vector3(0.4,4.6,0.3),Color("b8573a"))
+  "desert":
+   S.box(root,Vector3(2.8,5.0,2.8),Vector3.ZERO,st.wall)
+   _windows(root,2.8,2.8,0.4,3,1.4,WINDOW,true)
+   for i in 4: S.box(root,Vector3(0.6,0.5,0.6),Vector3(cos(i*PI*0.5+0.785)*1.05,5.0,sin(i*PI*0.5+0.785)*1.05),st.wall.darkened(0.08))
+   S.dome(root,0.9,Vector3(0,5.0,0),st.trim,0.9)
+
+# --- Walls, towers and gatehouses (owner, 2026-10-06: real height and thickness, crenellations,
+# towers at intervals, proper gatehouses). Each wall piece reaches 2 m below its foot so it follows
+# sloping ground without gaps.
+
+static func _merlons(root: Node3D,len: float,y: float,depth: float,c: Color,both := true):
+ var n = maxi(2,int(len/0.9))
+ for i in n:
+  var x = -len*0.5+(i+0.5)*len/n
+  S.box(root,Vector3(len/n*0.55,0.6,0.35),Vector3(x,y,depth*0.5-0.18),c)
+  if both: S.box(root,Vector3(len/n*0.55,0.6,0.35),Vector3(x,y,-depth*0.5+0.18),c)
+const VOID_DARK = Color("1e1a16")
 
 # --- Roofs ---------------------------------------------------------------------------------------
 
@@ -112,6 +254,8 @@ static func _house(root: Node3D,st: Dictionary,cu: String,size: Vector3,v: int):
    S.cylinder(root,size.x*0.5,size.x*0.55,size.y*0.7,Vector3.ZERO,st.wall,7)
    S.cone(root,size.x*0.68,size.y*0.9,Vector3(0,size.y*0.7,0),st.roof,7)
    S.spike(root,0.1,1.0,Vector3(0,size.y*1.5,0),st.trim)
+   S.box(root,Vector3(0.6,1.0,0.1),Vector3(0,0,size.x*0.52),st.timber.darkened(0.3)) # door flap
+   S.box(root,Vector3(0.5,0.4,0.4),Vector3(0,size.y*0.75,size.x*0.45),st.trim) # skull over the door
    return
   "beastmen":
    S.dome(root,size.x*0.62,Vector3.ZERO,st.roof if v != 1 else st.roof2,0.9)
@@ -123,15 +267,21 @@ static func _house(root: Node3D,st: Dictionary,cu: String,size: Vector3,v: int):
    S.box(root,Vector3(size.x*0.8,size.y*0.9,size.z*0.8),Vector3(0.2,size.y*1.3,0),st.timber,lean*2.0)
    _roof(root,st,size.x*0.8,size.z*0.8,size.y*2.2,v)
    S.box(root,Vector3(0.12,size.y*2.4,0.12),Vector3(size.x*0.55,0,size.z*0.55),st.stone) # stilt
+   _windows(root,size.x*0.8,size.z,size.y*0.3,1,size.y,st.glow.darkened(0.2),false,false)
+   _door(root,-size.x*0.2,size.z,WINDOW)
    return
   "elf":
    S.cylinder(root,size.x*0.38,size.x*0.45,size.y*1.4,Vector3.ZERO,st.wall,8)
    S.cylinder(root,0.0,size.x*0.5,size.y*1.3,Vector3(0,size.y*1.4,0),st.roof if v != 1 else st.roof2,8)
    S.box(root,Vector3(size.x*0.6,0.12,0.12),Vector3(0,size.y*1.35,0),st.trim)
+   S.box(root,Vector3(0.36,0.9,0.08),Vector3(0,0,size.x*0.43),st.trim.darkened(0.2)) # door
+   S.box(root,Vector3(0.24,0.4,0.06),Vector3(0,size.y*0.8,size.x*0.42),st.glow,Vector3.ZERO,1.2) # lit window
    return
   "dark_elf":
    S.box(root,Vector3(size.x*0.85,size.y*1.4,size.z*0.85),Vector3.ZERO,st.wall)
    _roof(root,st,size.x*0.85,size.z*0.85,size.y*1.4,v)
+   _windows(root,size.x*0.85,size.z*0.85,0.2,2,size.y*0.6,st.glow.darkened(0.3),false,false)
+   _door(root,0.0,size.z*0.85,WINDOW)
    return
   "lizardmen":
    if v == 2:
@@ -140,19 +290,16 @@ static func _house(root: Node3D,st: Dictionary,cu: String,size: Vector3,v: int):
     return
    S.box(root,Vector3(size.x*0.9,size.y*0.8,size.z*0.9),Vector3.ZERO,st.wall)
    _roof(root,st,size.x*0.9,size.z*0.9,size.y*0.8,v)
+   _door(root,0.0,size.z*0.9,WINDOW)
    return
   "dwarf":
    S.box(root,Vector3(size.x*1.1,size.y*0.9,size.z*1.1),Vector3.ZERO,st.wall if v != 1 else st.stone)
    _roof(root,st,size.x*1.1,size.z*1.1,size.y*0.9,v)
+   S.box(root,Vector3(0.8,1.2,0.1),Vector3(0,0,size.z*0.56),Color("2a2018")) # heavy door
+   S.box(root,Vector3(1.0,0.2,0.12),Vector3(0,1.2,size.z*0.56),st.trim) # bronze lintel
+   S.box(root,Vector3(0.4,0.35,0.06),Vector3(size.x*0.3,0.8,size.z*0.56),st.glow,Vector3.ZERO,2.0) # forge-lit window
    return
- # Medieval, Roman, Greek, desert: walls and a roof (timber frame for the north).
- S.box(root,size,Vector3.ZERO,st.wall)
- if cu == "medieval":
-  S.box(root,Vector3(size.x+0.04,0.14,size.z+0.04),Vector3(0,size.y*0.5,0),st.timber)
-  if v == 2: S.box(root,Vector3(size.x+0.25,size.y*0.5,size.z+0.25),Vector3(0,size.y*0.55,0),st.wall.darkened(0.05)) # jettied upper floor
- if cu == "greek" and v == 1: S.box(root,Vector3(size.x*0.55,size.y*0.6,size.z*0.55),Vector3(-size.x*0.2,size.y,0),st.wall)
- if cu == "desert" and v == 2: S.box(root,Vector3(size.x*0.5,size.y*0.7,size.z*0.5),Vector3(size.x*0.2,size.y,0),st.wall.darkened(0.04))
- _roof(root,st,size.x,size.z,size.y+(size.y*0.5 if cu == "medieval" and v == 2 else 0.0),v)
+ _human_house(root,st,cu,size,v)
 
 static func _tall(root: Node3D,st: Dictionary,cu: String):
  match cu:
@@ -188,21 +335,9 @@ static func _tall(root: Node3D,st: Dictionary,cu: String):
   "lizardmen":
    var top = S.steps(root,4.2,4,1.1,Vector3.ZERO,st.stone)
    S.box(root,Vector3(1.0,1.0,1.0),Vector3(0,top,0),st.trim)
-  "desert":
-   S.box(root,Vector3(2.6,4.2,2.6),Vector3.ZERO,st.wall)
-   S.box(root,Vector3(2.8,0.3,2.8),Vector3(0,4.2,0),st.roof2)
-  "greek":
-   S.box(root,Vector3(2.6,3.6,2.6),Vector3.ZERO,st.wall)
-   S.box(root,Vector3(1.6,1.6,1.6),Vector3(0.3,3.6,0.3),st.wall)
-   S.box(root,Vector3(1.7,0.15,1.7),Vector3(0.3,5.2,0.3),st.roof2)
-  "roman":
-   S.box(root,Vector3(3.2,5.0,2.6),Vector3.ZERO,st.wall)
-   _roof(root,st,3.2,2.6,5.0,0)
-   S.box(root,Vector3(3.3,0.15,2.7),Vector3(0,2.5,0),st.stone.darkened(0.08))
+  "desert", "greek", "roman", "medieval": _human_tall(root,st,cu)
   _:
-   S.box(root,Vector3(2.4,4.6,2.4),Vector3.ZERO,st.wall)
-   S.box(root,Vector3(2.5,0.15,2.5),Vector3(0,2.3,0),st.timber)
-   _roof(root,st,2.4,2.4,4.6,0)
+   _human_tall(root,st,"medieval")
 
 static func _hut(root: Node3D,st: Dictionary,cu: String):
  match cu:
@@ -223,83 +358,113 @@ static func _hut(root: Node3D,st: Dictionary,cu: String):
 static func _wall(root: Node3D,st: Dictionary,cu: String):
  match cu:
   "orc", "ratmen", "beastmen":
-   for i in 8:
-    var h = 2.6+0.5*sin(i*2.3)
-    S.cylinder(root,0.22,0.22,h,Vector3(-1.4+i*0.4,0,0),st.timber,5,Vector3(0,0,0.05*sin(i*1.7)))
-    S.spike(root,0.22,0.6,Vector3(-1.4+i*0.4,h,0),st.timber.darkened(0.2))
-   if cu == "orc": S.box(root,Vector3(0.5,0.4,0.4),Vector3(0,2.0,0.25),st.trim) # skull
+   # A palisade of sharpened logs on an earth bank, with a fighting step behind.
+   S.box(root,Vector3(3.4,1.2,2.4),Vector3(0,-2.0,0),st.stone.darkened(0.25)) # bank
+   S.box(root,Vector3(3.4,2.0,2.4),Vector3(0,-0.8,0),st.wall.darkened(0.3))
+   for i in 9:
+    var h = 4.0+0.6*sin(i*2.3)
+    S.cylinder(root,0.2,0.24,h+2.0,Vector3(-1.6+i*0.4,-2.0,0.5),st.timber,5,Vector3(0,0,0.05*sin(i*1.7)))
+    S.spike(root,0.24,0.8,Vector3(-1.6+i*0.4,h,0.5),st.timber.darkened(0.2))
+   S.box(root,Vector3(3.4,0.25,1.0),Vector3(0,2.4,-0.5),st.timber.darkened(0.1)) # fighting step
+   if cu == "orc": S.box(root,Vector3(0.6,0.5,0.5),Vector3(0,3.0,0.8),st.trim) # skull
   "dark_elf":
-   S.box(root,Vector3(3.3,3.4,1.2),Vector3.ZERO,st.wall)
-   for i in 4: S.spike(root,0.18,1.2,Vector3(-1.2+i*0.8,3.4,0),st.trim)
+   S.box(root,Vector3(3.3,8.0,2.2),Vector3(0,-2.0,0),st.wall)
+   for i in 4: S.spike(root,0.2,1.6,Vector3(-1.2+i*0.8,6.0,0.9),st.trim)
+   _merlons(root,3.3,6.0,2.2,st.wall.darkened(0.1),false)
   "elf":
-   S.box(root,Vector3(3.3,2.8,0.7),Vector3.ZERO,st.wall)
-   S.box(root,Vector3(3.3,0.18,0.9),Vector3(0,2.8,0),st.trim)
+   S.box(root,Vector3(3.3,7.2,1.4),Vector3(0,-2.0,0),st.wall)
+   S.box(root,Vector3(3.3,0.25,1.7),Vector3(0,5.2,0),st.trim)
+   _merlons(root,3.3,5.45,1.7,st.wall)
   "dwarf":
-   S.box(root,Vector3(3.3,3.6,1.8),Vector3.ZERO,st.stone)
-   for i in 3: S.box(root,Vector3(0.7,0.6,1.8),Vector3(-1.1+i*1.1,3.6,0),st.stone.darkened(0.1))
+   S.box(root,Vector3(3.3,8.4,3.0),Vector3(0,-2.0,0),st.stone)
+   S.box(root,Vector3(3.4,0.5,3.2),Vector3(0,1.8,0),st.stone.darkened(0.12)) # carved course
+   _merlons(root,3.3,6.4,3.0,st.stone.darkened(0.1))
   "lizardmen":
-   S.box(root,Vector3(3.3,2.6,1.4),Vector3.ZERO,st.stone)
-   S.box(root,Vector3(3.3,0.3,1.6),Vector3(0,2.6,0),st.roof2)
+   S.box(root,Vector3(3.3,6.8,2.2),Vector3(0,-2.0,0),st.stone)
+   S.box(root,Vector3(3.3,0.4,2.5),Vector3(0,4.8,0),st.roof2)
   _:
-   S.box(root,Vector3(3.3,3.0,1.1),Vector3.ZERO,st.stone)
-   for i in 3: S.box(root,Vector3(0.6,0.5,1.1),Vector3(-1.1+i*1.1,3.0,0),st.stone.darkened(0.08))
+   # Stone curtain wall: battered base, wall-walk and crenellations on both faces.
+   S.box(root,Vector3(3.3,2.6,2.6),Vector3(0,-2.0,0),st.stone.darkened(0.08))
+   S.box(root,Vector3(3.3,7.2,1.9),Vector3(0,-2.0,0),st.stone)
+   S.box(root,Vector3(3.35,0.12,1.95),Vector3(0,2.6,0),st.stone.darkened(0.12)) # string course
+   _merlons(root,3.3,5.2,1.9,st.stone.darkened(0.06))
 
 static func _tower(root: Node3D,st: Dictionary,cu: String):
  match cu:
   "medieval":
-   S.cylinder(root,1.4,1.55,5.6,Vector3.ZERO,st.stone,10)
-   S.cone(root,1.75,2.6,Vector3(0,5.6,0),st.roof,10)
+   S.cylinder(root,2.0,2.2,11.0,Vector3(0,-2.0,0),st.stone,12)
+   S.cylinder(root,2.3,2.3,0.6,Vector3(0,8.4,0),st.stone.darkened(0.1),12) # machicolation ring
+   for i in 10: S.box(root,Vector3(0.5,0.6,0.5),Vector3(cos(i*0.628)*2.05,9.0,sin(i*0.628)*2.05),st.stone.darkened(0.06))
+   S.cone(root,2.4,3.6,Vector3(0,9.0,0),st.roof,12)
+   for i in 3: S.box(root,Vector3(0.25,0.7,0.1),Vector3(0,2.0+i*2.0,2.1),WINDOW)
   "roman", "greek":
-   S.box(root,Vector3(2.6,5.0,2.6),Vector3.ZERO,st.stone)
-   for i in 4: S.box(root,Vector3(0.6,0.5,0.6),Vector3(cos(i*PI*0.5+0.785)*1.0,5.0,sin(i*PI*0.5+0.785)*1.0),st.stone.darkened(0.08))
-   if cu == "roman": _roof(root,st,2.6,2.6,5.0,0)
+   S.box(root,Vector3(3.6,10.6,3.6),Vector3(0,-2.0,0),st.stone)
+   S.box(root,Vector3(3.8,0.15,3.8),Vector3(0,4.0,0),st.stone.darkened(0.1))
+   for i in 2: S.box(root,Vector3(0.35,0.7,0.1),Vector3(0,3.0+i*2.5,1.82),WINDOW)
+   for sx in [-1.0,1.0]:
+    for sz in [-1.0,1.0]: S.box(root,Vector3(0.7,0.6,0.7),Vector3(sx*1.45,8.6,sz*1.45),st.stone.darkened(0.08))
+   if cu == "roman": S.hip(root,3.9,3.9,1.4,Vector3(0,8.6,0),st.roof)
+   else: _merlons(root,3.6,8.6,3.6,st.stone.darkened(0.08))
   "desert":
-   S.cylinder(root,1.0,1.6,5.2,Vector3.ZERO,st.wall,4,Vector3(0,PI*0.25,0))
-   S.box(root,Vector3(1.6,0.4,1.6),Vector3(0,5.2,0),st.trim)
+   S.cylinder(root,1.4,2.2,10.0,Vector3(0,-2.0,0),st.wall,4,Vector3(0,PI*0.25,0))
+   S.box(root,Vector3(2.4,0.5,2.4),Vector3(0,8.0,0),st.trim)
+   for i in 4: S.box(root,Vector3(0.6,0.6,0.6),Vector3(cos(i*PI*0.5+0.785)*0.95,8.5,sin(i*PI*0.5+0.785)*0.95),st.wall.darkened(0.08))
   "dwarf":
-   S.box(root,Vector3(3.4,5.0,3.4),Vector3.ZERO,st.stone)
-   S.box(root,Vector3(3.9,0.8,3.9),Vector3(0,5.0,0),st.wall)
-   S.box(root,Vector3(0.6,0.6,0.1),Vector3(0,3.4,1.72),st.glow,Vector3.ZERO,2.5)
+   S.box(root,Vector3(4.2,10.0,4.2),Vector3(0,-2.0,0),st.stone)
+   S.box(root,Vector3(4.8,1.0,4.8),Vector3(0,8.0,0),st.wall)
+   _merlons(root,4.8,9.0,4.8,st.stone.darkened(0.1))
+   S.box(root,Vector3(0.7,0.7,0.1),Vector3(0,5.0,2.12),st.glow,Vector3.ZERO,2.5)
   "orc", "ratmen", "beastmen":
+   S.box(root,Vector3(2.8,1.0,2.8),Vector3(0,-1.0,0),st.timber.darkened(0.2))
    _tall(root,st,cu)
   "elf":
-   S.cylinder(root,0.8,1.0,7.0,Vector3.ZERO,st.wall,10)
-   S.cylinder(root,0.0,1.1,3.4,Vector3(0,7.0,0),st.roof2,10)
+   S.cylinder(root,1.0,1.3,11.0,Vector3(0,-2.0,0),st.wall,12)
+   S.cylinder(root,0.0,1.4,4.2,Vector3(0,9.0,0),st.roof2,12)
   "dark_elf":
-   S.cylinder(root,0.8,1.5,7.5,Vector3.ZERO,st.wall,5)
-   S.spike(root,1.0,3.5,Vector3(0,7.5,0),st.roof)
-   for i in 3: S.spike(root,0.18,1.6,Vector3(cos(i*2.1)*1.0,5.5,sin(i*2.1)*1.0),st.trim,Vector3(cos(i*2.1)*0.6,0,sin(i*2.1)*0.6))
+   S.cylinder(root,1.0,2.0,12.0,Vector3(0,-2.0,0),st.wall,5)
+   S.spike(root,1.3,4.5,Vector3(0,10.0,0),st.roof)
+   for i in 3: S.spike(root,0.22,2.0,Vector3(cos(i*2.1)*1.3,7.5,sin(i*2.1)*1.3),st.trim,Vector3(cos(i*2.1)*0.6,0,sin(i*2.1)*0.6))
   "lizardmen":
-   var top = S.steps(root,3.2,3,1.2,Vector3.ZERO,st.stone)
-   S.box(root,Vector3(1.0,1.2,1.0),Vector3(0,top,0),st.roof2)
+   var top = S.steps(root,4.2,4,1.8,Vector3(0,-2.0,0),st.stone)
+   S.box(root,Vector3(1.4,1.4,1.4),Vector3(0,top-2.0,0),st.roof2)
 
 static func _gate(root: Node3D,st: Dictionary,cu: String):
- # Two flanking towers and a lintel over a dark opening.
+ # A gatehouse: twin towers flanking a dark arched passage, a crenellated top and the culture's
+ # roofs or ornaments.
  var c = st.stone
  if cu in ["orc","ratmen","beastmen"]: c = st.timber
+ if cu in ["dark_elf","elf","desert"]: c = st.wall
  for sx in [-1.0,1.0]:
-  S.box(root,Vector3(1.3,4.6,1.6),Vector3(sx*1.35,0,0),c)
- S.box(root,Vector3(4.0,1.0,1.6),Vector3(0,3.6,0),c.darkened(0.05))
- S.box(root,Vector3(1.3,2.6,0.2),Vector3(0,0,0.75),Color("1e1a16"))
- S.box(root,Vector3(1.3,2.6,0.2),Vector3(0,0,-0.75),Color("1e1a16"))
+  S.box(root,Vector3(2.2,11.5,3.0),Vector3(sx*2.3,-2.0,0),c)
+ S.box(root,Vector3(2.6,9.0,2.6),Vector3(0,-2.0,0),c.darkened(0.04)) # the passage block
+ for zs in [-1.0,1.0]:
+  S.box(root,Vector3(1.8,3.6,0.12),Vector3(0,0,zs*1.33),VOID_DARK)
+  S.cylinder(root,0.9,0.9,0.12,Vector3(0,3.6,zs*1.33),VOID_DARK,10,Vector3(PI*0.5,0,0))
+ if not cu in ["orc","ratmen","beastmen","elf"]:
+  for sx in [-1.0,1.0]:
+   for i in 3: S.box(root,Vector3(0.5,0.6,0.5),Vector3(sx*2.3-0.75+i*0.75,9.5,1.25),c.darkened(0.06))
+   for i in 3: S.box(root,Vector3(0.5,0.6,0.5),Vector3(sx*2.3-0.75+i*0.75,9.5,-1.25),c.darkened(0.06))
  match cu:
   "medieval":
-   for sx in [-1.0,1.0]: S.cone(root,0.95,1.6,Vector3(sx*1.35,4.6,0),st.roof,8)
+   for sx in [-1.0,1.0]: S.cone(root,1.7,3.0,Vector3(sx*2.3,10.1,0),st.roof,8)
   "roman":
-   S.gable(root,4.2,1.8,0.7,Vector3(0,4.6,0),st.roof)
+   S.gable(root,7.0,3.2,1.0,Vector3(0,7.0,0),st.roof)
+   for sx in [-1.0,1.0]: S.hip(root,2.5,3.3,1.0,Vector3(sx*2.3,9.5,0),st.roof)
+  "greek":
+   S.box(root,Vector3(2.6,0.2,2.8),Vector3(0,7.0,0),st.roof2)
   "orc":
-   S.box(root,Vector3(0.9,0.8,0.6),Vector3(0,4.6,0.4),st.trim) # beast skull
-   for sx in [-1.0,1.0]: S.spike(root,0.16,1.3,Vector3(sx*1.35,4.6,0),st.trim)
+   S.box(root,Vector3(1.2,1.0,0.8),Vector3(0,7.2,1.4),st.trim) # beast skull
+   for sx in [-1.0,1.0]: S.spike(root,0.2,1.8,Vector3(sx*2.3,9.5,0),st.trim)
   "dark_elf":
-   for sx in [-1.0,1.0]: S.spike(root,0.5,2.6,Vector3(sx*1.35,4.6,0),st.roof)
+   for sx in [-1.0,1.0]: S.spike(root,0.7,3.4,Vector3(sx*2.3,9.5,0),st.roof)
   "elf":
-   for sx in [-1.0,1.0]: S.cylinder(root,0.0,0.75,2.4,Vector3(sx*1.35,4.6,0),st.roof,8)
+   for sx in [-1.0,1.0]: S.cylinder(root,0.0,1.3,3.2,Vector3(sx*2.3,9.5,0),st.roof,8)
   "desert":
-   for sx in [-1.0,1.0]: S.box(root,Vector3(0.7,2.2,0.7),Vector3(sx*2.4,0,0.6),st.trim) # guardian statues
+   for sx in [-1.0,1.0]: S.box(root,Vector3(0.9,3.0,0.9),Vector3(sx*4.2,0,1.6),st.trim) # guardian statues
   "dwarf":
-   S.box(root,Vector3(1.4,1.0,0.2),Vector3(0,4.6,0.7),st.trim) # carved face
+   S.box(root,Vector3(2.0,1.4,0.2),Vector3(0,6.0,1.42),st.trim) # carved face
   "lizardmen":
-   S.box(root,Vector3(4.2,0.4,1.8),Vector3(0,4.6,0),st.roof2)
+   S.box(root,Vector3(7.2,0.6,3.2),Vector3(0,9.5,0),st.roof2)
 
 # --- Keep, temple ----------------------------------------------------------------------------------
 

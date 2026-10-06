@@ -1194,3 +1194,31 @@ All GPU rows are within budget (≤ 8 ms 3D, ≤ 3 ms strategic, ≤ 1,500 draw 
 - **First-run render cache:**
   - Release build: **36.7 s**, over 30 s and under 60 s, so option B. On the first start with a map version, the campaign shows "Preparing the world map". The cache is built on a worker thread with its steps and elapsed time, then the campaign loads.
   - Measuring it found a real bug: Varos's `sketch.svg` was imported as a texture (a 14,080 px raster) and was missing from exported builds, so the shipped game could not have built the cache. It is now kept as a plain file (as on the test map).
+
+## Visual fixes from the playtest (2026-10-06, Part 2)
+
+- **Goldspire Rock rebuilt** (`visuals/landmarks/goldspire_rock_visual.gd`) as a sheer golden sea cliff, not a cone:
+  - the sea face drops near-vertically, the land side slopes;
+  - deep buttresses and ravines, strata, a scree foot and a craggy skyline.
+  - Carved into the face: six tiers of colonnaded halls with balconies, a grand carved gateway, stairways up the cliff, towers emerging from the stone, glowing mines, and a giant statue in a niche.
+  - Above and below: gold-roofed spires and a ring of halls on the summit; the Greek city, theatre, harbour and lighthouses below.
+  - Landmarks now turn to face the nearest water (`map/map_view.gd`); before, Goldspire only faced the sea on the test map.
+- **Walls:**
+  - Curtain walls are 5.2 m tall and 1.9 m thick, with a battered base, a string course and merlons. Every wall piece reaches 2 m below its foot, so it follows slopes.
+  - Towers are 9–10 m (round with machicolations and cones for the north; square for the south).
+  - Gatehouses have twin towers, an arched passage and crenellations.
+  - The palisade cultures get earth banks and fighting steps.
+- **Buildings:**
+  - **Medieval:** stone ground floors and jettied half-timbered upper floors, steep slate roofs and chimneys.
+  - **Roman:** hipped terracotta roofs with eaves, window rows, and insulae with shop arches.
+  - **Greek:** whitewashed walls, blue doors and shutters, parapet roofs or low red tiles, roof rooms.
+  - **Desert:** parapets, domes and deep windows.
+  - **Dwarf, dark elf, ratmen, orc, elf and lizardmen houses:** doors and lit windows.
+  - **Greek terraces:** limestone retaining walls instead of white blocks.
+- **Starting generals:** skill points are pre-allocated, so the warning is gone from turn 1.
+- **Strategic-map shader:** 1.82 ms on Varos (World enlarged, above).
+- **Image-to-3D later (TRELLIS):** an exact `visuals` entry in `data/asset_manifest.json` now overrides a procedural builder. A generated model wrapped in its own visual scene replaces any kit piece (`kit.<culture>.<piece>`) or landmark stage through the manifest alone (`tests/test_asset_manifest.gd`).
+- **GPU, worst case** (synthetic600, every settlement level 3 with every industry):
+  - 5.25–6.09 ms GPU, 280–630 draw calls, 590 MB VRAM: within budget.
+  - Triangles: 4.0–4.3 M, a little over the 4 M guideline but below the 4.74 M measured before this change.
+- **Tests:** 300 GUT tests pass; the self-test passes.

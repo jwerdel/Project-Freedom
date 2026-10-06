@@ -254,15 +254,29 @@ func update(focus: Vector3):
     landmarks.erase(sid)
 
 # A landmark settlement's own model at its growth stage (AssetManifest.instantiate_settlement), built
-# on the terrain. Local space: origin at sea level under the site.
+# on the terrain. Local space: origin at sea level under the site, local +z toward the nearest water
+# (coastal landmarks such as Goldspire's sea cliff face the sea); build() gets heights in that space.
 func _landmark(sid: String,level: int):
  if landmarks.has(sid): landmarks[sid].queue_free()
  var p = WorldMap.settlement_position(sid)
  var n = AssetManifest.instantiate_settlement(sid,clampi(level,1,3))
  add_child(n)
  n.position = Vector3(p.x,sea_level,p.y)
- if n.has_method("build"): n.build({"height":func(x,z): return height_at(p.x+x,p.y+z)-sea_level})
+ var th = _toward_water(p)
+ n.rotation.y = th
+ var c = cos(th)
+ var s = sin(th)
+ if n.has_method("build"): n.build({"height":func(x,z): return height_at(p.x+x*c+z*s,p.y-x*s+z*c)-sea_level})
  landmarks[sid] = n
+
+# The heading (rotation about y) that turns local +z toward the water around p; 0 when inland.
+func _toward_water(p: Vector2) -> float:
+ var d = Vector2.ZERO
+ for r in [25.0,45.0,70.0]:
+  for i in 32:
+   var v = Vector2.from_angle(i*TAU/32.0)
+   if height_at(p.x+v.x*r,p.y+v.y*r)<sea_level: d += v/r
+ return 0.0 if d.length()<0.0001 else atan2(d.x,d.y)
 
 # What map/sprawl.gd needs to lay a settlement out, from the campaign state.
 func settlement_spec(sid: String) -> Dictionary:

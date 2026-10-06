@@ -61,3 +61,16 @@ func test_incomplete_landmark_reports_error_instead_of_falling_back():
  AssetManifest.use_data(landmark_manifest())
  assert_eq(AssetManifest.settlement_stage_path("half_built",2),"")
  assert_push_error("incomplete")
+
+func test_a_registered_model_overrides_a_procedural_kit_piece():
+ # Image-to-3D or hand-made models replace procedural pieces through the manifest alone.
+ var data = JSON.parse_string(FileAccess.get_file_as_string(AssetManifest.PATH))
+ data.visuals["kit.greek.temple"] = AssetManifest.scene_path("unit.commander")
+ AssetManifest.use_data(data)
+ var n = AssetManifest.instantiate("kit.greek.temple")
+ add_child_autofree(n)
+ assert_eq(n.scene_file_path,AssetManifest.scene_path("unit.commander"),"the registered scene wins")
+ AssetManifest.reset()
+ var p = AssetManifest.instantiate("kit.greek.temple")
+ add_child_autofree(p)
+ assert_eq(p.scene_file_path,"","without an entry the procedural builder builds it")

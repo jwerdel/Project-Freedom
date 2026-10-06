@@ -48,7 +48,11 @@ static func scene_path(id: String) -> String:
  assert(path != "","No visual registered for '%s' in %s" % [id,PATH])
  return path
 
+# An exact "visuals" entry wins over a procedural builder: a hand-made or generated model (for
+# example an image-to-3D signature building, wrapped in its own visual scene) replaces a procedural
+# kit piece by adding "kit.<culture>.<piece>": "res://visuals/...tscn" to the manifest; no code changes.
 static func instantiate(id: String) -> Node3D:
+ if visuals().has(id): return load(scene_path(id)).instantiate()
  var builder = procedural_builder(id)
  if builder != "": return load(builder).build_id(id)
  return load(scene_path(id)).instantiate()
