@@ -1,8 +1,8 @@
 {
   "_note": "PLACEHOLDER army movement tuning. Every number here is a tunable placeholder, not approved balance. Confirmed (constitution): campaign movement uses a per-turn movement allowance in the Total War style; an army may move several times while its allowance permits. Costs: one movement point per meter of open ground, times the terrain cost of the cell entered (diagonal steps cost their real length). core/movement.gd applies these values; the terrain grid itself is the map's movement grid.",
   "army": {
-    "_note": "Movement points per turn, refilled on End Turn. The map is about 280 m across; Greyhaven to Crownwatch is about 75 m by road.",
-    "movement_points": 60
+    "_note": "Movement points per turn, refilled on End Turn. Scaled 2.5x on 2026-10-06 with the maps (owner: the world enlarged 2.5x, marches take about the same number of turns). Agents, envoys and fleets do not exist yet; when they come, their allowances scale the same way.",
+    "movement_points": 150
   },
   "terrain": {
     "_note": "cost multiplies the distance walked into a cell of that terrain; null = impassable. Mountains are impassable except where a pass crosses them; water is impassable (no naval movement in this block).",

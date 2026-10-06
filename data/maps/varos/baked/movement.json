@@ -5,8 +5,8 @@
     0.0,
     0.0
   ],
-  "cols": 1408.0,
-  "rows": 1152.0,
+  "cols": 3520.0,
+  "rows": 2880.0,
   "names": [
     "open",
     "forest",
@@ -16,5 +16,5 @@
     "mountain",
     "water"
   ],
-  "runs": 75797
+  "runs": 396046
 }

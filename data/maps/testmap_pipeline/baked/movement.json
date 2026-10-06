@@ -2,11 +2,11 @@
   "_note": "GENERATED movement grid meta (map/map_bake.gd); movement.bin holds the terrain bytes then the road bytes.",
   "cell": 1.0,
   "origin": [
-    -140.0,
-    -140.0
+    -350.0,
+    -350.0
   ],
-  "cols": 280.0,
-  "rows": 280.0,
+  "cols": 700.0,
+  "rows": 700.0,
   "names": [
     "open",
     "forest",
@@ -16,5 +16,5 @@
     "mountain",
     "water"
   ],
-  "runs": 2155
+  "runs": 6884
 }

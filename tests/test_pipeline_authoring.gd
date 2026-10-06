@@ -45,12 +45,12 @@ func test_testmap_pipeline_builds_validates_and_matches_the_legacy_map():
  for id in ["greyhaven","willowmere","crownwatch","goldspire_rock"]:
   var p = WorldMap.settlement_position(id)
   assert_eq(WorldMap.region_at(p),id,id+" lies in its own region")
- assert_eq(WorldMap.region_at(Vector2(0,-110)),"greyspine","the range's region")
+ assert_eq(WorldMap.region_at(Vector2(0,-275)),"greyspine","the range's region")
  var Movement = load("res://core/movement.gd")
  Movement.reset()
- assert_eq(Movement.terrain_at(Vector2(0,100)),"water","the sea south of the coast")
- assert_eq(Movement.terrain_at(Vector2(30,-88)),"mountain","the Greyspine ridge")
- assert_eq(Movement.terrain_at(Vector2(43,-80)),"pass","the Greyspine Pass")
+ assert_eq(Movement.terrain_at(Vector2(0,250)),"water","the sea south of the coast")
+ assert_eq(Movement.terrain_at(Vector2(75,-220)),"mountain","the Greyspine ridge")
+ assert_eq(Movement.terrain_at(Vector2(108,-200)),"pass","the Greyspine Pass")
 
 func test_build_is_deterministic_and_the_bake_check_catches_stale_bakes():
  Pipeline.build(MAP)
@@ -80,7 +80,7 @@ func test_validator_catches_each_broken_copy():
  assert_has(broken(func(p,_f,_m): p.regions.greyhaven.owner = "house_nobody"),"ids")
  assert_has(broken(func(p,_f,_m): p.provinces[1].regions.append("greyhaven")),"ids","a region in two provinces")
  assert_has(broken(func(_p,_f,m): m.allow_legacy_majors = false),"majors","village and town majors only on the test map")
- assert_has(broken(func(p,_f,_m): p.regions.willowmere.settlement.position = [-15,8]),"spacing")
+ assert_has(broken(func(p,_f,_m): p.regions.willowmere.settlement.position = [-55,35]),"footprints")
  assert_has(broken(func(p,_f,_m): p.regions.willowmere.settlement.position = [0,100]),"settlements","a settlement in the sea")
  assert_has(broken(func(p,_f,_m): p.regions.willowmere.culture = {"roman":0.5,"greek":0.2}),"shares")
  assert_has(broken(func(p,_f,_m): p.regions.greyhaven.settlement.landmark = "atlantis"),"landmarks")

@@ -1,6 +1,6 @@
 # Varos world outline (block A1)
 
-**Status:** **Proposed**, waiting for the owner's approval. No Stage A content is built until the outline is approved: no armies, buildings, rosters, landmarks or generated names.
+**Status:** **Approved** (owner, 2026-10-06): the frame, the shapes, the Stage A eastern edge and the Western Isles layout. The owner then had the whole world enlarged 2.5x (§1). Stage A content follows in its own block.
 **Sources:**
 - shapes after `docs/reference/world/varos_map.jpg` (shapes only; the reference's labels are not used);
 - content after `docs/world-bible-v2.md` §6–§8 and Appendix A;
@@ -12,7 +12,14 @@
 
 **Images** (`map/map_scene.tscn -- --map=varos --strategic --outline [--strategic-rect=0,180,3300,2700]`): the whole world and the Stage A slice. They show region and province borders, the Stage A boundary, the locked Ashlands, the Rift and faction start positions.
 
-## 1. Frame (Proposed change)
+## 1. Frame (approved, then enlarged 2.5x on 2026-10-06)
+
+- **Now 14,080 × 11,520 m.** The owner's playtest showed cities piling into each other, so every distance was scaled 2.5x: the approved shapes and positions, coasts, ranges, rivers and islands. Settlements keep their size, so every city now sits in a ring of open countryside. Passes keep their physical width (a wider carve opens cheap valleys beside them).
+- **No-overlap rule:** each settlement type has a footprint (its sprawl at max level plus a 40 m countryside ring, `data/settlement_sprawl.json`); the validator fails when two footprints touch. Varos and the test map pass.
+- **Movement scaled 2.5x** in data (allowance, AI reach and threat ranges, reinforcement radii, the "met" radius), so marches take about the same number of turns.
+- Cell 4 m (3,520 × 2,880 cells).
+
+The earlier proposal, kept for history:
 
 - **5,632 × 4,608 m.**
 - Design Addendum A has 5,632 × 3,584 m. This adds 1,024 m in the south, so the Sahren desert and the Sothmire jungle get TW:WH3-scale room (owner: "the south must be large").

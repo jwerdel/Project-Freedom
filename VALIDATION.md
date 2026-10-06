@@ -1147,3 +1147,41 @@ Research and decisions: docs/tw-ui-parity.md §10 and §15.
 - the wheel zooms up to 3×.
 
 **Tests:** 295 GUT tests pass headless; the self-test passes (now also opens the character window and the diplomacy screen).
+
+## World enlarged 2.5x (2026-10-06) — STOPPED on two budgets
+
+Design: map-pipeline-design Addendum B.
+- **Varos:** 14,080 × 11,520 m, cell 4 m (3,520 × 2,880 cells). It builds headless in 61 s with 0 validator errors, footprints included.
+- **The test map:** 700 m (version 2) with its sites moved apart. 297 GUT tests pass; the self-test passes.
+- **Bench armies:** the enlarged Varos has no armies until Stage A content. The benchmark raises one 8-unit army per faction at its seat (42 armies).
+
+**CPU budgets** (`scripts/scale_test.gd -- --map=varos --turns=2`):
+
+| Budget | Debug | Release | Target | |
+|---|---|---|---|---|
+| Load (world, grid, state) | 45 ms | 36 ms | ≤ 10 s | met |
+| RAM after End Turns | 796 MB (static) | – | ≤ 2.5 GB | met |
+| `region_at` | 1.4 µs | – | ≤ 10 µs | met |
+| Path preview p95, 60 / 150 / 400 m | 0.3 / 0.5 / 2.6 ms | 0.3 / 0.5 / 2.6 ms | ≤ 5 ms | met |
+| **Path preview p95, 1,000 m** | **8.6 ms** | **8.5 ms** (median 1.9, max 13) | ≤ 5 ms | **missed** |
+| End Turn, 42 AI factions | 165 ms | 93 ms | ≤ 4 s | met |
+| End Turn, longest slice | 13.9 ms | 12.5 ms | no frame over 50 ms | met |
+| Save / load | 14 / 10 ms, 102 KB | – | ≤ 3 s, ≤ 5 MB | met |
+| Map build (authoring, headless) | 61 s | – | ≤ 2 min | met |
+| **First-run render cache build** | **42.6 s** | not measured | ≤ 30 s | **missed in debug** |
+
+- **Path p95:** the time is spent in the hierarchy's route legs; the native A* dominates, so the release build is no faster. Synthetic600 measured 4.2 ms on its 2 m cells.
+- **Render cache:** load once built is 96 ms.
+
+**GPU** (`map/map_scene.tscn -- --map=varos --focus=dense`, 1440×900, RTX 4060):
+
+| View | GPU ms | Draw calls | VRAM |
+|---|---|---|---|
+| Farthest zoom (210 m) | 4.80 | 24 | 338 MB |
+| Middle (120 m) | 4.82 | 19 | 338 MB |
+| Close (60 m) | 6.21 | 12 | 338 MB |
+| Normal view (150 m) | 5.14 | 21 | 338 MB |
+| Strategic map, painted (3D off) | **1.82** | 59 (2D) | 443 MB |
+| Strategic map, 21 stacked passes | 9.74 → 0.40 ms per pass | | |
+
+All GPU rows are within budget (≤ 8 ms 3D, ≤ 3 ms strategic, ≤ 1,500 draw calls, ≤ 2 GB VRAM). This includes the painted strategic-map shader, which Part 3 of the last block did not measure. The draw calls are low because the outline has no content yet (7 settlements built near the camera, few trees); Stage A content will raise them.

@@ -78,15 +78,15 @@ func test_only_units_unlocked_by_a_settlement_building_can_be_recruited():
 
 func test_recruiting_needs_own_territory_not_a_settlement():
  var s = home_state()
- place(s,Vector2(2,0)) # open country in Lannet's land (Greyhaven's region)
+ place(s,Vector2(-25,15)) # open country in Lannet's land (Greyhaven's region)
  var r = Armies.can_recruit(s,ARMY,"peasant_levy")
  assert_false(r.ok)
  assert_eq(r.reasons,["Must be in your own territory"])
  assert_false(Armies.recruit_context(s,ARMY).ok)
  # Anywhere in an own region counts, far from the settlement itself.
  var c = WorldMap.settlement_position("crownwatch")
- place(s,c+Vector2(0,-14))
- assert_eq(WorldMap.region_at(c+Vector2(0,-14)),"crownwatch","precondition: still Crownwatch's region")
+ place(s,c+Vector2(0,40))
+ assert_eq(WorldMap.region_at(c+Vector2(0,40)),"crownwatch","precondition: still Crownwatch's region")
  assert_true(Armies.recruit_context(s,ARMY).ok)
  assert_eq(Armies.can_recruit(s,ARMY,"peasant_levy").settlement,"crownwatch")
  # A foreign region never recruits for this army.
@@ -133,13 +133,13 @@ func test_disband_returns_men_to_the_region_population():
  assert_almost_eq(s.settlements[GS].population,pop+men,0.001)
  assert_eq(s.army_state[ARMY].units.size(),count-1)
  # In Lannet's land the men join Greyhaven's population (the region they stand in).
- place(s,Vector2(2,0))
+ place(s,Vector2(-25,15))
  var gpop = s.settlements.greyhaven.population
  r = Armies.disband(s,ARMY,0)
  assert_eq(r.settlement,"greyhaven")
  assert_almost_eq(s.settlements.greyhaven.population,gpop+r.men,0.001)
  # In the unsettled Greyspine there is no population to return to.
- place(s,Vector2(-100,-134))
+ place(s,Vector2(-250,-332))
  assert_eq(Armies.disband(s,ARMY,0).settlement,"")
 
 func test_replenishment_is_free_at_home_and_faster_where_populous():
@@ -164,7 +164,7 @@ func test_replenishment_is_free_at_home_and_faster_where_populous():
 
 func test_replenishment_costs_gold_in_enemy_territory():
  var s = home_state()
- place(s,Vector2(2,0))
+ place(s,Vector2(-25,15))
  assert_ne(Armies.region_owner(s,ARMY),"house_aurek")
  for u in s.army_state[ARMY].units: u.men = int(u.max_men/2)
  var gold = s.treasury.house_aurek
@@ -230,12 +230,12 @@ func test_hiring_a_general_raises_a_new_garrisoned_army():
  # Foreign settlements, the army limit and an empty treasury are refused.
  assert_false(Armies.can_raise(s,"house_aurek","greyhaven").ok)
  s.army_state[r.army].garrison = ""
- s.army_state[r.army].position = [60.0,-10.0]
+ s.army_state[r.army].position = [150.0,-25.0]
  while Armies.armies_of(s,"house_aurek").size()<int(Armies.data().armies.max_per_faction):
   var n = Armies.raise_army(s,"house_aurek","crownwatch")
   assert_true(n.ok)
   s.army_state[n.army].garrison = ""
-  s.army_state[n.army].position = [60.0,-12.0]
+  s.army_state[n.army].position = [150.0,-30.0]
  var over = Armies.can_raise(s,"house_aurek","crownwatch")
  assert_false(over.ok)
  assert_string_contains(", ".join(over.reasons),"Army limit")

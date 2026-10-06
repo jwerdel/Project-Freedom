@@ -704,3 +704,12 @@ Implements the owner decisions in game-design §12.13 (constitution: Economy and
 - Sprawl is built only for settlements within about 700 m of the camera (pooled, built on demand); the strategic map takes over beyond the farthest 3D zoom.
 - Target: a level-3 city at most about 40 draw calls (one MultiMesh per kit mesh plus its features).
 - The §6.2 totals still hold (≤ 1,500 draw calls, ≤ 8 ms GPU, ≤ 2 GB VRAM), measured on the synthetic world with sprawling cities and mixed conversion states.
+
+## Addendum B. The world enlarged 2.5x (owner, 2026-10-06)
+
+- **Why:** in the owner's playtest, cities' sprawl ran into each other (Greyhaven into Goldspire). Every major settlement must stand in a clear ring of countryside (farms, villages, forest, roads) before the next settlement's sprawl begins.
+- **Footprints:** each settlement type has a footprint radius: its sprawl at max level (walls, suburbs, villages, farms, industry props) measured over every culture and specialization. Each also gets a countryside ring of 40 m (`data/settlement_sprawl.json` "footprint"). The validator fails when two footprints touch; `tests/test_footprints.gd` keeps the sprawl inside its radius.
+- **Varos:** the approved outline enlarged 2.5x to 14,080 × 11,520 m, cell 4 m. Settlements keep their size; passes keep their physical width.
+- **The test map:** enlarged 2.5x to 700 m (map version 2), with its four sites moved apart so the footprints hold.
+- **Movement:** all distances in data scaled 2.5x (allowance 150, AI reach/war/threat/watch, reinforcement radii, met radius), so marches take about the same number of turns. Moves within one turn's best-case reach use the exact grid search (matching the reachable area); longer ones use the hierarchy.
+- **Budgets re-measured** on the enlarged Varos (VALIDATION.md, "World enlarged").

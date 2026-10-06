@@ -38,7 +38,7 @@ func test_grid_matches_data_and_map():
  for t in ["open","forest","hills","pass","mountain","water","settlement"]: assert_true(find_cell(t).x>=0 or t in ["pass","settlement"],t+" present")
  # Every settlement stands on passable settlement cells; the sea is water.
  for id in WorldMap.settlement_ids(): assert_eq(Movement.terrain_at(WorldMap.settlement_position(id)),"settlement",id)
- assert_eq(Movement.terrain_at(Vector2(0,60)),"water")
+ assert_eq(Movement.terrain_at(Vector2(0,150)),"water")
 
 func test_points_spent_by_distance_and_terrain():
  var cost = Movement.data().terrain
@@ -81,7 +81,7 @@ func test_roads_are_faster_and_scale_with_road_level():
   var s = GameState.from_data()
   s.road_level = level
   s.settlements.greyhaven.owner = "house_aurek" # so the route may start at its gate
-  var start = Vector2(-4,-1)
+  var start = Vector2(-40,12.5)
   s.army_state[ARMY].position = [start.x,start.y]
   var p = Movement.plan(s,ARMY,WorldMap.settlement_position("crownwatch"))
   assert_true(p.ok)
@@ -91,13 +91,13 @@ func test_roads_are_faster_and_scale_with_road_level():
 
 func test_water_and_mountains_are_impassable_except_at_passes():
  var s = GameState.from_data()
- var water = Movement.plan(s,ARMY,Vector2(0,60))
+ var water = Movement.plan(s,ARMY,Vector2(0,150))
  assert_false(water.ok)
  assert_eq(water.reason,Movement.IMPASSABLE)
  var peak = Movement.center_of(find_cell("mountain"))
  assert_eq(Movement.plan(s,ARMY,peak).reason,Movement.IMPASSABLE)
  # Crossing the Greyspine to the far side must use the pass.
- var north = Vector2(-100,-134)
+ var north = Vector2(-250,-332)
  assert_eq(Movement.terrain_at(north),"open")
  var p = Movement.plan(s,ARMY,north)
  assert_true(p.ok,"reachable through the pass")
@@ -111,7 +111,7 @@ func test_water_and_mountains_are_impassable_except_at_passes():
 
 func test_long_orders_continue_on_end_turn_and_points_refill():
  var s = GameState.from_data()
- var target = Vector2(-100,-134)
+ var target = Vector2(-250,-332)
  var r = Movement.order(s,ARMY,target)
  assert_true(r.ok)
  assert_gt(r.total_turns,1)
@@ -135,7 +135,7 @@ func test_long_orders_continue_on_end_turn_and_points_refill():
 
 func test_cancel_keeps_position_and_drops_the_order():
  var s = GameState.from_data()
- Movement.order(s,ARMY,Vector2(-100,-134))
+ Movement.order(s,ARMY,Vector2(-250,-332))
  var at = Movement.position(s,ARMY)
  Movement.cancel_order(s,ARMY)
  assert_true(s.army_state[ARMY].order.is_empty())
@@ -156,7 +156,7 @@ func test_moving_into_an_own_settlement_garrisons_the_army():
  assert_eq(data.army_movement(ARMY).garrison_name,"Crownwatch")
  # Marching out leaves the garrison.
  data.end_turn()
- data.order_move(ARMY,WorldMap.settlement_position("crownwatch")+Vector2(0,12))
+ data.order_move(ARMY,WorldMap.settlement_position("crownwatch")+Vector2(0,30))
  assert_eq(s.army_state[ARMY].garrison,"")
  assert_true(data.settlement("crownwatch").garrison.is_empty())
 
@@ -174,12 +174,12 @@ func test_foreign_settlements_and_armies_are_blocked():
  assert_false(b.ok)
  assert_eq(b.reason,Movement.BLOCKED_BATTLE)
  # Routes go around foreign settlements instead of through them.
- var around = data.plan_move(ARMY,Vector2(5,-30))
+ var around = data.plan_move(ARMY,Vector2(-17.5,-60))
  assert_true(around.ok)
  for q in around.points: assert_gt(q.distance_to(WorldMap.settlement_position("greyhaven")),Movement.data().settlements.radius-0.01)
  # Foreign territory itself is not blocked (military access is open in the constitution).
- assert_eq(WorldMap.region_at(Vector2(5,-30)),"greyhaven")
- assert_ne(Movement.terrain_at(Vector2(5,-30)),"mountain")
+ assert_eq(WorldMap.region_at(Vector2(-17.5,-60)),"greyhaven")
+ assert_ne(Movement.terrain_at(Vector2(-17.5,-60)),"mountain")
 
 func test_reachable_area_respects_remaining_points():
  var s = GameState.from_data()
@@ -190,7 +190,7 @@ func test_reachable_area_respects_remaining_points():
  s.army_state[ARMY].points = 10.0
  assert_lt(Movement.reachable(s,ARMY).size(),full.size())
  # The planned reach point of any destination lies inside the reachable area.
- var p = Movement.plan(s,ARMY,Vector2(-100,-134))
+ var p = Movement.plan(s,ARMY,Vector2(-250,-332))
  var cells = {}
  for c in Movement.reachable(s,ARMY): cells[c] = true
  # (or next to it: the planner and the flood fill round the last cell differently at 1 m cells)
@@ -202,14 +202,14 @@ func test_reachable_area_respects_remaining_points():
 
 func test_movement_state_is_part_of_the_campaign_state():
  var s = GameState.from_data()
- Movement.order(s,ARMY,Vector2(-100,-134))
+ Movement.order(s,ARMY,Vector2(-250,-332))
  var d = s.to_dict()
  assert_true(d.has("army_state") and d.has("road_level"))
  assert_eq(d.army_state[ARMY].order.size(),s.army_state[ARMY].order.size())
  var a = GameState.from_data()
  var b = GameState.from_data()
  for st in [a,b]:
-  Movement.order(st,ARMY,Vector2(-100,-134))
+  Movement.order(st,ARMY,Vector2(-250,-332))
   for i in 3: TurnLoop.end_turn(st)
  assert_eq(JSON.stringify(a.to_dict()),JSON.stringify(b.to_dict()))
 

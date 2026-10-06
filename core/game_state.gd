@@ -74,6 +74,10 @@ static func from_data(path := START,campaign_seed := 0) -> RefCounted:
   if at != "" and s.settlements[at].owner == a.faction: a.garrison = at
   s.army_state[id] = a
  load("res://core/land.gd").init(s)
+ # Starting generals come with their skill points spent (owner, 2026-10-06: no unspent-points
+ # warning from turn 1); later points are the player's to spend.
+ var Characters = load("res://core/characters.gd")
+ for id in s.army_state: Characters.auto_allocate(s,id)
  s.chronicle = load("res://core/chronicle.gd").opening_entries()
  return s
 

@@ -10,7 +10,7 @@ const MapBake = preload("res://map/map_bake.gd")
 const AssetManifest = preload("res://core/asset_manifest.gd")
 const Sketch = preload("res://map/sketch.gd")
 const MAJOR_TYPES = ["city","fortress"]
-const MIN_SPACING = 30.0  # metres between major settlements
+
 const MAX_SLOPE = 0.6     # rise per metre under a settlement
 const SKIPPED = ["sea graph and port anchors","Greywall continuity","start positions against the world bible","minor factions near majors","names by culture"]
 
@@ -61,7 +61,7 @@ static func validate(map_id: String,overrides := {}) -> Dictionary:
    if str(regions[r].get("owner","")) != "": add.call("majors","error","settled region %s (owned) has no major settlement" % r)
    continue
   var pos = Vector2(s.position[0],s.position[1])
-  majors.append([r,pos])
+  majors.append([r,pos,str(s.type)])
   if not legacy and not str(s.type) in MAJOR_TYPES: add.call("majors","error","%s: major settlement type '%s' (must be city or fortress)" % [r,s.type],pos)
   var lmv = s.get("landmark","")
   var lm = r if lmv is bool and lmv else str(lmv) # legacy maps flag it with true
@@ -69,9 +69,15 @@ static func validate(map_id: String,overrides := {}) -> Dictionary:
    var lid = lm if lm != "" else r
    for st in range(1,4):
     if not AssetManifest.landmarks().has(lid) or AssetManifest.landmarks()[lid].get("stage_%d" % st,"") == "": add.call("landmarks","error","landmark %s has no stage_%d in the asset manifest" % [lid,st],pos)
+ # No-overlap rule: settlement footprints (data/settlement_sprawl.json "footprint": the sprawl at max
+ # level plus a countryside ring) must not touch.
+ var fp = JSON.parse_string(FileAccess.get_file_as_string("res://data/settlement_sprawl.json")).footprint
+ var reach = func(t: String) -> float: return float(fp.radius.get(t,fp.radius.city))+float(fp.countryside)
  for i in majors.size():
   for j in range(i+1,majors.size()):
-   if majors[i][1].distance_to(majors[j][1])<MIN_SPACING: add.call("spacing","error","%s and %s are closer than %d m" % [majors[i][0],majors[j][0],int(MIN_SPACING)],majors[i][1])
+   var need = reach.call(majors[i][2])+reach.call(majors[j][2])
+   var d = majors[i][1].distance_to(majors[j][1])
+   if d<need: add.call("footprints","error","%s and %s: footprints touch (%d m apart, need %d m)" % [majors[i][0],majors[j][0],int(d),int(ceil(need))],majors[i][1])
  # --- Grid checks (pipeline and synthetic maps: baked/) ---------------------------------------------
  if MapRegistry.has_file("baked/movement.json",map_id) and MapRegistry.has_file("baked/regions.json",map_id):
   _grid_checks(map_id,out,add,regions,majors,prov)

@@ -39,6 +39,19 @@ func _ready():
  t = Time.get_ticks_usec()
  var s = GameState.from_data()
  var t_state = Time.get_ticks_usec()-t
+ # A map without starting armies yet (Varos before its Stage A content): one army of 8 units per
+ # faction at its first settlement, so paths and End Turn have work (benchmark only).
+ if s.army_state.is_empty():
+  var Armies = load("res://core/armies.gd")
+  var kinds = ["spearmen","swordsmen","archers","heavy_infantry","peasant_levy","cavalry"]
+  for f in s.factions():
+   var own = s.settlements_of(f)
+   if own.is_empty(): continue
+   s.treasury[f] = 100000
+   var r = Armies.raise_army(s,f,own[0])
+   if not r.ok: continue
+   for i in 8: s.army_state[r.army].units.append({"unit":kinds[i%kinds.size()],"men":100,"max_men":100})
+  line("bench_armies_added",s.army_state.size())
  line("map",map_id)
  line("regions",WorldMap.settlement_ids().size())
  line("factions",s.factions().size())

@@ -35,7 +35,7 @@ func place(s,id: String,p: Vector2,garrison := ""):
  s.army_state[id].position = [p.x,p.y]
  s.army_state[id].garrison = garrison
 
-func near(sid: String,dx := -14.0,dz := 6.0) -> Vector2:
+func near(sid: String,dx := -35.0,dz := 15.0) -> Vector2:
  var p = WorldMap.settlement_position(sid)
  return Vector2(p.x+dx,p.y+dz)
 
@@ -102,9 +102,9 @@ func test_ai_defends_a_threatened_settlement():
  Battles.declare_war(s,"house_aurek","house_lannet")
  # The Aurek host stands near Greyhaven; Lannet's guard is out in the field nearby, reinforced
  # enough to make the difference.
- place(s,HOST,near("greyhaven",10.0,-14.0))
+ place(s,HOST,near("greyhaven",25.0,-35.0))
  reinforce(s,GUARD,4)
- place(s,GUARD,near("greyhaven",-20.0,-10.0))
+ place(s,GUARD,near("greyhaven",-50.0,-25.0))
  var look = Ai.assess(s,"house_lannet",Ai.personality("house_lannet"))
  assert_true("greyhaven" in look.threatened,"precondition: Greyhaven is threatened")
  var rep = Ai.take_turns(s,{"factions":["house_lannet","house_verrin"]})
@@ -116,7 +116,7 @@ func test_ai_does_not_attack_at_bad_odds():
  Battles.declare_war(s,"house_lannet","house_aurek")
  # The guard (4 units) faces the much stronger Aurek host in the open.
  place(s,GUARD,near("crownwatch"))
- place(s,HOST,near("crownwatch",-30.0,10.0))
+ place(s,HOST,near("crownwatch",-75.0,25.0))
  var rep = Ai.take_turns(s,{"factions":["house_lannet","house_verrin"]})
  assert_true(actions_of(rep,"attack","house_lannet").is_empty(),"no attack")
  assert_true(rep.pending.is_empty())
@@ -194,11 +194,11 @@ func test_a_hopeless_ai_army_withdraws_when_the_player_attacks():
  var s = GameState.from_data()
  var ui = UiData.new(s)
  # The Verrin levy (weak) in the open, the Aurek host reinforced next to it.
- place(s,"highbloom_levy",Vector2(2,-14))
+ place(s,"highbloom_levy",Vector2(5,-35))
  reinforce(s,HOST,10)
- place(s,HOST,Vector2(2,-2))
+ place(s,HOST,Vector2(5,-5))
  Battles.declare_war(s,"house_aurek","house_verrin")
- var pb = ui.prebattle(HOST,Vector2(2,-14))
+ var pb = ui.prebattle(HOST,Vector2(5,-35))
  assert_eq(pb.kind,"army")
  assert_lt(1.0-float(pb.odds),float(Ai.data().defend.withdraw_below),"precondition: hopeless for the defender")
  var out = ui.quick_resolve(pb)

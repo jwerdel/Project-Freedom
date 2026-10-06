@@ -15,6 +15,7 @@ func test_points_per_level_and_row_order():
  var data = UiData.new(GameState.from_data())
  var c = data.state.army_state[HOST].commander
  c.rank = 3
+ c.skills = []
  assert_eq(Characters.skill_points(c),3)
  assert_false(Characters.can_take(c,"drilled_ranks").ok,"the row's first skill comes first")
  assert_true(data.take_skill(HOST,"rally_the_line"))
@@ -39,11 +40,13 @@ func test_auto_allocate_spends_every_point_round_robin():
 func test_unspent_points_warn_until_auto_allocate():
  var data = UiData.new(GameState.from_data())
  var kinds = data.end_turn_warnings().map(func(w): return w.kind)
- assert_has(kinds,"skill_points","a level-1 general has a point to spend")
- var w = data.end_turn_warnings().filter(func(x): return x.kind == "skill_points")[0]
- assert_eq(w.items[0].type,"character")
- for id in data.state.army_state:
-  if data.state.army_state[id].faction == data.state.player_faction: data.set_auto_skills(id,true)
+ assert_does_not_have(kinds,"skill_points","starting generals come with their points spent")
+ for id in data.state.army_state: assert_eq(Characters.skill_points(data.state.army_state[id].commander),0,id)
+ data.state.army_state[HOST].commander.rank += 1
+ var w = data.end_turn_warnings().filter(func(x): return x.kind == "skill_points")
+ assert_eq(w.size(),1,"a level gained gives a point to spend")
+ assert_eq(w[0].items[0].type,"character")
+ data.set_auto_skills(HOST,true)
  kinds = data.end_turn_warnings().map(func(w2): return w2.kind)
  assert_does_not_have(kinds,"skill_points")
 
@@ -62,6 +65,7 @@ func test_ai_generals_spend_points_at_end_turn_and_skills_survive_saves():
 
 func test_character_window_tabs():
  var data = UiData.new(GameState.from_data())
+ data.state.army_state[HOST].commander.skills = []
  var w = CharacterWindow.new(data,UiKit.colors(data.player_faction()),HOST)
  add_child_autofree(w)
  assert_not_null(w.find_child("CharacterStats",true,false),"Details tab first")

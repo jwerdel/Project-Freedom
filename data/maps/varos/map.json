@@ -1,12 +1,12 @@
 {
-  "_note": "Varos, the V1 world (outline, block A1, pending approval). Frame 5632 x 4608 m: design Addendum A's 5632 x 3584 plus 1,024 m in the south for the Sahren and Sothmire (owner: the south must be large). cell 4 for the outline builds; the content build uses cell 2.",
+  "_note": "Varos, the V1 world. Frame 14080 x 11520 m (owner, 2026-10-06): the approved outline (design Addendum A plus 1,024 m in the south, all enlarged 2.5x so every settlement has clear countryside; movement data scaled to match). Cell 4 m.",
   "id": "varos",
-  "name": "Varos (outline)",
-  "version": 1,
+  "name": "Varos",
+  "version": 2,
   "kind": "pipeline",
   "size": [
-    5632,
-    4608
+    14080,
+    11520
   ],
   "origin": [
     0,

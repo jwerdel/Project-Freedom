@@ -12,9 +12,9 @@
   },
   "reach": {
     "_note": "An army can threaten or strike targets within reach_meters straight-line distance (about one turn's 60 movement points at mixed terrain cost). war_meters: how far a faction looks for targets when choosing a war and where to march (a few turns). Movement.plan confirms the chosen action; plan_candidates caps how many targets per army are path-checked per turn (A* is the expensive part).",
-    "reach_meters": 55.0,
-    "war_meters": 160.0,
-    "threat_meters": 70.0,
+    "reach_meters": 137.5,
+    "war_meters": 400.0,
+    "threat_meters": 175.0,
     "plan_candidates": 3
   },
   "odds": {
@@ -72,7 +72,7 @@
   },
   "presentation": {
     "_note": "End Turn on the map (main.gd): AI armies whose path comes within watch_meters of the player's settlements or armies are shown one at a time, the camera following at most camera_distance away and holding hold_seconds after each arrives (Settings: follow AI movements Off / Only near my territory / All, default Off; AI turn speed 1x/2x/4x divides the hold; Space or Esc skips). Presentation only: it never changes what the AI did.",
-    "watch_meters": 60.0,
+    "watch_meters": 150.0,
     "hold_seconds": 0.7,
     "camera_distance": 90.0
   },

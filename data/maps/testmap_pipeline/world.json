@@ -1,5 +1,5 @@
 {
-  "_note": "The test map's provinces and regions (pipeline source; converted once from the legacy data/maps/testmap/provinces.json, region outlines pinned so IDs and borders match). Settlement types follow the prototype (village and town majors are allowed on the test map only: map.json allow_legacy_majors). demo: the map scene's --demo showcase (specialization looks, industry, a region mid-conversion); presentation only.",
+  "_note": "The test map's provinces and regions (pipeline source; converted once from the legacy data/maps/testmap/provinces.json, region outlines pinned so IDs and borders match; 2026-10-06: scaled 2.5x with the sites moved apart inside their regions for the footprint rule). Settlement types follow the prototype (village and town majors are allowed on the test map only: map.json allow_legacy_majors). demo: the map scene's --demo showcase (specialization looks, industry, a region mid-conversion); presentation only.",
   "provinces": [
     {
       "id": "greywater_march",
@@ -45,74 +45,74 @@
         "food": 2.0,
         "minerals": 0.0
       },
-      "polygon": [
-        [
-          -26.0,
-          -62.0
-        ],
-        [
-          14.0,
-          -62.0
-        ],
-        [
-          10.0,
-          -40.0
-        ],
-        [
-          18.0,
-          -22.0
-        ],
-        [
-          12.0,
-          -4.0
-        ],
-        [
-          20.0,
-          12.0
-        ],
-        [
-          22.0,
-          26.0
-        ],
-        [
-          18.0,
-          40.0
-        ],
-        [
-          20.0,
-          60.0
-        ],
-        [
-          -28.0,
-          60.0
-        ],
-        [
-          -24.0,
-          34.0
-        ],
-        [
-          -26.0,
-          14.0
-        ],
-        [
-          -21.0,
-          -6.0
-        ],
-        [
-          -24.0,
-          -24.0
-        ],
-        [
-          -20.0,
-          -38.0
-        ]
-      ],
       "major": {
         "name": "Greyhaven",
         "type": "city",
         "level": 2.0,
         "port": true
-      }
+      },
+      "polygon": [
+        [
+          -65.0,
+          -155.0
+        ],
+        [
+          35.0,
+          -155.0
+        ],
+        [
+          25.0,
+          -100.0
+        ],
+        [
+          45.0,
+          -55.0
+        ],
+        [
+          30.0,
+          -10.0
+        ],
+        [
+          50.0,
+          30.0
+        ],
+        [
+          55.0,
+          65.0
+        ],
+        [
+          45.0,
+          100.0
+        ],
+        [
+          50.0,
+          150.0
+        ],
+        [
+          -70.0,
+          150.0
+        ],
+        [
+          -60.0,
+          85.0
+        ],
+        [
+          -65.0,
+          35.0
+        ],
+        [
+          -52.5,
+          -15.0
+        ],
+        [
+          -60.0,
+          -60.0
+        ],
+        [
+          -50.0,
+          -95.0
+        ]
+      ]
     },
     "willowmere": {
       "name": "Willowmere",
@@ -123,58 +123,58 @@
         "food": 4.0,
         "minerals": 0.0
       },
+      "major": {
+        "name": "Willowmere",
+        "type": "village",
+        "level": 1.0,
+        "port": false
+      },
       "polygon": [
         [
-          -140.0,
-          -58.0
+          -350.0,
+          -145.0
         ],
         [
-          -100.0,
-          -64.0
+          -250.0,
+          -160.0
+        ],
+        [
+          -150.0,
+          -150.0
+        ],
+        [
+          -65.0,
+          -155.0
+        ],
+        [
+          -50.0,
+          -95.0
         ],
         [
           -60.0,
           -60.0
         ],
         [
-          -26.0,
-          -62.0
+          -52.5,
+          -15.0
         ],
         [
-          -20.0,
-          -38.0
+          -65.0,
+          35.0
         ],
         [
-          -24.0,
-          -24.0
+          -60.0,
+          85.0
         ],
         [
-          -21.0,
-          -6.0
+          -70.0,
+          150.0
         ],
         [
-          -26.0,
-          14.0
-        ],
-        [
-          -24.0,
-          34.0
-        ],
-        [
-          -28.0,
-          60.0
-        ],
-        [
-          -140.0,
-          60.0
+          -350.0,
+          150.0
         ]
-      ],
-      "major": {
-        "name": "Willowmere",
-        "type": "village",
-        "level": 1.0,
-        "port": false
-      }
+      ]
     },
     "crownwatch": {
       "name": "Crownwatch",
@@ -185,66 +185,66 @@
         "food": 1.0,
         "minerals": 1.0
       },
-      "polygon": [
-        [
-          14.0,
-          -62.0
-        ],
-        [
-          50.0,
-          -58.0
-        ],
-        [
-          90.0,
-          -63.0
-        ],
-        [
-          140.0,
-          -60.0
-        ],
-        [
-          140.0,
-          22.0
-        ],
-        [
-          90.0,
-          16.0
-        ],
-        [
-          66.0,
-          20.0
-        ],
-        [
-          48.0,
-          14.0
-        ],
-        [
-          30.0,
-          16.0
-        ],
-        [
-          20.0,
-          12.0
-        ],
-        [
-          12.0,
-          -4.0
-        ],
-        [
-          18.0,
-          -22.0
-        ],
-        [
-          10.0,
-          -40.0
-        ]
-      ],
       "major": {
         "name": "Crownwatch",
         "type": "fortress",
         "level": 2.0,
         "port": false
-      }
+      },
+      "polygon": [
+        [
+          35.0,
+          -155.0
+        ],
+        [
+          125.0,
+          -145.0
+        ],
+        [
+          225.0,
+          -157.5
+        ],
+        [
+          350.0,
+          -150.0
+        ],
+        [
+          350.0,
+          55.0
+        ],
+        [
+          225.0,
+          40.0
+        ],
+        [
+          165.0,
+          50.0
+        ],
+        [
+          120.0,
+          35.0
+        ],
+        [
+          75.0,
+          40.0
+        ],
+        [
+          50.0,
+          30.0
+        ],
+        [
+          30.0,
+          -10.0
+        ],
+        [
+          45.0,
+          -55.0
+        ],
+        [
+          25.0,
+          -100.0
+        ]
+      ]
     },
     "goldspire_rock": {
       "name": "Goldspire Rock",
@@ -255,55 +255,55 @@
         "food": 1.0,
         "minerals": 5.0
       },
-      "polygon": [
-        [
-          20.0,
-          12.0
-        ],
-        [
-          30.0,
-          16.0
-        ],
-        [
-          48.0,
-          14.0
-        ],
-        [
-          66.0,
-          20.0
-        ],
-        [
-          90.0,
-          16.0
-        ],
-        [
-          140.0,
-          22.0
-        ],
-        [
-          140.0,
-          60.0
-        ],
-        [
-          20.0,
-          60.0
-        ],
-        [
-          18.0,
-          40.0
-        ],
-        [
-          22.0,
-          26.0
-        ]
-      ],
       "major": {
         "name": "Goldspire Rock",
         "type": "city",
         "level": 2.0,
         "port": true,
         "landmark": "goldspire_rock"
-      }
+      },
+      "polygon": [
+        [
+          50.0,
+          30.0
+        ],
+        [
+          75.0,
+          40.0
+        ],
+        [
+          120.0,
+          35.0
+        ],
+        [
+          165.0,
+          50.0
+        ],
+        [
+          225.0,
+          40.0
+        ],
+        [
+          350.0,
+          55.0
+        ],
+        [
+          350.0,
+          150.0
+        ],
+        [
+          50.0,
+          150.0
+        ],
+        [
+          45.0,
+          100.0
+        ],
+        [
+          55.0,
+          65.0
+        ]
+      ]
     },
     "greyspine": {
       "name": "The Greyspine",
@@ -316,44 +316,44 @@
       },
       "polygon": [
         [
-          -140.0,
-          -140.0
+          -350.0,
+          -350.0
         ],
         [
-          140.0,
-          -140.0
+          350.0,
+          -350.0
         ],
         [
-          140.0,
-          -60.0
+          350.0,
+          -150.0
         ],
         [
-          90.0,
-          -63.0
+          225.0,
+          -157.5
         ],
         [
-          50.0,
-          -58.0
+          125.0,
+          -145.0
         ],
         [
-          14.0,
-          -62.0
+          35.0,
+          -155.0
         ],
         [
-          -26.0,
-          -62.0
+          -65.0,
+          -155.0
         ],
         [
-          -60.0,
-          -60.0
+          -150.0,
+          -150.0
         ],
         [
-          -100.0,
-          -64.0
+          -250.0,
+          -160.0
         ],
         [
-          -140.0,
-          -58.0
+          -350.0,
+          -145.0
         ]
       ]
     }
@@ -367,29 +367,29 @@
       "greyhaven": [
         {
           "chain": "port",
-          "level": 2
+          "level": 2.0
         },
         {
           "chain": "market",
-          "level": 2
+          "level": 2.0
         },
         {
           "chain": "temple",
-          "level": 2
+          "level": 2.0
         },
         {
           "chain": "walls",
-          "level": 2
+          "level": 2.0
         }
       ],
       "goldspire_rock": [
         {
           "chain": "mine",
-          "level": 3
+          "level": 3.0
         },
         {
           "chain": "port",
-          "level": 2
+          "level": 2.0
         }
       ]
     },

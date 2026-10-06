@@ -5,7 +5,7 @@
   "player_faction": "house_aurek",
   "treasury": {"house_aurek": 8450, "house_lannet": 6000, "house_verrin": 3000},
   "armies": ["aurek_host", "silverfall_guard", "highbloom_levy"],
-  "army_positions": {"aurek_host": [2, 0], "silverfall_guard": [-12, 6], "highbloom_levy": [-56, -24]},
+  "army_positions": {"aurek_host": [-25, 15], "silverfall_guard": [-60, 30], "highbloom_levy": [-250, -90]},
   "road_level": 1,
   "settlements": {
     "goldspire_rock": {"population": 15800, "buildings": [

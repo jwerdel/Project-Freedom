@@ -913,7 +913,9 @@ func culture_name(culture: String) -> String:
 # Factions the player has met (strategic map legend; diplomacy lists): the player, factions at war
 # with the player, and factions with a settlement or army near the player's settlements or armies.
 # PLACEHOLDER until contact and envoys exist (docs/war-and-realm.md §7.3: envoys can reach anyone).
-const MET_RADIUS = 220.0
+static func met_radius() -> float:
+ return float(JSON.parse_string(FileAccess.get_file_as_string("res://data/campaign_rules.json")).contact.met_radius)
+
 func known_factions() -> Array:
  var me = state.player_faction
  var mine = []
@@ -921,6 +923,7 @@ func known_factions() -> Array:
  for id in state.army_state:
   if state.army_state[id].faction == me: mine.append(Movement.position(state,id))
  var out = [me]
+ var met = met_radius()
  for f in state.factions():
   if f == me: continue
   if Battles.at_war(state,me,f):
@@ -930,7 +933,7 @@ func known_factions() -> Array:
   for sid in state.settlements_of(f):
    var p = WorldMap.settlement_position(sid)
    for q in mine:
-    if p.distance_to(q)<MET_RADIUS:
+    if p.distance_to(q)<met:
      near = true
      break
    if near: break

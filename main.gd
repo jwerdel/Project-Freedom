@@ -44,7 +44,7 @@ const KEEP = Vector2(48, -35)
 const VILLAGE = Vector2(-56, -24)
 # Goldspire Rock stands in the sea at the coast; its sheer sea face looks toward the overview camera.
 const GOLDSPIRE_ID = "goldspire_rock"
-const GOLDSPIRE = Vector2(44, 36.5)
+var GOLDSPIRE := Vector2(44, 36.5) # the legacy map's spot; pipeline maps read the settlement's position
 const GOLDSPIRE_CLEAR = 20.0
 var rng = RandomNumberGenerator.new()
 var noise = FastNoiseLite.new()
@@ -131,6 +131,7 @@ func _ready():
  Settings.apply(get_tree())
  early_state = _campaign()
  pipeline = str(MapRegistry.meta().get("kind","")) == "pipeline"
+ if pipeline and WorldMap.region(GOLDSPIRE_ID).get("settlement") is Dictionary: GOLDSPIRE = WorldMap.settlement_position(GOLDSPIRE_ID)
  make_environment()
  for arg in OS.get_cmdline_user_args():
   if arg.begins_with("--goldspire-stage="): goldspire_level = clampi(int(arg.get_slice("=",1)),1,3)
@@ -730,7 +731,7 @@ func make_ui():
  strategic.name = "StrategicMap"
  layer.add_child(strategic)
  layer.move_child(strategic,ui.get_index()) # under the interface, over the 3D map
- strategic.setup(ui_data,TerritoryOverlay.RECT)
+ strategic.setup(ui_data,map_world_rect() if pipeline else TerritoryOverlay.RECT)
  strategic.location_chosen.connect(close_strategic_map)
  strategic.closed.connect(func(): close_strategic_map())
  ui.end_turn_requested.connect(end_turn_pressed)
@@ -764,8 +765,10 @@ func make_ui():
  ui_data.changed.connect(func():
   for p in pins: p.button.update_settlement(ui_data.settlement(p.id)))
  ui_data.changed.connect(sync_settlement_visuals)
- minimap = ui.setup_minimap(get_viewport().world_3d,TerritoryOverlay.RECT,camera_footprint)
- minimap.minimap_clicked.connect(func(p: Vector2): target = Vector3(clampf(p.x,-105,105),height_at(p.x,p.y),clampf(p.y,-90,65)))
+ var wr = map_world_rect() if pipeline else TerritoryOverlay.RECT
+ minimap = ui.setup_minimap(get_viewport().world_3d,wr,camera_footprint)
+ var lim = wr.grow(-wr.size.x*0.12)
+ minimap.minimap_clicked.connect(func(p: Vector2): target = Vector3(clampf(p.x,lim.position.x,lim.end.x),height_at(p.x,p.y),clampf(p.y,lim.position.y,lim.end.y)))
  movement_overlay = MovementOverlay.new()
  add_child(movement_overlay)
  movement_overlay.setup(height_at)
@@ -1462,8 +1465,9 @@ func camera_update(delta: float):
  if Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT): dir.x+=1
  if Input.is_key_pressed(KEY_CTRL) or pause_menu != null or map_open(): dir = Vector3.ZERO # Ctrl+S is quicksave; paused means paused
  target += dir.rotated(Vector3.UP,yaw)*delta*distance*(0.75 if Input.is_key_pressed(KEY_SHIFT) else 0.30)
- target.x = clampf(target.x,-105,105)
- target.z = clampf(target.z,-90,65)
+ var cl = camera_limits()
+ target.x = clampf(target.x,cl.position.x,cl.end.x)
+ target.z = clampf(target.z,cl.position.y,cl.end.y)
  # Q / E rotate (TW:WH3); Shift pans faster.
  if pause_menu == null and not Input.is_key_pressed(KEY_CTRL) and not map_open():
   if Input.is_physical_key_pressed(KEY_Q): yaw += delta*1.6
@@ -1599,7 +1603,7 @@ func run_checks():
  assert(road_level==road_before)
  for curve in road_curves: assert(curve.get_baked_length()>10)
  assert(height_at(CITY.x,CITY.y)>0)
- assert(height_at(0,70)<0.05) # the sea (pipeline maps clamp to sea level)
+ assert(height_at(0,175.0 if pipeline else 70.0)<0.05) # the sea (pipeline maps clamp to sea level)
  for id in AssetManifest.visuals():
   assert(ResourceLoader.exists(AssetManifest.scene_path(id)),"Missing visual scene for "+id)
  var zoom_before = desired_distance
@@ -1680,14 +1684,14 @@ func run_checks():
  assert([target,desired_distance,yaw] == cam_before)
  assert(movement_overlay.has_content("reach"))
  # The preview: a coloured path, no numbers or text on the map, the spend on the movement bar.
- preview_move(Vector2(-118,-30))
+ preview_move(Vector2(-295,-75))
  assert(movement_overlay.has_content("preview") and preview_text == "")
  for n in movement_overlay.get_node("preview").get_children(): assert(not n is Label3D)
  assert(ui.movement_bar.spend>0.0 and ui.movement_bar.overflow)
  cancel_move_preview()
  assert(not movement_overlay.has_content("preview") and ui.movement_bar.spend == 0.0)
  # A held right click previews; releasing it gives the order (simulated input).
- var mid_screen = camera.unproject_position(ground(Vector2(-20,-10)))
+ var mid_screen = camera.unproject_position(ground(Vector2(-50,-25)))
  var press = InputEventMouseButton.new()
  press.button_index = MOUSE_BUTTON_RIGHT
  press.pressed = true
@@ -1739,7 +1743,7 @@ func run_checks():
  assert(ui_data.army_movement(COMMANDER_ARMY).points == points_before)
  ui.close_battle()
  ui_data.state.wars.erase(war_key)
- order_army(Vector2(80,-10))
+ order_army(Vector2(250,-25))
  update_walk(1000.0)
  var m = ui_data.army_movement(COMMANDER_ARMY)
  assert(not m.order.is_empty() and m.points<points_before)
@@ -2197,3 +2201,14 @@ func _clicked(hit: String):
   if ui_data.state.army_state.has(id): f = ui_data.state.army_state[id].faction
  elif ui_data.state.settlements.has(hit): f = ui_data.state.settlements[hit].owner
  if f != "" and f != ui_data.player_faction_id(): ui.open_diplomacy(f)
+
+# The active map's world rectangle (x/z): the strategic map, the minimap and camera limits use it.
+func map_world_rect() -> Rect2:
+ var m = MapRegistry.meta()
+ return Rect2(Vector2(m.origin[0],m.origin[1]),Vector2(m.size[0],m.size[1]))
+
+# Where the camera's target may go: the map minus a margin (the legacy test map's old bounds).
+func camera_limits() -> Rect2:
+ if not pipeline: return Rect2(-105,-90,210,155)
+ var r = map_world_rect()
+ return r.grow(-minf(r.size.x,r.size.y)*0.08)

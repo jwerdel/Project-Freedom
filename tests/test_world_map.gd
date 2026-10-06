@@ -27,13 +27,13 @@ func test_province_lookup():
  assert_between(WorldMap.provinces().size(),3,4)
 
 func test_mountains_are_unclaimed():
- assert_eq(WorldMap.region_at(Vector2(0,-90)),"greyspine")
+ assert_eq(WorldMap.region_at(Vector2(0,-225)),"greyspine")
  assert_eq(WorldMap.owner_of("greyspine"),"")
  assert_eq(WorldMap.settlements_in("greyspine_peaks"),[])
 
 func test_regions_tile_the_map_without_gaps_or_overlaps():
- for x in range(-136,137,8):
-  for z in range(-136,58,8):
+ for x in range(-340,343,20):
+  for z in range(-340,145,20):
    var p = Vector2(x+0.37,z+0.61)
    var hits = 0
    for id in WorldMap.regions():

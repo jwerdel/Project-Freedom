@@ -2,11 +2,11 @@
   "_note": "GENERATED region-ID raster meta (map/map_bake.gd); ids in regions.bin, 0 = no region, i = names[i-1].",
   "cell": 1.0,
   "origin": [
-    -140.0,
-    -140.0
+    -350.0,
+    -350.0
   ],
-  "cols": 280,
-  "rows": 280,
+  "cols": 700,
+  "rows": 700,
   "names": [
     "crownwatch",
     "goldspire_rock",

@@ -3,5 +3,9 @@
   "loss": {
     "_note": "Confirmed rule (2026-10-01): a faction that loses its last settlement enters a grace period of grace_turns End Turns. If its armies retake a settlement in time it survives; otherwise it is destroyed and its armies disband. A faction with no army left when it loses its last settlement cannot retake anything and is destroyed at once. For the player, destruction is game over.",
     "grace_turns": 5
+  },
+  "contact": {
+    "_note": "Factions you have met (the strategic legend, diplomacy): at war with you, or holding a settlement within met_radius metres of one of your settlements or armies. PLACEHOLDER until shroud and exploration; scaled 2.5x with the maps on 2026-10-06.",
+    "met_radius": 550.0
   }
 }

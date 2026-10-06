@@ -29,7 +29,8 @@ func after_all():
 func build_map(data) -> Control:
  var m = StrategicMap.new()
  add_child_autofree(m)
- m.setup(data,TerritoryOverlay.RECT)
+ var meta = load("res://core/map_registry.gd").meta()
+ m.setup(data,Rect2(Vector2(meta.origin[0],meta.origin[1]),Vector2(meta.size[0],meta.size[1])))
  m.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT) # a fixed size for the tests
  m.size = Vector2(1600,1000)
  return m
@@ -118,7 +119,7 @@ func test_click_or_scroll_in_chooses_a_location():
  var m = build_map(UiData.new(GameState.from_data()))
  m.open_map(true)
  watch_signals(m)
- var target = Vector2(-30,10)
+ var target = Vector2(-75,25)
  var click = func(button):
   var e = InputEventMouseButton.new()
   e.button_index = button
@@ -200,9 +201,9 @@ func test_map_scene_hotkeys_and_strategic_transition():
  wheel.pressed = true
  main._unhandled_input(wheel)
  assert_true(main.map_open())
- main.strategic.location_chosen.emit(Vector2(-40,12))
+ main.strategic.location_chosen.emit(Vector2(-100,30))
  assert_false(main.map_open())
- assert_almost_eq(Vector2(main.target.x,main.target.z),Vector2(-40,12),Vector2(0.01,0.01))
+ assert_almost_eq(Vector2(main.target.x,main.target.z),Vector2(-100,30),Vector2(0.01,0.01))
  assert_lte(main.desired_distance,main.STRATEGIC_RETURN_DISTANCE)
  # K hides the interface; Alt+K adds letterbox bars; Esc brings it back.
  key(main,KEY_K)

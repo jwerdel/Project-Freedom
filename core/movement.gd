@@ -492,7 +492,9 @@ static func _window_path(state,faction: String,from: Vector2i,to: Vector2i) -> A
 # --- Hierarchical paths (docs/map-pipeline-design.md §6.3) ---------------------------------------
 # Long moves on a pipeline map go through core/path_hierarchy.gd (HPA*: region crossings joined by
 # stored paths); short moves, the test map and failed hierarchy queries search the grid directly.
-const HIER_MIN_DISTANCE = 0.0 # metres; the hierarchy is used whenever start and goal lie in different region parts (a ridge or border between them), however close
+# The hierarchy (fast, slightly longer routes) serves long marches; a goal within one turn's best-case
+# reach (a full allowance on the cheapest ground) gets the exact search, so the route matches the
+# reachable area the map shows (2026-10-06: the allowance grew 2.5x with the maps).
 static var _graph = null      # {index: {region id: graph index}} or {}
 static var _hpa = null        # core/path_hierarchy.gd data, or {}
 
@@ -508,7 +510,7 @@ static func _region_graph() -> Dictionary:
  return _graph
 
 static func _hierarchical_path(a: AStarGrid2D,start: Vector2,goal: Vector2,from: Vector2i,to: Vector2i) -> Array:
- if start.distance_to(goal)<HIER_MIN_DISTANCE: return []
+ if start.distance_to(goal)<max_points()/maxf(_min_cost(),0.01): return []
  var hg = _region_graph()
  if hg.is_empty(): return []
  if _hpa == null: _hpa = PathHierarchy.load_for(load("res://core/movement.gd"))

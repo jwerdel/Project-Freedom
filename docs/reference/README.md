@@ -13,4 +13,4 @@ Nothing under `docs/reference/` is a game asset. `docs/reference/.gdignore` keep
 
 The images were AI-generated (Gemini). They were re-encoded before committing, which strips all metadata; images without an extension were PNGs and are now JPGs.
 
-**Style rule (owner, 2026-10-04):** these images are references for palette, materials and architectural style, **not for layout or composition**. They skew generic: circular walled forts on bare ground. The settlement generators never copy their layouts: no circular forts; layouts are culture-specific, terrain-hugging, dense and asymmetric (see `docs/game-design.md` §12.13 K and `constitution.md`). The orc biome board (`biomes/orc.jpg`) is expected but not yet present.
+**Style rule (owner, 2026-10-04):** these images are references for palette, materials and architectural style, **not for layout or composition**. They skew generic: circular walled forts on bare ground. The settlement generators never copy their layouts: no circular forts; layouts are culture-specific, terrain-hugging, dense and asymmetric (see `docs/game-design.md` §12.13 K and `constitution.md`).
