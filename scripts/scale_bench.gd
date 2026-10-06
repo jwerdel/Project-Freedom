@@ -28,6 +28,12 @@ func _ready():
   if a.begins_with("--turns="): turns = int(a.get_slice("=",1))
   if a.begins_with("--out="): out_file = FileAccess.open(a.get_slice("=",1),FileAccess.WRITE)
  MapRegistry.set_active(map_id)
+ # --render-cache: time the first-run render cache build (heights, colours, rivers; map/pipeline.gd).
+ if "--render-cache" in OS.get_cmdline_user_args():
+  var tr = Time.get_ticks_usec()
+  var rr = load("res://map/pipeline.gd").build(map_id,false)
+  line("render_cache_build_ms",(Time.get_ticks_usec()-tr)/1000.0,"30000 first run")
+  line("render_cache_errors",str(rr.errors))
  var mem0 = OS.get_static_memory_usage()
  # --- Load -------------------------------------------------------------------------------------
  var t = Time.get_ticks_usec()
@@ -97,6 +103,17 @@ func _ready():
   line(tag+"_p95_ms",snappedf(ts[95],0.01),"5")
   line(tag+"_max_ms",snappedf(ts[-1],0.01))
   line(tag+"_not_possible",none)
+ # The held-right-click preview's first frame on long moves: the coarse route (the full plan
+ # follows on the next frame, measured above).
+ var tc = []
+ for i in 100:
+  var aid = ids[(i*37)%ids.size()]
+  var p0 = Movement.position(s,aid)
+  t = Time.get_ticks_usec()
+  Movement.coarse_plan(s,aid,p0+Vector2.from_angle(i*0.7)*1000.0)
+  tc.append((Time.get_ticks_usec()-t)/1000.0)
+ tc.sort()
+ line("preview_coarse_1000m_p95_ms",snappedf(tc[95],0.01),"5")
  # --- End Turn: every faction AI-run (the player's too) ---------------------------------------------
  s.player_faction = "" # no human: all factions run by the AI
  var turn_ms = []

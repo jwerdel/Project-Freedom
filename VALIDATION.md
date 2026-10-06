@@ -1185,3 +1185,12 @@ Design: map-pipeline-design Addendum B.
 | Strategic map, 21 stacked passes | 9.74 → 0.40 ms per pass | | |
 
 All GPU rows are within budget (≤ 8 ms 3D, ≤ 3 ms strategic, ≤ 1,500 draw calls, ≤ 2 GB VRAM). This includes the painted strategic-map shader, which Part 3 of the last block did not measure. The draw calls are low because the outline has no content yet (7 settlements built near the camera, few trees); Stage A content will raise them.
+
+**Follow-up (owner's decisions, 2026-10-06):**
+- **Path preview (B + C):**
+  - The hierarchy's legs (start to the first crossing, last crossing to the goal) now search a small local window (8 cells of margin) instead of the 10M-cell grid; they fall back to the whole grid only when a leg detours outside it.
+  - The preview re-plans only when the cursor enters another grid cell. A long move first draws its coarse route (crossings joined by straight lines); the full path replaces it on the next frame.
+  - Release build, 1 km: full plan p95 **4.45 ms** (debug 4.65–4.95 over four runs); the first preview frame p95 **0.23 ms**. **Met.**
+- **First-run render cache:**
+  - Release build: **36.7 s**, over 30 s and under 60 s, so option B. On the first start with a map version, the campaign shows "Preparing the world map". The cache is built on a worker thread with its steps and elapsed time, then the campaign loads.
+  - Measuring it found a real bug: Varos's `sketch.svg` was imported as a texture (a 14,080 px raster) and was missing from exported builds, so the shipped game could not have built the cache. It is now kept as a plain file (as on the test map).

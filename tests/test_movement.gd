@@ -240,3 +240,16 @@ func test_blocked_orders_report_the_message_and_cost_nothing():
  assert_eq(after.position,before.position)
  assert_eq(after.points,before.points)
  assert_true(after.order.is_empty())
+
+func test_coarse_preview_for_long_moves_only():
+ # A long move gets a coarse first draft (straight lines between the hierarchy's crossings) that
+ # ends where the full plan ends; a short move gets none (the full plan is fast there).
+ var s = GameState.from_data()
+ var far = Vector2(-250,-332)
+ var c = Movement.coarse_plan(s,ARMY,far)
+ if not c.is_empty():
+  assert_true(c.ok and c.coarse)
+  assert_almost_eq(c.points[-1].distance_to(Movement.plan(s,ARMY,far).points[-1]),0.0,0.01)
+  assert_gt(c.total_turns,1)
+ var near = Movement.position(s,ARMY)+Vector2(20,0)
+ assert_eq(Movement.coarse_plan(s,ARMY,near),{},"short moves are planned in full")

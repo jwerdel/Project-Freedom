@@ -75,6 +75,13 @@ static func stamp(map_id: String) -> String:
 
 # {cell, origin, cols, rows, heights: Image (FORMAT_RF), colors: Image (FORMAT_RGB8)} or {} when the
 # cache is missing or stale (the map then has to be rebuilt: scripts/build_map.gd).
+# True when the local render cache matches the map's current build (cheap: only its meta).
+static func render_cache_valid(map_id: String) -> bool:
+ var dir = cache_dir(map_id)
+ if not FileAccess.file_exists(dir+"meta.json"): return false
+ var meta = JSON.parse_string(FileAccess.get_file_as_string(dir+"meta.json"))
+ return meta is Dictionary and int(meta.map_version) == MapRegistry.version(map_id) and str(meta.stamp) == stamp(map_id)
+
 static func load_render_cache(map_id: String) -> Dictionary:
  var dir = cache_dir(map_id)
  if not FileAccess.file_exists(dir+"meta.json"): return {}

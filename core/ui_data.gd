@@ -401,6 +401,9 @@ func army_movement(army_id: String) -> Dictionary:
   "garrison":m.garrison,"garrison_name":WorldMap.region(m.garrison).settlement.name if m.garrison != "" else "","player_owned":m.faction == state.player_faction}
 
 # Preview a move without committing it (see Movement.plan).
+func coarse_plan(army_id: String,target: Vector2) -> Dictionary:
+ return Movement.coarse_plan(state,army_id,target)
+
 func plan_move(army_id: String,target: Vector2) -> Dictionary:
  return Movement.plan(state,army_id,target)
 

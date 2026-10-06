@@ -182,7 +182,7 @@ static func route(Movement,h: Dictionary,a: AStarGrid2D,from: Vector2i,to: Vecto
  # First leg: to the crossing's cell on the start's side, then onto the crossing cell itself.
  var first = h.crossings[marks[0]]
  var near0 = first if h.parts[first] == ps else h.across[marks[0]]
- var out = _leg(a,from,Vector2i(near0%cols,near0/cols))
+ var out = _leg(Movement,a,from,Vector2i(near0%cols,near0/cols),faction)
  if out.is_empty(): return []
  if near0 != first: out.append(Vector2i(first%cols,first/cols))
  for k in range(marks.size()-1):
@@ -202,19 +202,50 @@ static func route(Movement,h: Dictionary,a: AStarGrid2D,from: Vector2i,to: Vecto
     for q in cells.size():
      var c = cells[q] if forward else cells[cells.size()-1-q]
      seg.append(Vector2i(c%cols,c/cols))
-  if seg.is_empty(): seg = _leg(a,Vector2i(cu%cols,cu/cols),Vector2i(cv%cols,cv/cols))
+  if seg.is_empty(): seg = _leg(Movement,a,Vector2i(cu%cols,cu/cols),Vector2i(cv%cols,cv/cols),faction)
   if seg.is_empty(): return []
   out.append_array(seg.slice(1) if not out.is_empty() else seg)
  # Last leg: from the crossing cell (stepping across first when the goal is on the other side).
  var last = h.crossings[marks[-1]]
  var near1 = last if h.parts[last] == pg else h.across[marks[-1]]
  if near1 != last: out.append(Vector2i(near1%cols,near1/cols))
- var tail = _leg(a,Vector2i(near1%cols,near1/cols),to)
+ var tail = _leg(Movement,a,Vector2i(near1%cols,near1/cols),to,faction)
  if tail.is_empty(): return []
  out.append_array(tail.slice(1))
  return out
 
-static func _leg(a: AStarGrid2D,p: Vector2i,q: Vector2i) -> Array:
+# A leg inside one region part: a small local search around its ends first (a whole-grid search
+# with the road-normalised weights explores far too wide on a big map; 2026-10-06: 1 km previews
+# went from about 8.5 to the budget), the whole grid only when the leg detours outside the box.
+const LEG_PAD = 8
+static func _leg(Movement,a: AStarGrid2D,p: Vector2i,q: Vector2i,faction: String) -> Array:
  if p == q: return [p]
  if a.is_point_solid(q): return []
+ var w = Movement.window_cells(Movement.route_road_level,faction,p,q,LEG_PAD)
+ if not w.is_empty(): return w
  return Array(a.get_id_path(p,q))
+
+# The coarse route for a preview (no leg searches): from, the crossings the region graph visits,
+# to. [] when the hierarchy has nothing to add (same part, no route).
+static func coarse(Movement,h: Dictionary,from: Vector2i,to: Vector2i) -> Array:
+ if h.is_empty(): return []
+ var cols: int = Movement.grid().cols
+ var ps = h.parts[from.y*cols+from.x]
+ var pg = h.parts[to.y*cols+to.x]
+ if ps == 0 or pg == 0 or ps == pg: return []
+ var astar: AStar2D = h.astar
+ astar.add_point(h.s,Movement.center_of(from))
+ astar.add_point(h.g,Movement.center_of(to))
+ for c in h.part_crossings.get(ps,[]): astar.connect_points(h.s,c)
+ for c in h.part_crossings.get(pg,[]): astar.connect_points(h.g,c)
+ var ids = astar.get_id_path(h.s,h.g)
+ astar.remove_point(h.s)
+ astar.remove_point(h.g)
+ if ids.size()<3: return []
+ var out = [from]
+ for k in range(1,ids.size()-1):
+  if ids[k]<h.crossings.size():
+   var c = h.crossings[ids[k]]
+   out.append(Vector2i(c%cols,c/cols))
+ out.append(to)
+ return out

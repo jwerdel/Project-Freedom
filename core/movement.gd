@@ -395,6 +395,7 @@ static func plan(state,army_id: String,target: Vector2,retreating := false) -> D
  var me = army(state,army_id)
  var start = position(state,army_id)
  var a = _astar_for(state.road_level)
+ route_road_level = state.road_level
  _apply_blocks(state,a,me.faction)
  var from = cell_of(start)
  var to = cell_of(dest.point)
@@ -413,6 +414,29 @@ static func plan(state,army_id: String,target: Vector2,retreating := false) -> D
  if dest.point.distance_to(start)>0.001: points.append(dest.point)
  var sim = simulate(points,float(me.points),float(me.max_points),state.road_level)
  return {"ok":true,"points":points,"turns":sim.turns,"reach":sim.reach,"total_turns":sim.turns[-1]+1,"cost":sim.cost,"settlement":dest.settlement}
+
+# A fast first draft of a long move for the held-right-click preview (no leg searches): the
+# hierarchy's crossings joined by straight lines, with the same keys as plan() and "coarse": true.
+# {} when the move is short (plan() is fast there) or the hierarchy has nothing to offer; the
+# caller then plans in full. The preview replaces it with the full plan on the next frame.
+static func coarse_plan(state,army_id: String,target: Vector2) -> Dictionary:
+ var dest = destination(state,army_id,target)
+ if not dest.ok: return {}
+ var me = army(state,army_id)
+ var start = position(state,army_id)
+ if start.distance_to(dest.point)<max_points()/maxf(_min_cost(),0.01): return {}
+ _astar_for(state.road_level)
+ if _hpa == null or _hpa.is_empty(): return {}
+ var from = cell_of(start)
+ var to = cell_of(dest.point)
+ if not _same_component(from,to): return {}
+ var cells = PathHierarchy.coarse(load("res://core/movement.gd"),_hpa,from,to)
+ if cells.is_empty(): return {}
+ var points = [start]
+ for i in range(1,cells.size()-1): points.append(center_of(cells[i]))
+ points.append(dest.point)
+ var sim = simulate(points,float(me.points),float(me.max_points),state.road_level)
+ return {"ok":true,"coarse":true,"points":points,"turns":sim.turns,"reach":sim.reach,"total_turns":sim.turns[-1]+1,"cost":sim.cost,"settlement":dest.settlement}
 
 # --- Window-limited searches (the AI) ---------------------------------------------------------------
 # A direct search that fails explores everything it can reach (on a big map, hundreds of ms). The
@@ -442,9 +466,14 @@ static func _row_starts() -> PackedInt32Array:
  return _row_start
 
 static func _window_path(state,faction: String,from: Vector2i,to: Vector2i) -> Array:
+ return window_cells(state.road_level,faction,from,to,WINDOW_PAD)
+
+# A* on a local grid: the box around from and to with `pad` cells of margin, the given road level
+# and faction's blocking. [] when no route stays inside the box.
+static func window_cells(road_level: int,faction: String,from: Vector2i,to: Vector2i,pad: int) -> Array:
  var g = grid()
- var lo = Vector2i(maxi(mini(from.x,to.x)-WINDOW_PAD,0),maxi(mini(from.y,to.y)-WINDOW_PAD,0))
- var hi = Vector2i(mini(maxi(from.x,to.x)+WINDOW_PAD,g.cols-1),mini(maxi(from.y,to.y)+WINDOW_PAD,g.rows-1))
+ var lo = Vector2i(maxi(mini(from.x,to.x)-pad,0),maxi(mini(from.y,to.y)-pad,0))
+ var hi = Vector2i(mini(maxi(from.x,to.x)+pad,g.cols-1),mini(maxi(from.y,to.y)+pad,g.rows-1))
  var a = AStarGrid2D.new()
  a.region = Rect2i(lo,hi-lo+Vector2i.ONE)
  a.cell_size = Vector2.ONE
@@ -453,7 +482,7 @@ static func _window_path(state,faction: String,from: Vector2i,to: Vector2i) -> A
  a.default_estimate_heuristic = AStarGrid2D.HEURISTIC_EUCLIDEAN
  a.update()
  var lw = _min_cost()
- var costs = _code_costs(state.road_level)
+ var costs = _code_costs(road_level)
  var runs = _grid_runs()
  var rs = _row_starts()
  for z in range(lo.y,hi.y+1):
@@ -497,6 +526,7 @@ static func _window_path(state,faction: String,from: Vector2i,to: Vector2i) -> A
 # reachable area the map shows (2026-10-06: the allowance grew 2.5x with the maps).
 static var _graph = null      # {index: {region id: graph index}} or {}
 static var _hpa = null        # core/path_hierarchy.gd data, or {}
+static var route_road_level := 0 # the road level of the plan being routed (local leg searches)
 
 static func _region_graph() -> Dictionary:
  _check_map()

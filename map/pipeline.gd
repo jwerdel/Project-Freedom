@@ -40,7 +40,10 @@ static func sources_hash(map_id: String) -> String:
 
 # bakes = false: only the local render cache (heights, colours, rivers) is written; the game does this
 # on first run or when the cache is stale (the committed bakes ship with the map).
-static func build(map_id: String,bakes := true) -> Dictionary:
+# progress (optional): called with (fraction 0-1, step name) as the build moves on; it may run on a
+# worker thread (the first-run screen), so it must only store the values.
+static func build(map_id: String,bakes := true,progress := Callable()) -> Dictionary:
+ var step = func(f: float,name: String): if progress.is_valid(): progress.call(f,name)
  var t_all = Time.get_ticks_msec()
  var meta = MapRegistry.meta(map_id)
  var dir = MapRegistry.dir(map_id)
@@ -60,6 +63,7 @@ static func build(map_id: String,bakes := true) -> Dictionary:
  var cell_of = func(w: Vector2) -> Vector2i: return Vector2i(((w-origin)/cell).floor())
  var center_of = func(i: int) -> Vector2: return origin+(Vector2(i%cols,i/cols)+Vector2(0.5,0.5))*cell
  var seed = int(meta.get("detail_seed",1))
+ step.call(0.02,"Coasts and lakes")
  # --- 1. Land and lakes -------------------------------------------------------------------------
  var t = Time.get_ticks_msec()
  var land = _fill(L.get("land",[]),origin,cell,cols,rows)
@@ -68,6 +72,7 @@ static func build(map_id: String,bakes := true) -> Dictionary:
  var hills = _fill(L.get("hills",[]),origin,cell,cols,rows)
  var forest_mask = _fill(L.get("forests",[]),origin,cell,cols,rows)
  report.times.land = Time.get_ticks_msec()-t
+ step.call(0.1,"Mountains, hills and rivers")
  # --- 2. Heights -----------------------------------------------------------------------------------
  t = Time.get_ticks_msec()
  var fn = Synthetic._fnl(seed,0.02*cell,FastNoiseLite.FRACTAL_FBM,4)
@@ -128,6 +133,7 @@ static func build(map_id: String,bakes := true) -> Dictionary:
   var near = _near(PackedVector2Array([e.center,e.center+Vector2(0.01,0)]),cell,cols,rows,flat*1.8)
   for i in near: h[i] = lerpf(h[i],level,1.0-smoothstep(flat,flat*1.8,near[i]))
  report.times.heights = Time.get_ticks_msec()-t
+ step.call(0.3,"Regions")
  # --- 3. Regions ------------------------------------------------------------------------------------
  t = Time.get_ticks_msec()
  var region_ids = world.regions.keys()
@@ -180,6 +186,7 @@ static func build(map_id: String,bakes := true) -> Dictionary:
     rid[j] = rid[i]
     front.append(j)
  report.times.regions = Time.get_ticks_msec()-t
+ step.call(0.45,"Ground, forests and climates")
  # --- 4. Classes ------------------------------------------------------------------------------------
  t = Time.get_ticks_msec()
  var cls = PackedByteArray()
@@ -229,6 +236,7 @@ static func build(map_id: String,bakes := true) -> Dictionary:
    colors[i*3] = col.r8
    colors[i*3+1] = col.g8
    colors[i*3+2] = col.b8
+ step.call(0.7,"Roads")
  # --- 5. Roads (pinned lines) -------------------------------------------------------------------------
  var road = PackedByteArray()
  road.resize(n)
@@ -249,6 +257,7 @@ static func build(map_id: String,bakes := true) -> Dictionary:
    var w = to_w.call(p)
    pts.append([snappedf(w.x,0.1),snappedf(w.y,0.1)])
   passes.append({"name":str(e.data.get("name",e.id)),"points":pts,"width":float(e.data.get("width",8))})
+ step.call(0.8,"Saving the map")
  # --- 6. Outputs -----------------------------------------------------------------------------------
  t = Time.get_ticks_msec()
  var regions = {}

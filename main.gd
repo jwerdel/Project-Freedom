@@ -129,6 +129,14 @@ func _ready():
  kit = ProtoKit.shared()
  set_pitch(OVERVIEW_PITCH) # the overview's tilt at its zoom
  Settings.apply(get_tree())
+ # First start with this map version: build its render cache behind the preparation screen (a
+ # worker thread), then load the campaign again. Headless runs build it inline (map/map_view.gd).
+ if _needs_world_prep():
+  preparing = true
+  var prep = WorldPrepScreen.new(MapRegistry.active)
+  prep.finished.connect(func(): get_tree().reload_current_scene())
+  add_child(prep)
+  return
  early_state = _campaign()
  pipeline = str(MapRegistry.meta().get("kind","")) == "pipeline"
  if pipeline and WorldMap.region(GOLDSPIRE_ID).get("settlement") is Dictionary: GOLDSPIRE = WorldMap.settlement_position(GOLDSPIRE_ID)
@@ -1112,9 +1120,34 @@ func move_target(screen: Vector2) -> Vector2:
 # bar, what it would spend. No numbers: the returned tooltip text is only for an impossible move
 # ("" when the move is fine) or an attack ("Attack Greyhaven").
 func preview_move(p: Vector2) -> String:
- var key = Vector2i(floori(p.x),floori(p.y))
+ # Re-plan only when the cursor enters another movement-grid cell (TW-style preview, 2026-10-06).
+ var key = Movement.cell_of(p)
  if key == preview_key: return preview_text
  preview_key = key
+ # A long move shows its coarse route at once and the full path on the next frame.
+ var coarse = ui_data.coarse_plan(selected_army_id(),p)
+ if not coarse.is_empty():
+  preview_text = ""
+  preview_refine = p
+  _show_preview_plan(selected_army_id(),coarse)
+  return preview_text
+ preview_refine = Vector2.INF
+ return _preview_full(p)
+
+var preview_refine := Vector2.INF # the coarse preview's target, refined on the next frame
+
+func _refine_preview():
+ if not preview_refine.is_finite(): return
+ var p = preview_refine
+ preview_refine = Vector2.INF
+ if Movement.cell_of(p) == preview_key and movement_overlay.has_content("preview"): _preview_full(p)
+
+func _show_preview_plan(id: String,plan: Dictionary):
+ movement_overlay.show_path("preview",plan.points,plan.turns)
+ var m = ui_data.army_movement(id)
+ ui.preview_movement(minf(float(plan.cost),m.points)/maxf(1.0,m.max_points),int(plan.total_turns)>1)
+
+func _preview_full(p: Vector2) -> String:
  var id = selected_army_id()
  var plan = ui_data.plan_move(id,p)
  preview_text = ""
@@ -1360,6 +1393,7 @@ func hover_text(hit: String) -> String:
  return "%s\n%s\n%s" % [s.name,s.faction.name,s.province_name]
 
 func _unhandled_input(event):
+ if preparing: return
  if pause_menu != null or game_over != null: return
  if turn_running: return # End Turn in progress (spread over frames)
  # Full-screen diplomacy takes the keys; Esc closes it.
@@ -1482,6 +1516,8 @@ func camera_update(delta: float):
  camera.look_at(target)
 
 func _process(delta):
+ if preparing: return
+ _refine_preview()
  # Saves are written in the background (core/save_system.gd): report a failure once it is known.
  var saved = SaveSystem.poll_saves()
  if not saved.is_empty() and not saved.ok and ui: ui.toast("Saving failed: %s" % saved.error)
@@ -2212,3 +2248,11 @@ func camera_limits() -> Rect2:
  if not pipeline: return Rect2(-105,-90,210,155)
  var r = map_world_rect()
  return r.grow(-minf(r.size.x,r.size.y)*0.08)
+
+const WorldPrepScreen = preload("res://ui/world_prep_screen.gd")
+var preparing := false # the first-run map preparation screen is up; nothing else runs
+
+func _needs_world_prep() -> bool:
+ if DisplayServer.get_name() == "headless": return false
+ if str(MapRegistry.meta().get("kind","")) != "pipeline": return false
+ return not load("res://map/map_bake.gd").render_cache_valid(MapRegistry.active)
