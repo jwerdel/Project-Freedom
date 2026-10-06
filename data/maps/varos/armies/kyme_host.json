@@ -1,0 +1,41 @@
+{
+  "_note": "PLACEHOLDER starting army (Stage A, 2026-10-06): composition, strengths and the general's name are placeholders.",
+  "id": "kyme_host",
+  "display_name": "The Host of Kyme",
+  "faction": "kyme",
+  "commander": {
+    "unit": "commander",
+    "name": "Iolanthe Philandros",
+    "rank": 2
+  },
+  "units": [
+    {
+      "unit": "spearmen",
+      "strength": 0.95
+    },
+    {
+      "unit": "swordsmen",
+      "strength": 0.95
+    },
+    {
+      "unit": "archers",
+      "strength": 1.0
+    },
+    {
+      "unit": "heavy_infantry",
+      "strength": 0.95
+    },
+    {
+      "unit": "peasant_levy",
+      "strength": 0.8
+    },
+    {
+      "unit": "peasant_levy",
+      "strength": 0.95
+    },
+    {
+      "unit": "cavalry",
+      "strength": 0.8
+    }
+  ]
+}

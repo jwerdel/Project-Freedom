@@ -40,10 +40,9 @@ class Emblem extends Control:
   var w = size.x
   var h = size.y
   var pts = PackedVector2Array([Vector2(0,0),Vector2(w,0),Vector2(w,h*0.55),Vector2(w*0.5,h),Vector2(0,h*0.55)])
-  draw_colored_polygon(pts,c.primary)
+  Icons.crest(self,faction,pts,Rect2(w*0.2,h*0.1,w*0.6,h*0.62))
   pts.append(pts[0])
-  draw_polyline(pts,c.secondary,maxf(1.5,w*0.06))
-  Icons.draw(self,faction.get("emblem",""),Rect2(w*0.2,h*0.1,w*0.6,h*0.62),c.secondary)
+  draw_polyline(pts,c.secondary.darkened(0.15),maxf(1.5,w*0.06))
 
 # Round button: Kenney round button art, a metal ring, and an icon.
 class RoundButton extends Button:

@@ -225,8 +225,9 @@ func _screen_polys() -> Dictionary:
 
 # The frame on screen (below the layer bar) and the map inside it: the whole world letterboxed at
 # zoom 1; zoomed in, a larger map around `center`, clamped so it always fills the frame.
+var frame_margin := Rect2(16,128,32,144) # left, top, total width and height taken (previews use less)
 func frame_rect() -> Rect2:
- return Rect2(Vector2(16,128),size-Vector2(32,144))
+ return Rect2(frame_margin.position,size-frame_margin.size)
 
 func map_rect() -> Rect2:
  var area = frame_rect()

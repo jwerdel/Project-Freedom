@@ -294,6 +294,7 @@ static func targets_for(state,army_id: String,reach := -1.0) -> Array:
  for sid in _sorted(WorldMap.settlements_near(from,reach)):
   var s = state.settlements[sid]
   if s.owner == me.faction: continue
+  if bool(WorldMap.faction(s.owner).get("untouchable",false)) and not Battles.at_war(state,me.faction,s.owner): continue
   var pos = WorldMap.settlement_position(sid)
   out.append({"kind":"settlement","id":sid,"faction":s.owner,"position":pos,"defense":settlement_defense(state,sid)})
  var rr = float(Battles.cfg().reinforcement_radius)
@@ -340,6 +341,7 @@ static func _consider_war(state,f: String,p: Dictionary,look: Dictionary,rng: Ra
   if state.army_state[id].units.size()<int(data().recruitment.garrison_units) and not landless: continue
   for t in targets_for(state,id,float(data().reach.war_meters)):
    if t.faction in look.enemies or t.faction == "": continue
+   if bool(WorldMap.faction(t.faction).get("untouchable",false)): continue # Caeloth: no faction's goal is to take it (constitution)
    if landless and t.kind != "settlement": continue
    # The whole field force that could gather against it, not one army.
    var ratio = maxf(float(t.ratio),strategic_power(state,f,t.position)/maxf(1.0,float(t.defense)))

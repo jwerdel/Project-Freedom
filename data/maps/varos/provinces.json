@@ -677,9 +677,9 @@
       "owner": "house_aemerius",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.0,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -718,7 +718,7 @@
       "settlement": {
         "name": "Aemerium",
         "type": "city",
-        "level": 2,
+        "level": 3,
         "coastal": false,
         "position": [
           5068.8,
@@ -731,9 +731,9 @@
       "owner": "tullan_estates",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -780,7 +780,7 @@
       "settlement": {
         "name": "Aquilia",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "coastal": false,
         "position": [
           4716.8,
@@ -838,9 +838,9 @@
       "owner": "house_ashford",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 1.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -1243,9 +1243,9 @@
       "owner": "house_ashford",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 1.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -1296,7 +1296,7 @@
       "settlement": {
         "name": "Ashwick",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "coastal": false,
         "position": [
           4928.0,
@@ -1308,10 +1308,10 @@
       "name": "Barrowmere",
       "owner": "barrow_lords",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 2.5,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -1366,10 +1366,10 @@
       "name": "Blackpine Hold",
       "owner": "gen_blackpine",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 2.5,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -1433,9 +1433,9 @@
       "owner": "house_bracke",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -1495,9 +1495,9 @@
       "owner": "gen_lower_vale",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 3.0,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 2.0
       },
       "polygon": [
         [
@@ -1561,9 +1561,9 @@
       "owner": "reavers_brinecrag",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -1642,7 +1642,7 @@
       "settlement": {
         "name": "Brinecrag",
         "type": "fortress",
-        "level": 1,
+        "level": 3,
         "coastal": true,
         "position": [
           873.0,
@@ -1744,9 +1744,9 @@
       "owner": "throne_church",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -1797,7 +1797,7 @@
       "settlement": {
         "name": "Caeloth",
         "type": "city",
-        "level": 2,
+        "level": 3,
         "coastal": false,
         "position": [
           4083.2,
@@ -1810,9 +1810,9 @@
       "owner": "gen_via_septem",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.0,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -2086,10 +2086,10 @@
       "name": "Coldbarrow",
       "owner": "house_kells",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 2.0,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -2140,7 +2140,7 @@
       "settlement": {
         "name": "Coldbarrow",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "coastal": false,
         "position": [
           4294.4,
@@ -2153,9 +2153,9 @@
       "owner": "house_corvinus",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 3.0,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -2211,9 +2211,9 @@
       "owner": "house_corvinus",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 3.0,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -2256,7 +2256,7 @@
       "settlement": {
         "name": "Crownhaven",
         "type": "city",
-        "level": 2,
+        "level": 3,
         "coastal": false,
         "position": [
           4576.0,
@@ -2269,9 +2269,9 @@
       "owner": "delos_minor",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -2351,9 +2351,9 @@
       "owner": "reaver_captain_drak",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -2440,10 +2440,10 @@
       "name": "Dunmoor Keep",
       "owner": "house_dunmoor",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 2.5,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -2495,9 +2495,9 @@
       "owner": "gen_elaia",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -2564,10 +2564,10 @@
       "name": "Elkford",
       "owner": "gen_blackpine",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 2.0,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -2638,7 +2638,7 @@
       "settlement": {
         "name": "Elkford",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "coastal": true,
         "position": [
           5491.2,
@@ -2927,9 +2927,9 @@
       "owner": "hold_emberdeep",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 3.0,
+        "food": 3.0,
+        "minerals": 2.0
       },
       "polygon": [
         [
@@ -2976,7 +2976,7 @@
       "settlement": {
         "name": "Emberdeep",
         "type": "fortress",
-        "level": 1,
+        "level": 3,
         "coastal": false,
         "position": [
           3801.6,
@@ -2989,9 +2989,9 @@
       "owner": "house_bracke",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 1.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -3026,7 +3026,7 @@
       "settlement": {
         "name": "Fennick",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "coastal": false,
         "position": [
           3942.4,
@@ -3039,9 +3039,9 @@
       "owner": "gen_riverforks",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -3097,9 +3097,9 @@
       "owner": "house_fossa",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.0,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -3166,10 +3166,10 @@
       "name": "Frosthold",
       "owner": "house_varn",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 2.0,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -3666,9 +3666,9 @@
       "owner": "the_aurekids",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 3.0,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 2.0
       },
       "polygon": [
         [
@@ -3735,10 +3735,10 @@
       "name": "Greymere",
       "owner": "house_rowen",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 1.5,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -3789,7 +3789,7 @@
       "settlement": {
         "name": "Greymere",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "coastal": true,
         "position": [
           1760.0,
@@ -3801,10 +3801,10 @@
       "name": "Grimhollow",
       "owner": "grimhollow",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 3.0,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -4164,9 +4164,9 @@
       "owner": "house_tollan",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -4222,9 +4222,9 @@
       "owner": "house_tollan",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -4271,7 +4271,7 @@
       "settlement": {
         "name": "Harrowfield",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "coastal": false,
         "position": [
           3097.6,
@@ -4283,10 +4283,10 @@
       "name": "Hearthwick",
       "owner": "house_varn",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 2.0,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -4337,7 +4337,7 @@
       "settlement": {
         "name": "Hearthwick",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "coastal": false,
         "position": [
           3449.6,
@@ -4350,9 +4350,9 @@
       "owner": "house_verrin",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -4416,9 +4416,9 @@
       "owner": "house_aldane",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 3.0,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 2.0
       },
       "polygon": [
         [
@@ -4994,9 +4994,9 @@
       "owner": "theros",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 1.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -5052,9 +5052,9 @@
       "owner": "hold_emberdeep",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 3.0,
+        "food": 3.0,
+        "minerals": 2.0
       },
       "polygon": [
         [
@@ -5121,10 +5121,10 @@
       "name": "Kellsford",
       "owner": "house_kells",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 2.5,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -5176,9 +5176,9 @@
       "owner": "kyme",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.0,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -5225,7 +5225,7 @@
       "settlement": {
         "name": "Kyme",
         "type": "city",
-        "level": 2,
+        "level": 3,
         "coastal": true,
         "position": [
           2365.4,
@@ -5237,10 +5237,10 @@
       "name": "Lakewick",
       "owner": "gen_long_lakes",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 1.5,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -5300,9 +5300,9 @@
       "owner": "house_aemerius",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -5362,9 +5362,9 @@
       "owner": "lykourgids",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -5416,9 +5416,9 @@
       "owner": "house_merrow",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -5465,7 +5465,7 @@
       "settlement": {
         "name": "Merrowmere",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "coastal": false,
         "position": [
           4787.2,
@@ -5477,10 +5477,10 @@
       "name": "Mirewick",
       "owner": "house_dunmoor",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 2.0,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -5543,7 +5543,7 @@
       "settlement": {
         "name": "Mirewick",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "coastal": true,
         "position": [
           1196.8,
@@ -5556,9 +5556,9 @@
       "owner": "reavers_brinecrag",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -5678,9 +5678,9 @@
       "owner": "gen_elaia",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -5743,7 +5743,7 @@
       "settlement": {
         "name": "Myrtos",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "coastal": false,
         "position": [
           3182.1,
@@ -5756,9 +5756,9 @@
       "owner": "port_dallow",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 3.0,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -5810,9 +5810,9 @@
       "owner": "house_verrin",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 3.0,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -5859,7 +5859,7 @@
       "settlement": {
         "name": "Orchardium",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "coastal": false,
         "position": [
           3548.2,
@@ -5871,10 +5871,10 @@
       "name": "Osricmere",
       "owner": "gen_long_lakes",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
+        "wood": 1.5,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -5917,7 +5917,7 @@
       "settlement": {
         "name": "Osricmere",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "coastal": false,
         "position": [
           3590.4,
@@ -5930,9 +5930,9 @@
       "owner": "throne_church",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -5988,9 +5988,9 @@
       "owner": "port_dallow",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 3.0,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -6033,7 +6033,7 @@
       "settlement": {
         "name": "Port Dallow",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "coastal": true,
         "position": [
           3125.8,
@@ -6046,9 +6046,9 @@
       "owner": "gen_rainwick",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -6165,9 +6165,9 @@
       "owner": "stonefast",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 3.0,
+        "food": 3.0,
+        "minerals": 2.0
       },
       "polygon": [
         [
@@ -6242,10 +6242,10 @@
       "name": "Rimefang",
       "owner": "snowtusk",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 3.0,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -6312,10 +6312,10 @@
       "name": "Rimeguard",
       "owner": "wardens",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 2.5,
+        "stone": 3.0,
+        "food": 0.5,
+        "minerals": 2.0
       },
       "polygon": [
         [
@@ -6370,10 +6370,10 @@
       "name": "Rowenhold",
       "owner": "house_rowen",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 1.5,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -6437,9 +6437,9 @@
       "owner": "gen_sabellum",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 3.0,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -6999,9 +6999,9 @@
       "owner": "gen_via_septem",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.0,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -7142,9 +7142,9 @@
       "owner": "the_lannetids",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -7204,9 +7204,9 @@
       "owner": "skulkmire_brood",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 1.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -7253,7 +7253,7 @@
       "settlement": {
         "name": "The Skulkmire",
         "type": "fortress",
-        "level": 1,
+        "level": 3,
         "coastal": false,
         "position": [
           6054.4,
@@ -7265,10 +7265,10 @@
       "name": "Skullcairn",
       "owner": "grimhollow",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 3.0,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -7335,10 +7335,10 @@
       "name": "Skyreach",
       "owner": "house_aldane",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
+        "wood": 1.5,
+        "stone": 3.0,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 2.0
       },
       "polygon": [
         [
@@ -7429,7 +7429,7 @@
       "settlement": {
         "name": "Skyreach",
         "type": "fortress",
-        "level": 1,
+        "level": 3,
         "coastal": false,
         "position": [
           5280.0,
@@ -7441,10 +7441,10 @@
       "name": "Snowtusk Camp",
       "owner": "snowtusk",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 3.0,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -7848,9 +7848,9 @@
       "owner": "house_merrow",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -7902,9 +7902,9 @@
       "owner": "stonefast",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 3.0,
+        "food": 3.0,
+        "minerals": 2.0
       },
       "polygon": [
         [
@@ -7960,9 +7960,9 @@
       "owner": "gen_lower_vale",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 3.0,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 2.0
       },
       "polygon": [
         [
@@ -8005,7 +8005,7 @@
       "settlement": {
         "name": "Stonewick",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "coastal": false,
         "position": [
           5209.6,
@@ -8018,9 +8018,9 @@
       "owner": "house_durran",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -8161,9 +8161,9 @@
       "owner": "house_durran",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -8238,7 +8238,7 @@
       "settlement": {
         "name": "Tempest Keep",
         "type": "fortress",
-        "level": 1,
+        "level": 3,
         "coastal": true,
         "position": [
           7251.2,
@@ -8251,9 +8251,9 @@
       "owner": "theros",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -8304,7 +8304,7 @@
       "settlement": {
         "name": "Theros",
         "type": "city",
-        "level": 2,
+        "level": 3,
         "coastal": true,
         "position": [
           2421.8,
@@ -8317,9 +8317,9 @@
       "owner": "tullan_estates",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.0,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -8375,9 +8375,9 @@
       "owner": "gen_riverforks",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -8412,7 +8412,7 @@
       "settlement": {
         "name": "Twinford",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "coastal": false,
         "position": [
           4576.0,
@@ -8425,9 +8425,9 @@
       "owner": "reaver_captain_vael",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 3.0,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -8535,9 +8535,9 @@
       "owner": "house_varrenus",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.5,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -8593,9 +8593,9 @@
       "owner": "house_fossa",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.0,
+        "minerals": 0.5
       },
       "polygon": [
         [
@@ -8638,7 +8638,7 @@
       "settlement": {
         "name": "Vinaria",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "coastal": false,
         "position": [
           3590.4,
@@ -8650,10 +8650,10 @@
       "name": "Wardens' Gate",
       "owner": "wardens",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 2.5,
+        "stone": 3.0,
+        "food": 0.5,
+        "minerals": 2.0
       },
       "polygon": [
         [
@@ -8692,7 +8692,7 @@
       "settlement": {
         "name": "Wardens' Gate",
         "type": "fortress",
-        "level": 1,
+        "level": 3,
         "coastal": false,
         "position": [
           2816.0,

@@ -321,6 +321,10 @@ static func armies_of(state,faction: String) -> Array:
 # STUB name: a culture given name plus the faction's house (data/names.json), unique among
 # living generals, drawn from a generator seeded by the campaign seed, year and faction.
 static func general_name(state,faction: String) -> String:
+ # Maps whose factions carry their culture and house (Varos) name generals from the culture's pool.
+ var wf = WorldMap.faction(faction)
+ if not names().factions.has(faction) and names().cultures.has(str(wf.get("culture",""))):
+  return _named(state,faction,names().cultures[wf.culture],str(wf.get("house",wf.get("name",faction))))
  var f = names().factions.get(faction,{"culture":names().cultures.keys()[0],"house":WorldMap.faction(faction).get("name",faction)})
  var c = names().cultures[f.culture]
  var used = {}
@@ -367,3 +371,14 @@ static func capital(state,faction: String) -> String:
   if best == "" or float(state.settlements[id].population)>float(state.settlements[best].population): best = id
  return best
 
+
+static func _named(state,faction: String,c: Dictionary,house: String) -> String:
+ var used = {}
+ for id in state.army_state: used[state.army_state[id].commander.name] = true
+ var rng = RandomNumberGenerator.new()
+ rng.seed = hash([state.seed,state.year,faction,state.army_state.size()])
+ var name = ""
+ for i in 50:
+  name = str(c.pattern).replace("{given}",c.given[rng.randi_range(0,c.given.size()-1)]).replace("{house}",house)
+  if not used.has(name): return name
+ return name+" the Younger"

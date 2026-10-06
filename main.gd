@@ -3,7 +3,7 @@ extends Node3D
 const ProtoKit = preload("res://visuals/common/proto_kit.gd")
 const AssetManifest = preload("res://core/asset_manifest.gd")
 const UnitTypes = preload("res://core/unit_types.gd")
-const COMMANDER_ARMY = "aurek_host"
+var COMMANDER_ARMY := "aurek_host" # the player's first army (set from the campaign in _ready)
 const WorldMap = preload("res://core/world_map.gd")
 const UiData = preload("res://core/ui_data.gd")
 const Movement = preload("res://core/movement.gd")
@@ -38,7 +38,7 @@ const OVERVIEW_PITCH = 0.85
 const OVERVIEW_DISTANCE = 155.0
 const ROAD_VISUALS = ["road.dirt","road.gravel","road.stone"]
 
-const CITY_ID = "greyhaven"
+var CITY_ID := "greyhaven" # the prototype's showcase city; on other maps the player's first settlement
 const CITY = Vector2(-12, 6)
 const KEEP = Vector2(48, -35)
 const VILLAGE = Vector2(-56, -24)
@@ -140,12 +140,15 @@ func _ready():
  early_state = _campaign()
  pipeline = str(MapRegistry.meta().get("kind","")) == "pipeline"
  if pipeline and WorldMap.region(GOLDSPIRE_ID).get("settlement") is Dictionary: GOLDSPIRE = WorldMap.settlement_position(GOLDSPIRE_ID)
+ var mine = early_state.armies_of(early_state.player_faction)
+ if not early_state.army_state.has(COMMANDER_ARMY) and not mine.is_empty(): COMMANDER_ARMY = mine[0]
+ if not early_state.settlements.has(CITY_ID) and not early_state.settlements_of(early_state.player_faction).is_empty(): CITY_ID = early_state.settlements_of(early_state.player_faction)[0]
  make_environment()
  for arg in OS.get_cmdline_user_args():
   if arg.begins_with("--goldspire-stage="): goldspire_level = clampi(int(arg.get_slice("=",1)),1,3)
  if pipeline:
   # The prototype start sets its two showcase settlements' levels from the scene (as before).
-  if loaded_from == "":
+  if loaded_from == "" and MapRegistry.active == "testmap_pipeline":
    Construction.set_level(early_state,CITY_ID,city_level)
    Construction.set_level(early_state,GOLDSPIRE_ID,goldspire_level)
   _pipeline_atmosphere()

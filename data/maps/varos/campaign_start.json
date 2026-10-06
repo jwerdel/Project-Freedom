@@ -1,54 +1,959 @@
 {
-  "_note": "Outline only: no armies, populations or buildings yet (Stage A content, after approval).",
-  "seed": 1,
+  "_note": "Varos Stage A start (2026-10-06). Treasuries, populations, buildings and armies are PLACEHOLDER values. player_faction is the default; the faction selection screen picks one of the three playable houses.",
+  "seed": 7301,
   "year": 1,
   "player_faction": "the_aurekids",
+  "playable": [
+    "house_varn",
+    "house_varrenus",
+    "the_aurekids"
+  ],
   "treasury": {
-    "house_varn": 0,
-    "house_varrenus": 0,
-    "the_aurekids": 0,
-    "house_aldane": 0,
-    "wardens": 0,
-    "house_corvinus": 0,
-    "house_aemerius": 0,
-    "house_durran": 0,
-    "theros": 0,
-    "kyme": 0,
-    "throne_church": 0,
-    "hold_emberdeep": 0,
-    "reavers_brinecrag": 0,
-    "skulkmire_brood": 0,
-    "house_dunmoor": 0,
-    "house_kells": 0,
-    "house_rowen": 0,
-    "barrow_lords": 0,
-    "house_tollan": 0,
-    "house_merrow": 0,
-    "house_bracke": 0,
-    "house_ashford": 0,
-    "tullan_estates": 0,
-    "port_dallow": 0,
-    "house_fossa": 0,
-    "house_verrin": 0,
-    "the_lannetids": 0,
-    "delos_minor": 0,
-    "lykourgids": 0,
-    "stonefast": 0,
-    "snowtusk": 0,
-    "grimhollow": 0,
-    "reaver_captain_drak": 0,
-    "reaver_captain_vael": 0,
-    "gen_blackpine": 0,
-    "gen_long_lakes": 0,
-    "gen_lower_vale": 0,
-    "gen_riverforks": 0,
-    "gen_elaia": 0,
-    "gen_sabellum": 0,
-    "gen_via_septem": 0,
-    "gen_rainwick": 0
+    "house_varn": 5000,
+    "house_varrenus": 5000,
+    "the_aurekids": 5000,
+    "house_aldane": 6000,
+    "wardens": 6000,
+    "house_corvinus": 6000,
+    "house_aemerius": 6000,
+    "house_durran": 6000,
+    "theros": 6000,
+    "kyme": 6000,
+    "throne_church": 6000,
+    "hold_emberdeep": 6000,
+    "reavers_brinecrag": 6000,
+    "skulkmire_brood": 6000,
+    "house_dunmoor": 2500,
+    "house_kells": 2500,
+    "house_rowen": 2500,
+    "barrow_lords": 2500,
+    "house_tollan": 2500,
+    "house_merrow": 2500,
+    "house_bracke": 2500,
+    "house_ashford": 2500,
+    "tullan_estates": 2500,
+    "port_dallow": 2500,
+    "house_fossa": 2500,
+    "house_verrin": 2500,
+    "the_lannetids": 2500,
+    "delos_minor": 2500,
+    "lykourgids": 2500,
+    "stonefast": 2500,
+    "snowtusk": 2500,
+    "grimhollow": 2500,
+    "reaver_captain_drak": 2500,
+    "reaver_captain_vael": 2500,
+    "gen_blackpine": 2000,
+    "gen_long_lakes": 2000,
+    "gen_lower_vale": 2000,
+    "gen_riverforks": 2000,
+    "gen_elaia": 2000,
+    "gen_sabellum": 2000,
+    "gen_via_septem": 2000,
+    "gen_rainwick": 2000
   },
-  "armies": [],
-  "army_positions": {},
-  "road_level": 0,
-  "settlements": {}
+  "armies": [
+    "house_varn_host",
+    "house_varrenus_host",
+    "the_aurekids_host",
+    "house_aldane_host",
+    "wardens_host",
+    "house_corvinus_host",
+    "house_aemerius_host",
+    "house_durran_host",
+    "theros_host",
+    "kyme_host",
+    "throne_church_host",
+    "hold_emberdeep_host",
+    "reavers_brinecrag_host",
+    "skulkmire_brood_host",
+    "house_dunmoor_host",
+    "house_kells_host",
+    "house_rowen_host",
+    "barrow_lords_host",
+    "house_tollan_host",
+    "house_merrow_host",
+    "house_bracke_host",
+    "house_ashford_host",
+    "tullan_estates_host",
+    "port_dallow_host",
+    "house_fossa_host",
+    "house_verrin_host",
+    "the_lannetids_host",
+    "delos_minor_host",
+    "lykourgids_host",
+    "stonefast_host",
+    "snowtusk_host",
+    "grimhollow_host",
+    "reaver_captain_drak_host",
+    "reaver_captain_vael_host",
+    "gen_blackpine_host",
+    "gen_long_lakes_host",
+    "gen_lower_vale_host",
+    "gen_riverforks_host",
+    "gen_elaia_host",
+    "gen_sabellum_host",
+    "gen_via_septem_host",
+    "gen_rainwick_host"
+  ],
+  "army_positions": {
+    "house_varn_host": [
+      2816.0,
+      2274.2
+    ],
+    "house_varrenus_host": [
+      4294.4,
+      5467.7
+    ],
+    "the_aurekids_host": [
+      2506.2,
+      3871.0
+    ],
+    "house_aldane_host": [
+      5280.0,
+      2951.6
+    ],
+    "wardens_host": [
+      2816.0,
+      1819.4
+    ],
+    "house_corvinus_host": [
+      4576.0,
+      5709.7
+    ],
+    "house_aemerius_host": [
+      5068.8,
+      5032.3
+    ],
+    "house_durran_host": [
+      7251.2,
+      3580.6
+    ],
+    "theros_host": [
+      2421.8,
+      4374.2
+    ],
+    "kyme_host": [
+      2365.4,
+      5080.6
+    ],
+    "throne_church_host": [
+      4083.2,
+      4064.5
+    ],
+    "hold_emberdeep_host": [
+      3801.6,
+      6261.5
+    ],
+    "reavers_brinecrag_host": [
+      873.0,
+      3725.8
+    ],
+    "skulkmire_brood_host": [
+      6054.4,
+      4838.7
+    ],
+    "house_dunmoor_host": [
+      1689.6,
+      2129.0
+    ],
+    "house_kells_host": [
+      4012.8,
+      2080.6
+    ],
+    "house_rowen_host": [
+      2182.4,
+      2758.1
+    ],
+    "barrow_lords_host": [
+      4646.4,
+      1983.9
+    ],
+    "house_tollan_host": [
+      3449.6,
+      3435.5
+    ],
+    "house_merrow_host": [
+      4435.2,
+      3629.0
+    ],
+    "house_bracke_host": [
+      3590.4,
+      4374.2
+    ],
+    "house_ashford_host": [
+      4364.8,
+      4761.3
+    ],
+    "tullan_estates_host": [
+      4435.2,
+      5051.6
+    ],
+    "port_dallow_host": [
+      2745.6,
+      5854.8
+    ],
+    "house_fossa_host": [
+      3308.8,
+      4935.5
+    ],
+    "house_verrin_host": [
+      3168.0,
+      5419.4
+    ],
+    "the_lannetids_host": [
+      2647.0,
+      3435.5
+    ],
+    "delos_minor_host": [
+      1943.0,
+      4161.3
+    ],
+    "lykourgids_host": [
+      2562.6,
+      5496.8
+    ],
+    "stonefast_host": [
+      4646.4,
+      6232.4
+    ],
+    "snowtusk_host": [
+      1478.4,
+      1141.9
+    ],
+    "grimhollow_host": [
+      3308.8,
+      1141.9
+    ],
+    "reaver_captain_drak_host": [
+      732.2,
+      5303.2
+    ],
+    "reaver_captain_vael_host": [
+      1379.8,
+      5825.8
+    ],
+    "gen_blackpine_host": [
+      5280.0,
+      1838.7
+    ],
+    "gen_long_lakes_host": [
+      2886.4,
+      2854.8
+    ],
+    "gen_lower_vale_host": [
+      5702.4,
+      3338.7
+    ],
+    "gen_riverforks_host": [
+      4012.8,
+      3241.9
+    ],
+    "gen_elaia_host": [
+      3210.2,
+      3967.7
+    ],
+    "gen_sabellum_host": [
+      4294.4,
+      6029.1
+    ],
+    "gen_via_septem_host": [
+      3942.4,
+      4935.5
+    ],
+    "gen_rainwick_host": [
+      6617.6,
+      4500.0
+    ]
+  },
+  "road_level": 1,
+  "settlements": {
+    "snowtusk_camp": {
+      "population": 1567,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 1
+        }
+      ]
+    },
+    "rimefang": {
+      "population": 1331,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 1
+        }
+      ]
+    },
+    "grimhollow": {
+      "population": 1272,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 1
+        }
+      ]
+    },
+    "skullcairn": {
+      "population": 1219,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 1
+        }
+      ]
+    },
+    "wardens_gate": {
+      "population": 4762,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 2
+        },
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "rimeguard": {
+      "population": 1399,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 1
+        }
+      ]
+    },
+    "frosthold": {
+      "population": 6964,
+      "buildings": [
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "hearthwick": {
+      "population": 3057,
+      "buildings": []
+    },
+    "dunmoor_keep": {
+      "population": 1435,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 1
+        }
+      ]
+    },
+    "mirewick": {
+      "population": 3224,
+      "buildings": [
+        {
+          "chain": "port",
+          "level": 1
+        }
+      ]
+    },
+    "kellsford": {
+      "population": 6455,
+      "buildings": [
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "barrowmere": {
+      "population": 1445,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 1
+        }
+      ]
+    },
+    "coldbarrow": {
+      "population": 2770,
+      "buildings": []
+    },
+    "rowenhold": {
+      "population": 1310,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 1
+        }
+      ]
+    },
+    "greymere": {
+      "population": 3019,
+      "buildings": [
+        {
+          "chain": "port",
+          "level": 1
+        }
+      ]
+    },
+    "blackpine_hold": {
+      "population": 1579,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 1
+        }
+      ]
+    },
+    "elkford": {
+      "population": 3124,
+      "buildings": [
+        {
+          "chain": "port",
+          "level": 1
+        }
+      ]
+    },
+    "lakewick": {
+      "population": 6919,
+      "buildings": [
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "osricmere": {
+      "population": 2795,
+      "buildings": []
+    },
+    "skyreach": {
+      "population": 5082,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 2
+        },
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "highford": {
+      "population": 6954,
+      "buildings": [
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "brightmere": {
+      "population": 6572,
+      "buildings": [
+        {
+          "chain": "port",
+          "level": 1
+        },
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "stonewick": {
+      "population": 2841,
+      "buildings": []
+    },
+    "caeloth": {
+      "population": 12022,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 2
+        },
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "pilgrims_ford": {
+      "population": 7437,
+      "buildings": [
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "harrow_crossing": {
+      "population": 1415,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 1
+        }
+      ]
+    },
+    "harrowfield": {
+      "population": 3497,
+      "buildings": []
+    },
+    "stillwater": {
+      "population": 7077,
+      "buildings": [
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "merrowmere": {
+      "population": 3496,
+      "buildings": []
+    },
+    "bracke_hall": {
+      "population": 1486,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 1
+        }
+      ]
+    },
+    "fennick": {
+      "population": 3319,
+      "buildings": []
+    },
+    "ashford": {
+      "population": 7496,
+      "buildings": [
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "ashwick": {
+      "population": 3260,
+      "buildings": []
+    },
+    "forkwatch": {
+      "population": 1361,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 1
+        }
+      ]
+    },
+    "twinford": {
+      "population": 3331,
+      "buildings": []
+    },
+    "goldspire_rock": {
+      "population": 6633,
+      "buildings": [
+        {
+          "chain": "port",
+          "level": 1
+        },
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "silverfall": {
+      "population": 7241,
+      "buildings": [
+        {
+          "chain": "port",
+          "level": 1
+        },
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "theros": {
+      "population": 12600,
+      "buildings": [
+        {
+          "chain": "port",
+          "level": 1
+        },
+        {
+          "chain": "walls",
+          "level": 2
+        },
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "kallipolis": {
+      "population": 7115,
+      "buildings": [
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "kyme": {
+      "population": 15151,
+      "buildings": [
+        {
+          "chain": "port",
+          "level": 1
+        },
+        {
+          "chain": "walls",
+          "level": 2
+        },
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "lykon": {
+      "population": 7862,
+      "buildings": [
+        {
+          "chain": "port",
+          "level": 1
+        },
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "elaia": {
+      "population": 6422,
+      "buildings": [
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "myrtos": {
+      "population": 2839,
+      "buildings": []
+    },
+    "delos_minor": {
+      "population": 8181,
+      "buildings": [
+        {
+          "chain": "port",
+          "level": 1
+        },
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "brinecrag": {
+      "population": 5428,
+      "buildings": [
+        {
+          "chain": "port",
+          "level": 1
+        },
+        {
+          "chain": "walls",
+          "level": 2
+        },
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "mor_skerry": {
+      "population": 6470,
+      "buildings": [
+        {
+          "chain": "port",
+          "level": 1
+        },
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "drakhaven": {
+      "population": 1266,
+      "buildings": [
+        {
+          "chain": "port",
+          "level": 1
+        },
+        {
+          "chain": "walls",
+          "level": 1
+        }
+      ]
+    },
+    "vael_shoal": {
+      "population": 1214,
+      "buildings": [
+        {
+          "chain": "port",
+          "level": 1
+        },
+        {
+          "chain": "walls",
+          "level": 1
+        }
+      ]
+    },
+    "highbloom": {
+      "population": 6891,
+      "buildings": [
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "orchardium": {
+      "population": 2918,
+      "buildings": []
+    },
+    "oldstone_citadel": {
+      "population": 8484,
+      "buildings": [
+        {
+          "chain": "port",
+          "level": 1
+        },
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "port_dallow": {
+      "population": 3084,
+      "buildings": [
+        {
+          "chain": "port",
+          "level": 1
+        }
+      ]
+    },
+    "fossum": {
+      "population": 7637,
+      "buildings": [
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "vinaria": {
+      "population": 3444,
+      "buildings": []
+    },
+    "crownhaven": {
+      "population": 15036,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 2
+        },
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "varrenum": {
+      "population": 6488,
+      "buildings": [
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "tullanum": {
+      "population": 7800,
+      "buildings": [
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "aquilia": {
+      "population": 3287,
+      "buildings": []
+    },
+    "corvinium": {
+      "population": 6641,
+      "buildings": [
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "sabellum": {
+      "population": 6409,
+      "buildings": [
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "aemerium": {
+      "population": 14663,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 2
+        },
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "lucentia": {
+      "population": 7575,
+      "buildings": [
+        {
+          "chain": "port",
+          "level": 1
+        },
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "septimium": {
+      "population": 7872,
+      "buildings": [
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "castra_nova": {
+      "population": 1602,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 1
+        }
+      ]
+    },
+    "tempest_keep": {
+      "population": 4186,
+      "buildings": [
+        {
+          "chain": "port",
+          "level": 1
+        },
+        {
+          "chain": "walls",
+          "level": 2
+        },
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "stormhaven": {
+      "population": 7161,
+      "buildings": [
+        {
+          "chain": "port",
+          "level": 1
+        },
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "skulkmire": {
+      "population": 5357,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 2
+        },
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "rainwick": {
+      "population": 8298,
+      "buildings": [
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "emberdeep": {
+      "population": 4359,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 2
+        },
+        {
+          "chain": "temple",
+          "level": 1
+        }
+      ]
+    },
+    "karak_durn": {
+      "population": 1586,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 1
+        }
+      ]
+    },
+    "stonefast": {
+      "population": 1235,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 1
+        }
+      ]
+    },
+    "redgate_pass": {
+      "population": 1441,
+      "buildings": [
+        {
+          "chain": "walls",
+          "level": 1
+        }
+      ]
+    }
+  }
 }

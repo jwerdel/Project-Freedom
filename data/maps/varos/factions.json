@@ -1,38 +1,84 @@
 {
-  "_note": "Varos factions for the outline (map-pipeline-design §8.3: 3 playable, 11 major AI, 20 minor, 8 generated placeholders). Names are placeholders the owner can rename; colours and emblems are placeholders; kind: playable, major, minor, generated. House Verrin of Highbloom is a Roman minor house; the Lannetids are Silverfall's tyrants (world bible Appendix A).",
+  "_note": "Varos Stage A factions (map-pipeline-design §8.3: 3 playable, 11 major AI, 20 minor, 8 generated placeholders; names renamable). faith per culture (world bible §4); traits = tendencies read by the AI (data/ai.json personalities); crest = original heraldry (ui/icons.gd crest: field, division, charge; no real-world symbols); relations = the lore friendships and rivalries of docs/v1-content.md §3.2 (friend / rival, mutual); house = the family name generated generals take.",
   "factions": {
     "house_varn": {
       "name": "House Varn of Frosthold",
+      "house": "Varn",
       "culture": "medieval",
+      "faith": "throne_church",
       "primary": "#4a5d78",
       "secondary": "#d8dde3",
       "emblem": "faction",
       "kind": "playable",
       "traits": [
-        "devout",
-        "honourable"
+        "proud",
+        "defensive"
       ],
-      "seat": "frosthold",
+      "seat": "Frosthold",
+      "seat_region": "frosthold",
+      "crest": {
+        "division": "chief",
+        "field2": "#d8dde3",
+        "charge": "wolf",
+        "charge_color": "#e8ecef"
+      },
+      "relations": {
+        "house_kells": "friend",
+        "wardens": "friend",
+        "house_aldane": "friend",
+        "house_dunmoor": "rival",
+        "house_corvinus": "rival",
+        "house_aemerius": "rival",
+        "house_durran": "rival"
+      },
+      "battle_style": {
+        "default": "line",
+        "if_cavalry": "hammer_anvil",
+        "cavalry_min": 2
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "house_varrenus": {
       "name": "House Varrenus",
+      "house": "Varrenus",
       "culture": "roman",
+      "faith": "radiant_seven",
       "primary": "#6d2a5e",
       "secondary": "#e0c25a",
       "emblem": "lords",
       "kind": "playable",
       "traits": [
-        "schemer"
+        "income_focused",
+        "expansionist"
       ],
-      "seat": "varrenum",
+      "seat": "Varrenum",
+      "seat_region": "varrenum",
+      "crest": {
+        "division": "pale",
+        "field2": "#3b1d36",
+        "charge": "star",
+        "charge_color": "#e0c25a"
+      },
+      "relations": {
+        "house_aemerius": "friend",
+        "port_dallow": "friend",
+        "house_corvinus": "rival",
+        "tullan_estates": "rival",
+        "house_durran": "rival",
+        "skulkmire_brood": "rival"
+      },
+      "battle_style": {
+        "default": "line"
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "the_aurekids": {
       "name": "The Aurekids of Goldspire Rock",
+      "house": "Aurekos",
       "culture": "greek",
+      "faith": "radiant_seven",
       "primary": "#7a1c1c",
       "secondary": "#d9ad45",
       "emblem": "spire",
@@ -41,55 +87,128 @@
         "income_focused",
         "cruel_when_crossed"
       ],
-      "seat": "goldspire_rock",
+      "seat": "Goldspire Rock",
+      "seat_region": "goldspire_rock",
+      "crest": {
+        "division": "plain",
+        "field2": "#d9ad45",
+        "charge": "mountain",
+        "charge_color": "#e6b440"
+      },
+      "relations": {
+        "theros": "friend",
+        "delos_minor": "friend",
+        "the_lannetids": "rival",
+        "kyme": "rival",
+        "reavers_brinecrag": "rival"
+      },
+      "battle_style": {
+        "default": "shield_wall"
+      },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "patron": "merovan"
     },
     "house_aldane": {
       "name": "House Aldane of Skyreach",
+      "house": "Aldane",
       "culture": "medieval",
+      "faith": "throne_church",
       "primary": "#5f8fb0",
       "secondary": "#f0f0ea",
       "emblem": "objectives",
       "kind": "major",
       "traits": [
-        "passive"
+        "passive",
+        "defensive"
       ],
-      "seat": "skyreach",
+      "seat": "Skyreach",
+      "seat_region": "skyreach",
+      "crest": {
+        "division": "fess",
+        "field2": "#e8edf2",
+        "charge": "tower",
+        "charge_color": "#2c4a66"
+      },
+      "relations": {
+        "house_varn": "friend"
+      },
+      "battle_style": {
+        "default": "line",
+        "if_cavalry": "hammer_anvil",
+        "cavalry_min": 2
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "wardens": {
       "name": "The Wardens of the Greywall",
+      "house": "of the Wall",
       "culture": "medieval",
+      "faith": "throne_church",
       "primary": "#2b2b2e",
       "secondary": "#9a9a9a",
       "emblem": "borders",
       "kind": "major",
       "traits": [
-        "honourable"
+        "defensive",
+        "passive"
       ],
-      "seat": "wardens_gate",
+      "seat": "Wardens' Gate",
+      "seat_region": "wardens_gate",
+      "crest": {
+        "division": "bordure",
+        "field2": "#9a9a9a",
+        "charge": "key",
+        "charge_color": "#c8c8c8"
+      },
+      "relations": {
+        "house_varn": "friend"
+      },
+      "battle_style": {
+        "default": "line",
+        "if_cavalry": "hammer_anvil",
+        "cavalry_min": 2
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "house_corvinus": {
       "name": "House Corvinus",
+      "house": "Corvinus",
       "culture": "roman",
+      "faith": "radiant_seven",
       "primary": "#3a3a6e",
       "secondary": "#c9a54a",
       "emblem": "lords",
       "kind": "major",
       "traits": [
-        "expansionist"
+        "expansionist",
+        "proud"
       ],
-      "seat": "crownhaven",
+      "seat": "Crownhaven",
+      "seat_region": "crownhaven",
+      "crest": {
+        "division": "quarterly",
+        "field2": "#c9a54a",
+        "charge": "sun",
+        "charge_color": "#e8d080"
+      },
+      "relations": {
+        "house_varn": "rival",
+        "house_varrenus": "rival"
+      },
+      "battle_style": {
+        "default": "line"
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "house_aemerius": {
       "name": "House Aemerius",
+      "house": "Aemerius",
       "culture": "roman",
+      "faith": "radiant_seven",
       "primary": "#8a4a1c",
       "secondary": "#e6d39a",
       "emblem": "coin",
@@ -97,113 +216,244 @@
       "traits": [
         "income_focused"
       ],
-      "seat": "aemerium",
+      "seat": "Aemerium",
+      "seat_region": "aemerium",
+      "crest": {
+        "division": "bend",
+        "field2": "#5a3010",
+        "charge": "coin",
+        "charge_color": "#e6d39a"
+      },
+      "relations": {
+        "house_varn": "rival",
+        "house_varrenus": "friend"
+      },
+      "battle_style": {
+        "default": "line"
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "house_durran": {
       "name": "House Durran of Tempest Keep",
+      "house": "Durran",
       "culture": "roman",
+      "faith": "radiant_seven",
       "primary": "#2f4f4f",
       "secondary": "#e8c040",
       "emblem": "armies",
       "kind": "major",
       "traits": [
         "expansionist",
-        "honourable"
+        "proud"
       ],
-      "seat": "tempest_keep",
+      "seat": "Tempest Keep",
+      "seat_region": "tempest_keep",
+      "crest": {
+        "division": "chevron",
+        "field2": "#1a2f2f",
+        "charge": "horn",
+        "charge_color": "#e8c040"
+      },
+      "relations": {
+        "house_varn": "rival",
+        "house_varrenus": "rival"
+      },
+      "battle_style": {
+        "default": "line"
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "theros": {
       "name": "The Free City of Theros",
+      "house": "of Theros",
       "culture": "greek",
+      "faith": "radiant_seven",
       "primary": "#1f5c8a",
       "secondary": "#f2f2f2",
       "emblem": "wave",
       "kind": "major",
       "traits": [
-        "generous"
+        "generous",
+        "kind"
       ],
-      "seat": "theros",
+      "seat": "Theros",
+      "seat_region": "theros",
+      "crest": {
+        "division": "fess",
+        "field2": "#f2f2f2",
+        "charge": "ship",
+        "charge_color": "#1f5c8a"
+      },
+      "relations": {
+        "the_aurekids": "friend"
+      },
+      "battle_style": {
+        "default": "shield_wall"
+      },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "patron": "thalor"
     },
     "kyme": {
       "name": "The Philandrid Tyranny of Kyme",
+      "house": "Philandros",
       "culture": "greek",
+      "faith": "radiant_seven",
       "primary": "#5a1f6e",
       "secondary": "#c9b06a",
       "emblem": "faction",
       "kind": "major",
       "traits": [
-        "cruel"
+        "cruel",
+        "expansionist"
       ],
-      "seat": "kyme",
+      "seat": "Kyme",
+      "seat_region": "kyme",
+      "crest": {
+        "division": "saltire",
+        "field2": "#c9b06a",
+        "charge": "sword",
+        "charge_color": "#e8d8a0"
+      },
+      "relations": {
+        "the_aurekids": "rival"
+      },
+      "battle_style": {
+        "default": "shield_wall"
+      },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "patron": "kael"
     },
     "throne_church": {
       "name": "Caeloth, the Throne Church",
-      "culture": "church",
+      "house": "of Caeloth",
+      "culture": "medieval",
+      "faith": "throne_church",
       "primary": "#e8e2cf",
       "secondary": "#b08a2e",
       "emblem": "year",
       "kind": "major",
       "traits": [
-        "untouchable"
+        "passive",
+        "defensive"
       ],
-      "seat": "caeloth",
+      "seat": "Caeloth",
+      "seat_region": "caeloth",
+      "crest": {
+        "division": "plain",
+        "field2": "#b08a2e",
+        "charge": "sun",
+        "charge_color": "#b08a2e"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "line",
+        "if_cavalry": "hammer_anvil",
+        "cavalry_min": 2
+      },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "untouchable": true
     },
     "hold_emberdeep": {
       "name": "Hold Emberdeep",
+      "house": "Emberdeep",
       "culture": "dwarf",
+      "faith": "forge_fathers",
       "primary": "#7a3b1c",
       "secondary": "#e0a040",
       "emblem": "settlements",
       "kind": "major",
       "traits": [
-        "honourable"
+        "proud",
+        "defensive"
       ],
-      "seat": "emberdeep",
+      "seat": "Emberdeep",
+      "seat_region": "emberdeep",
+      "crest": {
+        "division": "chief",
+        "field2": "#e0a040",
+        "charge": "anvil",
+        "charge_color": "#e0a040"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "shield_wall"
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "reavers_brinecrag": {
       "name": "The Reavers of Brinecrag",
+      "house": "of Brinecrag",
       "culture": "dark_elf",
+      "faith": "severed_star",
       "primary": "#2a1f3d",
       "secondary": "#b02a4a",
       "emblem": "wave",
       "kind": "major",
       "traits": [
         "treacherous",
-        "cruel"
+        "cruel",
+        "expansionist"
       ],
-      "seat": "brinecrag",
+      "seat": "Brinecrag",
+      "seat_region": "brinecrag",
+      "crest": {
+        "division": "bend",
+        "field2": "#4a0f20",
+        "charge": "flame",
+        "charge_color": "#b02a4a"
+      },
+      "relations": {
+        "the_aurekids": "rival"
+      },
+      "battle_style": {
+        "default": "hammer_anvil",
+        "if_cavalry": "hammer_anvil",
+        "cavalry_min": 1
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "skulkmire_brood": {
       "name": "The Skulkmire Brood",
+      "house": "of the Brood",
       "culture": "ratmen",
+      "faith": "great_gnawing",
       "primary": "#3f4a1f",
       "secondary": "#9fd04a",
       "emblem": "chronicle",
       "kind": "major",
       "traits": [
-        "treacherous"
+        "treacherous",
+        "expansionist"
       ],
-      "seat": "skulkmire",
+      "seat": "The Skulkmire",
+      "seat_region": "skulkmire",
+      "crest": {
+        "division": "plain",
+        "field2": "#9fd04a",
+        "charge": "eye",
+        "charge_color": "#9fd04a"
+      },
+      "relations": {
+        "house_varrenus": "rival"
+      },
+      "battle_style": {
+        "default": "levy_swarm"
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "house_dunmoor": {
       "name": "House Dunmoor",
+      "house": "Dunmoor",
       "culture": "medieval",
+      "faith": "throne_church",
       "primary": "#5a4a3a",
       "secondary": "#c8b48a",
       "emblem": "faction",
@@ -211,97 +461,221 @@
       "traits": [
         "cruel"
       ],
-      "seat": "dunmoor_keep",
+      "seat": "Dunmoor Keep",
+      "seat_region": "dunmoor_keep",
+      "crest": {
+        "division": "chevron",
+        "field2": "#b4a27c",
+        "charge": "boar",
+        "charge_color": "#c8b48a"
+      },
+      "relations": {
+        "house_varn": "rival"
+      },
+      "battle_style": {
+        "default": "line",
+        "if_cavalry": "hammer_anvil",
+        "cavalry_min": 2
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "house_kells": {
       "name": "House Kells of the Barrowlands",
+      "house": "Kells",
       "culture": "medieval",
+      "faith": "throne_church",
       "primary": "#3f5a3a",
       "secondary": "#d0c8a0",
       "emblem": "borders",
       "kind": "minor",
       "traits": [],
-      "seat": "kellsford",
+      "seat": "Kellsford",
+      "seat_region": "kellsford",
+      "crest": {
+        "division": "bend",
+        "field2": "#bbb490",
+        "charge": "key",
+        "charge_color": "#d0c8a0"
+      },
+      "relations": {
+        "house_varn": "friend"
+      },
+      "battle_style": {
+        "default": "line",
+        "if_cavalry": "hammer_anvil",
+        "cavalry_min": 2
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "house_rowen": {
       "name": "House Rowen",
+      "house": "Rowen",
       "culture": "medieval",
+      "faith": "throne_church",
       "primary": "#6a5a7a",
       "secondary": "#e0d8c8",
       "emblem": "objectives",
       "kind": "minor",
       "traits": [],
-      "seat": "rowenhold",
+      "seat": "Rowenhold",
+      "seat_region": "rowenhold",
+      "crest": {
+        "division": "bend",
+        "field2": "#cac2b4",
+        "charge": "wolf",
+        "charge_color": "#e0d8c8"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "line",
+        "if_cavalry": "hammer_anvil",
+        "cavalry_min": 2
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "barrow_lords": {
       "name": "The Barrow-lords",
+      "house": "of the Barrows",
       "culture": "medieval",
+      "faith": "throne_church",
       "primary": "#2f3a3a",
       "secondary": "#a0b0a8",
       "emblem": "chronicle",
       "kind": "minor",
       "traits": [],
-      "seat": "barrowmere",
+      "seat": "Barrowmere",
+      "seat_region": "barrowmere",
+      "crest": {
+        "division": "chief",
+        "field2": "#909e97",
+        "charge": "tower",
+        "charge_color": "#a0b0a8"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "line",
+        "if_cavalry": "hammer_anvil",
+        "cavalry_min": 2
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "house_tollan": {
       "name": "House Tollan of Harrow Crossing",
+      "house": "Tollan",
       "culture": "medieval",
+      "faith": "throne_church",
       "primary": "#7a6a2a",
       "secondary": "#2a2a2a",
       "emblem": "settlements",
       "kind": "minor",
       "traits": [],
-      "seat": "harrow_crossing",
+      "seat": "Harrow Crossing",
+      "seat_region": "harrow_crossing",
+      "crest": {
+        "division": "fess",
+        "field2": "#262626",
+        "charge": "key",
+        "charge_color": "#2a2a2a"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "line",
+        "if_cavalry": "hammer_anvil",
+        "cavalry_min": 2
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "house_merrow": {
       "name": "House Merrow of Stillwater",
+      "house": "Merrow",
       "culture": "medieval",
+      "faith": "throne_church",
       "primary": "#3a6a7a",
       "secondary": "#e0e8e8",
       "emblem": "wave",
       "kind": "minor",
       "traits": [],
-      "seat": "stillwater",
+      "seat": "Stillwater",
+      "seat_region": "stillwater",
+      "crest": {
+        "division": "chevron",
+        "field2": "#cad1d1",
+        "charge": "key",
+        "charge_color": "#e0e8e8"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "line",
+        "if_cavalry": "hammer_anvil",
+        "cavalry_min": 2
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "house_bracke": {
       "name": "House Bracke",
+      "house": "Bracke",
       "culture": "medieval",
+      "faith": "throne_church",
       "primary": "#5a6a2a",
       "secondary": "#d8d0a0",
       "emblem": "wheat",
       "kind": "minor",
       "traits": [],
-      "seat": "bracke_hall",
+      "seat": "Bracke Hall",
+      "seat_region": "bracke_hall",
+      "crest": {
+        "division": "plain",
+        "field2": "#c2bb90",
+        "charge": "boar",
+        "charge_color": "#d8d0a0"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "line",
+        "if_cavalry": "hammer_anvil",
+        "cavalry_min": 2
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "house_ashford": {
       "name": "House Ashford",
+      "house": "Ashford",
       "culture": "medieval",
+      "faith": "throne_church",
       "primary": "#8a7a6a",
       "secondary": "#3a2a2a",
       "emblem": "faction",
       "kind": "minor",
       "traits": [],
-      "seat": "ashford",
+      "seat": "Ashford",
+      "seat_region": "ashford",
+      "crest": {
+        "division": "quarterly",
+        "field2": "#342626",
+        "charge": "tree",
+        "charge_color": "#3a2a2a"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "line",
+        "if_cavalry": "hammer_anvil",
+        "cavalry_min": 2
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "tullan_estates": {
       "name": "The Tullan Estates",
+      "house": "Tullan",
       "culture": "roman",
+      "faith": "radiant_seven",
       "primary": "#8a2a3a",
       "secondary": "#e0d0b0",
       "emblem": "wheat",
@@ -309,13 +683,28 @@
       "traits": [
         "cruel"
       ],
-      "seat": "tullanum",
+      "seat": "Tullanum",
+      "seat_region": "tullanum",
+      "crest": {
+        "division": "chief",
+        "field2": "#cabb9e",
+        "charge": "sword",
+        "charge_color": "#e0d0b0"
+      },
+      "relations": {
+        "house_varrenus": "rival"
+      },
+      "battle_style": {
+        "default": "line"
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "port_dallow": {
       "name": "Port Dallow",
+      "house": "Dallow",
       "culture": "roman",
+      "faith": "radiant_seven",
       "primary": "#2a5a6a",
       "secondary": "#e8e0c8",
       "emblem": "wave",
@@ -323,25 +712,53 @@
       "traits": [
         "income_focused"
       ],
-      "seat": "oldstone_citadel",
+      "seat": "Oldstone Citadel",
+      "seat_region": "oldstone_citadel",
+      "crest": {
+        "division": "chevron",
+        "field2": "#d1cab4",
+        "charge": "star",
+        "charge_color": "#e8e0c8"
+      },
+      "relations": {
+        "house_varrenus": "friend"
+      },
+      "battle_style": {
+        "default": "line"
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "house_fossa": {
       "name": "House Fossa",
+      "house": "Fossa",
       "culture": "roman",
+      "faith": "radiant_seven",
       "primary": "#6a3a2a",
       "secondary": "#d8c8a0",
       "emblem": "coin",
       "kind": "minor",
       "traits": [],
-      "seat": "fossum",
+      "seat": "Fossum",
+      "seat_region": "fossum",
+      "crest": {
+        "division": "chevron",
+        "field2": "#c2b490",
+        "charge": "coin",
+        "charge_color": "#d8c8a0"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "line"
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "house_verrin": {
       "name": "House Verrin of Highbloom",
+      "house": "Verrin",
       "culture": "roman",
+      "faith": "radiant_seven",
       "primary": "#2c5526",
       "secondary": "#dcc66a",
       "emblem": "wheat",
@@ -351,13 +768,26 @@
         "income_focused",
         "levy_heavy"
       ],
-      "seat": "highbloom",
+      "seat": "Highbloom",
+      "seat_region": "highbloom",
+      "crest": {
+        "division": "bordure",
+        "field2": "#c6b25f",
+        "charge": "sun",
+        "charge_color": "#dcc66a"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "line"
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "the_lannetids": {
       "name": "The Lannetids of Silverfall",
+      "house": "Lannetos",
       "culture": "greek",
+      "faith": "radiant_seven",
       "primary": "#244469",
       "secondary": "#c9d2db",
       "emblem": "wave",
@@ -365,49 +795,108 @@
       "traits": [
         "cruel"
       ],
-      "seat": "silverfall",
+      "seat": "Silverfall",
+      "seat_region": "silverfall",
+      "crest": {
+        "division": "quarterly",
+        "field2": "#b5bdc5",
+        "charge": "wave",
+        "charge_color": "#c9d2db"
+      },
+      "relations": {
+        "the_aurekids": "rival"
+      },
+      "battle_style": {
+        "default": "shield_wall"
+      },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "patron": "aurel"
     },
     "delos_minor": {
       "name": "The Island Colony of Delos Minor",
+      "house": "of Delos",
       "culture": "greek",
+      "faith": "radiant_seven",
       "primary": "#3a7a8a",
       "secondary": "#f0e8d0",
       "emblem": "wave",
       "kind": "minor",
       "traits": [],
-      "seat": "delos_minor",
+      "seat": "Delos Minor",
+      "seat_region": "delos_minor",
+      "crest": {
+        "division": "plain",
+        "field2": "#d8d1bb",
+        "charge": "spire",
+        "charge_color": "#f0e8d0"
+      },
+      "relations": {
+        "the_aurekids": "friend"
+      },
+      "battle_style": {
+        "default": "shield_wall"
+      },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "patron": "thalor"
     },
     "lykourgids": {
       "name": "The Lykourgids of Lykon",
+      "house": "Lykourgos",
       "culture": "greek",
+      "faith": "radiant_seven",
       "primary": "#7a5a1a",
       "secondary": "#e8e0c0",
       "emblem": "spire",
       "kind": "minor",
       "traits": [],
-      "seat": "lykon",
+      "seat": "Lykon",
+      "seat_region": "lykon",
+      "crest": {
+        "division": "fess",
+        "field2": "#d1caad",
+        "charge": "star",
+        "charge_color": "#e8e0c0"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "shield_wall"
+      },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "patron": "ilith"
     },
     "stonefast": {
       "name": "The Stonefast Outpost",
+      "house": "Stonefast",
       "culture": "dwarf",
+      "faith": "forge_fathers",
       "primary": "#5a4a3a",
       "secondary": "#c08040",
       "emblem": "settlements",
       "kind": "minor",
       "traits": [],
-      "seat": "stonefast",
+      "seat": "Stonefast",
+      "seat_region": "stonefast",
+      "crest": {
+        "division": "chevron",
+        "field2": "#ad733a",
+        "charge": "anvil",
+        "charge_color": "#c08040"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "shield_wall"
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "snowtusk": {
       "name": "The Snowtusk Tribe",
+      "house": "Snowtusk",
       "culture": "orc",
+      "faith": "blood_and_iron",
       "primary": "#4a6a4a",
       "secondary": "#d0d8d0",
       "emblem": "armies",
@@ -415,13 +904,26 @@
       "traits": [
         "expansionist"
       ],
-      "seat": "snowtusk_camp",
+      "seat": "Snowtusk Camp",
+      "seat_region": "snowtusk_camp",
+      "crest": {
+        "division": "bend",
+        "field2": "#bbc2bb",
+        "charge": "skull",
+        "charge_color": "#d0d8d0"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "levy_swarm"
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "grimhollow": {
       "name": "The Grimhollow Tribe",
+      "house": "Grimhollow",
       "culture": "orc",
+      "faith": "blood_and_iron",
       "primary": "#3a4a2a",
       "secondary": "#8a2a1a",
       "emblem": "armies",
@@ -429,13 +931,26 @@
       "traits": [
         "expansionist"
       ],
-      "seat": "grimhollow",
+      "seat": "Grimhollow",
+      "seat_region": "grimhollow",
+      "crest": {
+        "division": "pale",
+        "field2": "#7c2617",
+        "charge": "skull",
+        "charge_color": "#8a2a1a"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "levy_swarm"
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "reaver_captain_drak": {
       "name": "Reaver Captain of Drakhaven",
+      "house": "Drak",
       "culture": "dark_elf",
+      "faith": "severed_star",
       "primary": "#3a1f2a",
       "secondary": "#c0c0d0",
       "emblem": "wave",
@@ -443,13 +958,28 @@
       "traits": [
         "treacherous"
       ],
-      "seat": "drakhaven",
+      "seat": "Drakhaven",
+      "seat_region": "drakhaven",
+      "crest": {
+        "division": "fess",
+        "field2": "#adadbb",
+        "charge": "moon",
+        "charge_color": "#c0c0d0"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "hammer_anvil",
+        "if_cavalry": "hammer_anvil",
+        "cavalry_min": 1
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "reaver_captain_vael": {
       "name": "Reaver Captain of Vael-Shoal",
+      "house": "Vael",
       "culture": "dark_elf",
+      "faith": "severed_star",
       "primary": "#1f2a3a",
       "secondary": "#c04060",
       "emblem": "wave",
@@ -457,103 +987,229 @@
       "traits": [
         "treacherous"
       ],
-      "seat": "vael_shoal",
+      "seat": "Vael-Shoal",
+      "seat_region": "vael_shoal",
+      "crest": {
+        "division": "plain",
+        "field2": "#ad3a56",
+        "charge": "moon",
+        "charge_color": "#c04060"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "hammer_anvil",
+        "if_cavalry": "hammer_anvil",
+        "cavalry_min": 1
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "gen_blackpine": {
       "name": "Northern house of Blackpine (generated)",
+      "house": "Blackpine",
       "culture": "medieval",
+      "faith": "throne_church",
       "primary": "#2f4a3a",
       "secondary": "#c8c0a8",
       "emblem": "faction",
       "kind": "generated",
       "traits": [],
-      "seat": "blackpine_hold",
+      "seat": "Blackpine Hold",
+      "seat_region": "blackpine_hold",
+      "crest": {
+        "division": "quarterly",
+        "field2": "#b4ad97",
+        "charge": "boar",
+        "charge_color": "#c8c0a8"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "line",
+        "if_cavalry": "hammer_anvil",
+        "cavalry_min": 2
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "gen_long_lakes": {
       "name": "Northern house of the Long Lakes (generated)",
+      "house": "Osric",
       "culture": "medieval",
+      "faith": "throne_church",
       "primary": "#3a5a7a",
       "secondary": "#d8d0b8",
       "emblem": "wave",
       "kind": "generated",
       "traits": [],
-      "seat": "lakewick",
+      "seat": "Lakewick",
+      "seat_region": "lakewick",
+      "crest": {
+        "division": "chief",
+        "field2": "#c2bba6",
+        "charge": "key",
+        "charge_color": "#d8d0b8"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "line",
+        "if_cavalry": "hammer_anvil",
+        "cavalry_min": 2
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "gen_lower_vale": {
       "name": "Vale house of the Lower Vale (generated)",
+      "house": "Brightmere",
       "culture": "medieval",
+      "faith": "throne_church",
       "primary": "#6a8aa0",
       "secondary": "#f0e8d8",
       "emblem": "objectives",
       "kind": "generated",
       "traits": [],
-      "seat": "brightmere",
+      "seat": "Brightmere",
+      "seat_region": "brightmere",
+      "crest": {
+        "division": "bordure",
+        "field2": "#d8d1c2",
+        "charge": "tree",
+        "charge_color": "#f0e8d8"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "line",
+        "if_cavalry": "hammer_anvil",
+        "cavalry_min": 2
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "gen_riverforks": {
       "name": "Marches house of the Riverforks (generated)",
+      "house": "Forke",
       "culture": "medieval",
+      "faith": "throne_church",
       "primary": "#5a6a5a",
       "secondary": "#e0c890",
       "emblem": "wave",
       "kind": "generated",
       "traits": [],
-      "seat": "forkwatch",
+      "seat": "Forkwatch",
+      "seat_region": "forkwatch",
+      "crest": {
+        "division": "bend",
+        "field2": "#cab482",
+        "charge": "tree",
+        "charge_color": "#e0c890"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "line",
+        "if_cavalry": "hammer_anvil",
+        "cavalry_min": 2
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "gen_elaia": {
       "name": "The Elaian League (generated)",
+      "house": "of Elaia",
       "culture": "greek",
+      "faith": "radiant_seven",
       "primary": "#5a7a3a",
       "secondary": "#f0f0e0",
       "emblem": "spire",
       "kind": "generated",
       "traits": [],
-      "seat": "elaia",
+      "seat": "Elaia",
+      "seat_region": "elaia",
+      "crest": {
+        "division": "fess",
+        "field2": "#d8d8ca",
+        "charge": "spire",
+        "charge_color": "#f0f0e0"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "shield_wall"
+      },
       "general_traits": [],
-      "placeholder_assignment": true
+      "placeholder_assignment": true,
+      "patron": "vessa"
     },
     "gen_sabellum": {
       "name": "Roman family of Sabellum (generated)",
+      "house": "Sabellus",
       "culture": "roman",
+      "faith": "radiant_seven",
       "primary": "#7a3a5a",
       "secondary": "#e8d8b0",
       "emblem": "lords",
       "kind": "generated",
       "traits": [],
-      "seat": "sabellum",
+      "seat": "Sabellum",
+      "seat_region": "sabellum",
+      "crest": {
+        "division": "bend",
+        "field2": "#d1c29e",
+        "charge": "sun",
+        "charge_color": "#e8d8b0"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "line"
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "gen_via_septem": {
       "name": "Roman family of the Via Septem (generated)",
+      "house": "Septimius",
       "culture": "roman",
+      "faith": "radiant_seven",
       "primary": "#4a3a2a",
       "secondary": "#d0b070",
       "emblem": "lords",
       "kind": "generated",
       "traits": [],
-      "seat": "septimium",
+      "seat": "Septimium",
+      "seat_region": "septimium",
+      "crest": {
+        "division": "bend",
+        "field2": "#bb9e65",
+        "charge": "star",
+        "charge_color": "#d0b070"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "line"
+      },
       "general_traits": [],
       "placeholder_assignment": true
     },
     "gen_rainwick": {
       "name": "Stormlands house of Rainwick (generated)",
+      "house": "Rainwick",
       "culture": "roman",
+      "faith": "radiant_seven",
       "primary": "#2a4a5a",
       "secondary": "#c0d0d8",
       "emblem": "armies",
       "kind": "generated",
       "traits": [],
-      "seat": "rainwick",
+      "seat": "Rainwick",
+      "seat_region": "rainwick",
+      "crest": {
+        "division": "bordure",
+        "field2": "#adbbc2",
+        "charge": "coin",
+        "charge_color": "#c0d0d8"
+      },
+      "relations": {},
+      "battle_style": {
+        "default": "line"
+      },
       "general_traits": [],
       "placeholder_assignment": true
     }

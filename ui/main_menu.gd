@@ -1,6 +1,6 @@
 extends Control
 # Main menu on launch: Continue (the latest save), New Campaign, Load, Settings, Quit. The
-# campaign starts as House Aurek; faction selection comes with the V1 map. Command-line runs that
+# campaign starts on Varos after the faction selection and intro (Stage A). Command-line runs that
 # need the campaign directly (captures, the self-test, the movement-grid bake, --seed) skip the
 # menu unless --menu is given.
 
@@ -45,6 +45,15 @@ func _ready():
  if args.has("--settings"): _show_settings()
  for a in args:
   if a.begins_with("--menu-load="): _load.call_deferred(a.get_slice("=",1)) # captures: the full load path
+  # Captures: --faction-select opens the selection (=<faction> picks a house); --intro=<faction> the intro.
+  if a.begins_with("--faction-select"):
+   _new_campaign.call_deferred()
+   if "=" in a: (func(): (find_child("FactionSelect",true,false) as Control).call("select",a.get_slice("=",1))).call_deferred()
+  if a.begins_with("--intro="):
+   MapRegistry.set_active(MapRegistry.CAMPAIGN)
+   var st = GameState.from_data()
+   st.player_faction = a.get_slice("=",1)
+   _intro.call_deferred(st)
 
 func _build():
  # Backdrop: the latest saved view of the campaign (core/save_system.gd), darkened.
@@ -103,8 +112,8 @@ func _build():
  cont_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
  v.add_child(cont_info)
  var nc = _button(v,"New Campaign",_new_campaign)
- nc.tooltip_text = "Play as House Aurek of Goldspire. Faction selection comes with the V1 map."
- var nci = UiKit.label("As House Aurek (faction choice comes with the V1 map)",13,UiKit.TEXT_DIM)
+ nc.tooltip_text = "Choose one of the three great houses of Aldryn and begin on Varos."
+ var nci = UiKit.label("House Varn, House Varrenus or the Aurekids, on Varos",13,UiKit.TEXT_DIM)
  nci.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
  v.add_child(nci)
  _button(v,"Load",_show_load)
@@ -159,8 +168,29 @@ func _continue():
  var latest = SaveSystem.latest()
  if not latest.is_empty(): _load(latest.file)
 
+const FactionSelect = preload("res://ui/faction_select.gd")
+const CampaignIntro = preload("res://ui/campaign_intro.gd")
+const MapRegistry = preload("res://core/map_registry.gd")
+
+# New Campaign: Varos, the faction selection, the illustrated intro and the court, then the campaign.
 func _new_campaign():
- Session.start(get_tree(),GameState.new_campaign())
+ MapRegistry.set_active(MapRegistry.CAMPAIGN)
+ var state = GameState.new_campaign()
+ var sel = FactionSelect.new(state)
+ add_child(sel)
+ sel.cancelled.connect(func():
+  sel.queue_free()
+  MapRegistry.set_active(MapRegistry.DEFAULT))
+ sel.chosen.connect(func(f: String):
+  state.player_faction = f
+  sel.queue_free()
+  _intro(state))
+
+func _intro(state):
+ var intro = CampaignIntro.new(state.player_faction)
+ add_child(intro)
+ if "--intro-court" in OS.get_cmdline_user_args(): intro.show_page(intro.pages()-1)
+ intro.finished.connect(func(): Session.start(get_tree(),state))
 
 func _load(file: String):
  var r = SaveSystem.load_save(file)

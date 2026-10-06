@@ -1,0 +1,29 @@
+{
+  "_note": "PLACEHOLDER starting army (Stage A, 2026-10-06): composition, strengths and the general's name are placeholders.",
+  "id": "house_ashford_host",
+  "display_name": "The Host of Ashford",
+  "faction": "house_ashford",
+  "commander": {
+    "unit": "commander",
+    "name": "Ser Wendel Ashford",
+    "rank": 1
+  },
+  "units": [
+    {
+      "unit": "spearmen",
+      "strength": 0.8
+    },
+    {
+      "unit": "archers",
+      "strength": 0.9
+    },
+    {
+      "unit": "peasant_levy",
+      "strength": 1.0
+    },
+    {
+      "unit": "peasant_levy",
+      "strength": 0.95
+    }
+  ]
+}

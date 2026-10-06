@@ -9,7 +9,8 @@ extends RefCounted
 #  land (closed shapes), lakes (closed), hills (closed), forests (closed, data-density 0-1),
 #  ranges (open paths, data-height, data-width), passes (open paths or circles, data-width),
 #  rivers (open paths, source to mouth, data-width), sites (circles, id = region id), roads (open
-#  paths, pinned), borders (optional), climates (closed, data-climate: ground colours only).
+#  paths, pinned; they bridge rivers), fords (circles: river crossings), borders (optional), climates
+#  (closed, data-climate: ground colours only). River cores are water: crossed only at bridges and fords.
 #  Other layers (e.g. "stages") are kept in the sketch for tools and ignored here.
 # world.json: {"provinces": [...], "regions": {id: {name, province, owner, major: {name, type,
 # level, port, landmark, path}, resources, polygon (optional: pinned region outline)}},
@@ -120,7 +121,7 @@ static func build(map_id: String,bakes := true,progress := Callable()) -> Dictio
    var d = near[i]
    var k = 1.0-smoothstep(width*0.5,width*2.5,d)
    h[i] = lerpf(h[i],minf(h[i],0.3+d*0.15),k)
-   if d<width*0.5: rivers[i] = 255
+   if d<maxf(width*0.5,cell*0.75): rivers[i] = 255 # the core: water, crossed only at bridges and fords
    elif d<width*0.8: rivers[i] = maxi(rivers[i],140)
  # Settlements: flattened plateaus.
  var sites = {}
@@ -199,7 +200,7 @@ static func build(map_id: String,bakes := true,progress := Callable()) -> Dictio
   var x = i%cols
   var z = i/cols
   var c = OPEN
-  if land[i] == 0: c = WATER
+  if land[i] == 0 or rivers[i] == 255: c = WATER
   else:
    var dx = h[mini(i+1,n-1)]-h[maxi(i-1,0)]
    var dz = h[mini(i+cols,n-1)]-h[maxi(i-cols,0)]
@@ -241,14 +242,29 @@ static func build(map_id: String,bakes := true,progress := Callable()) -> Dictio
  var road = PackedByteArray()
  road.resize(n)
  var network = []
+ var bridges = 0
  for e in L.get("roads",[]):
   var pts = []
   for p in e.points:
    var w = to_w.call(p)
    pts.append([snappedf(w.x,0.1),snappedf(w.y,0.1)])
   network.append({"id":e.id,"points":pts})
-  for i in _near(e.points,cell,cols,rows,1.0):
+  # Roads cross rivers on bridges (the river core under a road becomes open ground); they never
+  # run into lakes or the sea. On coarse cells the road keeps at least one cell's width.
+  for i in _near(e.points,cell,cols,rows,maxf(1.0,cell*0.75)):
+   if cls[i] == WATER and rivers[i] == 255 and land[i] == 1:
+    cls[i] = OPEN
+    bridges += 1
    if cls[i] != WATER: road[i] = 1
+ # Fords (sketch layer "fords", circles): shallow crossings of a river, slow going (pass terrain).
+ var fords = 0
+ for e in L.get("fords",[]):
+  var r = maxf(float(e.get("r",6.0)),cell*1.5)
+  for i in _near(PackedVector2Array([e.center,e.center+Vector2(0.01,0)]),cell,cols,rows,r):
+   if rivers[i] == 255 and land[i] == 1:
+    cls[i] = PASS
+    fords += 1
+ report.crossings = {"bridge_cells":bridges,"ford_cells":fords}
  var passes = []
  for e in L.get("passes",[]):
   if e.kind != "path": continue

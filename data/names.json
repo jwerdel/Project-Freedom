@@ -1,12 +1,145 @@
 {
-  "_note": "STUB: generated names for newly hired generals until the character and family system exists (constitution: generals are drawn from the court). Given-name pools are placeholders in the style of the existing names (Ser Alaric Aurek); docs/archive/world-v1.md does not define naming conventions yet. pattern placeholders: {given}, {house}.",
+  "_note": "STUB: generated names for newly hired generals until the character and family system exists (constitution: generals are drawn from the court). Given-name pools are placeholders in the style of the existing names (Ser Alaric Aurek); docs/archive/world-v1.md does not define naming conventions yet. pattern placeholders: {given}, {house}. Culture pools (world bible §10, 2026-10-06) name generated generals on maps whose factions carry a culture and a house (Varos).",
   "cultures": {
-    "westerlands": {"pattern": "Ser {given} {house}", "given": ["Aldric", "Cerwyn", "Doran", "Edric", "Garran", "Harlan", "Jory", "Lucan", "Merrit", "Osric", "Roderic", "Tybalt", "Varric", "Wendel"]},
-    "reach": {"pattern": "Ser {given} {house}", "given": ["Alyn", "Bramwell", "Corin", "Daven", "Elric", "Florian", "Garth", "Hollis", "Lorent", "Mace", "Perrin", "Rowan", "Tamsin", "Willem"]}
+    "westerlands": {
+      "pattern": "Ser {given} {house}",
+      "given": [
+        "Aldric",
+        "Cerwyn",
+        "Doran",
+        "Edric",
+        "Garran",
+        "Harlan",
+        "Jory",
+        "Lucan",
+        "Merrit",
+        "Osric",
+        "Roderic",
+        "Tybalt",
+        "Varric",
+        "Wendel"
+      ]
+    },
+    "reach": {
+      "pattern": "Ser {given} {house}",
+      "given": [
+        "Alyn",
+        "Bramwell",
+        "Corin",
+        "Daven",
+        "Elric",
+        "Florian",
+        "Garth",
+        "Hollis",
+        "Lorent",
+        "Mace",
+        "Perrin",
+        "Rowan",
+        "Tamsin",
+        "Willem"
+      ]
+    },
+    "medieval": {
+      "pattern": "Ser {given} {house}",
+      "given": [
+        "Edric",
+        "Aldous",
+        "Berthold",
+        "Rowena",
+        "Matilda",
+        "Osric",
+        "Wendel",
+        "Harlan",
+        "Cerwyn",
+        "Gareth",
+        "Aelfric",
+        "Brannoc"
+      ]
+    },
+    "roman": {
+      "pattern": "{given} {house}",
+      "given": [
+        "Lucan",
+        "Severin",
+        "Cassia",
+        "Octavia",
+        "Marius",
+        "Livia",
+        "Quintus",
+        "Aulus",
+        "Decima",
+        "Flavian"
+      ]
+    },
+    "greek": {
+      "pattern": "{given} {house}",
+      "given": [
+        "Kallias",
+        "Theron",
+        "Demetria",
+        "Iolanthe",
+        "Lysander",
+        "Phaedra",
+        "Nikias",
+        "Ariston",
+        "Melitta"
+      ]
+    },
+    "dwarf": {
+      "pattern": "{given} of Hold {house}",
+      "given": [
+        "Durgrim",
+        "Hilda",
+        "Borin",
+        "Kazra",
+        "Thrandur",
+        "Gotrek",
+        "Brunna"
+      ]
+    },
+    "orc": {
+      "pattern": "{given} {house}",
+      "given": [
+        "Gruk",
+        "Skarga",
+        "Mogrot",
+        "Throk",
+        "Uzgob",
+        "Rakka"
+      ]
+    },
+    "dark_elf": {
+      "pattern": "Captain {given} {house}",
+      "given": [
+        "Malveth",
+        "Kaethra",
+        "Drazhul",
+        "Seryth",
+        "Vaelira"
+      ]
+    },
+    "ratmen": {
+      "pattern": "Warlock {given}",
+      "given": [
+        "Skrit",
+        "Vexlik",
+        "Snagg",
+        "Thresk"
+      ]
+    }
   },
   "factions": {
-    "house_aurek": {"culture": "westerlands", "house": "Aurek"},
-    "house_lannet": {"culture": "westerlands", "house": "Lannet"},
-    "house_verrin": {"culture": "reach", "house": "Verrin"}
+    "house_aurek": {
+      "culture": "westerlands",
+      "house": "Aurek"
+    },
+    "house_lannet": {
+      "culture": "westerlands",
+      "house": "Lannet"
+    },
+    "house_verrin": {
+      "culture": "reach",
+      "house": "Verrin"
+    }
   }
 }

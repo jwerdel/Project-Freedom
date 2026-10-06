@@ -74,6 +74,7 @@ func setup(campaign_state):
  _make_material()
  _make_terrain()
  _make_sea()
+ _make_walls()
 
 func _make_material():
  material = ShaderMaterial.new()
@@ -375,3 +376,90 @@ func stats() -> Dictionary:
  var pieces = 0
  for sid in settlements: pieces += settlements[sid].pieces
  return {"chunks":chunks.size(),"settlements_built":settlements.size(),"settlement_pieces":pieces,"trees":trees}
+
+# --- Great walls (the Greywall): sketch ranges with data-kind="wall" ------------------------------
+# The pipeline makes the wall's line impassable (a range) and leaves a pass at its gate; here it is
+# drawn as a colossal stone wall following the ground: battlemented blocks every WALL_STEP metres and
+# a tower every WALL_TOWER metres (MultiMeshes, so the whole wall costs a few draw calls).
+const WALL_STEP = 10.0
+const WALL_TOWER = 160.0
+const WALL_HEIGHT = 24.0
+const WALL_DEPTH = 9.0
+const WALL_STONE = Color("8d8a84")
+
+func _make_walls():
+ var path = MapRegistry.path("sketch.svg")
+ if not FileAccess.file_exists(path): return
+ var sk = load("res://map/sketch.gd").parse_file(path)
+ var origin = Vector2(MapRegistry.meta().origin[0],MapRegistry.meta().origin[1])
+ var blocks = []
+ var towers = []
+ var gaps = []
+ for e in sk.layers.get("passes",[]): gaps.append_array(Array(e.points).map(func(p): return origin+p))
+ for e in sk.layers.get("ranges",[]):
+  if str(e.data.get("kind","")) != "wall": continue
+  var since_tower = WALL_TOWER*0.5
+  for i in range(1,e.points.size()):
+   var a: Vector2 = origin+e.points[i-1]
+   var b: Vector2 = origin+e.points[i]
+   var n = maxi(1,int(a.distance_to(b)/WALL_STEP))
+   for k in n:
+    var p = a.lerp(b,(k+0.5)/n)
+    if gaps.any(func(q): return q.distance_to(p)<WALL_STEP*1.6): continue # the gate's pass stays open
+    var yaw = atan2(b.x-a.x,b.y-a.y)
+    var ground = minf(minf(height_at(p.x,p.y),height_at(p.x+cos(yaw)*4.0,p.y-sin(yaw)*4.0)),height_at(p.x-cos(yaw)*4.0,p.y+sin(yaw)*4.0))
+    var xf = Transform3D(Basis(Vector3.UP,yaw),Vector3(p.x,ground-6.0,p.y))
+    since_tower += a.distance_to(b)/n
+    if since_tower>=WALL_TOWER:
+     towers.append(xf)
+     since_tower = 0.0
+    else: blocks.append(xf)
+ if blocks.is_empty() and towers.is_empty(): return
+ var root = Node3D.new()
+ root.name = "GreatWalls"
+ add_child(root)
+ for set in [[blocks,_wall_block_mesh()],[towers,_wall_tower_mesh()]]:
+  if set[0].is_empty(): continue
+  var mm = MultiMesh.new()
+  mm.transform_format = MultiMesh.TRANSFORM_3D
+  mm.mesh = set[1]
+  mm.instance_count = set[0].size()
+  for i in set[0].size(): mm.set_instance_transform(i,set[0][i])
+  var mi = MultiMeshInstance3D.new()
+  mi.multimesh = mm
+  root.add_child(mi)
+
+func _wall_mat() -> StandardMaterial3D:
+ var m = StandardMaterial3D.new()
+ m.albedo_color = WALL_STONE
+ m.roughness = 0.95
+ return m
+
+func _box_into(st: SurfaceTool,size: Vector3,center: Vector3):
+ var bm = BoxMesh.new()
+ bm.size = size
+ st.append_from(bm,0,Transform3D(Basis(),center))
+
+# One wall block: WALL_STEP long along its local z, a battered body and merlons on both faces.
+func _wall_block_mesh() -> ArrayMesh:
+ var st = SurfaceTool.new()
+ st.begin(Mesh.PRIMITIVE_TRIANGLES)
+ _box_into(st,Vector3(WALL_DEPTH+3.0,8.0,WALL_STEP+0.2),Vector3(0,4.0,0))
+ _box_into(st,Vector3(WALL_DEPTH,WALL_HEIGHT+6.0,WALL_STEP+0.2),Vector3(0,(WALL_HEIGHT+6.0)*0.5,0))
+ for s in [-1.0,1.0]:
+  for k in 3: _box_into(st,Vector3(1.2,2.2,1.8),Vector3(s*(WALL_DEPTH*0.5-0.6),WALL_HEIGHT+7.1,-WALL_STEP*0.33+k*WALL_STEP*0.33))
+ st.generate_normals()
+ var m = st.commit()
+ m.surface_set_material(0,_wall_mat())
+ return m
+
+func _wall_tower_mesh() -> ArrayMesh:
+ var st = SurfaceTool.new()
+ st.begin(Mesh.PRIMITIVE_TRIANGLES)
+ _box_into(st,Vector3(WALL_DEPTH+8.0,WALL_HEIGHT+16.0,WALL_DEPTH+8.0),Vector3(0,(WALL_HEIGHT+16.0)*0.5,0))
+ for sx in [-1.0,1.0]:
+  for sz in [-1.0,1.0]: _box_into(st,Vector3(2.4,2.6,2.4),Vector3(sx*(WALL_DEPTH*0.5+2.8),WALL_HEIGHT+17.3,sz*(WALL_DEPTH*0.5+2.8)))
+ st.generate_normals()
+ var m = st.commit()
+ m.surface_set_material(0,_wall_mat())
+ return m

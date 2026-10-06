@@ -1,0 +1,33 @@
+{
+  "_note": "PLACEHOLDER starting army (Stage A, 2026-10-06): composition, strengths and the general's name are placeholders.",
+  "id": "snowtusk_host",
+  "display_name": "The Host of Snowtusk Camp",
+  "faction": "snowtusk",
+  "commander": {
+    "unit": "commander",
+    "name": "Gruk Snowtusk",
+    "rank": 1
+  },
+  "units": [
+    {
+      "unit": "peasant_levy",
+      "strength": 0.9
+    },
+    {
+      "unit": "peasant_levy",
+      "strength": 0.85
+    },
+    {
+      "unit": "swordsmen",
+      "strength": 0.9
+    },
+    {
+      "unit": "swordsmen",
+      "strength": 0.85
+    },
+    {
+      "unit": "spearmen",
+      "strength": 1.0
+    }
+  ]
+}

@@ -49,12 +49,11 @@ func _draw():
  # Pennant with a swallowtail, hanging above the plate.
  var top = 0.0
  var pts = PackedVector2Array([Vector2(cx-PENNANT.x*0.5,top),Vector2(cx+PENNANT.x*0.5,top),Vector2(cx+PENNANT.x*0.5,top+PENNANT.y),Vector2(cx,top+PENNANT.y-9),Vector2(cx-PENNANT.x*0.5,top+PENNANT.y)])
- draw_colored_polygon(pts,c.primary)
+ Icons.crest(self,settlement.faction,pts,Rect2(cx-11,top+7,22,24))
  var outline = pts.duplicate()
  outline.append(pts[0])
  draw_polyline(outline,trim,2.0 if not selected else 3.0)
  draw_line(Vector2(cx-PENNANT.x*0.5-4,top),Vector2(cx+PENNANT.x*0.5+4,top),Color("3a2a1a"),4)
- Icons.draw(self,settlement.faction.get("emblem",""),Rect2(cx-11,top+7,22,24),c.secondary)
  # Name plate.
  var plate = Rect2(Vector2(2,PENNANT.y+2),Vector2(size.x-4,PLATE_H))
  draw_rect(plate,Color(0.07,0.05,0.04,0.9))

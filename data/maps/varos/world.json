@@ -1,5 +1,5 @@
 {
-  "_note": "Varos world outline (block A1, pending the owner's approval). Stage A regions, provinces and holders from docs/world-bible-v2.md Appendix A (placeholders, renamable); later stages are coarse unowned areas so the outline tiles the world (stage: B Frostwaste/Red Peaks south/Sahren, C Ossara, D Sothmire, locked = the Ashlands, not in V1). No armies, buildings or rosters yet (Stage A content).",
+  "_note": "Varos (approved outline enlarged 2.5x; Stage A content 2026-10-06). Stage A regions, provinces and holders from docs/world-bible-v2.md Appendix A (placeholder names, renamable); settlement levels: playable seats 2, major seats 3, minors 1-2. Later stages are coarse unowned areas (stage: B Frostwaste/Red Peaks south/Sahren, C Ossara, D Sothmire, locked = the Ashlands, not in V1).",
   "provinces": [
     {
       "id": "snowtusk_fells",
@@ -678,10 +678,10 @@
       "owner": "snowtusk",
       "stage": "A",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 3.0,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Snowtusk Camp",
@@ -696,10 +696,10 @@
       "owner": "snowtusk",
       "stage": "A",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 3.0,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Rimefang",
@@ -714,10 +714,10 @@
       "owner": "grimhollow",
       "stage": "A",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 3.0,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Grimhollow",
@@ -732,10 +732,10 @@
       "owner": "grimhollow",
       "stage": "A",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 3.0,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Skullcairn",
@@ -762,15 +762,15 @@
       "owner": "wardens",
       "stage": "A",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 2.5,
+        "stone": 3.0,
+        "food": 0.5,
+        "minerals": 2.0
       },
       "major": {
         "name": "Wardens' Gate",
         "type": "fortress",
-        "level": 1,
+        "level": 3,
         "port": false
       }
     },
@@ -780,10 +780,10 @@
       "owner": "wardens",
       "stage": "A",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 2.5,
+        "stone": 3.0,
+        "food": 0.5,
+        "minerals": 2.0
       },
       "major": {
         "name": "Rimeguard",
@@ -798,10 +798,10 @@
       "owner": "house_varn",
       "stage": "A",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 2.0,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Frosthold",
@@ -816,15 +816,15 @@
       "owner": "house_varn",
       "stage": "A",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 2.0,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Hearthwick",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "port": false
       }
     },
@@ -834,10 +834,10 @@
       "owner": "house_dunmoor",
       "stage": "A",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 2.5,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Dunmoor Keep",
@@ -852,15 +852,15 @@
       "owner": "house_dunmoor",
       "stage": "A",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 2.0,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Mirewick",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "port": true
       }
     },
@@ -870,10 +870,10 @@
       "owner": "house_kells",
       "stage": "A",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 2.5,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Kellsford",
@@ -888,10 +888,10 @@
       "owner": "barrow_lords",
       "stage": "A",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 2.5,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Barrowmere",
@@ -906,15 +906,15 @@
       "owner": "house_kells",
       "stage": "A",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 2.0,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Coldbarrow",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "port": false
       }
     },
@@ -924,10 +924,10 @@
       "owner": "house_rowen",
       "stage": "A",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 1.5,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Rowenhold",
@@ -942,15 +942,15 @@
       "owner": "house_rowen",
       "stage": "A",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 1.5,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Greymere",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "port": true
       }
     },
@@ -960,10 +960,10 @@
       "owner": "gen_blackpine",
       "stage": "A",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 2.5,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Blackpine Hold",
@@ -978,15 +978,15 @@
       "owner": "gen_blackpine",
       "stage": "A",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 2.0,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Elkford",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "port": true
       }
     },
@@ -996,10 +996,10 @@
       "owner": "gen_long_lakes",
       "stage": "A",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "wood": 1.5,
+        "stone": 1.5,
+        "food": 0.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Lakewick",
@@ -1014,15 +1014,15 @@
       "owner": "gen_long_lakes",
       "stage": "A",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
+        "wood": 1.5,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "major": {
         "name": "Osricmere",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "port": false
       }
     },
@@ -1032,15 +1032,15 @@
       "owner": "house_aldane",
       "stage": "A",
       "resources": {
-        "wood": 1.0,
-        "stone": 1.0,
+        "wood": 1.5,
+        "stone": 3.0,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 2.0
       },
       "major": {
         "name": "Skyreach",
         "type": "fortress",
-        "level": 1,
+        "level": 3,
         "port": false
       }
     },
@@ -1051,9 +1051,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 3.0,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 2.0
       },
       "major": {
         "name": "Highford",
@@ -1069,9 +1069,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 3.0,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 2.0
       },
       "major": {
         "name": "Brightmere",
@@ -1087,14 +1087,14 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 3.0,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 2.0
       },
       "major": {
         "name": "Stonewick",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "port": false
       }
     },
@@ -1105,14 +1105,14 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "major": {
         "name": "Caeloth",
         "type": "city",
-        "level": 2,
+        "level": 3,
         "port": false
       }
     },
@@ -1123,9 +1123,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "major": {
         "name": "Pilgrim's Ford",
@@ -1141,9 +1141,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "major": {
         "name": "Harrow Crossing",
@@ -1159,14 +1159,14 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "major": {
         "name": "Harrowfield",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "port": false
       }
     },
@@ -1177,9 +1177,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "major": {
         "name": "Stillwater",
@@ -1195,14 +1195,14 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "major": {
         "name": "Merrowmere",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "port": false
       }
     },
@@ -1213,9 +1213,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "major": {
         "name": "Bracke Hall",
@@ -1231,14 +1231,14 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 1.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Fennick",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "port": false
       }
     },
@@ -1249,9 +1249,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 1.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Ashford",
@@ -1267,14 +1267,14 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 1.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Ashwick",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "port": false
       }
     },
@@ -1285,9 +1285,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "major": {
         "name": "Forkwatch",
@@ -1303,14 +1303,14 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "major": {
         "name": "Twinford",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "port": false
       }
     },
@@ -1321,9 +1321,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 3.0,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 2.0
       },
       "major": {
         "name": "Goldspire Rock",
@@ -1339,9 +1339,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "major": {
         "name": "Silverfall",
@@ -1357,14 +1357,14 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "major": {
         "name": "Theros",
         "type": "city",
-        "level": 2,
+        "level": 3,
         "port": true
       }
     },
@@ -1375,9 +1375,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 1.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Kallipolis",
@@ -1393,14 +1393,14 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.0,
+        "minerals": 0.5
       },
       "major": {
         "name": "Kyme",
         "type": "city",
-        "level": 2,
+        "level": 3,
         "port": true
       }
     },
@@ -1411,9 +1411,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Lykon",
@@ -1429,9 +1429,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "major": {
         "name": "Elaia",
@@ -1447,14 +1447,14 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "major": {
         "name": "Myrtos",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "port": false
       }
     },
@@ -1465,9 +1465,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "major": {
         "name": "Delos Minor",
@@ -1483,14 +1483,14 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "major": {
         "name": "Brinecrag",
         "type": "fortress",
-        "level": 1,
+        "level": 3,
         "port": true
       }
     },
@@ -1501,9 +1501,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "major": {
         "name": "Mor-Skerry",
@@ -1519,9 +1519,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Drakhaven",
@@ -1537,9 +1537,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 3.0,
+        "minerals": 0.5
       },
       "major": {
         "name": "Vael-Shoal",
@@ -1555,9 +1555,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Highbloom",
@@ -1573,14 +1573,14 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 3.0,
+        "minerals": 0.5
       },
       "major": {
         "name": "Orchardium",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "port": false
       }
     },
@@ -1591,9 +1591,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 3.0,
+        "minerals": 0.5
       },
       "major": {
         "name": "Oldstone Citadel",
@@ -1609,14 +1609,14 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 3.0,
+        "minerals": 0.5
       },
       "major": {
         "name": "Port Dallow",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "port": true
       }
     },
@@ -1627,9 +1627,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.0,
+        "minerals": 0.5
       },
       "major": {
         "name": "Fossum",
@@ -1645,14 +1645,14 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.0,
+        "minerals": 0.5
       },
       "major": {
         "name": "Vinaria",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "port": false
       }
     },
@@ -1663,14 +1663,14 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 3.0,
+        "minerals": 0.5
       },
       "major": {
         "name": "Crownhaven",
         "type": "city",
-        "level": 2,
+        "level": 3,
         "port": false
       }
     },
@@ -1681,9 +1681,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Varrenum",
@@ -1699,9 +1699,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.0,
+        "minerals": 0.5
       },
       "major": {
         "name": "Tullanum",
@@ -1717,14 +1717,14 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Aquilia",
         "type": "city",
-        "level": 2,
+        "level": 1,
         "port": false
       }
     },
@@ -1735,9 +1735,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 3.0,
+        "minerals": 0.5
       },
       "major": {
         "name": "Corvinium",
@@ -1753,9 +1753,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 3.0,
+        "minerals": 0.5
       },
       "major": {
         "name": "Sabellum",
@@ -1771,14 +1771,14 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.0,
+        "minerals": 0.5
       },
       "major": {
         "name": "Aemerium",
         "type": "city",
-        "level": 2,
+        "level": 3,
         "port": false
       }
     },
@@ -1789,9 +1789,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "Lucentia",
@@ -1807,9 +1807,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.0,
+        "minerals": 0.5
       },
       "major": {
         "name": "Septimium",
@@ -1825,9 +1825,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 2.0,
+        "minerals": 0.5
       },
       "major": {
         "name": "Castra Nova",
@@ -1843,14 +1843,14 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "major": {
         "name": "Tempest Keep",
         "type": "fortress",
-        "level": 1,
+        "level": 3,
         "port": true
       }
     },
@@ -1861,9 +1861,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "major": {
         "name": "Stormhaven",
@@ -1879,14 +1879,14 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 1.5,
+        "food": 1.5,
+        "minerals": 0.5
       },
       "major": {
         "name": "The Skulkmire",
         "type": "fortress",
-        "level": 1,
+        "level": 3,
         "port": false
       }
     },
@@ -1897,9 +1897,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
+        "stone": 1.5,
         "food": 1.0,
-        "minerals": 0.0
+        "minerals": 0.5
       },
       "major": {
         "name": "Rainwick",
@@ -1915,14 +1915,14 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 3.0,
+        "food": 3.0,
+        "minerals": 2.0
       },
       "major": {
         "name": "Emberdeep",
         "type": "fortress",
-        "level": 1,
+        "level": 3,
         "port": false
       }
     },
@@ -1933,9 +1933,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 3.0,
+        "food": 3.0,
+        "minerals": 2.0
       },
       "major": {
         "name": "Karak Durn",
@@ -1951,9 +1951,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 3.0,
+        "food": 3.0,
+        "minerals": 2.0
       },
       "major": {
         "name": "Stonefast",
@@ -1969,9 +1969,9 @@
       "stage": "A",
       "resources": {
         "wood": 1.0,
-        "stone": 1.0,
-        "food": 1.0,
-        "minerals": 0.0
+        "stone": 3.0,
+        "food": 3.0,
+        "minerals": 2.0
       },
       "major": {
         "name": "Redgate Pass",

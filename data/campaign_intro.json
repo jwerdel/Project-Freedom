@@ -1,0 +1,55 @@
+{
+  "_note": "Faction selection, the illustrated intro and the court introduction for the three playable houses (docs/world-bible-v2.md §7.1 and §5; Stage A, 2026-10-06). Texts follow the world bible; art slots point at images not made yet (placeholder frames are drawn until they exist: res://assets/intro/<house>_<n>.png). The court introduction is a placeholder until the character system (Part 4).",
+  "map": "varos",
+  "houses": [
+    {
+      "faction": "house_varn",
+      "founder": "Edric Varn",
+      "epithet": "the Winter Shield",
+      "founder_traits": ["Devout", "Stalwart", "Mistrustful of Southerners"],
+      "culture": "Medieval · Throne Church",
+      "culture_summary": "Cold forests, moors and longhalls under grey stone castles. The North keeps the old oaths, mans the Greywall with its sons and bends the knee to the Throne in Caeloth.",
+      "tradition": "Holy warriors and castles: more Throne Church influence, stronger fortress defence, and the best knights in Aldryn.",
+      "start": "Frosthold and its valley, small and humble, in the shadow of the Greywall.",
+      "pressure": "The Wall needs men and the orcs beyond it are restless. House Dunmoor's drunkard lord has made his people desperate enough to call for a liberator.",
+      "intro": [
+        {"art": "res://assets/intro/house_varn_1.png", "text": "Beyond the Greywall the snow has gone silent. The Wardens send fewer ravens every winter, and those that come ask for men."},
+        {"art": "res://assets/intro/house_varn_2.png", "text": "In Frosthold the hot springs still steam beneath the pale Hearthtree. Edric Varn, the Winter Shield, kneels there before every war, and the Throne has never found him wanting."},
+        {"art": "res://assets/intro/house_varn_3.png", "text": "The Oath of Stillwater is void. The North will be held by whoever is strong enough to hold it. Let it be Varn."}
+      ]
+    },
+    {
+      "faction": "house_varrenus",
+      "founder": "Lucan Varrenus",
+      "epithet": "the Silver Tongue",
+      "founder_traits": ["Orator", "Schemer", "Patron of the Seven"],
+      "culture": "Roman · the Radiant Seven",
+      "culture_summary": "Fields, vineyards and paved roads under a warm sky. The great families of the south trade votes in the Senate at Crownhaven and read the omens of the Seven before every war.",
+      "tradition": "The Senate and patronage: influence over the other families, marriage alliances, and the discipline of the legions.",
+      "start": "One estate-city, Varrenum, beside Crownhaven: small and humble.",
+      "pressure": "Unite the families under one house before another does. The Tullan heir murdered his father, and his clients would welcome a new patron.",
+      "intro": [
+        {"art": "res://assets/intro/house_varrenus_1.png", "text": "The Senate House still stands on the third hill of Crownhaven, but its benches are full of men who sell their votes by the season."},
+        {"art": "res://assets/intro/house_varrenus_2.png", "text": "Lucan Varrenus, the Silver Tongue, believes the old empire can live again under one house. He has only to persuade the rest of them, or bury them."},
+        {"art": "res://assets/intro/house_varrenus_3.png", "text": "Corvinus holds the capital. Aemerius owes you a marriage. The Seven are watching. Speak well."}
+      ]
+    },
+    {
+      "faction": "the_aurekids",
+      "founder": "Kallias Aurekos",
+      "epithet": "the Gold-Handed",
+      "founder_traits": ["Wealthy", "Shrewd", "Patron of Merovan"],
+      "culture": "Greek · the Radiant Seven",
+      "culture_summary": "White harbour cities, olive hills and gold mines along the western sea. Proud city-states with their own patron gods and oracles, forever trading, forever quarrelling.",
+      "tradition": "Trade and the sea: richer trade, stronger navies, and the gold of the mines.",
+      "start": "Goldspire Rock, the colossal golden sea cliff with its mines: small, but rich.",
+      "pressure": "Unite the free cities into one league before the dark elves pick them apart. Silverfall's council was murdered by the Lannetids, and its people want them gone.",
+      "intro": [
+        {"art": "res://assets/intro/the_aurekids_1.png", "text": "Black sails have been seen off the Grey Stacks again. The reavers of Brinecrag never come for the cities that are strong."},
+        {"art": "res://assets/intro/the_aurekids_2.png", "text": "Kallias Aurekos, the Gold-Handed, rules a single rock, but the rock is full of gold, and gold buys ships, friends and silence."},
+        {"art": "res://assets/intro/the_aurekids_3.png", "text": "Theros is a friend. Kyme is not. Silverfall is waiting for someone to cast out its tyrants. The coast could be one league, under one name."}
+      ]
+    }
+  ],
+  "court": "Your court gathers: the founder's family, his captains and advisers. The court, family tree, marriages and heirs arrive with the character system; for now the founder leads your first army."
+}

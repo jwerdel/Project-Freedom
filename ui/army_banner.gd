@@ -56,10 +56,9 @@ func _draw():
  draw_circle(Vector2(cx+w*0.5+4*s,top),2.2*s,trim)
  # Cloth with a pointed tail.
  var pts = PackedVector2Array([Vector2(cx-w*0.5,top),Vector2(cx+w*0.5,top),Vector2(cx+w*0.5,top+h*0.78),Vector2(cx,top+h),Vector2(cx-w*0.5,top+h*0.78)])
- draw_colored_polygon(pts,c.primary)
+ Icons.crest(self,faction,pts,Rect2(cx-w*0.32,top+h*0.2,w*0.64,h*0.5))
  # A band in the secondary color across the top.
  draw_rect(Rect2(cx-w*0.5,top,w,h*0.12),c.secondary.darkened(0.15))
  var outline = pts.duplicate()
  outline.append(pts[0])
  draw_polyline(outline,trim,maxf(1.5,(2.6 if selected else 1.8)*s))
- Icons.draw(self,faction.get("emblem",""),Rect2(cx-w*0.32,top+h*0.2,w*0.64,h*0.5),c.secondary)
