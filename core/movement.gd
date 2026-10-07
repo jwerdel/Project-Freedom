@@ -104,7 +104,8 @@ static func _load_baked() -> Dictionary:
  var names = []
  for t in data().terrain:
   if not t.begins_with("_"): names.append(t)
- assert(meta.names == names,"baked/movement.json terrain names differ from data/movement.json: rebuild the map")
+ # A bake from before a class was appended (marsh, 2026-10-07) is still valid: its names are a prefix.
+ assert(names.slice(0,meta.names.size()) == meta.names,"baked/movement.json terrain names differ from data/movement.json: rebuild the map")
  var n = int(meta.cols)*int(meta.rows)
  var f = FileAccess.open_compressed(MapRegistry.path("baked/movement.bin"),FileAccess.READ,FileAccess.COMPRESSION_ZSTD)
  var raw = f.get_buffer(2*n)
@@ -206,6 +207,18 @@ static func _grid_runs() -> PackedInt32Array:
 # A* grid per road level, built in bulk from the row runs (one native fill per run, not one call per
 # cell). Weights are normalized so the cheapest cell weighs 1, which keeps the Euclidean heuristic
 # admissible (paths are least-cost).
+# Everything a first plan would otherwise build on the spot (the grid, the hierarchy, the land
+# components and the blocking of one faction): the campaign calls this at load, so the first preview
+# does not stall (2026-10-07: the first plan of a session took 20 ms).
+static func prewarm(state,faction := ""):
+ var a = _astar_for(state.road_level)
+ _same_component(Vector2i.ZERO,Vector2i.ZERO)
+ _grid_runs()
+ _row_starts() # the window searches' row index (the first window plan built it: 8 ms)
+ _blk_faction = faction
+ _sync_blocks(state)
+ if faction != "": _apply_blocks(state,a,faction)
+
 static func _astar_for(road_level: int) -> AStarGrid2D:
  if _astar.has(road_level): return _astar[road_level]
  var g = grid()
@@ -603,15 +616,30 @@ static func simulate(points: Array,points_left: float,full: float,road_level: in
 
 # Give an order and move as far as this turn allows. Returns the plan plus "moved" (the points
 # walked now, starting at the old position).
-static func order(state,army_id: String,target: Vector2) -> Dictionary:
+static func order(state,army_id: String,target: Vector2,walk := true) -> Dictionary:
  var p = plan(state,army_id,target)
  if not p.ok: return p
  var me = army(state,army_id)
  me.order = []
  for q in p.points.slice(1): me.order.append([q.x,q.y])
  me.order_settlement = p.settlement
- p.moved = advance(state,army_id)
+ p.moved = advance(state,army_id) if walk else [position(state,army_id)]
  return p
+
+# Multi-turn orders of the human player's armies (playtest 2026-10-07: "my character auto-moved when I
+# started a new turn"): with this off (the default, Settings "Continue multi-turn orders
+# automatically"), End Turn never walks a player army; its order keeps its path and waits until the
+# player confirms it (continue_order). AI factions always continue. Set by the campaign from Settings.
+static var continue_player_orders := false
+
+static func holds_orders(state,faction: String) -> bool:
+ return not continue_player_orders and faction != "" and faction == str(state.get("player_faction") if state.get("player_faction") != null else "")
+
+# The player confirms a waiting order: the army walks as far as its points allow.
+static func continue_order(state,army_id: String) -> Array:
+ var me = army(state,army_id)
+ if me.order.is_empty(): return []
+ return advance(state,army_id)
 
 static func cancel_order(state,army_id: String):
  var me = army(state,army_id)
@@ -648,7 +676,7 @@ static func end_turn(state) -> Dictionary:
   var me = state.army_state[id]
   # Fast in own and allied land, slow abroad (war-and-realm §2.6; core/hosts.gd move_factor).
   me.points = float(me.max_points)*(Hosts.move_factor(state,id) if Hosts != null else 1.0)
-  if not me.order.is_empty(): moves[id] = advance(state,id)
+  if not me.order.is_empty() and not holds_orders(state,str(me.faction)): moves[id] = advance(state,id)
  return moves
 
 # Cells the army can still reach this turn (Dijkstra limited by its remaining points), with the

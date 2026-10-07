@@ -28,7 +28,7 @@ func test_top_bar_has_tw_buttons_in_order_with_missing_systems_greyed():
  var left = ui.find_child("TopLeft",true,false).get_children().map(func(b): return String(b.name))
  assert_eq(left,["Top_menu","Top_advisor","Top_help","Top_units","Top_camera","Top_court","Top_realm"])
  var right = ui.find_child("TopRight",true,false).get_children().map(func(b): return String(b.name))
- assert_eq(right,["Top_tactical","Top_events","Top_lords","Top_provinces","Top_missions","Top_factions","Top_summary"])
+ assert_eq(right,["Top_tactical","Top_events","Top_lords","Top_provinces","Top_construction","Top_missions","Top_factions","Top_summary"])
  for k in ["advisor","help","units","missions"]:
   assert_true(ui.top_buttons[k].disabled,k+" is greyed")
   assert_string_contains(ui.top_buttons[k].tooltip_text,"Coming later")
@@ -165,8 +165,8 @@ func test_drawer_never_covers_the_event_feed_or_round_menu():
  assert_lte(ui.bottom_panel.get_combined_minimum_size().x,ui.BOTTOM_WIDTH,"the army panel with the drawer fits its width")
  ui.show_settlement("goldspire_rock")
  assert_lte(ui.bottom_panel.get_combined_minimum_size().x,ui.BOTTOM_WIDTH,"the province panel fits its width")
- # The feed ends above the round menu and its warning.
- assert_lt(ui.events_frame.offset_bottom,ui.warning_box.offset_top)
+ # The feed ends above the round menu (its notification is on the End Turn button itself).
+ assert_lt(ui.events_frame.offset_bottom,ui.find_child("RoundMenu",true,false).offset_top)
 
 func test_important_events_pop_up():
  var data = UiData.new(GameState.from_data())
@@ -188,10 +188,10 @@ func test_important_events_pop_up():
  assert_false(ui.alert_visible())
 
 func test_small_text_keeps_visible_word_spaces():
- # Alegreya Sans' spaces (about 0.18 em) all but vanished at 12-13 px once the canvas was scaled
- # to the window (the general's name read "SerAlaricAurek").
+ # Small text kept readable (2026-10-07): labels are at least MIN_TEXT and spaces stay visible (the
+ # old body font's spaces vanished at 12-13 px: the general's name read "SerAlaricAurek").
  var UiKit = load("res://ui/ui_kit.gd")
- for size in [11,12,13]:
+ for size in [11,12,13,14]:
   var l: Label = UiKit.label("Ser Alaric Aurek",size)
   var f: Font = l.get_theme_font("font")
   var gap = (f.get_string_size("Ser Alaric Aurek",HORIZONTAL_ALIGNMENT_LEFT,-1,size).x-f.get_string_size("SerAlaricAurek",HORIZONTAL_ALIGNMENT_LEFT,-1,size).x)/2.0
@@ -239,3 +239,29 @@ func test_character_window_from_the_lord_panel_and_lords_list():
  ui.dropdown.find_child("LordInfo_"+HOST,true,false).pressed.emit()
  assert_true(ui.character_visible())
  assert_false(ui.dropdown_visible())
+
+# The End Turn button IS the notification (owner spec 2026-10-07): the top item's icon, a plate
+# with its short text and a count while anything is pending; the hourglass when nothing is.
+func test_end_turn_button_states():
+ var data = UiData.new(GameState.from_data())
+ var ui = build_ui(data)
+ var w = data.end_turn_warnings()
+ assert_false(w.is_empty(),"a fresh campaign has something pending (lords that have not moved)")
+ var total = 0
+ for k in w: total += k.items.size()
+ ui.show_end_turn_warning({"label":w[0].label,"short":w[0].short,"icon":w[0].icon,"name":w[0].items[0].name,"index":0,"count":w[0].items.size(),"total":total})
+ assert_true(ui.end_turn_plate.visible,"the plate names the item")
+ assert_eq(str(ui.end_turn_plate.get_meta("text")),w[0].short)
+ assert_eq(ui.end_turn_button.icon_kind,w[0].icon,"the button shows the item's icon")
+ assert_eq(int(ui.end_turn_badge.get_meta("count")),total)
+ assert_true(ui.end_turn_anyway.visible,"End turn anyway beside it")
+ assert_null(ui.find_child("EndTurnWarning",true,false),"no separate notification stack")
+ ui.show_end_turn_warning({})
+ assert_false(ui.end_turn_plate.visible)
+ assert_eq(ui.end_turn_button.icon_kind,"year","nothing pending: End Turn")
+
+func test_labels_have_a_minimum_size():
+ var UiKit = load("res://ui/ui_kit.gd")
+ var l: Label = UiKit.label("Small print",11)
+ assert_eq(l.get_theme_font_size("font_size"),UiKit.MIN_TEXT,"no label below the minimum body size")
+ l.free()

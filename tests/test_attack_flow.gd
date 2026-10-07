@@ -37,6 +37,7 @@ func test_a_distant_target_is_marched_on_not_fought_at_once():
  var ready = {}
  for i in 8:
   data.end_turn()
+  data.continue_orders() # the march waits for the player's confirm (Settings: continue automatically)
   ready = data.ready_attack()
   if not ready.is_empty(): break
  assert_false(ready.is_empty(),"the lord arrives within a few turns")

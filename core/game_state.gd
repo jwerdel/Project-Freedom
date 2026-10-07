@@ -18,7 +18,7 @@ var year := 1
 var turn := 1
 var player_faction := ""
 var treasury = {}     # faction id -> int gold
-var settlements = {}  # settlement id -> {owner, type, level, population (float), buildings (slots), construction, resources, defense, unlocks}
+var settlements = {}  # settlement id -> {owner, type, level, population (float), buildings (slots), constructions (one per slot), resources, defense, unlocks}
 var armies = []       # army ids (data/maps/<map>/armies/)
 var army_state = {}   # army id -> army: composition and queue (core/armies.gd) plus movement (core/movement.gd)
 var wars = []        # faction pairs at war, "a|b" sorted (core/battles.gd; temporary rule until diplomacy)
@@ -26,6 +26,7 @@ var battles := 0     # battles fought so far (part of each battle's seed)
 var road_level := 0   # road network level: 0 dirt, 1 gravel, 2 stone
 var chronicle = []    # {year, category, title, text}
 var last_ledgers = {} # faction id -> ledger of the last processed turn
+var last_summary = {} # the player's turn summary of the last End Turn (UiData._build_summary)
 var pending_battles = [] # AI attacks on the human player awaiting the player's answer (pre-battle data)
 var grace = {}      # faction -> End Turns left to retake a settlement (core/realm.gd)
 var destroyed = []  # factions destroyed (loss condition)
@@ -73,7 +74,7 @@ static func from_data(path := START,campaign_seed := 0) -> RefCounted:
   s.settlements[id] = {
    "owner":r.owner,"type":r.settlement.type,"level":int(r.settlement.level),
    "population":float(start.get("population",0)),"buildings":starting_slots(id,r.settlement.type,int(r.settlement.level),start.get("buildings",[])),
-   "construction":{},"coastal":bool(r.settlement.get("coastal",false)),"resources":r.get("resources",{}).duplicate()}
+   "constructions":[],"coastal":bool(r.settlement.get("coastal",false)),"resources":r.get("resources",{}).duplicate()}
   Buildings.refresh(s,id)
  s.armies = data.get("armies",[]).duplicate()
  s.road_level = int(data.get("road_level",0))
@@ -143,7 +144,7 @@ func armies_of(faction: String) -> Array:
 # Everything that defines the state: determinism checks and save files (core/save_system.gd).
 # Nothing the campaign needs may live outside these fields.
 func to_dict() -> Dictionary:
- return {"map_id":map_id,"map_version":map_version,"seed":seed,"year":year,"turn":turn,"player_faction":player_faction,"treasury":treasury.duplicate(true),"settlements":settlements.duplicate(true),"armies":armies.duplicate(),"army_state":army_state.duplicate(true),"road_level":road_level,"wars":wars.duplicate(),"battles":battles,"chronicle":chronicle.duplicate(true),"last_ledgers":last_ledgers.duplicate(true),"pending_battles":pending_battles.duplicate(true),"grace":grace.duplicate(),"destroyed":destroyed.duplicate(),"land":land.duplicate(true),
+ return {"map_id":map_id,"map_version":map_version,"seed":seed,"year":year,"turn":turn,"player_faction":player_faction,"treasury":treasury.duplicate(true),"settlements":settlements.duplicate(true),"armies":armies.duplicate(),"army_state":army_state.duplicate(true),"road_level":road_level,"wars":wars.duplicate(),"battles":battles,"chronicle":chronicle.duplicate(true),"last_ledgers":last_ledgers.duplicate(true),"last_summary":last_summary.duplicate(true),"pending_battles":pending_battles.duplicate(true),"grace":grace.duplicate(),"destroyed":destroyed.duplicate(),"land":land.duplicate(true),
   "characters":characters.duplicate(true),"courts":courts.duplicate(true),"next_character":next_character,"reputation":reputation.duplicate(true),"diplomacy":diplomacy.duplicate(true),
   "vassals":vassals.duplicate(true),"tributes":tributes.duplicate(true),"titles":titles.duplicate(true),"musters":musters.duplicate(true),"hosts":hosts.duplicate(true),"absorptions":absorptions.duplicate(true)}
 
@@ -165,6 +166,7 @@ static func from_dict(d: Dictionary) -> RefCounted:
  s.battles = int(d.battles)
  s.chronicle = d.chronicle.duplicate(true)
  s.last_ledgers = d.get("last_ledgers",{}).duplicate(true)
+ s.last_summary = d.get("last_summary",{}).duplicate(true)
  s.pending_battles = d.get("pending_battles",[]).duplicate(true)
  s.grace = d.get("grace",{}).duplicate()
  s.destroyed = d.get("destroyed",[]).duplicate()

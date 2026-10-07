@@ -62,7 +62,7 @@ func test_ai_spends_only_what_it_pays_for_and_keeps_every_limit():
   for f in s.factions(): spent[f] = 0
   for a in rep.actions:
    match a.action:
-    "build": spent[a.faction] += int(s.settlements[a.settlement].construction.get("cost",0)) if s.settlements[a.settlement].owner == a.faction else 0
+    "build": spent[a.faction] += int(s.settlements[a.settlement].constructions.reduce(func(t,j): return t+int(j.cost),0)) if s.settlements[a.settlement].owner == a.faction else 0
     "raise": spent[a.faction] += int(Armies.data().armies.general_cost)
     "recruit": spent[a.faction] += int(UnitTypes.get_type(a.unit).recruitment.cost)
   for f in s.factions():
@@ -271,4 +271,5 @@ func test_ai_war_news_reaches_the_player():
  var s = GameState.from_data()
  Battles.declare_war(s,"house_lannet","house_verrin")
  var ui = UiData.new(s)
- assert_true(ui.events("war").any(func(e): return e.get("faction","") == "house_lannet"),"an AI war shows in Event Messages")
+ # Others' wars are world news for this turn (owner spec 2026-10-07: the World group).
+ assert_true(ui.events("world").any(func(e): return e.get("faction","") == "house_lannet"),"an AI war shows in Event Messages")

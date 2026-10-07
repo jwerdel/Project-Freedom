@@ -114,6 +114,9 @@ static func load_for(Movement) -> Dictionary:
   if parts[o] != parts[c]: part_crossings.get_or_add(parts[o],[]).append(i)
  var next = edges.size()
  var chain = {}
+ var node_at = {}    # chain node -> [path index, cell index on that path]
+ var part_nodes = {} # region part -> chain nodes and crossings in it (the start and goal attach to the nearest)
+ for part in part_crossings: part_nodes[part] = part_crossings[part].duplicate()
  var paths = []
  var p = 0
  var w = 0
@@ -133,6 +136,8 @@ static func load_for(Movement) -> Dictionary:
    astar.add_point(next,Movement.center_of(Vector2i(c%cols,c/cols)),maxf(weights[w+s-1],0.01))
    astar.connect_points(prev_id,next)
    chain[next] = pi
+   node_at[next] = [pi,samples[s]]
+   part_nodes.get_or_add(parts[c],[]).append(next)
    prev_id = next
    next += 1
   # The last segment enters the crossing v, whose weight is 1: a zero-length node at v carries
@@ -143,9 +148,10 @@ static func load_for(Movement) -> Dictionary:
    astar.connect_points(prev_id,next)
    astar.connect_points(next,v)
    chain[next] = pi
+   node_at[next] = [pi,samples[ns-1]]
    next += 1
   w += maxi(ns-1,0)
- return {"astar":astar,"crossings":crossings,"across":across,"parts":parts,"part_crossings":part_crossings,"chain":chain,"paths":paths,"s":next,"g":next+1}
+ return {"astar":astar,"crossings":crossings,"across":across,"parts":parts,"part_crossings":part_crossings,"chain":chain,"node_at":node_at,"part_nodes":part_nodes,"paths":paths,"s":next,"g":next+1}
 
 # Cells from `from` to `to` through the hierarchy, or [] (no hierarchy, both ends in the same region
 # part, or a live leg failed: the caller searches directly). The start and goal connect only to the
@@ -153,75 +159,103 @@ static func load_for(Movement) -> Dictionary:
 # ridge), so their live legs stay short.
 static func route(Movement,h: Dictionary,a: AStarGrid2D,from: Vector2i,to: Vector2i,faction: String) -> Array:
  if h.is_empty(): return []
- var cols0: int = Movement.grid().cols
- var ps = h.parts[from.y*cols0+from.x]
- var pg = h.parts[to.y*cols0+to.x]
+ var cols: int = Movement.grid().cols
+ var ps = h.parts[from.y*cols+from.x]
+ var pg = h.parts[to.y*cols+to.x]
  if ps == 0 or pg == 0 or ps == pg: return []
  var astar: AStar2D = h.astar
- var cols: int = Movement.grid().cols
  var sp = Movement.center_of(from)
  var gp = Movement.center_of(to)
+ # The start and goal attach to the nearest nodes of their region part (stored-path nodes as well as
+ # crossings, 2026-10-07): the live legs stay short (Varos regions are about a kilometre across, and
+ # a search from the start to a far crossing cost 5-15 ms).
+ var near_s = _nearest(h,ps,sp)
+ var near_g = _nearest(h,pg,gp)
+ if near_s.is_empty() or near_g.is_empty(): return []
  astar.add_point(h.s,sp)
  astar.add_point(h.g,gp)
- for c in h.part_crossings.get(ps,[]): astar.connect_points(h.s,c)
- for c in h.part_crossings.get(pg,[]): astar.connect_points(h.g,c)
+ for n in near_s: astar.connect_points(h.s,n,false)
+ for n in near_g: astar.connect_points(n,h.g,false)
  var ids = astar.get_id_path(h.s,h.g)
  astar.remove_point(h.s)
  astar.remove_point(h.g)
  if ids.size()<3: return []
- # The crossings visited, and the stored path taken between each consecutive pair.
- var marks = []   # crossing ids in order
- var via = []     # path index between marks[k] and marks[k+1]
- for k in range(1,ids.size()-1):
-  var id = ids[k]
-  if id<h.crossings.size():
-   marks.append(id)
-  elif h.chain.has(id) and (via.size()<marks.size()):
-   via.append(h.chain[id])
- if marks.is_empty(): return []
- # First leg: to the crossing's cell on the start's side, then onto the crossing cell itself.
- var first = h.crossings[marks[0]]
- var near0 = first if h.parts[first] == ps else h.across[marks[0]]
- var out = _leg(Movement,a,from,Vector2i(near0%cols,near0/cols),faction)
+ var nodes = ids.slice(1,ids.size()-1)
+ var out = _leg(Movement,a,from,_cell(h,nodes[0],cols),faction)
  if out.is_empty(): return []
- if near0 != first: out.append(Vector2i(first%cols,first/cols))
- for k in range(marks.size()-1):
-  var cu = h.crossings[marks[k]]
-  var cv = h.crossings[marks[k+1]]
+ for k in range(nodes.size()-1):
+  var x = nodes[k]
+  var y = nodes[k+1]
   var seg = []
-  if k<via.size():
-   var pth = h.paths[via[k]]
-   var cells: PackedInt32Array = pth.cells
+  # Consecutive nodes lie on one stored path: splice its cells unless something now blocks them.
+  var pi = int(h.node_at[x][0]) if h.node_at.has(x) else (int(h.node_at[y][0]) if h.node_at.has(y) else -1)
+  if pi>=0:
+   var cells: PackedInt32Array = h.paths[pi].cells
+   var i0 = _index_on(h,x,pi)
+   var i1 = _index_on(h,y,pi)
+   var step = 1 if i1>=i0 else -1
    var ok = true
-   for c in cells:
-    if Movement.blocked_for(c,faction):
+   var q = i0
+   while true:
+    if Movement.blocked_for(cells[q],faction):
      ok = false
      break
+    if q == i1: break
+    q += step
    if ok:
-    var forward = pth.u == marks[k]
-    for q in cells.size():
-     var c = cells[q] if forward else cells[cells.size()-1-q]
-     seg.append(Vector2i(c%cols,c/cols))
-  if seg.is_empty(): seg = _leg(Movement,a,Vector2i(cu%cols,cu/cols),Vector2i(cv%cols,cv/cols),faction)
+    q = i0
+    while true:
+     seg.append(Vector2i(cells[q]%cols,cells[q]/cols))
+     if q == i1: break
+     q += step
+  if seg.is_empty(): seg = _leg(Movement,a,_cell(h,x,cols),_cell(h,y,cols),faction)
   if seg.is_empty(): return []
-  out.append_array(seg.slice(1) if not out.is_empty() else seg)
- # Last leg: from the crossing cell (stepping across first when the goal is on the other side).
- var last = h.crossings[marks[-1]]
- var near1 = last if h.parts[last] == pg else h.across[marks[-1]]
- if near1 != last: out.append(Vector2i(near1%cols,near1/cols))
- var tail = _leg(Movement,a,Vector2i(near1%cols,near1/cols),to,faction)
+  out.append_array(seg.slice(1))
+ var tail = _leg(Movement,a,_cell(h,nodes[-1],cols),to,faction)
  if tail.is_empty(): return []
  out.append_array(tail.slice(1))
  return out
+
+const ATTACH = 6 # nodes the start and goal attach to
+
+# The ATTACH nodes of a region part nearest to a point.
+static func _nearest(h: Dictionary,part: int,p: Vector2) -> Array:
+ var list = h.part_nodes.get(part,[])
+ var astar: AStar2D = h.astar
+ var best = []
+ for n in list:
+  var d = astar.get_point_position(n).distance_squared_to(p)
+  if best.size()<ATTACH:
+   best.append([d,n])
+   best.sort()
+  elif d<best[-1][0]:
+   best[-1] = [d,n]
+   best.sort()
+ return best.map(func(b): return b[1])
+
+# The grid cell of a node (a crossing's cell, or a stored-path node's cell).
+static func _cell(h: Dictionary,id: int,cols: int) -> Vector2i:
+ var c = h.crossings[id] if id<h.crossings.size() else h.paths[h.node_at[id][0]].cells[h.node_at[id][1]]
+ return Vector2i(c%cols,c/cols)
+
+# A node's cell index on stored path pi: a crossing is that path's first or last cell.
+static func _index_on(h: Dictionary,id: int,pi: int) -> int:
+ if h.node_at.has(id): return int(h.node_at[id][1])
+ return 0 if int(h.paths[pi].u) == id else h.paths[pi].cells.size()-1
 
 # A leg inside one region part: a small local search around its ends first (a whole-grid search
 # with the road-normalised weights explores far too wide on a big map; 2026-10-06: 1 km previews
 # went from about 8.5 to the budget), the whole grid only when the leg detours outside the box.
 const LEG_PAD = 8
+const LEG_PAD_WIDE = 48
 static func _leg(Movement,a: AStarGrid2D,p: Vector2i,q: Vector2i,faction: String) -> Array:
  if p == q: return [p]
  if a.is_point_solid(q): return []
  var w = Movement.window_cells(Movement.route_road_level,faction,p,q,LEG_PAD)
+ if not w.is_empty(): return w
+ # A coast or a ridge can force a detour outside the narrow box: a wider box before the whole map
+ # (a whole-map search costs 10-20 ms; owner budget 5 ms per plan).
+ w = Movement.window_cells(Movement.route_road_level,faction,p,q,LEG_PAD_WIDE)
  if not w.is_empty(): return w
  # The AI's searches stay in windows (Movement.ai_cap): an army sealed in by zones of control would
  # otherwise search the whole map for every failed leg (half a second each in the debug build).

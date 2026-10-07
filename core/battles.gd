@@ -409,7 +409,7 @@ static func retreat(state,army_id: String,share: float) -> Dictionary:
 static func occupy(state,sid: String,faction: String,army_id: String):
  var s = state.settlements[sid]
  s.owner = faction
- s.construction = {}
+ s.constructions = []
  s.erase("siege")
  Buildings.refresh(state,sid)
  if state.army_state.has(army_id):
@@ -472,10 +472,11 @@ static func end_turn(state) -> Array:
    # After as many starving turns as it lasted, the garrison surrenders.
    if sg.starving>=maxi(1,int(sg.endurance)/2):
     var att_f = state.army_state[besieger].faction
+    var was = str(state.settlements[sid].owner)
     for id in Movement.garrison_of(state,sid):
      if state.army_state[id].faction != att_f: retreat(state,id,float(cfg().retreat_movement_share))
     occupy(state,sid,att_f,besieger)
-    var e = Chronicle.capture_entry(state.year,sid,att_f,true)
+    var e = Chronicle.capture_entry(state.year,sid,att_f,true,was)
     state.chronicle.append(e)
     events.append({"kind":"surrendered","settlement":sid,"faction":att_f})
  for id in state.army_state:

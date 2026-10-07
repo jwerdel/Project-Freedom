@@ -15,6 +15,7 @@ const SettlementBanner = preload("res://ui/settlement_banner.gd")
 const ArmyBanner = preload("res://ui/army_banner.gd")
 const TerritoryOverlay = preload("res://visuals/terrain/territory_overlay.gd")
 const MovementOverlay = preload("res://ui/movement_overlay.gd")
+const MoveIcons = preload("res://ui/move_icons.gd")
 const Battles = preload("res://core/battles.gd")
 const Deployment = preload("res://core/deployment.gd")
 const SaveSystem = preload("res://core/save_system.gd")
@@ -133,6 +134,8 @@ func _ready():
  kit = ProtoKit.shared()
  pitch_offset = 0.0 # the overview's tilt follows the zoom curve (core/camera_rig.gd)
  Settings.apply(get_tree())
+ Settings.apply_movement()
+ _make_cursors()
  # First start with this map version: build its render cache behind the preparation screen (a
  # worker thread), then load the campaign again. Headless runs build it inline (map/map_view.gd).
  # --map=<id> (captures, soaks): play that map instead of the default (New Campaign picks Varos itself).
@@ -426,6 +429,7 @@ func _ready():
  if "--self-test" in OS.get_cmdline_user_args():
   run_checks()
  _realm_capture_flags()
+ Movement.prewarm(ui_data.state,ui_data.player_faction_id()) # the first preview must not stall
  print("FREEDOM_READY | city=%s road=%s traffic=%s seed=%d" % [city_level,road_level,traffic.size(),ui_data.state.seed])
  if capture_mode and _gpu_run(): _measure_gpu.call_deferred()
 
@@ -786,6 +790,13 @@ func make_ui():
  ui.war_declared_for.connect(func(id,p,_t): attack_with(id,p))
  ui.warning_step.connect(step_warning)
  ui.warning_skip.connect(skip_warning)
+ ui.continue_orders_requested.connect(func(ids):
+  var n = ui_data.continue_orders(ids)
+  if n == 0: ui.toast("No army can walk on this turn.")
+  refresh_warnings()
+  if selected_army_id() != "": ui.show_army(selected_army_id(),army_location(selected_army_id())))
+ ui.summary_target.connect(func(t): _jump_to(t))
+ ui.end_turn_anyway_requested.connect(func(): if not spectating_now(): end_turn(true))
  ui.ai_skip.connect(skip_spectating)
  ui.ai_pause_toggled.connect(func(on): ai_paused = on)
  ui_data.changed.connect(refresh_warnings)
@@ -1098,9 +1109,15 @@ func campaign_view() -> Dictionary:
  return view_cfg
 
 # The figure scale for an army figure at its position (lord_scale, raised to keep min_figure_px).
+# Growth with the camera height (A2): x1 close, up to height_scale[2] far out (log scale), clamped.
+func height_factor() -> float:
+ var hs = campaign_view().get("height_scale",[900.0,4000.0,1.0])
+ var t = clampf(log(maxf(distance,1.0)/float(hs[0]))/log(float(hs[1])/float(hs[0])),0.0,1.0)
+ return lerpf(1.0,float(hs[2]),t)
+
 func figure_scale(at: Vector3) -> float:
  var v = campaign_view()
- var s = float(v.lord_scale)
+ var s = float(v.lord_scale)*height_factor()
  if camera == null or camera.is_position_behind(at): return s
  var px_per_m = camera.unproject_position(at).distance_to(camera.unproject_position(at+Vector3.UP))
  var px = px_per_m*float(v.figure_height)*s
@@ -1110,7 +1127,7 @@ func figure_scale(at: Vector3) -> float:
 func update_army_presentation():
  var v = campaign_view()
  var near_far = clampf(inverse_lerp(18.0,210.0,distance),0.0,1.0)
- var bscale = maxf(float(v.banner_min_scale),lerpf(float(v.banner_scale_near),float(v.banner_scale_far),near_far))
+ var bscale = maxf(float(v.banner_min_scale),lerpf(float(v.banner_scale_near),float(v.banner_scale_far),near_far)) # banners stay readable, never cover the map (figures grow with height instead)
  var fade = clampf(inverse_lerp(float(v.banner_fade_end),float(v.banner_fade_start),distance),0.0,1.0)
  # High zoom: lord figures give way to their banners (TW:WH3's far zoom shows banner icons).
  var hz = CameraRig.high_zoom(distance,max_zoom)
@@ -1130,20 +1147,51 @@ func update_army_presentation():
   b.position = camera.unproject_position(top)-b.anchor_offset()
   b.set_selected(selected_army_id() == id)
   b.set_host("leader" if ui_data.state.hosts.has(id) else ("member" if ui_data.host_of(id) != "" else ""))
+  var am = ui_data.state.army_state.get(id,{})
+  b.set_movement(clampf(float(am.get("points",0.0))/maxf(1.0,float(am.get("max_points",1.0))),0.0,1.0) if am.get("faction","") == ui_data.player_faction_id() else -1.0)
 
 func place_commander():
  for id in army_figures:
   if walks.has(id): continue
-  army_figures[id].position = army_ground(ui_data.army_movement(id).position)
+  army_figures[id].position = army_ground(figure_spot(id))
+
+# Where an army's figure stands (presentation only): its position, or for a garrisoned army just
+# outside its settlement's walls (A2: oversized lords must not clip into the town), several armies
+# side by side on the near (south) side.
+func figure_spot(id: String) -> Vector2:
+ var m = ui_data.army_movement(id)
+ if m.garrison == "" or not ui_data.state.settlements.has(m.garrison): return m.position
+ var inside = Movement.garrison_of(ui_data.state,m.garrison)
+ var k = maxi(0,inside.find(id))
+ var n = maxi(1,inside.size())
+ var ang = PI*0.5+(k-(n-1)*0.5)*0.42
+ return WorldMap.settlement_position(m.garrison)+Vector2.from_angle(ang)*(_wall_radius(m.garrison)+float(campaign_view().get("garrison_gap",10.0)))
+
+var _sprawl_cfg = null
+func _wall_radius(sid: String) -> float:
+ if _sprawl_cfg == null: _sprawl_cfg = JSON.parse_string(FileAccess.get_file_as_string("res://data/settlement_sprawl.json"))
+ var s = ui_data.state.settlements[sid]
+ var levels = _sprawl_cfg.types.get(str(s.get("type","town")),[])
+ var r = 0.0
+ if not levels.is_empty():
+  var lv = levels[clampi(int(s.get("level",1))-1,0,levels.size()-1)]
+  r = float(lv.get("wall",0.0))
+  if r<=0.0: r = float(lv.get("suburb",15.0))*0.6
+ if AssetManifest.is_landmark(sid): r = maxf(r,float(AssetManifest.landmarks()[sid].get("radius",24.0)))
+ return maxf(r,8.0)
 
 func refresh_army_overlays():
  if movement_overlay == null: return
  sync_army_figures()
  update_grace_labels()
- # Standing orders of the player's armies stay visible on the map.
+ # Committed orders (owner spec 2026-10-07): the selected army's path in full with its turn markers;
+ # every other army of yours with an order as a thin faint line (Settings "Show my armies' orders").
+ var faint_on = bool(Settings.get_value("show_orders"))
  for id in army_figures:
   var path = ui_data.order_path(id)
-  if not walks.has(id) and path.points.size()>1 and ui_data.army(id).player_owned: movement_overlay.show_path("order:"+id,path.points,path.turns,true)
+  var show = not walks.has(id) and path.points.size()>1 and ui_data.army(id).player_owned
+  if show and id == selected_army_id(): movement_overlay.show_path("order:"+id,path.points,path.turns,{"action":"enter" if path.get("settlement","") != "" else "move"})
+  elif show and faint_on: movement_overlay.show_path("order:"+id,path.points,path.turns,{"style":"faint"})
   else: movement_overlay.clear("order:"+id)
  if army_selected() and not walks.has(selected_army_id()):
   var area = ui_data.reachable_area(selected_army_id())
@@ -1201,12 +1249,14 @@ func preview_move(p: Vector2) -> String:
  if not coarse.is_empty():
   preview_text = ""
   preview_refine = p
-  _show_preview_plan(selected_army_id(),coarse)
+  preview_action = "move"
+  _show_preview_plan(selected_army_id(),coarse,"move")
   return preview_text
  preview_refine = Vector2.INF
  return _preview_full(p)
 
 var preview_refine := Vector2.INF # the coarse preview's target, refined on the next frame
+var preview_action := ""          # the action of the previewed move (cursor and end marker)
 
 func _refine_preview():
  if not preview_refine.is_finite(): return
@@ -1214,34 +1264,79 @@ func _refine_preview():
  preview_refine = Vector2.INF
  if Movement.cell_of(p) == preview_key and movement_overlay.has_content("preview"): _preview_full(p)
 
-func _show_preview_plan(id: String,plan: Dictionary):
- movement_overlay.show_path("preview",plan.points,plan.turns)
+func _show_preview_plan(id: String,plan: Dictionary,action: String):
+ movement_overlay.show_path("preview",plan.points,plan.turns,{"action":action})
  var m = ui_data.army_movement(id)
  ui.preview_movement(minf(float(plan.cost),m.points)/maxf(1.0,m.max_points),int(plan.total_turns)>1)
+
+# The action of a move to p (TW:WH3 cursors and end markers): attack an army, besiege a walled
+# settlement, attack an open one, enter an own settlement, merge with an own army, or move.
+func _move_action(id: String,p: Vector2,plan: Dictionary) -> String:
+ var hit = pick(get_viewport().get_mouse_position()) if forced_preview == null else ""
+ if hit.begins_with("army:"):
+  var other = hit.get_slice(":",1)
+  if other != id and ui_data.army(other).player_owned: return "merge"
+ if plan.get("settlement","") != "": return "enter"
+ return "move"
 
 func _preview_full(p: Vector2) -> String:
  var id = selected_army_id()
  var plan = ui_data.plan_move(id,p)
+ var from = ui_data.army_movement(id).position
  preview_text = ""
  if not plan.ok and plan.reason == Movement.BLOCKED_BATTLE:
   var atk = ui_data.attack_preview(id,p)
+  var t = ui_data.battle_target(id,p)
+  preview_action = "besiege" if t.get("kind","") == "settlement" and ui_data.settlement_walled(t.id) else "attack"
   if atk.plan.get("ok",false):
    plan = atk.plan
    preview_text = "Attack %s" % atk.name if atk.ok else "%s: %s" % [atk.name,atk.reason]
   else:
-   movement_overlay.show_blocked(p,atk.reason)
+   preview_action = "blocked"
+   movement_overlay.show_blocked(p,atk.reason,from)
    ui.preview_movement(0.0,false)
    preview_text = atk.reason if atk.reason != "" else plan.reason
    return preview_text
  elif not plan.ok:
-  movement_overlay.show_blocked(p,plan.reason)
+  preview_action = "blocked"
+  movement_overlay.show_blocked(p,plan.reason,from)
   ui.preview_movement(0.0,false)
   preview_text = plan.reason
   return preview_text
- movement_overlay.show_path("preview",plan.points,plan.turns)
- var m = ui_data.army_movement(id)
- ui.preview_movement(minf(float(plan.cost),m.points)/maxf(1.0,m.max_points),int(plan.total_turns)>1)
+ else:
+  preview_action = _move_action(id,p,plan)
+ _show_preview_plan(id,plan,preview_action)
  return preview_text
+
+# Mouse cursor by movement action (TW:WH3): the action icons rendered once into textures.
+var _cursor_tex = {}
+var _cursor_kind := ""
+func _make_cursors():
+ if DisplayServer.get_name() == "headless": return
+ for kind in MoveIcons.KINDS:
+  var vp = SubViewport.new()
+  vp.size = Vector2i(40,40)
+  vp.transparent_bg = true
+  vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+  var c = CursorIcon.new()
+  c.kind = kind
+  c.size = Vector2(40,40)
+  vp.add_child(c)
+  add_child(vp)
+  await RenderingServer.frame_post_draw
+  var img = vp.get_texture().get_image()
+  _cursor_tex[kind] = ImageTexture.create_from_image(img)
+  vp.queue_free()
+
+class CursorIcon extends Control:
+ var kind := "move"
+ func _draw(): MoveIcons.draw(self,kind,Vector2(20,20),17.0)
+
+func _set_move_cursor(kind: String):
+ if kind == _cursor_kind: return
+ _cursor_kind = kind
+ if kind == "" or not _cursor_tex.has(kind): Input.set_custom_mouse_cursor(null)
+ else: Input.set_custom_mouse_cursor(_cursor_tex[kind],Input.CURSOR_ARROW,Vector2(20,20))
 
 func order_army(p: Vector2):
  var r = ui_data.order_move(selected_army_id(),p)
@@ -1293,6 +1388,12 @@ func _on_army_moved(id: String,walked: Array):
   return
  sync_army_figures()
  if not army_figures.has(id): return
+ # Never snap: start where the figure stands and end where it will stand (outside the walls when
+ # the march ends in a garrison).
+ walked = walked.duplicate()
+ var fp = army_figures[id].position
+ walked[0] = Vector2(fp.x,fp.z)
+ walked[-1] = figure_spot(id)
  var total = 0.0
  for i in range(1,walked.size()): total += walked[i-1].distance_to(walked[i])
  walks[id] = {"points":walked,"dist":0.0,"total":total}
@@ -1495,6 +1596,12 @@ func _unhandled_input(event):
     press_pos = event.position
     map_press = true
     if rmb_held: cancel_move_preview()
+    # Double-click an army: centre the camera on it (owner spec 2026-10-07).
+    if event.double_click:
+     var dh = pick(event.position)
+     if dh.begins_with("army:") and army_figures.has(dh.get_slice(":",1)):
+      var fp = army_figures[dh.get_slice(":",1)].position
+      pan_to(fp)
    if event.button_index == MOUSE_BUTTON_RIGHT and army_selected():
     rmb_held = true
     preview_key = Vector2i(1<<20,0)
@@ -1545,7 +1652,13 @@ func _unhandled_input(event):
    focus_goldspire()
   if event.keycode == KEY_F: toggle_follow()
   if event.keycode == KEY_R: toggle_army_speed()
-  if event.keycode == KEY_BACKSPACE and army_selected(): ui_data.cancel_army_order(selected_army_id())
+  if event.keycode == KEY_BACKSPACE and army_selected():
+   ui_data.cancel_army_order(selected_army_id())
+   refresh_army_overlays()
+  # Space: your armies' movement animation speed, 1x or 2x (owner spec 2026-10-07).
+  if event.keycode == KEY_SPACE and not spectating_now():
+   Settings.set_value("army_speed",2 if Settings.army_speed() == 1 else 1)
+   ui.toast("Army movement speed %dx." % Settings.army_speed())
   if event.keycode == KEY_3 and ui.selected_settlement != "": ui.open_first_empty_slot(ui.selected_settlement)
   if event.keycode == KEY_1: panel_tab("buildings")
   if event.keycode == KEY_2: panel_tab("garrison")
@@ -1694,7 +1807,7 @@ func _process(delta):
  for p in pins:
   var b = p.button
   # Hold Space (TW:WH3 overlays): settlement banners at any zoom.
-  b.visible = overlays.settlements and not camera.is_position_behind(p.world) and (distance>18 or (Input.is_physical_key_pressed(KEY_SPACE) and not spectating_now()))
+  b.visible = overlays.settlements and not camera.is_position_behind(p.world) and distance>18
   if b.visible:
    b.set_compact(hz>0.3 and int(b.settlement.level)<3 and str(b.settlement.get("owner","")) != me)
    b.position = camera.unproject_position(p.world)-b.anchor_offset()
@@ -1708,8 +1821,13 @@ func _process(delta):
   if hc != null and hc.get("settlement_id") != null and str(hc.settlement_id) != "": hov = str(hc.settlement_id)
   elif hc != null and hc.get("army_id") != null and str(hc.army_id) != "": hov = "army:"+str(hc.army_id)
   map_view.set_highlight(forced_highlight if forced_highlight != "" else faction_of_hit(hov))
- # Path preview only while right click is held (TW:WH3); --preview captures force it.
- var previewing = army_selected() and not walks.has(selected_army_id()) and (forced_preview != null or (rmb_held and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)))
+ # Path preview (owner spec 2026-10-07, TW:WH3): with your army selected, the path to the cursor
+ # shows on hover at once (and while right click is held); --preview captures force it.
+ var over_map = get_viewport().gui_get_hovered_control() == null
+ var previewing = army_selected() and not walks.has(selected_army_id()) and (forced_preview != null or over_map or (rmb_held and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)))
+ _set_move_cursor(preview_action if previewing and forced_preview == null else "")
+ if not previewing: preview_action = ""
+ if movement_overlay: movement_overlay.set_view(camera,distance)
  if rmb_held and not Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT): rmb_held = false
  if "--ledger" in OS.get_cmdline_user_args(): ui.show_hover(ui._ledger_text(),Vector2(560,70))
  elif "--treasury-tip" in OS.get_cmdline_user_args(): ui.show_hover(ui.resource_groups.treasury.tooltip_text,Vector2(560,70))
@@ -1817,7 +1935,7 @@ func run_checks():
  end_turn()
  assert(ui_data.resources().year==year+1)
  assert(ui.turn_banner_text() == "YOUR TURN","the new turn is announced")
- assert(ui_data.events("turn")[0].year==year+1 and ui_data.events("turn")[1].category=="turn")
+ assert(int(ui_data.state.last_summary.year)==year,"the turn summary of the year just closed")
  print("END_TURN_MS %.3f" % ui_data.last_turn_ms)
  # Saves: End Turn autosaved; a manual save loads back to the identical state.
  SaveSystem.wait_for_saves()
@@ -1923,6 +2041,10 @@ func run_checks():
  var mid = m.position
  end_turn()
  update_walk(1000.0)
+ # The order waits for the player (Settings: continue automatically is off), then walks on Continue.
+ assert(ui_data.army_movement(COMMANDER_ARMY).position == mid,"no army of yours moves at End Turn without your confirm")
+ assert(ui_data.continue_orders([COMMANDER_ARMY]) == 1)
+ update_walk(1000.0)
  assert(ui_data.army_movement(COMMANDER_ARMY).position != mid)
  ui_data.cancel_army_order(COMMANDER_ARMY)
  assert(ui_data.army_movement(COMMANDER_ARMY).order.is_empty())
@@ -1933,6 +2055,7 @@ func run_checks():
  for i in 5:
   if ui_data.army_movement(COMMANDER_ARMY).order.is_empty(): break
   end_turn()
+  ui_data.continue_orders() # the march waits for the player's confirm each turn
   update_walk(1000.0)
  assert(ui_data.army_movement(COMMANDER_ARMY).garrison == "crownwatch")
  assert(not ui_data.settlement("crownwatch").garrison.is_empty())
@@ -1952,9 +2075,12 @@ func run_checks():
   assert(ui.recruitment_visible())
  ui.toggle_recruitment(COMMANDER_ARMY,"global")
  assert(ui.recruitment_visible() and ui.recruit_mode == "global")
- ui.recruit_box.find_child("Recruit_peasant_levy",true,false).pressed.emit()
+ # The global drawer lists only units not recruitable here (one card per unit, 2026-10-07).
+ var gcards = ui.recruit_box.find_children("Recruit_*","",true,false)
+ assert(not gcards.any(func(c): return c.name == "Recruit_peasant_levy"),"no card twice")
+ if not gcards.is_empty(): gcards[0].pressed.emit()
  var kinds = ui_data.army(COMMANDER_ARMY).queue.map(func(q): return q.kind)
- assert(kinds == ["local","local","local","overflow","overflow"],str(kinds))
+ assert(kinds.slice(0,4) == ["local","local","local","overflow"],str(kinds))
  assert(ui.recruitment_visible())
  while not ui_data.army(COMMANDER_ARMY).queue.is_empty(): ui_data.cancel_recruit(COMMANDER_ARMY,0)
  ui_data.state.treasury[ui_data.player_faction_id()] -= 5000
@@ -1980,6 +2106,9 @@ func run_checks():
   ui_data.set_settlement_level(GOLDSPIRE_ID,level_now)
   assert(goldspire_level==level_now)
  # Character window (magnifying glass) and diplomacy (round menu, double-click a foreign settlement).
+ ui.popup_queue.clear() # pop-ups from the End Turns above (replies, wars) are not part of this check
+ if ui.alert_visible(): ui._next_alert()
+ if ui.court_visible(): ui.close_court() # End Turn jumped to a choice (a career) in the Court
  select_army(COMMANDER_ARMY)
  ui.lord_box.find_child("LordDetails",true,false).pressed.emit()
  assert(ui.character_visible() and ui.character_window.find_child("CharacterModel",true,false) != null)
@@ -2281,12 +2410,14 @@ func refresh_warnings():
   return
  var c = w[0]
  var i = clampi(int(warn_index.get(c.kind,0)),0,c.items.size()-1)
- ui.show_end_turn_warning({"label":c.label,"name":c.items[i].name,"index":i,"count":c.items.size()})
+ var total = 0
+ for k in w: total += k.items.size()
+ ui.show_end_turn_warning({"label":c.label,"short":c.short,"icon":c.icon,"name":c.items[i].name,"index":i,"count":c.items.size(),"total":total})
 
 func end_turn_pressed():
  if spectating_now(): return
  var w = current_warnings()
- if w.is_empty():
+ if w.is_empty() or Input.is_key_pressed(KEY_SHIFT):
   end_turn()
   return
  var c = w[0]
@@ -2332,6 +2463,14 @@ func _jump_to(item: Dictionary):
    select_army(item.id)
    if army_figures.has(item.id): pan_to(army_figures[item.id].position+Vector3(0,2.2,0))
    ui.open_character(item.id,"skills")
+  "diplomacy": ui.open_diplomacy(item.id)
+  "reply":
+   var rep = ui_data.reply_by_id(int(item.id))
+   if not rep.is_empty(): ui.show_alert(ui_data.reply_view(rep))
+  "absorption": ui.show_absorptions()
+  "career": ui.open_court(item.id)
+  "court": ui.open_court()
+  "faction": if item.id != "" and item.id != ui_data.player_faction_id(): ui.open_diplomacy(item.id)
 
 # Pipeline maps: the map view's atmosphere (data/campaign_view.json "atmosphere": haze, aerial
 # perspective, grade) and two shadow cascades (enough at campaign distances).
@@ -2496,11 +2635,14 @@ func _realm_capture_flags():
     update_walk(1000.0)
  ui_data.changed.emit()
  refresh_army_overlays()
- # --focus-host (captures): select the player's first army (the Host leader) and frame it close.
- if "--focus-host" in args:
-  var lead = s.armies_of(me)[0]
-  select_army(lead)
-  focus_at(ground(Movement.position(s,lead)),140.0)
+ # --focus-host[=<distance>] (captures): select the player's first army (the Host leader) and frame it.
+ for arg in args:
+  if arg.begins_with("--focus-host"):
+   var lead = s.armies_of(me)[0]
+   select_army(lead)
+   focus_at(ground(figure_spot(lead)),float(arg.get_slice("=",1)) if "=" in arg else 140.0)
+   distance = desired_distance
+   if map_view != null: map_view.update(target)
  for arg in args:
   if arg.begins_with("--court"): ui.open_court(arg.get_slice("=",1) if "=" in arg else "")
   if arg.begins_with("--character="):
@@ -2514,6 +2656,13 @@ func _realm_capture_flags():
    var scr = ui.diplomacy_screen
    for a2 in args:
     if a2 == "--dossier": scr.tab = "dossier"
+    if a2.begins_with("--dip-filter="): scr.filter = a2.get_slice("=",1)
+    # --active=trade+embassy: those agreements already in force with this faction.
+    if a2.begins_with("--active="):
+     var Dp = load("res://core/diplomacy.gd")
+     for k in a2.get_slice("=",1).split("+"):
+      if k == "embassy": Dp.open_embassy(s,me,arg.get_slice("=",1))
+      else: Dp.sign_treaty(s,me,arg.get_slice("=",1),k)
     if a2.begins_with("--offer="):
      for part in a2.get_slice("=",1).split("+"):
       var bits = part.split(":")
@@ -2527,7 +2676,34 @@ func _realm_capture_flags():
        it = pal[0].item
       scr.offer[bits[0]].append(it)
    scr.refresh()
+   # --show-add=<give|take>: the Add Item list open.
+   for a3 in args:
+    if a3.begins_with("--show-add="):
+     var ob = scr.find_child("Add_"+a3.get_slice("=",1),true,false)
+     if ob: ob.call_deferred("show_popup")
   if arg == "--recruit":
    select_army(s.armies_of(me)[0])
    ui.open_recruitment(s.armies_of(me)[0])
+  # Part A captures (2026-10-07):
+  # --build-all: the capital starts a building in every empty slot (parallel construction).
+  if arg == "--build-all":
+   var cap = load("res://core/armies.gd").capital(s,me)
+   s.treasury[me] = int(s.treasury[me])+20000
+   for i in s.settlements[cap].buildings.size():
+    if s.settlements[cap].buildings[i].has("chain"): continue
+    for o in ui_data.building_options(cap,i):
+     if o.available and ui_data.start_construction(cap,i,o.chain).ok: break
+   select_settlement(cap,true)
+  # --dropdown=<lords|provinces|construction|factions>: open that top-right list.
+  if arg.begins_with("--dropdown="): ui.toggle_dropdown(arg.get_slice("=",1))
+  # --reply-demo=<faction>: a reply to your envoy, shown as its pop-up.
+  if arg.begins_with("--reply-demo="):
+   var D = load("res://core/diplomacy.gd")
+   var rf = arg.get_slice("=",1)
+   var rep = D.add_reply(s,rf,"offer",false,"We do not trade with those who court our rivals",{"give":[{"kind":"trade"}],"take":[{"kind":"gold","amount":500}]})
+   ui.show_alert(ui_data.reply_view(rep))
+  # --no-pending: nothing pending on the End Turn button (every kind visited).
+  if arg == "--no-pending":
+   for w in ui_data.WARNINGS: warn_skipped.append(w[0])
+   refresh_warnings()
 

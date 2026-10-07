@@ -50,16 +50,23 @@ static func _court(state,f: String,rep: Dictionary):
   if best != "":
    Court.appoint_governor(state,f,best,sid)
    rep.actions.append({"action":"governor","faction":f,"character":best,"settlement":sid})
- # Marriages: one unmarried adult of the family per think (at most two searches, each over every court).
+ # Marriages with a purpose (owner spec 2026-10-07: the AI married 330-390 times a campaign): an heir
+ # when the house has none, an alliance with a friendly house, or absorbing a weaker minor house; at
+ # most one every marriage_every turns, one unmarried adult of the family per think.
+ var cd = court_data(state,f)
+ var every = int(Diplomacy.data().ai.get("marriage_every",6))
+ if int(state.turn)-int(cd.get("last_marriage",-999))<every: return
+ var need_heir = Court.heir(state,f) == ""
  var tries = 0
  for id in members:
   var c = state.characters[id]
   if str(c.spouse) != "" or not Court.is_adult(c) or str(c.house) != str(WorldMap.faction(f).get("house","")) or c.legendary: continue
   if tries>=2: break
   tries += 1
-  var match = _find_match(state,f,c)
+  var match = _find_match(state,f,c,need_heir)
   if match.is_empty(): continue
   var other = str(state.characters[match].faction)
+  cd.last_marriage = int(state.turn)
   if other == f:
    Court.marry(state,id,match)
    rep.actions.append({"action":"marriage","faction":f,"a":id,"b":match})
@@ -74,11 +81,20 @@ static func _court(state,f: String,rep: Dictionary):
      rep.actions.append({"action":"marriage","faction":f,"a":id,"b":match,"with":other})
   break
 
-static func _find_match(state,f: String,c: Dictionary) -> String:
+static func court_data(state,f: String) -> Dictionary:
+ return Court.court(state,f)
+
+static func _find_match(state,f: String,c: Dictionary,need_heir := true) -> String:
  var best = ""
  var best_score = -INF
  for g in state.courts:
   if g != f and not Diplomacy.has_contact(state,f,g): continue
+  # A purpose for the match: an heir (within the court too), an alliance, or absorbing a minor house.
+  if g == f and not need_heir: continue
+  if g != f and not need_heir:
+   var friendly = Diplomacy.attitude(state,g,f)>=10.0 and not Diplomacy.allied(state,f,g)
+   var absorb = Diplomacy.is_minor(g) and Diplomacy._power(state,f)>Diplomacy._power(state,g)*2.0
+   if not friendly and not absorb: continue
   if g != f and Battles.at_war(state,f,g): continue
   var att = 0.0 if g == f else Diplomacy.attitude(state,g,f)
   if g != f and att<0.0: continue
@@ -109,19 +125,33 @@ static func _diplomacy(state,f: String,rep: Dictionary):
   if not Diplomacy.has_embassy(state,f,g) and Diplomacy.embassy_refusal(state,f,g) == "":
    Diplomacy.send_envoy(state,f,g,"embassy")
    break
- # Peace with an enemy when weary or losing.
+ # Peace by the war's outcome (owner spec 2026-10-07): a side that is losing sues for peace and pays
+ # for it (gold, then a border settlement, then fealty for a weak minor); a side that is winning keeps
+ # going; an even war is settled once it is stalemate_turns old.
+ var wcfg = Diplomacy.data().war
  for e in enemies:
   if Diplomacy.untouchable(e): continue
-  var ai = Diplomacy.data().ai
-  var meta = Diplomacy.d(state).war_meta.get(Diplomacy.key(f,e),{})
-  if not meta.is_empty() and int(state.turn)-int(meta.turn)<int(ai.peace_min_turns): continue
-  var ratio = Diplomacy._power(state,e)/Diplomacy._power(state,f)
-  if Diplomacy.weariness(state,f)<float(ai.peace_weariness) and ratio<float(ai.peace_losing_ratio): continue
-  var offer = {"give":[{"kind":"peace"}],"take":[]}
-  if e == state.player_faction: _propose_player(state,f,offer,rep)
-  elif Diplomacy.evaluate(state,f,e,offer).accept:
+  var oc = Diplomacy.war_outcome(state,f,e)
+  var age = Diplomacy.war_age(state,f,e)
+  if oc == "winning": continue
+  if oc == "even" and age<int(wcfg.get("stalemate_turns",10)): continue
+  if oc == "losing" and age<2: continue
+  var offers = [{"give":[{"kind":"peace"}],"take":[]}]
+  if oc == "losing":
+   var gold = int(clampf(float(state.treasury.get(f,0))*0.5,0.0,2000.0))/100*100
+   if gold>=200: offers.append({"give":[{"kind":"peace"},{"kind":"gold","amount":gold}],"take":[]})
+   var land = _border_settlement(state,f,e)
+   if land != "": offers.append({"give":[{"kind":"peace"},{"kind":"region","settlement":land}],"take":[]})
+   if Diplomacy.is_minor(f) and Vassals.liege_of(state,f) == "": offers.append({"give":[{"kind":"peace"},{"kind":"vassalage"}],"take":[]})
+  if e == state.player_faction:
+   _propose_player(state,f,offers[-1] if oc == "losing" else offers[0],rep)
+   break
+  for offer in offers:
+   if not Diplomacy.evaluate(state,f,e,offer).accept: continue
    Diplomacy.apply_offer(state,f,e,offer)
-   rep.actions.append({"action":"peace","faction":f,"with":e})
+   var kinds = offer.give.map(func(i): return str(i.kind))
+   rep.actions.append({"action":"vassal_peace" if "vassalage" in kinds else ("land_peace" if "region" in kinds else ("paid_peace" if "gold" in kinds else "peace")),"faction":f,"with":e,"outcome":oc})
+   break
   break
  for g in contacts:
   if Battles.at_war(state,f,g) or Diplomacy.untouchable(g): continue
@@ -198,3 +228,21 @@ static func _banners(state,f: String,rep: Dictionary):
  if cap == "": return
  var r = Hosts.call_banners(state,f,cap)
  if r.ok: rep.actions.append({"action":"banners","faction":f,"levies":r.levies,"contingents":r.contingents})
+
+# The settlement a losing faction would cede: its own, nearest to the enemy's land, never its capital
+# (or its last one). "" when it has none to spare.
+static func _border_settlement(state,f: String,e: String) -> String:
+ var own = state.settlements_of(f)
+ if own.size()<2: return ""
+ var cap = load("res://core/armies.gd").capital(state,f)
+ var best = ""
+ var best_d = INF
+ for sid in own:
+  if sid == cap: continue
+  var p = WorldMap.settlement_position(sid)
+  for o in state.settlements_of(e):
+   var dd = p.distance_to(WorldMap.settlement_position(o))
+   if dd<best_d:
+    best_d = dd
+    best = sid
+ return best

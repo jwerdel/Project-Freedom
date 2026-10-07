@@ -35,7 +35,7 @@ static func key(a: String,b: String) -> String:
  return a+"|"+b if a<b else b+"|"+a
 
 static func init(state):
- state.diplomacy = {"treaties":{},"agreements":{},"attitude":{},"envoys":[],"contacts":{},"betrayers":[],"weariness":{},"war_meta":{},"orders":[],"proposals":[],"protects":{},"log":[]}
+ state.diplomacy = {"treaties":{},"agreements":{},"attitude":{},"envoys":[],"contacts":{},"betrayers":[],"weariness":{},"war_meta":{},"orders":[],"proposals":[],"protects":{},"log":[],"replies":[],"next_reply":0}
  # Lore friendships and rivalries (docs/v1-content.md §3.2) are remembered from the start.
  for f in state.factions():
   for g in WorldMap.faction(f).get("relations",{}):
@@ -52,7 +52,28 @@ static func init(state):
 
 static func d(state) -> Dictionary:
  if state.get("diplomacy") == null or state.diplomacy.is_empty(): init(state)
+ if not state.diplomacy.has("replies"): # saves from before replies (2026-10-07)
+  state.diplomacy.replies = []
+  state.diplomacy.next_reply = 0
  return state.diplomacy
+
+# Every answer the human player receives (owner spec 2026-10-07: every proposal and envoy gives a
+# result): {id, from (the answering faction), kind (offer, embassy, contact), ok, reason, offer, turn,
+# seen}. The interface shows each once (a reply pop-up with the leader's portrait) and keeps the last few.
+# Why an offer was declined: its weightiest objection (the most negative reason), else the balance.
+static func decline_reason(ev: Dictionary) -> String:
+ if bool(ev.get("blocked",false)) and not ev.reasons.is_empty(): return str(ev.reasons[0].text)
+ var worst = null
+ for r in ev.get("reasons",[]):
+  if float(r.value)<0.0 and (worst == null or float(r.value)<float(worst.value)): worst = r
+ return str(worst.text) if worst != null else "The deal is not worth enough to them"
+
+static func add_reply(state,from: String,kind: String,ok: bool,reason: String,offer := {}) -> Dictionary:
+ var r = {"id":int(d(state).next_reply),"from":from,"kind":kind,"ok":ok,"reason":reason,"offer":offer.duplicate(true),"turn":int(state.turn),"seen":false}
+ d(state).next_reply = int(d(state).next_reply)+1
+ d(state).replies.append(r)
+ while d(state).replies.size()>30: d(state).replies.pop_front()
+ return r
 
 # --- Peoples ------------------------------------------------------------------------------------
 
@@ -263,9 +284,11 @@ static func process_envoys(state) -> Array:
    "offer":
     var ev = evaluate(state,e.from,e.to,e.offer)
     res.ok = ev.accept
-    res.reason = "" if ev.accept else (ev.reasons[0].text if not ev.reasons.is_empty() else "They decline")
+    res.reason = "" if ev.accept else decline_reason(ev)
     if ev.accept and e.to != state.player_faction: apply_offer(state,e.from,e.to,e.offer)
     elif e.to == state.player_faction: d(state).proposals.append({"from":e.from,"to":e.to,"offer":e.offer,"turn":int(state.turn)})
+  # The human player's envoy always comes back with an answer.
+  if e.from == state.player_faction and e.from != "": add_reply(state,e.to,str(e.kind),bool(res.ok),str(res.reason),e.get("offer",{}))
   out.append(res)
  d(state).envoys = keep
  return out
@@ -374,7 +397,7 @@ static func declare_war(state,a: String,b: String,ai := false) -> Dictionary:
  if pv.betrayal != "" and ai: return {"ok":false,"reason":"The AI never betrays"}
  if pv.betrayal != "": return betray(state,a,b,pv.betrayal)
  var e = Battles.declare_war(state,a,b)
- d(state).war_meta[key(a,b)] = {"by":a,"turn":int(state.turn),"justified":pv.justified,"why":pv.justifications.map(func(x): return x.text)}
+ d(state).war_meta[key(a,b)] = {"by":a,"turn":int(state.turn),"justified":pv.justified,"why":pv.justifications.map(func(x): return x.text),"start":_war_snapshot(state,a,b)}
  add_attitude(state,b,a,"attacked_us")
  var minor = is_minor(b) and not d(state).protects.has(b)
  if not minor:
@@ -578,7 +601,12 @@ static func _value(state,r: String,p: String,it: Dictionary,to_r: bool) -> Array
    var ratio = _power(state,p)/_power(state,r)
    var bal = float(v.peace_losing)*clampf(ratio-1.0,0.0,2.0) if ratio>1.0 else float(v.peace_winning)*clampf(1.0/ratio-1.0,0.0,2.0)
    var mult = 1.0 if it.kind == "peace" else 0.6
-   return [(w+bal)*mult+120.0,"%s (they are %s)" % ["Peace" if it.kind == "peace" else "A ceasefire","losing" if ratio>1.15 else ("winning" if ratio<0.87 else "evenly matched")]]
+   # How the war goes for the receiver (owner spec 2026-10-07): a winner wants more than peace; a loser
+   # is glad of it; an even war grows stale.
+   var oc = war_outcome(state,r,p) if Battles.at_war(state,p,r) else "even"
+   var wo = data().war
+   var out_v = float(wo.get("winning_refuses",-700)) if oc == "winning" else (float(wo.get("losing_accepts",400)) if oc == "losing" else (float(wo.get("stalemate_value",250)) if Battles.at_war(state,p,r) and war_age(state,p,r)>=int(wo.get("stalemate_turns",10)) else 0.0))
+   return [(w+bal)*mult+120.0+out_v,"%s (they are %s)" % ["Peace" if it.kind == "peace" else "A ceasefire",{"winning":"winning this war","losing":"losing this war"}.get(oc,"losing" if ratio>1.15 else ("winning" if ratio<0.87 else "evenly matched"))]]
   "vassalage":
    # R becomes P's vassal (when R gives it) or P becomes R's (when R receives it).
    if not to_r:
@@ -668,7 +696,7 @@ static func apply_offer(state,p: String,r: String,offer: Dictionary):
     "region":
      var sid = str(it.settlement)
      state.settlements[sid].owner = other
-     state.settlements[sid].construction = {}
+     state.settlements[sid].constructions = []
      load("res://core/buildings.gd").refresh(state,sid)
      for id in load("res://core/movement.gd").garrison_of(state,sid):
       if state.army_state[id].faction == giver: state.army_state[id].garrison = ""
@@ -703,7 +731,9 @@ static func propose(state,p: String,r: String,offer: Dictionary) -> Dictionary:
   return {"ok":s.ok,"sent":true,"turns":s.get("turns",0),"accept":false,"reason":"An envoy is on the way (%d turns)" % s.get("turns",0) if s.ok else s.reason}
  var ev = evaluate(state,p,r,offer)
  if ev.accept: apply_offer(state,p,r,offer)
- return {"ok":true,"accept":ev.accept,"evaluation":ev}
+ var rep = {}
+ if p == state.player_faction and p != "": rep = add_reply(state,r,"offer",ev.accept,"" if ev.accept else decline_reason(ev),offer)
+ return {"ok":true,"accept":ev.accept,"evaluation":ev,"reply":rep}
 
 # --- Trade income (war-and-realm §7.3: trade continues during war with tariffs) -------------------
 
@@ -822,3 +852,31 @@ static func end_turn(state) -> Dictionary:
 static func _log(state,text: String):
  d(state).log.append({"turn":int(state.turn),"year":int(state.year),"text":text})
  while d(state).log.size()>60: d(state).log.pop_front()
+
+# --- War outcome (owner spec 2026-10-07: peace by how the war goes, not a timer) ----------------------
+# At the declaration each side's settlements and power are recorded; a side is "winning" when it has
+# taken ground (a settlement more than the other, net) or its power has risen against the other's by
+# outcome_swing, "losing" in the mirror case, "even" otherwise. The loser sues for peace and pays for
+# it (gold, land or fealty); the winner refuses plain peace; even wars settle after stalemate_turns.
+static func _war_snapshot(state,a: String,b: String) -> Dictionary:
+ return {a:{"settlements":state.settlements_of(a).size(),"power":_power(state,a)},b:{"settlements":state.settlements_of(b).size(),"power":_power(state,b)}}
+
+static func war_meta(state,a: String,b: String) -> Dictionary:
+ var m = d(state).war_meta.get_or_add(key(a,b),{"by":a,"turn":int(state.turn),"justified":false,"why":[]})
+ if not m.has("start") or not m.start.has(a) or not m.start.has(b): m.start = _war_snapshot(state,a,b)
+ return m
+
+static func war_age(state,a: String,b: String) -> int:
+ return int(state.turn)-int(war_meta(state,a,b).turn)
+
+static func war_outcome(state,f: String,e: String) -> String:
+ var st = war_meta(state,f,e).start
+ var gained = (state.settlements_of(f).size()-int(st[f].settlements))-(state.settlements_of(e).size()-int(st[e].settlements))
+ if gained>=1: return "winning"
+ if gained<=-1: return "losing"
+ var then = float(st[f].power)/maxf(1.0,float(st[e].power))
+ var now = _power(state,f)/maxf(1.0,_power(state,e))
+ var swing = float(data().war.get("outcome_swing",0.25))
+ if now>then*(1.0+swing): return "winning"
+ if now<then*(1.0-swing): return "losing"
+ return "even"

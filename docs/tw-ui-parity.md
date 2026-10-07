@@ -379,3 +379,31 @@ Web research (guides, Steam discussions, patch notes and UI mods; the Fandom wik
 | Proposals | AI offers and calls to arms wait at the top of the Diplomacy screen (Accept / Decline; Join / Support / Refuse), announced in Event Messages | At most one per AI faction a turn |
 | Map | Host leaders' banners carry a gold star, Host armies a gold pip; a muster point's banner reads MUSTER | |
 | Recruitment bar | Culture rosters run to 16 units: the card row scrolls sideways inside the army panel | TW:WH3 scrolls its recruitment bar the same way |
+
+## 18. Playtest fixes (owner spec, 2026-10-07)
+
+Reference screenshots in `docs/reference/tw/` (`lothern_lords.png`, `terrain_1.png`, `terrain_2.png`) were studied first. Where the spec and the screenshots differ it is noted in the row.
+
+| Item | Ours | Notes |
+|---|---|---|
+| Free movement | Lords move anywhere passable; roads are about 35% faster (`data/movement.json` dirt road 0.74) and the planner takes them when faster; forest 1.6, marsh 1.8 (new terrain: swamp and marsh climates); deep water, peaks and rivers (except bridges and fords) impassable. Fast in own and allied land, slow abroad, zone of control by army size (unchanged) | TW: free movement with road bonuses |
+| Select and reach | Left click selects; the reachable area this turn is a soft gold fill with a crisp edge drawn over trees and roofs | |
+| Preview | With your army selected, the path to the cursor shows on hover at once; holding right click also previews; releasing (or a single right click) commits | Supersedes §15's "preview only while right click is held" (owner) |
+| Path line | A thick ribbon projected on the terrain and drawn over everything (no depth test against trees, buildings, hills or walls), chevrons running toward the destination; this turn bright green, later turns amber, red when blocked or unreachable; a numbered marker at each turn break; the end marker shows the action (move, attack, enter, merge, besiege, blocked) | Supersedes the earlier "no numbers on the map" (owner) |
+| Cursors | The cursor shows the action icon (move, attack, enter, merge, besiege, blocked) while previewing | TW: action cursors |
+| Committed orders | The selected army's order in full with its markers; every other army of yours with an order as a thin faint line (Settings "Show my armies' orders", default on) | |
+| Movement points | A bar under your armies' banners and on the army panel; the reach area updates after every move | |
+| Multi-turn orders | No army of yours moves at End Turn or turn start unless you ordered it that turn. Settings "Continue multi-turn orders automatically" (default off): with it off the order keeps its path and waits for "Continue order" (army panel) or "Continue all orders"; waiting orders are an End Turn notification. Host followers and levies wait the same way | Owner rule (TW continues orders automatically) |
+| Hotkeys | Backspace cancels the selected army's order; Space toggles your armies' movement speed (1x/2x); double-click an army centres the camera on it | Space previously showed labels while held (dropped) |
+| Animation | Lords walk smoothly along the path from where they stand to where they will stand (never snap) | |
+| Lords | Twice the previous size (lord_scale 4.0, banners x2), growing further with camera height up to x2.2 (clamped); garrisoned lords stand just outside their settlement's walls | Matches `lothern_lords.png` |
+| End Turn button | The notification is the button: the top pending item's icon on it, a count badge, and a red plate across its foot naming the item ("Lord has skill points"); a click goes to it, the next click to the next; nothing pending: the hourglass and End Turn. End turn anyway: the small button on the ring, Shift+click or Shift+Enter. The separate "warning" box above the button is gone | `terrain_2.png` shows the blocker plate under the button (as built) and a stack of red event ribbons above it; the owner's spec removes any separate stack, so the ribbons are not built (Event Messages carries events) |
+| Pending items | Choices (absorbed families, careers due), diplomatic replies and proposals, low funds, skill points, settlement upgrades, idle building slots, waiting orders, lords that have not moved, armies that can recruit | Each switchable in the notification settings |
+| Text | Fira Sans (OFL) body text, Cinzel headers; labels at least 14 px; brighter dim text; settlement names with a dark outline on their plates; a lord's name plate on hover or selection | Replaces Alegreya Sans |
+| Construction | Every empty slot can build at the same time, each paid when started; a realm construction queue (top right, hammer) lists everything building with turns left, a jump to the settlement, and cancel with refund | |
+| Placement | Port only on the sea coast, Fishing Camp only by sea, lake or river, Mines only with hills or mountains near; unavailable chains are not offered (validator test) | |
+| Recruitment | One card per unit with its best source (local, else global); the global drawer lists only units not recruitable locally; the main building gives basic infantry | |
+| Diplomacy list | Quick filters (Hates me, Dislikes, Neutral, Likes, Loves, At war with me, Allies, Vassals, Met, Not met) and an attitude sort; red-to-green faces on every row; hover a row for the attitude and its reasons | |
+| Offer builder | Items already active between you are not offered; they show as Active with Cancel (locked while protected); items in the offer leave Add Item on both sides; "No more items available" when none remain | |
+| Replies | Every envoy and proposal returns an answer: a reply pop-up with the ruler's portrait, their words (by attitude) and the outcome; it feeds the End Turn button; envoys on the road are listed with turns to arrival | |
+| Turn summary | Event Messages: Turn Summary (your settlements, your armies and battles, diplomacy, your court, threats near your borders; each row jumps to its subject), Your Wars and Battles, Court and Realm, and World (this turn only, collapsed by default) | |

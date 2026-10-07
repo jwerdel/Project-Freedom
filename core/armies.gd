@@ -205,6 +205,22 @@ static func options(state,army_id: String,mode := "local") -> Array:
    "available":check.ok,"reasons":check.reasons,"settlement":check.settlement})
  return out
 
+# One card per unit (owner spec 2026-10-07: no duplicate cards): the best source for each, local when
+# it can be recruited here (cheaper and faster), else global, else the local entry with its reasons.
+static func best_options(state,army_id: String) -> Array:
+ var local = options(state,army_id,"local")
+ var global = options(state,army_id,"global")
+ var by_unit = {}
+ for o in global: by_unit[o.unit] = o
+ var out = []
+ var seen = {}
+ for o in local:
+  if seen.has(o.unit): continue
+  seen[o.unit] = true
+  var g = by_unit.get(o.unit,{})
+  out.append(o if o.available or g.is_empty() or not g.available else g)
+ return out
+
 # Queue a unit: gold and men are taken now. Its kind is the mode, or "overflow" past the capacity.
 # Returns {ok, reasons, settlement, kind, turns}.
 static func recruit(state,army_id: String,unit_id: String,mode := "local") -> Dictionary:

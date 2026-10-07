@@ -10,8 +10,8 @@
     "village": [2, 3, 4]
   },
   "construction": {
-    "_note": "One construction at a time per settlement. Cancelling refunds cancel_refund_same_turn of the cost in the turn it was started, cancel_refund_later afterwards (PLACEHOLDER rule).",
-    "max_per_settlement": 1,
+    "_note": "Every building slot can be under construction at the same time (owner spec 2026-10-07; max_per_settlement 0 = no limit). Cancelling refunds cancel_refund_same_turn of the cost in the turn it was started, cancel_refund_later afterwards (PLACEHOLDER rule).",
+    "max_per_settlement": 0,
     "cancel_refund_same_turn": 1.0,
     "cancel_refund_later": 0.5
   },
@@ -64,7 +64,7 @@
         {"name": "Wheat Fields", "cost": 300, "turns": 1, "upkeep": 10, "effects": {"income": 10, "income_per_endowment": {"food": 5}, "growth": 0.004}},
         {"name": "Granaries", "cost": 700, "turns": 1, "upkeep": 15, "effects": {"income": 20, "income_per_endowment": {"food": 8}, "growth": 0.007}},
         {"name": "Estates", "cost": 1400, "turns": 2, "upkeep": 25, "effects": {"income": 35, "income_per_endowment": {"food": 12}, "growth": 0.010}}]},
-    "mine": {"name": "Mines", "category": "economic", "visual": "building.mine", "settlement_types": ["city", "town", "village", "castle", "fortress"],
+    "mine": {"name": "Mines", "category": "economic", "visual": "building.mine", "settlement_types": ["city", "town", "village", "castle", "fortress"], "requires": {"hills": true},
       "levels": [
         {"name": "Quarry and Pits", "cost": 450, "turns": 1, "upkeep": 25, "effects": {"income": 40, "income_per_endowment": {"minerals": 15, "stone": 5}}},
         {"name": "Deep Mines", "cost": 1000, "turns": 2, "upkeep": 40, "effects": {"income": 80, "income_per_endowment": {"minerals": 25, "stone": 8}}},
@@ -74,6 +74,10 @@
         {"name": "Fishing Wharf", "cost": 600, "turns": 1, "upkeep": 20, "effects": {"income": 60, "growth": 0.002}},
         {"name": "Harbour", "cost": 1300, "turns": 2, "upkeep": 30, "effects": {"income": 120, "growth": 0.003}},
         {"name": "Merchant Harbour", "cost": 2500, "turns": 2, "upkeep": 45, "effects": {"income": 220, "growth": 0.004}}]},
+    "fishing": {"name": "Fishing Camp", "category": "economic", "visual": "building.port", "settlement_types": ["city", "town", "village"], "requires": {"water": true}, "_note": "Fishing on the sea, a lake or a river (owner spec 2026-10-07: port and fishing buildings only where there is water). PLACEHOLDER numbers.",
+      "levels": [
+        {"name": "Fishing Camp", "cost": 250, "turns": 1, "upkeep": 8, "effects": {"income": 20, "growth": 0.002}},
+        {"name": "Fishery", "cost": 600, "turns": 1, "upkeep": 12, "effects": {"income": 45, "growth": 0.003}}]},
     "houses": {"name": "Housing", "category": "economic", "visual": "building.houses", "settlement_types": ["city", "town", "village"],
       "levels": [
         {"name": "Houses", "cost": 350, "turns": 1, "upkeep": 10, "effects": {"capacity": 1000, "growth": 0.002}},

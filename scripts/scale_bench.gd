@@ -21,6 +21,8 @@ func line(key: String,value,budget := ""):
  if out_file: out_file.store_line(text)
 
 func _ready():
+ # Every faction is AI-run here, the player's too: its orders walk at End Turn.
+ load("res://core/movement.gd").continue_player_orders = true
  var map_id = "synthetic600"
  var turns = 3
  for a in OS.get_cmdline_user_args():
@@ -83,7 +85,7 @@ func _ready():
  var start = Movement.position(s,a0)
  # One-time per session: the pathfinding grid from the baked runs, plus the path hierarchy.
  t = Time.get_ticks_usec()
- Movement._astar_for(s.road_level)
+ Movement.prewarm(s,s.army_state[a0].faction)
  line("path_grid_and_hierarchy_build_ms_once",(Time.get_ticks_usec()-t)/1000.0)
  # Each plan as a fresh preview update: the blocking sync is forced (a new frame would do it).
  for dist in [60.0,150.0,400.0,1000.0]:

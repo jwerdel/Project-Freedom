@@ -139,3 +139,66 @@ func test_allies_answer_calls_and_minor_factions_skip_the_web():
   if D.is_minor(f) and f != "house_kells" and not s.settlements_of(f).is_empty() and not Battles.at_war(s,ME,f): minor = f
  assert_ne(minor,"")
  assert_true(D.declaration_preview(s,ME,minor).justified)
+
+# Every proposal and envoy gives a result (owner spec 2026-10-07; playtest: "my test treaties and
+# envoys never answered"): each one sent comes back as a reply the interface shows.
+func test_every_sent_proposal_resolves():
+ var s = state()
+ var data = load("res://core/ui_data.gd").new(s)
+ var sent = 0
+ assert_true(data.send_envoy("house_kells","embassy").ok); sent += 1
+ assert_true(data.send_envoy("reavers_brinecrag","contact").ok); sent += 1
+ var r = data.propose_offer("barrow_lords",{"give":[{"kind":"trade"}],"take":[]})
+ assert_true(r.ok); sent += 1
+ # An answer at once with contact: a reply too.
+ D.make_contact(s,ME,"house_dunmoor")
+ var now = data.propose_offer("house_dunmoor",{"give":[],"take":[{"kind":"gold","amount":1000}]})
+ assert_false(now.accept,"they will not hand over gold")
+ assert_false(now.reply.is_empty(),"declined at once, with a reply")
+ assert_ne(str(now.reply.reason),"","the reason they give")
+ sent += 1
+ var guard = 0
+ while not D.d(s).envoys.filter(func(e): return e.from == ME).is_empty() and guard<12:
+  data.end_turn()
+  guard += 1
+ var replies = D.d(s).replies
+ assert_eq(replies.size(),sent,"one reply for every envoy and proposal")
+ for rep in replies:
+  var v = data.reply_view(rep)
+  assert_ne(v.blurb,"","their words")
+  assert_string_contains(v.outcome,"ccepted" if rep.ok else "eclined")
+ # Unseen replies feed the End Turn button until shown.
+ assert_true(data.end_turn_warnings().any(func(w): return w.kind == "diplomacy"))
+ for rep in replies: data.mark_reply_seen(int(rep.id))
+ assert_true(data.unseen_replies().is_empty())
+
+# The offer builder (owner spec 2026-10-07): active items leave Add Item (shown as Active with Cancel),
+# items already in the offer leave it, and the faction list filters by attitude.
+func test_add_item_excludes_active_and_offered_items():
+ var s = state()
+ var data = load("res://core/ui_data.gd").new(s)
+ var them = "house_kells"
+ D.sign_treaty(s,ME,them,"trade")
+ D.open_embassy(s,ME,them)
+ assert_true(data.item_active(them,{"kind":"trade"},"give"),"trade is active")
+ assert_true(data.item_active(them,{"kind":"embassy"},"give"),"our embassy is active")
+ assert_false(data.item_active(them,{"kind":"alliance"},"give"))
+ assert_true(data.active_items(them).any(func(a): return a.kind == "trade" and a.cancel == "trade"),"listed as active, with cancel")
+ var ui = load("res://ui/diplomacy_screen.gd").new(data,{"trim":Color("c9a45a"),"panel":Color("16110d")},them)
+ add_child_autofree(ui)
+ var names = func(side: String) -> Array:
+  var ob: OptionButton = ui.find_child("Add_"+side,true,false)
+  var out = []
+  for i in ob.item_count: out.append(ob.get_item_text(i))
+  return out
+ assert_false(names.call("give").any(func(t): return t.begins_with("Trade agreement")),"active trade is not offered again")
+ assert_not_null(ui.find_child("Active_trade",true,false))
+ ui.offer.give.append({"kind":"gold","amount":500})
+ ui.refresh()
+ assert_false(names.call("give").any(func(t): return t.begins_with("500 gold")),"an item in the offer leaves the list")
+ assert_false(names.call("take").any(func(t): return t.begins_with("500 gold")),"on both sides")
+ # Filters: Hates me shows only factions whose attitude face is the lowest.
+ ui.filter = "hates"
+ for f in ui.shown_factions(): assert_eq(int(f.face),0)
+ ui.filter = "unmet"
+ for f in ui.shown_factions(): assert_false(f.contact)

@@ -7,6 +7,7 @@ extends GutTest
 
 const GameState = preload("res://core/game_state.gd")
 const Armies = preload("res://core/armies.gd")
+const UiData = preload("res://core/ui_data.gd")
 const Movement = preload("res://core/movement.gd")
 const Economy = preload("res://core/economy.gd")
 const TurnLoop = preload("res://core/turn_loop.gd")
@@ -240,3 +241,28 @@ func test_hiring_a_general_raises_a_new_garrisoned_army():
  assert_false(over.ok)
  assert_string_contains(", ".join(over.reasons),"Army limit")
 
+
+# No duplicate unit cards (owner spec 2026-10-07): one card per unit with its best source; a unit
+# recruitable both here and globally shows once, as local; the global drawer lists only the rest.
+func test_one_card_per_unit_with_the_best_source():
+ var s = GameState.from_data()
+ var data = UiData.new(s)
+ var id = s.armies_of(s.player_faction)[0]
+ var local = data.recruitment(id,"local").options
+ var units = local.map(func(o): return o.unit)
+ var unique = {}
+ for u in units: unique[u] = true
+ assert_eq(units.size(),unique.size(),"no unit twice in the drawer")
+ for o in local:
+  if o.available and Armies.can_recruit(s,id,o.unit,"local").ok: assert_eq(o.mode,"local","best source: local when possible")
+ var global = data.recruitment(id,"global").options.map(func(o): return o.unit)
+ for o in local:
+  if o.available and o.mode == "local": assert_false(o.unit in global,"%s not repeated in the global drawer" % o.unit)
+ # Varos culture rosters: the main building gives basic infantry (TW:WH3), so a new realm can recruit.
+ var MapRegistry = load("res://core/map_registry.gd")
+ MapRegistry.set_active(MapRegistry.CAMPAIGN)
+ var v = GameState.from_data()
+ var vid = v.armies_of("house_varn")[0]
+ v.player_faction = "house_varn"
+ assert_true(Armies.best_options(v,vid).any(func(o): return o.available),"Varn can recruit at the start")
+ MapRegistry.set_active(MapRegistry.DEFAULT)

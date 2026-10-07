@@ -24,6 +24,28 @@ var right: VBoxContainer
 var confirm: Control
 var offer := {"give":[],"take":[]}
 var tab := "deal" # deal or dossier (right column)
+var filter := "all"     # the faction list's quick filter (FILTERS)
+var sort_attitude := 0  # 1 attitude high first, -1 low first, 0 the default order (met first)
+# Quick filters of the faction list (owner spec 2026-10-07): attitude steps (face 0-4) and relations.
+const FILTERS = [["hates","Hates me"],["dislikes","Dislikes"],["neutral","Neutral"],["likes","Likes"],["loves","Loves"],["war","At war with me"],["allies","Allies"],["vassals","Vassals"],["met","Met"],["unmet","Not met"]]
+
+# The faction list after the quick filter and the attitude sort.
+func shown_factions() -> Array:
+ var out = view.factions.filter(func(f):
+  match filter:
+   "hates": return int(f.face) == 0
+   "dislikes": return int(f.face) == 1
+   "neutral": return int(f.face) == 2
+   "likes": return int(f.face) == 3
+   "loves": return int(f.face) == 4
+   "war": return f.relation == "war"
+   "allies": return f.relation == "ally"
+   "vassals": return f.relation == "vassal"
+   "met": return bool(f.contact)
+   "unmet": return not bool(f.contact)
+  return true)
+ if sort_attitude != 0: out.sort_custom(func(a,b): return float(a.attitude)*sort_attitude>float(b.attitude)*sort_attitude or (float(a.attitude) == float(b.attitude) and a.name<b.name))
+ return out
 
 # Attitude face in five steps (TW:WH3): 0 hostile ... 4 very friendly.
 class Face extends Control:
@@ -125,6 +147,7 @@ func _them() -> Dictionary:
 func refresh():
  view = data.diplomacy()
  _fill_side(left,view.me,true)
+ _fill_envoys(left)
  _fill_centre()
  var them = _them()
  _clear(right)
@@ -297,17 +320,45 @@ func _fill_centre():
   l.custom_minimum_size.x = hcol[1]
   head.add_child(l)
  centre.add_child(head)
+ # Quick filters and sorting (owner spec 2026-10-07).
+ var fl = HFlowContainer.new()
+ fl.name = "DiplomacyFilters"
+ fl.add_theme_constant_override("h_separation",4)
+ fl.add_theme_constant_override("v_separation",4)
+ for flt in FILTERS:
+  var fb = Button.new()
+  fb.name = "Filter_"+flt[0]
+  fb.text = flt[1]
+  fb.toggle_mode = true
+  fb.button_pressed = filter == flt[0]
+  fb.focus_mode = Control.FOCUS_NONE
+  var key = flt[0]
+  fb.pressed.connect(func():
+   filter = key if filter != key else "all"
+   refresh())
+  fl.add_child(fb)
+ var sb = Button.new()
+ sb.name = "SortAttitude"
+ sb.text = "Sort: attitude %s" % ("high first" if sort_attitude == 1 else ("low first" if sort_attitude == -1 else "off"))
+ sb.focus_mode = Control.FOCUS_NONE
+ sb.tooltip_text = "Sort the factions by their attitude toward you."
+ sb.pressed.connect(func():
+  sort_attitude = 1 if sort_attitude == 0 else (-1 if sort_attitude == 1 else 0)
+  refresh())
+ fl.add_child(sb)
+ centre.add_child(fl)
  var list = VBoxContainer.new()
  list.name = "DiplomacyFactions"
  list.add_theme_constant_override("separation",2)
- for f in view.factions:
+ for f in shown_factions():
   var b = Button.new()
   b.name = "Dip_"+f.id
   b.toggle_mode = true
   b.focus_mode = Control.FOCUS_NONE
   b.button_pressed = f.id == selected
   b.custom_minimum_size.y = 34
-  b.tooltip_text = "%s\n%s · %d settlements, %d armies%s" % [f.name,RELATION_NAMES.get(f.relation,""),f.settlements,f.armies,"" if f.contact else "\nNot met: an envoy reaches them"]
+  # The attitude and its reasons on hover (owner spec 2026-10-07).
+  b.tooltip_text = "%s\n%s · %d settlements, %d armies%s\nAttitude: %s%s" % [f.name,RELATION_NAMES.get(f.relation,""),f.settlements,f.armies,"" if f.contact else "\nNot met: an envoy reaches them",f.attitude_label,"".join(f.get("attitude_reasons",[]).map(func(r): return "\n  %+d  %s" % [int(r.value),r.text]))]
   b.pressed.connect(select.bind(f.id))
   var h = HBoxContainer.new()
   h.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -393,7 +444,11 @@ func _fill_deal():
   add.add_item("Add an item…")
   var entries = []
   var group = ""
+  # Not listed (owner spec 2026-10-07): items already active between you (shown as Active with Cancel
+  # below) and items already in this offer, on either side.
+  var in_offer = offer.give+offer.take
   for p in palette:
+   if p.item in in_offer or data.item_active(them.id,p.item,side[0]): continue
    if p.group != group:
     group = p.group
     add.add_separator(group)
@@ -402,6 +457,9 @@ func _fill_deal():
    add.add_item(p.name+("" if e.ok else " — "+str(e.reason)))
    add.set_item_disabled(add.item_count-1,not e.ok)
    entries.append(p)
+  if entries.is_empty():
+   add.set_item_text(0,"No more items available")
+   add.disabled = true
   var s2 = side[0]
   add.item_selected.connect(func(i):
    var p = entries[i-1] if i>0 and i-1<entries.size() else null
@@ -409,6 +467,31 @@ func _fill_deal():
    refresh())
   col.add_child(add)
   cols.add_child(col)
+ # Agreements already in force: listed as Active with Cancel (not offered again).
+ var actives = data.active_items(them.id)
+ if not actives.is_empty():
+  var act = HFlowContainer.new()
+  act.name = "ActiveItems"
+  act.add_theme_constant_override("h_separation",10)
+  act.add_child(UiKit.label("Active:",14,UiKit.TEXT_DIM))
+  for a in actives:
+   var chip = HBoxContainer.new()
+   chip.name = "Active_"+str(a.kind)
+   chip.add_child(UiKit.label(a.name,14,Color("9fd27f"),UiKit.FONT_BOLD))
+   var cx = Button.new()
+   cx.name = "CancelActive"
+   cx.text = "Cancel" if int(a.protected) == 0 else "Locked %d" % int(a.protected)
+   cx.disabled = int(a.protected)>0
+   cx.focus_mode = Control.FOCUS_NONE
+   cx.tooltip_text = "Cancel %s with %s." % [a.name,them.name] if int(a.protected) == 0 else "A treaty cannot be cancelled in its first %d turns (%d left)." % [20,int(a.protected)]
+   var cname = str(a.cancel)
+   cx.pressed.connect(func():
+    var r = data.cancel_agreement(them.id,cname)
+    _toast("Cancelled." if r.get("ok",false) else str(r.get("reason","Cannot cancel")))
+    refresh())
+   chip.add_child(cx)
+   act.add_child(chip)
+  centre.add_child(act)
  # The live acceptance bar and their reasons with numbers.
  var empty = offer.give.is_empty() and offer.take.is_empty()
  var ev = data.evaluate_offer(them.id,offer) if not empty else {"score":0.0,"chance":"No proposal","reasons":[],"accept":false,"blocked":true}
@@ -574,3 +657,18 @@ func _ask_war():
  box.grow_horizontal = Control.GROW_DIRECTION_BOTH
  box.grow_vertical = Control.GROW_DIRECTION_BOTH
  confirm = box
+
+# Your envoys on the road, with the turns until each arrives (owner spec 2026-10-07: every envoy
+# comes back with an answer, shown in a reply pop-up).
+func _fill_envoys(box: VBoxContainer):
+ var road = data.envoys_on_the_road()
+ box.add_child(UiKit.header("Envoys on the road",15))
+ var list = VBoxContainer.new()
+ list.name = "EnvoysOnTheRoad"
+ if road.is_empty(): list.add_child(UiKit.label("None.",14,UiKit.TEXT_DIM))
+ for e in road:
+  var what = {"embassy":"embassy","contact":"envoy","offer":"proposal"}.get(e.kind,e.kind)
+  var l = UiKit.label("%s: %s, %s" % [e.name,what,"arrives next turn" if int(e.turns)<=1 else "%d turns away" % int(e.turns)],14,UiKit.TEXT)
+  l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+  list.add_child(l)
+ box.add_child(list)

@@ -16,6 +16,8 @@ const Ai = preload("res://core/ai.gd")
 const WorldMap = preload("res://core/world_map.gd")
 
 func _initialize():
+ # Every faction is AI-run here, the player's too: its orders walk at End Turn.
+ load("res://core/movement.gd").continue_player_orders = true
  var args = Array(OS.get_cmdline_user_args())
  var turns = int(args[0]) if args.size()>0 and args[0].is_valid_int() else 50
  var seeds = [11,22,33,44,55]

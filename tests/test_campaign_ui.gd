@@ -83,7 +83,7 @@ func test_end_turn_runs_the_turn_loop_and_updates_the_ui():
  assert_eq(data.resources().year,41)
  assert_eq(data.resources().turn,2)
  assert_eq(data.resources().treasury,123456+net)
- assert_eq(data.events("turn")[0].year,41)
+ assert_eq(int(data.state.last_summary.year),40,"the turn summary of the year just closed")
  assert_eq(ui.resource_labels.year.text,"Year 41 · Turn 2")
  assert_eq(ui.resource_labels.treasury.text,UiKit.format_int(123456+net))
  assert_eq(ui.end_turn_year,ui.resource_labels.year,"the hourglass counter under End Turn shows the year")

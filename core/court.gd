@@ -510,13 +510,28 @@ static func _upbringing(state,c: Dictionary):
   if c.traits.size()>=3: break
   if r.randf()<float(trait_data().upbringing_chance)*0.25: add_trait(state,c,t)
 
+# The court's size cap (soft: births slow as it fills): from Realm Standing (data births.court_cap).
+static func court_cap(state,f: String) -> int:
+ var b = data().births
+ var cc = b.get("court_cap",[int(b.get("max_court",24)),int(b.get("max_court",24))])
+ var RS = load("res://core/realm_standing.gd")
+ var levels = RS.data().thresholds.size()
+ var t = clampf(float(RS.level(state,f)-1)/maxf(1.0,float(levels-1)),0.0,1.0)
+ return int(round(lerpf(float(cc[0]),float(cc[1]),t)))
+
+# The birth chance multiplier at the court's current size: 1 when empty, falling to 0 at the cap.
+static func birth_factor(state,f: String,size := -1) -> float:
+ var n = members(state,f).size() if size<0 else size
+ return pow(clampf(1.0-float(n)/maxf(1.0,float(court_cap(state,f))),0.0,1.0),float(data().births.get("slow",1.5)))
+
 static func _births(state,f: String) -> Array:
  var out = []
  var b = data().births
  var ids = members(state,f)
- if ids.size()>=int(b.get("max_court",9999)): return out
+ var cap = court_cap(state,f)
+ if ids.size()>=cap: return out
  for id in ids:
-  if out.size()+ids.size()>=int(b.get("max_court",9999)): break
+  if out.size()+ids.size()>=cap: break
   var c = state.characters[id]
   if c.gender != "m" or str(c.spouse) == "" or not is_adult(c): continue
   var w = get_char(state,c.spouse)
@@ -524,7 +539,7 @@ static func _births(state,f: String) -> Array:
   var together = c.children.filter(func(k): return k in w.children).size()
   if together>=int(b.max_children): continue
   var r = rng_for(state,["birth",id])
-  if r.randf()>=float(b.chance): continue
+  if r.randf()>=float(b.chance)*birth_factor(state,f,ids.size()+out.size()): continue
   var g = "m" if r.randf()<0.5 else "f"
   var kid = new_character(state,c.faction,{"name":_given(c.culture,g,r),"house":c.house,"race":c.race,"culture":c.culture,"gender":g,"age":0.0,"father":c.id,"mother":w.id,"loyalty":int(data().loyalty.start)+10,"role":"child"})
   c.children.append(kid)

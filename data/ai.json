@@ -98,6 +98,7 @@
     "passive": {"aggression": 0.15, "boldness": 0.85, "armies": 0.8, "defense": 1.4},
     "defensive": {"aggression": 0.6, "defense": 1.6},
     "proud": {"aggression": 1.2},
+    "raider": {"aggression": 3.0, "boldness": 1.4, "range": 3.0, "_note": "Northern orc raiders (owner spec 2026-10-07: Snowtusk sat idle): they look for war and march range times farther than others (war_range, beyond war_max_meters), against the Greywall and the lands near it."},
     "levy_heavy": {"composition": {"spear": 0.2, "infantry": 0.1, "missile": 0.2, "cavalry": 0.05, "levy": 0.45}}
   }
 }

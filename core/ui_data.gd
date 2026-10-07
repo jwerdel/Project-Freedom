@@ -28,7 +28,9 @@ const Realm = preload("res://core/realm.gd")
 const Land = preload("res://core/land.gd")
 const Characters = preload("res://core/characters.gd")
 const MOCK = "res://data/mock_ui.json"
-const CATEGORIES = [{"id":"turn","name":"Turn Summary"},{"id":"buildings","name":"Buildings Constructed"},{"id":"war","name":"Wars and Battles"},{"id":"court","name":"Court and Realm"},{"id":"world","name":"World Events"}]
+# Event Messages groups (owner spec 2026-10-07): the turn summary (grouped, only what matters to you),
+# your wars and battles, your court and realm, and the world this turn (expires after one turn).
+const CATEGORIES = [{"id":"turn","name":"Turn Summary"},{"id":"war","name":"Your Wars and Battles"},{"id":"court","name":"Court and Realm"},{"id":"world","name":"World (this turn)"}]
 
 var state
 var mock: Dictionary
@@ -103,12 +105,11 @@ func end_turn_async(tree: SceneTree,budget_ms := 12.0):
  return _after_turn(report,before)
 
 func _after_turn(report: Dictionary,before: Dictionary) -> Dictionary:
- # Proposals and calls to arms waiting in Diplomacy (diplomacy-design §15: at most one per AI faction).
- var props = proposals().filter(func(p): return int(state.diplomacy.proposals[p.index].turn) >= int(state.turn)-1)
- if not props.is_empty():
-  var e = Chronicle.entry(state.year,"court","Envoys await you","%s. Open Diplomacy to answer." % "; ".join(props.map(func(p): return p.text)),state.player_faction)
-  state.chronicle.append(e)
-  report.entries.append(e)
+ # Proposals waiting in Diplomacy show in the turn summary and on the End Turn button (no longer a
+ # chronicle line repeated every turn, 2026-10-07). The summary is built before the feed is told of
+ # the new entries, so the Event Messages show it at once.
+ report.alerts = alerts_since(before)
+ state.last_summary = _build_summary(report)
  for e in report.entries: event_added.emit(e)
  # Standing orders walked first, then the AI phase: one path per army for the map to replay.
  var moves = {}
@@ -119,7 +120,8 @@ func _after_turn(report: Dictionary,before: Dictionary) -> Dictionary:
  report.all_moves = moves
  for id in moves: army_moved.emit(id,moves[id])
  changed.emit()
- report.alerts = alerts_since(before)
+ # Answers to your envoys this turn: one reply pop-up each (owner spec 2026-10-07).
+ for rep in unseen_replies(): report.alerts.append(_reply_alert(rep))
  for a in report.alerts: alert.emit(a)
  return report
 
@@ -164,10 +166,15 @@ func event_categories() -> Array:
 # Event Messages: building completions only for the player's own settlements (the chronicle keeps all).
 func events(category: String) -> Array:
  var out = []
+ var last = int(state.year)-1 # the year the last End Turn closed
  for e in state.chronicle:
-  # Wars, battles and captures are news from the whole map (AI wars included); other categories
-  # are the player's own.
-  if e.category == category and (category == "war" or e.get("faction",state.player_faction) == state.player_faction): out.append(e)
+  var cat = str(e.category)
+  match category:
+   "war": if cat == "war" and _involves_me(e): out.append(e)
+   # The world: others' wars, captures, titles and marriages, from the last turn only.
+   "world": if cat in ["war","world"] and int(e.year)>=last and not _involves_me(e): out.append(e)
+   "turn": pass # the grouped turn summary (turn_summary)
+   _: if cat == category and e.get("faction",state.player_faction) == state.player_faction: out.append(e)
  out.reverse() # newest first
  return out
 
@@ -216,8 +223,8 @@ func settlement(id: String) -> Dictionary:
 # Something can be built or upgraded in this settlement now (TW:WH3 green hammer on the map banner
 # and in lists; the building cards show which).
 func upgrade_available(id: String) -> bool:
- if not Construction.in_progress(state,id).is_empty(): return false
  for i in state.settlements[id].buildings.size():
+  if not Construction.in_slot(state,id,i).is_empty(): continue
   for o in Construction.options(state,id,i):
    if o.available: return true
  return false
@@ -256,10 +263,10 @@ func province_stats(province_id: String) -> Dictionary:
 # A slot under construction also carries "construction" (see construction()).
 func building_slots(settlement_id: String) -> Array:
  var s = state.settlements[settlement_id]
- var pending = construction(settlement_id)
  var out = []
  for i in s.buildings.size():
   var b = s.buildings[i]
+  var pending = construction(settlement_id,i)
   var view = {"slot":i,"empty":true}
   if b.has("chain"):
    var c = Buildings.chain(b.chain)
@@ -267,9 +274,7 @@ func building_slots(settlement_id: String) -> Array:
     "level":int(b.level),"max_level":Buildings.max_level(b.chain),"main":c.get("main",false),"effects":Buildings.effect_lines(b.chain,int(b.level))}
    # Upgradeable now (TW:WH3 green arrow on the card).
    view.upgrade = pending.is_empty() and s.owner == state.player_faction and Construction.can_build(state,settlement_id,i,b.chain).ok
-   # Upgradeable now (TW:WH3 green arrow on the card).
-   view.upgrade = pending.is_empty() and s.owner == state.player_faction and Construction.can_build(state,settlement_id,i,b.chain).ok
-  if not pending.is_empty() and pending.slot == i:
+  if not pending.is_empty():
    view.construction = pending
    if view.has("empty"):
     view.erase("empty")
@@ -286,14 +291,25 @@ func settlement_defense(settlement_id: String) -> int:
 
 # --- Construction --------------------------------------------------------------
 
-# The settlement's construction in progress, or {}: {slot, chain, name, level, turns_left,
-# turns_total, cost, progress (0..1), refund (gold if cancelled now)}.
-func construction(settlement_id: String) -> Dictionary:
- var c = Construction.in_progress(state,settlement_id)
+# A construction in progress (in this slot, or the first one with slot -1), or {}: {settlement, slot,
+# chain, name, level, turns_left, turns_total, cost, progress (0..1), refund (gold if cancelled now)}.
+func construction(settlement_id: String,slot := -1) -> Dictionary:
+ var c = Construction.in_progress(state,settlement_id) if slot<0 else Construction.in_slot(state,settlement_id,slot)
  if c.is_empty(): return {}
- return {"slot":int(c.slot),"chain":c.chain,"name":Buildings.building_name(settlement_id,c.chain,int(c.level)),"level":int(c.level),
+ return {"settlement":settlement_id,"slot":int(c.slot),"chain":c.chain,"name":Buildings.building_name(settlement_id,c.chain,int(c.level)),"level":int(c.level),
   "turns_left":int(c.turns_left),"turns_total":int(c.turns_total),"cost":int(c.cost),
-  "progress":1.0-float(c.turns_left)/maxf(1.0,float(c.turns_total)),"refund":Construction.refund_amount(state,settlement_id)}
+  "progress":1.0-float(c.turns_left)/maxf(1.0,float(c.turns_total)),"refund":Construction.refund_amount(state,settlement_id,int(c.slot))}
+
+# The realm construction queue (owner spec 2026-10-07): everything building in your settlements,
+# soonest first: [construction views as above, plus settlement_name].
+func realm_constructions() -> Array:
+ var out = []
+ for e in Construction.realm_jobs(state,state.player_faction):
+  var v = construction(e.settlement,int(e.job.slot))
+  v.settlement_name = settlement(e.settlement).name
+  out.append(v)
+ out.sort_custom(func(a,b): return [a.turns_left,a.settlement_name,a.slot]<[b.turns_left,b.settlement_name,b.slot])
+ return out
 
 # Building browser entries for a slot (see Construction.options); only the owner may build.
 func building_options(settlement_id: String,slot: int) -> Array:
@@ -310,9 +326,9 @@ func start_construction(settlement_id: String,slot: int,chain_id: String) -> Dic
  if r.ok: changed.emit()
  return r
 
-func cancel_construction(settlement_id: String) -> int:
+func cancel_construction(settlement_id: String,slot := -1) -> int:
  if state.settlements[settlement_id].owner != state.player_faction: return 0
- var refund = Construction.cancel(state,settlement_id)
+ var refund = Construction.cancel(state,settlement_id,slot)
  changed.emit()
  return refund
 
@@ -390,7 +406,7 @@ func recruitment(army_id: String,mode := "local") -> Dictionary:
  var towns = []
  for sid in ctx.settlements: towns.append({"id":sid,"name":WorldMap.region(sid).settlement.name,"population":int(state.settlements[sid].population)})
  return {"ok":ctx.ok,"reason":ctx.reason,"province":ctx.province,"province_name":WorldMap.province(ctx.province).name if ctx.province != "" else "",
-  "settlements":towns,"min_population":int(Armies.data().recruitment.min_population),"options":Armies.options(state,army_id,mode),"mode":mode,
+  "settlements":towns,"min_population":int(Armies.data().recruitment.min_population),"options":_recruit_options(army_id,mode),"mode":mode,
   "capacity":Armies.capacity(state,army_id),"queued":state.army_state[army_id].queue.size(),
   "global_cost":float(Armies.data().recruitment.global.cost_multiplier),"global_turns":int(Armies.data().recruitment.global.turns_multiplier)}
 
@@ -438,6 +454,7 @@ func order_move(army_id: String,target: Vector2) -> Dictionary:
  if r.ok:
   state.army_state[army_id].erase("attack") # a new order replaces an attack order
   army_moved.emit(army_id,r.moved)
+  _host_follow(army_id)
   changed.emit()
  return r
 
@@ -464,7 +481,7 @@ func order_path(army_id: String) -> Dictionary:
  var m = army_movement(army_id)
  if m.order.is_empty(): return {"points":[],"turns":[]}
  var pts = [m.position]+m.order
- return {"points":pts,"turns":Movement.simulate(pts,m.points,m.max_points,state.road_level).turns}
+ return {"points":pts,"turns":Movement.simulate(pts,m.points,m.max_points,state.road_level).turns,"settlement":str(state.army_state[army_id].get("order_settlement",""))}
 
 # Upkeep per turn of one unit of this type.
 func unit_upkeep(unit_id: String) -> int:
@@ -548,7 +565,8 @@ func _refresh_attack_orders():
    continue
   var ap = Battles.approach(state,id,t)
   if ap.ok and not ap.get("plan",{}).has("points"): continue # already there
-  if ap.get("plan",{}).get("ok",false): Movement.order(state,id,ap.point)
+  # Re-planned toward a moving target; under the hold rule it only redraws the path (no walking).
+  if ap.get("plan",{}).get("ok",false): Movement.order(state,id,ap.point,not Movement.holds_orders(state,a.faction))
 
 # The first of the player's attack orders whose army now stands within attack range of its target:
 # {army, point, target} for the pre-battle panel (opened at the start of the turn), or {}.
@@ -709,6 +727,8 @@ func evaluate_offer(f: String,offer: Dictionary) -> Dictionary:
 func propose_offer(f: String,offer: Dictionary) -> Dictionary:
  var r = load("res://core/diplomacy.gd").propose(state,player_faction_id(),f,offer)
  if r.get("accept",false): add_event("court","Agreement with %s" % faction(f).name,"They accept your proposal.")
+ # An answer at once (you have met): the reply pop-up now. A sent envoy answers when it arrives.
+ if not r.get("reply",{}).is_empty(): alert.emit(_reply_alert(r.reply))
  changed.emit()
  return r
 
@@ -829,7 +849,8 @@ func court_view(f := "") -> Dictionary:
  f = f if f != "" else player_faction_id()
  var members = C.members(state,f).map(func(id): return character_view(id))
  return {"faction":f,"faction_data":faction(f),"ruler":C.ruler(state,f),"heir":C.heir(state,f),"members":members,"pending_careers":C.careers_pending(state,f),
-  "careers":C.data().careers.keys().map(func(k): return {"id":k,"name":C.data().careers[k].name,"text":C.data().careers[k].text})}
+  "careers":C.data().careers.keys().map(func(k): return {"id":k,"name":C.data().careers[k].name,"text":C.data().careers[k].text}),
+  "size":members.size(),"cap":C.court_cap(state,f),"birth_factor":C.birth_factor(state,f)}
 
 func _court_call(r: Dictionary) -> Dictionary:
  changed.emit()
@@ -1145,8 +1166,12 @@ func attack_preview(army_id: String,point: Vector2) -> Dictionary:
 #   funds:        the treasury is in debt or will be after this turn's income and upkeep
 # Returns [{kind, label, items: [{type: settlement|army, id, name}]}], in this order.
 # End Turn warnings (TW:WH3, docs/tw-ui-parity.md §15): each skippable, each item jumps to its subject.
-const WARNINGS = [["funds","Low funds"],["settlement_upgrade","Settlement can be upgraded"],["construction","Idle construction slots"],
- ["army_moves","Lords with movement left"],["skill_points","Unspent skill points"],["recruit","Army can recruit"]]
+# [kind, label, short text on the End Turn button, icon] in priority order (owner spec 2026-10-07: the
+# button itself shows the top item).
+const WARNINGS = [["choices","A choice awaits","A choice awaits you","chronicle"],["diplomacy","Diplomatic replies","Envoys await your answer","diplomacy"],
+ ["funds","Low funds","Treasury will run dry","coin"],["skill_points","Unspent skill points","Lord has skill points","star"],
+ ["settlement_upgrade","Settlement can be upgraded","Settlement can be upgraded","spire"],["construction","Idle construction slots","Idle building slot","hammer"],
+ ["orders","Orders waiting","Army order waiting","horn"],["army_moves","Lords with movement left","Lord has not moved","armies"],["recruit","Army can recruit","Army can recruit","sword"]]
 
 func end_turn_warnings(enabled := {}) -> Array:
  var out = []
@@ -1155,14 +1180,25 @@ func end_turn_warnings(enabled := {}) -> Array:
   if not enabled.get(w[0],true): continue
   var items = []
   match w[0]:
+   "choices":
+    # Absorbed families to decide (core/court.gd) and children whose career is due.
+    for a in absorptions(): items.append({"type":"absorption","id":str(a.get("fallen","")),"name":"The fate of %s" % str(a.get("name",a.get("fallen","")))})
+    if state.get("courts") != null and not state.courts.is_empty():
+     for cid in load("res://core/court.gd").careers_pending(state,f): items.append({"type":"career","id":cid,"name":"%s chooses a path" % state.characters[cid].name})
+   "diplomacy":
+    for rep in unseen_replies(): items.append({"type":"reply","id":str(rep.id),"name":"%s answers your envoy" % faction(rep.from).name})
+    for p in proposals(): items.append({"type":"diplomacy","id":str(p.get("from","")),"name":str(p.get("text","An offer"))})
+   "orders":
+    for id in waiting_orders(): items.append({"type":"army","id":id,"name":state.army_state[id].display_name})
    "funds":
     if Realm.in_debt(state,f) or int(state.treasury[f])+int(Economy.faction_ledger(state,f).net)<0:
      items.append({"type":"faction","id":f,"name":"Treasury"})
    "construction":
+    # An empty slot, not building, with something it could build now (every slot builds at once).
     for sid in state.settlements_of(f):
-     if not Construction.in_progress(state,sid).is_empty(): continue
      var can = false
      for i in state.settlements[sid].buildings.size():
+      if state.settlements[sid].buildings[i].has("chain") or not Construction.in_slot(state,sid,i).is_empty(): continue
       for o in Construction.options(state,sid,i):
        if o.available: can = true
      if can: items.append({"type":"settlement","id":sid,"name":settlement(sid).name})
@@ -1174,7 +1210,6 @@ func end_turn_warnings(enabled := {}) -> Array:
    "settlement_upgrade":
     # The main building (the settlement level) can go up now.
     for sid in state.settlements_of(f):
-     if not Construction.in_progress(state,sid).is_empty(): continue
      var s = state.settlements[sid]
      var main = Buildings.main_chain_id(s.type)
      for i in s.buildings.size():
@@ -1190,7 +1225,7 @@ func end_turn_warnings(enabled := {}) -> Array:
      var a = state.army_state[id]
      if Armies.card_count(a)>=Armies.max_units() or not a.queue.is_empty(): continue
      if Armies.options(state,id,"local").any(func(o): return o.available): items.append({"type":"army","id":id,"name":a.display_name})
-  if not items.is_empty(): out.append({"kind":w[0],"label":w[1],"items":items})
+  if not items.is_empty(): out.append({"kind":w[0],"label":w[1],"short":w[2],"icon":w[3],"items":items})
  return out
 
 # --- Panels and lists of the TW:WH3 layout (docs/tw-ui-parity.md L2-L7) -------------------------
@@ -1353,3 +1388,218 @@ func _court_character(id: String) -> Dictionary:
  return {"army_id":id,"character_id":id,"name":cv.full_name,"epithet":cv.epithet,"level":cv.level,"xp":{"xp":cv.xp,"from":C.xp_for_level(cv.level),"to":cv.next_xp},
   "status":"ok","faction":cv.faction,"faction_data":faction(cv.faction),"player_owned":cv.faction == state.player_faction,
   "stats":Characters.stats({"rank":cv.level}),"traits":traits,"rows":rows,"points":cv.points,"auto":false,"army":{},"men":0,"location":cv.role_text,"court":cv}
+
+# A Host's members march with their leader when the player orders it (core/hosts.gd follow).
+func _host_follow(army_id: String):
+ if state.get("hosts") == null or not state.hosts.has(army_id): return
+ var Hosts = load("res://core/hosts.gd")
+ var before = {}
+ for m in state.hosts[army_id].members: before[m] = Movement.position(state,m)
+ Hosts.follow(state)
+ for m in before:
+  if state.army_state.has(m) and Movement.position(state,m) != before[m]: army_moved.emit(m,[before[m],Movement.position(state,m)])
+
+# Waiting multi-turn orders (Movement.holds_orders): the player's armies whose order still has a
+# path and who have points to walk it. continue_orders walks them (one army or all).
+func waiting_orders() -> Array:
+ var out = []
+ for id in state.armies_of(state.player_faction):
+  var a = state.army_state[id]
+  if not a.get("order",[]).is_empty() and float(a.points)>0.5: out.append(id)
+ return out
+
+func continue_orders(ids := []) -> int:
+ var n = 0
+ for id in (ids if not ids.is_empty() else waiting_orders()):
+  if not state.army_state.has(id) or state.army_state[id].faction != state.player_faction: continue
+  var walked = Movement.continue_order(state,id)
+  if walked.size()>1:
+   n += 1
+   army_moved.emit(id,walked)
+   _host_follow(id)
+ if n>0: changed.emit()
+ return n
+
+# True when a settlement has walls (besiege rather than storm; core/ai.gd walled).
+func settlement_walled(sid: String) -> bool:
+ return state.settlements.has(sid) and load("res://core/ai.gd").walled(state,sid)
+
+# The recruitment drawer's cards, one per unit (owner spec 2026-10-07): the local drawer shows each
+# unit once from its best source (local, else global); the global drawer only the units that cannot
+# be recruited locally.
+func _recruit_options(army_id: String,mode: String) -> Array:
+ if mode == "global":
+  var here = {}
+  for o in Armies.options(state,army_id,"local"):
+   if o.available: here[o.unit] = true
+  return Armies.options(state,army_id,"global").filter(func(o): return not here.has(o.unit))
+ return Armies.best_options(state,army_id)
+
+# --- Replies to your envoys and proposals (owner spec 2026-10-07) -------------------------------------
+
+# Replies not yet shown: [reply records, see Diplomacy.add_reply].
+func unseen_replies() -> Array:
+ return load("res://core/diplomacy.gd").d(state).replies.filter(func(r): return not bool(r.seen))
+
+func mark_reply_seen(id: int):
+ for r in load("res://core/diplomacy.gd").d(state).replies:
+  if int(r.id) == id: r.seen = true
+ changed.emit()
+
+# A reply as the pop-up shows it: {kind "reply", id, faction, faction_data, ruler (character view for
+# the portrait), ruler_name, title, blurb (their words), outcome, ok}.
+func reply_view(r: Dictionary) -> Dictionary:
+ var D = load("res://core/diplomacy.gd")
+ var C = load("res://core/court.gd")
+ var f = str(r.from)
+ var cfg = D.data().replies
+ var att = D.attitude(state,f,player_faction_id())
+ var tone = "warm" if att>=float(cfg.warm_at) else ("cordial" if att>=float(cfg.cordial_at) else ("hostile" if att<=float(cfg.hostile_at) else "cool"))
+ var ok = bool(r.ok)
+ var line = ""
+ match str(r.kind):
+  "embassy": line = str(cfg.embassy.accept if ok else cfg.embassy.decline)
+  "contact": line = str(cfg.contact.accept)
+  _:
+   var lines = cfg.accept[tone] if ok else cfg.decline[tone]
+   line = str(lines[int(r.id)%lines.size()])
+ var reason = str(r.reason).trim_suffix(".")
+ line = line.replace("{us}",faction(f).name).replace("{you}",faction(player_faction_id()).name).replace("{reason}",reason.to_lower() if reason != "" else "it is not in our interest")
+ var rid = C.ruler(state,f) if state.get("courts") != null else ""
+ var ruler = character_view(rid) if rid != "" and state.characters.has(rid) else {}
+ var what = {"embassy":"your embassy","contact":"your envoy"}.get(str(r.kind),"")
+ if what == "":
+  var parts = []
+  for it in r.get("offer",{}).get("give",[]): parts.append(_item_name(it))
+  for it in r.get("offer",{}).get("take",[]): parts.append("you ask for "+_item_name(it))
+  what = ", ".join(parts) if not parts.is_empty() else "your proposal"
+ var outcome = ("Accepted: %s." % what) if ok else ("Declined: %s." % what)
+ return {"kind":"reply","id":int(r.id),"faction":f,"faction_data":faction(f),"ruler":ruler,"ruler_name":str(ruler.get("full_name",ruler.get("name",faction(f).name))),
+  "title":"%s answers" % faction(f).name,"blurb":line,"outcome":outcome,"ok":ok,"text":"%s\n%s" % [line,outcome]}
+
+func _reply_alert(r: Dictionary) -> Dictionary:
+ return reply_view(r)
+
+# Envoys of yours on the road: [{to, name, kind, turns}] (the diplomacy screen lists them).
+func envoys_on_the_road() -> Array:
+ var D = load("res://core/diplomacy.gd")
+ return D.envoys_from(state,player_faction_id()).map(func(e): return {"to":e.to,"name":faction(e.to).name,"kind":str(e.kind),"turns":maxi(0,int(e.arrive)-int(state.turn))})
+
+func reply_by_id(id: int) -> Dictionary:
+ for r in load("res://core/diplomacy.gd").d(state).replies:
+  if int(r.id) == id: return r
+ return {}
+
+# Agreements already active between you and f (owner spec 2026-10-07): they leave the Add Item lists
+# and show as "Active" with Cancel instead. [{kind, side (give/take/both), name, cancel (the name for
+# cancel_agreement), protected (turns before it may be cancelled)}].
+func active_items(f: String) -> Array:
+ var D = load("res://core/diplomacy.gd")
+ var me = player_faction_id()
+ var out = []
+ var t = D.treaty(state,me,f)
+ if not t.is_empty():
+  var k = str(t.kind)
+  out.append({"kind":k,"side":"both","name":{"alliance":"Military alliance","peace":"Peace","ceasefire":"Ceasefire","defensive":"Defensive pact","nap":"Non-aggression pact"}.get(k,k.capitalize()),"cancel":k,"protected":D.protected_turns_left(state,me,f)})
+ var ag = D.d(state).agreements.get(D.key(me,f),{})
+ for k in ["trade","defensive","nap"]:
+  if ag.has(k): out.append({"kind":k,"side":"both","name":{"trade":"Trade agreement","defensive":"Defensive pact","nap":"Non-aggression pact"}[k],"cancel":k,"protected":0})
+ if ag.has("embassy:"+me): out.append({"kind":"embassy","side":"both","name":"Embassy (yours)","cancel":"embassy:"+me,"protected":0})
+ if ag.has("access:"+f): out.append({"kind":"access","side":"give","name":"Military access (theirs, in your land)","cancel":"access:"+f,"protected":0})
+ if ag.has("access:"+me): out.append({"kind":"access","side":"take","name":"Military access (yours, in their land)","cancel":"access:"+me,"protected":0})
+ return out
+
+# True when an item is already active on this side of a deal with f.
+func item_active(f: String,item: Dictionary,side: String) -> bool:
+ for a in active_items(f):
+  if a.kind == str(item.get("kind","")) and (a.side == "both" or a.side == side): return true
+ return false
+
+# --- The turn summary (owner spec 2026-10-07) ----------------------------------------------------------
+# Only what matters to you, short and grouped: your settlements, your armies and battles, diplomacy,
+# your court, threats near your borders. Every row jumps to its subject: {text, target {type, id}}.
+# Built once after End Turn into state.last_summary (saved); threats are read live.
+const SUMMARY_GROUPS = [["settlements","Your settlements"],["armies","Your armies and battles"],["diplomacy","Diplomacy"],["court","Your court"],["threats","Threats near your borders"]]
+const THREAT_METRES = 450.0
+
+func _build_summary(report: Dictionary) -> Dictionary:
+ var me = player_faction_id()
+ var g = {"settlements":[],"armies":[],"diplomacy":[],"court":[]}
+ for c in report.get("completed",[]):
+  if c.faction == me: g.settlements.append({"text":"%s completed in %s" % [c.name,settlement(c.settlement).name],"target":{"type":"settlement","id":c.settlement}})
+ for ev in report.get("sieges",[]):
+  var sid = str(ev.get("settlement",""))
+  if sid == "" or not state.settlements.has(sid): continue
+  if state.settlements[sid].owner == me or str(ev.get("faction","")) == me:
+   var what = {"siege_lifted":"The siege of %s is lifted","surrendered":"%s surrendered"}.get(str(ev.kind),"")
+   if what != "": g.settlements.append({"text":what % settlement(sid).name,"target":{"type":"settlement","id":sid}})
+ var recruits = {}
+ for r in report.get("recruited",[]):
+  if r.faction == me: recruits[r.army] = int(recruits.get(r.army,0))+1
+ for id in recruits:
+  if state.army_state.has(id): g.armies.append({"text":"%d unit%s joined %s" % [recruits[id],"" if recruits[id] == 1 else "s",state.army_state[id].display_name],"target":{"type":"army","id":id}})
+ for e in report.get("entries",[]):
+  var cat = str(e.get("category",""))
+  if cat == "war" and _involves_me(e):
+   var t = {"type":"settlement","id":str(e.settlement)} if e.has("settlement") else {"type":"faction","id":str(e.get("with",e.get("faction","")))}
+   g.armies.append({"text":str(e.title)+(": "+str(e.text) if str(e.text).length()<90 else ""),"target":t})
+  elif cat == "court" and str(e.get("faction","")) == me and str(e.title) != "Envoys await you":
+   g.court.append({"text":str(e.text) if str(e.text) != "" else str(e.title),"target":{"type":"court","id":""}})
+ for a in report.get("alerts",[]):
+  if a.kind == "war": g.diplomacy.append({"text":a.text,"target":{"type":"diplomacy","id":str(a.faction)}})
+  if a.kind == "settlement_lost": g.settlements.append({"text":a.text,"target":{"type":"settlement","id":str(a.settlement)}})
+ for rep in unseen_replies(): g.diplomacy.append({"text":"%s answers: %s" % [faction(rep.from).name,"accepted" if rep.ok else "declined"],"target":{"type":"reply","id":str(rep.id)}})
+ var props = proposals()
+ if not props.is_empty(): g.diplomacy.append({"text":"%d proposal%s your answer" % [props.size()," awaits" if props.size() == 1 else "s await"],"target":{"type":"diplomacy","id":str(props[0].from)}})
+ for a in report.get("ai",{}).get("realm",{}).get("actions",[]):
+  if str(a.get("with","")) == me and str(a.action) in ["alliance","peace","trade","vassalize","seek_protection"]:
+   g.diplomacy.append({"text":"%s: %s with you" % [faction(a.faction).name,{"alliance":"an alliance","peace":"peace","trade":"trade","vassalize":"fealty","seek_protection":"fealty"}[str(a.action)]],"target":{"type":"diplomacy","id":str(a.faction)}})
+ return {"year":int(report.get("year",state.year-1)),"groups":g}
+
+# Did a chronicle entry concern the player (a side of it, or a settlement of theirs)?
+func _involves_me(e: Dictionary) -> bool:
+ var me = player_faction_id()
+ if str(e.get("faction","")) == me or str(e.get("with","")) == me: return true
+ var sid = str(e.get("settlement",""))
+ return sid != "" and state.settlements.has(sid) and state.settlements[sid].owner == me
+
+# The Event Messages' summary: [{id, name, rows: [{text, target}]}], empty groups left out.
+func turn_summary() -> Array:
+ var stored = state.get("last_summary") if state.get("last_summary") != null else {}
+ var g = stored.get("groups",{})
+ var out = []
+ for grp in SUMMARY_GROUPS:
+  var rows = threats() if grp[0] == "threats" else g.get(grp[0],[])
+  if not rows.is_empty(): out.append({"id":grp[0],"name":grp[1],"rows":rows})
+ return out
+
+# Armies of factions at war with you (or hostile to you) near your settlements, strongest first.
+func threats() -> Array:
+ var me = player_faction_id()
+ var D = load("res://core/diplomacy.gd")
+ var out = []
+ for id in state.army_state:
+  var a = state.army_state[id]
+  if a.faction == me or a.units.is_empty(): continue
+  var hostile = Battles.at_war(state,me,a.faction) or D.relation(state,me,a.faction) == "hostile"
+  if not hostile: continue
+  var p = Movement.position(state,id)
+  var near = ""
+  var best = THREAT_METRES
+  for sid in state.settlements_of(me):
+   var d = p.distance_to(WorldMap.settlement_position(sid))
+   if d<best:
+    best = d
+    near = sid
+  if near == "": continue
+  out.append({"text":"%s near %s (%s men, %s)" % [a.display_name,settlement(near).name,UiKit_format(Armies.men(a)),"at war" if Battles.at_war(state,me,a.faction) else "hostile"],"target":{"type":"army","id":id},"men":Armies.men(a)})
+ out.sort_custom(func(x,y): return int(x.men)>int(y.men))
+ return out.slice(0,6)
+
+func UiKit_format(n: int) -> String:
+ var s = str(n)
+ var out = ""
+ while s.length()>3:
+  out = ","+s.substr(s.length()-3)+out
+  s = s.substr(0,s.length()-3)
+ return s+out

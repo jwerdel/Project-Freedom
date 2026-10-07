@@ -12,8 +12,10 @@ signal cancel_order_requested(army_id: String)
 signal army_raised(army_id: String)
 signal warning_step(dir: int)
 signal warning_skip
+signal continue_orders_requested(ids: Array) # [] = every waiting order
 
 const UiKit = preload("res://ui/ui_kit.gd")
+const Portrait = preload("res://ui/portrait.gd")
 const Widgets = preload("res://ui/widgets.gd")
 const Cards = preload("res://ui/cards.gd")
 const Minimap = preload("res://ui/minimap.gd")
@@ -223,6 +225,7 @@ func _build_minimap():
   ["events","chronicle","Events\nShow or hide the event messages",true],
   ["lords","lords","Lords and heroes\nYour armies and their generals",true],
   ["provinces","settlements","Provinces\nYour provinces: income, growth and public order",true],
+  ["construction","hammer","Construction\nEverything building across your realm: turns left, cancel and refund",true],
   ["missions","objectives","Missions",false],
   ["factions","diplomacy","Known factions\nWar and peace with you",true]]
  for it in items:
@@ -236,7 +239,7 @@ func _build_minimap():
  row.add_child(summary)
  top_buttons.tactical.pressed.connect(func(): minimap_frame.visible = not minimap_frame.visible)
  top_buttons.events.pressed.connect(func(): events_frame.visible = not events_frame.visible)
- for k in ["lords","provinces","factions"]: top_buttons[k].pressed.connect(toggle_dropdown.bind(k))
+ for k in ["lords","provinces","construction","factions"]: top_buttons[k].pressed.connect(toggle_dropdown.bind(k))
  summary.pressed.connect(open_faction_summary)
  _anchor(row,1,0,1,0,Rect2(-300,10,-14,56))
  row.grow_horizontal = Control.GROW_DIRECTION_BEGIN
@@ -296,9 +299,13 @@ func _rebuild_events():
  _clear(event_box)
  for cat in data.event_categories():
   var entries = data.events(cat.id)
-  var open = not collapsed.get(cat.id,false)
+  var summary = data.turn_summary() if cat.id == "turn" else []
+  # The world is collapsed until opened (owner spec 2026-10-07).
+  var open = not collapsed.get(cat.id,cat.id == "world")
   var head = Button.new()
-  head.text = "%s  %s  (%d)" % ["–" if open else "+",cat.name,entries.size()]
+  var count = entries.size()
+  if cat.id == "turn": for grp in summary: count += grp.rows.size()
+  head.text = "%s  %s  (%d)" % ["–" if open else "+",cat.name,count]
   head.alignment = HORIZONTAL_ALIGNMENT_LEFT
   head.focus_mode = Control.FOCUS_NONE
   head.add_theme_font_size_override("font_size",14)
@@ -307,6 +314,9 @@ func _rebuild_events():
    _rebuild_events())
   event_box.add_child(head)
   if not open: continue
+  if cat.id == "turn":
+   _summary_rows(summary)
+   continue
   for e in entries.slice(0,6):
    var row = VBoxContainer.new()
    row.add_theme_constant_override("separation",0)
@@ -698,6 +708,24 @@ func show_army(army_id: String,location: String):
     data.form_host(army_id,near)
     show_army(army_id,army_location))
   actions.add_child(host)
+  # A multi-turn order waits for your confirm (owner spec 2026-10-07; Settings can make orders continue).
+  var waiting = data.waiting_orders()
+  if army_id in waiting:
+   var cont = Button.new()
+   cont.name = "ContinueOrder"
+   cont.text = "Continue order"
+   cont.focus_mode = Control.FOCUS_NONE
+   cont.tooltip_text = "This army's march waits for you: walk on along its path this turn."
+   cont.pressed.connect(func(): continue_orders_requested.emit([army_id]))
+   actions.add_child(cont)
+  if waiting.size()>1 or (waiting.size() == 1 and not army_id in waiting):
+   var all = Button.new()
+   all.name = "ContinueAllOrders"
+   all.text = "Continue all orders (%d)" % waiting.size()
+   all.focus_mode = Control.FOCUS_NONE
+   all.tooltip_text = "Every army of yours whose march waits walks on along its path this turn."
+   all.pressed.connect(func(): continue_orders_requested.emit([]))
+   actions.add_child(all)
   if not where.ok:
    var why = UiKit.label("Local: %s" % where.reason,13,Color("ef8a6a"))
    why.name = "RecruitReason"
@@ -915,7 +943,7 @@ func _fill_browser():
   cancel.focus_mode = Control.FOCUS_NONE
   cancel.disabled = not s.player_owned
   cancel.pressed.connect(func():
-   var refund = data.cancel_construction(sid)
+   var refund = data.cancel_construction(sid,int(c.slot))
    close_building_browser()
    toast("Construction cancelled. %s gold refunded." % UiKit.format_int(refund)))
   browser_box.add_child(cancel)
@@ -1086,7 +1114,7 @@ func _recruitment_drawer(army_id: String) -> Control:
    " (over capacity)" if o.overflow else "",o.upkeep,o.men,
    "Click to recruit. The panel stays open." if o.available else "Unavailable: %s." % ", ".join(o.reasons)]
   var card = Cards.unit_card(u,{"unit":o.unit,"men":o.men,"max_men":o.men},a.faction_data,studio,tip,(func():
-   var res = data.recruit(army_id,o.unit,recruit_mode)
+   var res = data.recruit(army_id,o.unit,str(o.get("mode",recruit_mode)))
    if not res.ok: toast(", ".join(res.reasons))) if o.available else Callable())
   card.name = "Recruit_"+o.unit
   card.set_card_scale(0.8)
@@ -1539,35 +1567,50 @@ Known factions, war and peace, Quick Deal",218,true],
  counter.size = Vector2(120,22)
  counter.alignment = BoxContainer.ALIGNMENT_CENTER
  ring.add_child(counter)
- # End Turn warnings (TW:WH3): the pending kind and item; arrows cycle its items, Skip moves on to
- # the next kind. While one is shown, the End Turn button jumps to it instead of ending the turn.
- warning_box = Widgets.Framed.new("main",colors.trim,Color(colors.panel,0.95))
- warning_box.name = "EndTurnWarning"
- warning_box.visible = false
- var wv = VBoxContainer.new()
- wv.add_theme_constant_override("separation",2)
- warning_box.add_child(wv)
- warning_kind = UiKit.label("",14,Color("f1d79a"),UiKit.FONT_BOLD)
- warning_kind.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
- wv.add_child(warning_kind)
- warning_item = UiKit.label("",13,UiKit.TEXT)
- warning_item.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
- warning_item.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
- warning_item.custom_minimum_size = Vector2(190,0)
- wv.add_child(warning_item)
- var wr = HBoxContainer.new()
- wr.alignment = BoxContainer.ALIGNMENT_CENTER
- for b in [["<","WarnPrev",func(): warning_step.emit(-1),"Previous"],[">","WarnNext",func(): warning_step.emit(1),"Next"],["Skip >>","WarnSkip",func(): warning_skip.emit(),"Skip these warnings"]]:
-  var btn = Button.new()
-  btn.name = b[1]
-  btn.text = b[0]
-  btn.tooltip_text = b[3]
-  btn.focus_mode = Control.FOCUS_NONE
-  btn.pressed.connect(b[2])
-  wr.add_child(btn)
- wv.add_child(wr)
- _anchor(warning_box,1,1,1,1,Rect2(-14-ROUND_MENU.x+40,-10-ROUND_MENU.y-110,-54,-10-ROUND_MENU.y-4))
- warning_box.grow_vertical = Control.GROW_DIRECTION_BEGIN
+ # End Turn notifications (owner spec 2026-10-07, TW:WH3): the button IS the notification. While
+ # something is pending its icon shows on the button with a count of the items left, and a plate
+ # across the bottom of the button names the top item ("Lord has skill points"); clicking goes to it,
+ # the next click to the next. Nothing pending: the hourglass and End Turn. "End turn anyway": the
+ # small button on the ring, Shift+click or Shift+Enter.
+ end_turn_plate = Button.new()
+ end_turn_plate.name = "EndTurnPlate"
+ end_turn_plate.flat = true
+ end_turn_plate.focus_mode = Control.FOCUS_NONE
+ end_turn_plate.visible = false
+ end_turn_plate.position = ROUND_CENTRE+Vector2(-156,40)
+ end_turn_plate.size = Vector2(272,26)
+ end_turn_plate.pressed.connect(func(): end_turn_requested.emit())
+ end_turn_plate.draw.connect(func():
+  var r = Rect2(Vector2.ZERO,end_turn_plate.size)
+  end_turn_plate.draw_style_box(UiKit.flat(Color(0.33,0.07,0.05,0.96),5),r)
+  end_turn_plate.draw_rect(r.grow(-1),Color("e2b955"),false,1.5)
+  var f = UiKit.FONT_BOLD
+  var t = end_turn_plate.get_meta("text","")
+  var fs = 14
+  var w = minf(f.get_string_size(t,HORIZONTAL_ALIGNMENT_LEFT,-1,fs).x,r.size.x-12)
+  end_turn_plate.draw_string(f,Vector2((r.size.x-w)*0.5,r.size.y*0.5+fs*0.36),t,HORIZONTAL_ALIGNMENT_LEFT,r.size.x-12,fs,Color("fff1cf")))
+ ring.add_child(end_turn_plate)
+ end_turn_badge = Control.new()
+ end_turn_badge.name = "EndTurnCount"
+ end_turn_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ end_turn_badge.visible = false
+ end_turn_badge.position = ROUND_CENTRE+Vector2(26,-58)
+ end_turn_badge.size = Vector2(30,30)
+ end_turn_badge.draw.connect(func():
+  var c = Vector2(15,15)
+  end_turn_badge.draw_circle(c,14,Color(0.05,0.03,0.02,0.95))
+  end_turn_badge.draw_circle(c,12,Color("b3271b"))
+  var f = UiKit.FONT_BOLD
+  var t = str(end_turn_badge.get_meta("count",0))
+  var w = f.get_string_size(t,HORIZONTAL_ALIGNMENT_LEFT,-1,15).x
+  end_turn_badge.draw_string(f,c+Vector2(-w*0.5,5.5),t,HORIZONTAL_ALIGNMENT_LEFT,-1,15,Color.WHITE))
+ ring.add_child(end_turn_badge)
+ end_turn_anyway = _round("year","End turn anyway (Shift+click or Shift+Enter)\nEnds the turn without visiting the pending items.",34,true)
+ end_turn_anyway.name = "EndTurnAnyway"
+ end_turn_anyway.visible = false
+ end_turn_anyway.position = ROUND_CENTRE+Vector2.from_angle(deg_to_rad(-24))*84.0-Vector2(17,17) # clear of the plate
+ end_turn_anyway.pressed.connect(func(): end_turn_anyway_requested.emit())
+ ring.add_child(end_turn_anyway)
  hover_tip = PanelContainer.new()
  hover_tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
  hover_tip.add_theme_stylebox_override("panel",UiKit.textured(UiKit.PARCHMENT,12,10))
@@ -1718,11 +1761,13 @@ func _fill_dropdown():
   "notifications": _fill_notification_settings(v)
   "lords": _fill_lords(v)
   "provinces": _fill_provinces(v)
+  "construction": _fill_construction(v)
   "factions": _fill_factions(v)
  dropdown.reset_size()
 
 func toggle_dropdown(kind: String):
- _toggle_dropdown(kind,Rect2(-470,62,-14,0),true)
+ # The construction queue has more columns (turns, progress, cancel): a wider list.
+ _toggle_dropdown(kind,Rect2(-620 if kind == "construction" else -470,62,-14,0),true)
 
 func open_camera_settings():
  _toggle_dropdown("camera",Rect2(14,62,334,0),false)
@@ -2043,14 +2088,39 @@ func _next_alert():
  t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
  v.add_child(t)
  v.add_child(UiKit.divider(colors.trim))
- var text = _small(a.text,UiKit.TEXT,15)
- text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
- v.add_child(text)
+ if str(a.get("kind","")) == "reply":
+  # A reply to your envoy or proposal (owner spec 2026-10-07): the ruler's portrait, their words and
+  # the outcome.
+  popup_panel.name = "ReplyPopup"
+  var row = HBoxContainer.new()
+  row.add_theme_constant_override("separation",12)
+  if not a.ruler.is_empty(): row.add_child(Portrait.new(a.ruler,96.0,UiKit.colors(a.faction_data).primary.darkened(0.3)))
+  var col = VBoxContainer.new()
+  col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  col.add_child(UiKit.label(a.ruler_name,15,Color("f1d79a"),UiKit.FONT_BOLD))
+  var words = _small("“%s”" % a.blurb,UiKit.TEXT,16)
+  words.name = "ReplyWords"
+  col.add_child(words)
+  var outcome = UiKit.label(a.outcome,15,Color("9fd27f") if a.ok else Color("ef8a6a"),UiKit.FONT_BOLD)
+  outcome.name = "ReplyOutcome"
+  outcome.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+  outcome.custom_minimum_size.x = 300
+  col.add_child(outcome)
+  row.add_child(col)
+  v.add_child(row)
+ else:
+  popup_panel.name = "EventPopup"
+  var text = _small(a.text,UiKit.TEXT,15)
+  text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+  v.add_child(text)
  var ok = Button.new()
  ok.name = "PopupOk"
  ok.text = "Close" if popup_queue.is_empty() else "Next (%d more)" % popup_queue.size()
  ok.focus_mode = Control.FOCUS_NONE
  ok.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+ if str(a.get("kind","")) == "reply":
+  var rid = int(a.id)
+  ok.pressed.connect(func(): data.mark_reply_seen(rid))
  ok.pressed.connect(_next_alert)
  v.add_child(ok)
  popup_panel.visible = true
@@ -2129,19 +2199,29 @@ func preview_movement(spend: float,overflow: bool):
  movement_bar.overflow = overflow
  movement_bar.queue_redraw()
 
-var warning_box: Control
-var warning_kind: Label
-var warning_item: Label
+var end_turn_plate: Button
+var end_turn_badge: Control
+var end_turn_anyway: Button
+signal end_turn_anyway_requested
+const END_TURN_TIP = "End turn (Enter)\nAdvances the year: income, upkeep, construction and growth."
 
-# Show the pending End Turn warning ({} hides it): {label, name, index, count}.
+# The End Turn button's notification ({} = nothing pending): {short, label, name, icon, total}.
 func show_end_turn_warning(w: Dictionary):
- warning_box.visible = not w.is_empty()
- if w.is_empty():
-  end_turn_button.tooltip_text = "End turn (Enter)\nAdvances the year: income, upkeep, construction and growth."
+ var on = not w.is_empty()
+ end_turn_plate.visible = on
+ end_turn_badge.visible = on
+ end_turn_anyway.visible = on
+ end_turn_button.icon_kind = str(w.get("icon","year")) if on else "year"
+ end_turn_button.queue_redraw()
+ if not on:
+  end_turn_button.tooltip_text = END_TURN_TIP
   return
- warning_kind.text = w.label if int(w.count) == 1 else "%s (%d of %d)" % [w.label,int(w.index)+1,int(w.count)]
- warning_item.text = w.name
- end_turn_button.tooltip_text = "%s: %s\nClick (or Enter) to go there. Shift+Enter ends the turn anyway.\nWhich warnings show: Settings." % [w.label,w.name]
+ end_turn_plate.set_meta("text",str(w.short))
+ end_turn_plate.tooltip_text = "%s: %s\nClick to go there; the next click goes to the next item." % [w.label,w.name]
+ end_turn_plate.queue_redraw()
+ end_turn_badge.set_meta("count",int(w.total))
+ end_turn_badge.queue_redraw()
+ end_turn_button.tooltip_text = "%s: %s\nClick (or Enter) to go there. Shift+click or Shift+Enter ends the turn anyway.\nWhich notifications show: Settings." % [w.label,w.name]
 
 # Key 3 (TW:WH3 building browser): open the browser on the first empty slot of a settlement, or
 # on the main building when every slot is built.
@@ -2375,3 +2455,83 @@ func show_absorptions():
  absorb_box.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
  absorb_box.grow_horizontal = Control.GROW_DIRECTION_BOTH
  absorb_box.grow_vertical = Control.GROW_DIRECTION_BOTH
+
+# The realm construction queue (owner spec 2026-10-07): every building under way in your settlements,
+# soonest first, with turns left, a jump to the settlement, and cancel with its refund.
+func _fill_construction(v: VBoxContainer):
+ var jobs = data.realm_constructions()
+ v.add_child(UiKit.header("Construction (%d)" % jobs.size(),16))
+ v.add_child(UiKit.divider(colors.trim))
+ if jobs.is_empty():
+  v.add_child(UiKit.label("Nothing is being built. Every empty slot of a settlement can build at the same time.",14,UiKit.TEXT_DIM))
+  return
+ for j in jobs:
+  var row = HBoxContainer.new()
+  row.name = "Job_%s_%d" % [j.settlement,j.slot]
+  row.add_theme_constant_override("separation",8)
+  var go = Button.new()
+  go.text = "%s · %s" % [j.settlement_name,j.name]
+  go.flat = true
+  go.alignment = HORIZONTAL_ALIGNMENT_LEFT
+  go.custom_minimum_size = Vector2(250,0)
+  go.focus_mode = Control.FOCUS_NONE
+  go.tooltip_text = "Go to %s" % j.settlement_name
+  var sid = str(j.settlement)
+  go.pressed.connect(func():
+   close_dropdown()
+   settlement_chosen.emit(sid))
+  row.add_child(go)
+  var bar = ProgressBar.new()
+  bar.show_percentage = false
+  bar.max_value = 1.0
+  bar.value = float(j.progress)
+  bar.custom_minimum_size = Vector2(70,12)
+  bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+  bar.modulate = Color("e9c46a")
+  row.add_child(bar)
+  row.add_child(UiKit.label("%d turn%s" % [j.turns_left,"" if int(j.turns_left) == 1 else "s"],14,UiKit.TEXT))
+  var cancel = Button.new()
+  cancel.name = "Cancel"
+  cancel.text = "Cancel (+%s)" % UiKit.format_int(j.refund)
+  cancel.focus_mode = Control.FOCUS_NONE
+  cancel.tooltip_text = "Cancel this construction: %s gold back (full refund in the turn it started)." % UiKit.format_int(j.refund)
+  var slot = int(j.slot)
+  cancel.pressed.connect(func():
+   var refund = data.cancel_construction(sid,slot)
+   toast("Construction cancelled. %s gold refunded." % UiKit.format_int(refund))
+   _fill_dropdown())
+  row.add_child(cancel)
+  v.add_child(row)
+
+# The turn summary (owner spec 2026-10-07): short rows grouped by subject; each jumps to its subject.
+signal summary_target(target: Dictionary)
+func _summary_rows(groups: Array):
+ if groups.is_empty():
+  var none = UiKit.label("Nothing needs you this turn.",14,UiKit.TEXT_DIM)
+  var m0 = MarginContainer.new()
+  m0.add_theme_constant_override("margin_left",10)
+  m0.add_child(none)
+  event_box.add_child(m0)
+  return
+ for grp in groups:
+  var m = MarginContainer.new()
+  m.add_theme_constant_override("margin_left",10)
+  var v = VBoxContainer.new()
+  v.name = "Summary_"+grp.id
+  v.add_theme_constant_override("separation",0)
+  v.add_child(UiKit.label(grp.name,15,Color("f1d79a"),UiKit.FONT_BOLD))
+  for r in grp.rows.slice(0,6):
+   var b = Button.new()
+   b.flat = true
+   b.text = "· "+str(r.text)
+   b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+   b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+   b.focus_mode = Control.FOCUS_NONE
+   b.add_theme_font_size_override("font_size",14)
+   b.add_theme_color_override("font_color",UiKit.TEXT)
+   b.tooltip_text = "Go there"
+   var t = r.target
+   b.pressed.connect(func(): summary_target.emit(t))
+   v.add_child(b)
+  m.add_child(v)
+  event_box.add_child(m)

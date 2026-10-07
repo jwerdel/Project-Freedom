@@ -71,7 +71,18 @@ func _init(ui_data,trim_colors: Dictionary,focus := ""):
  tree_box.draw.connect(_draw_lines)
  lv.add_child(tree_box)
  lv.add_child(UiKit.divider(colors.trim))
- lv.add_child(UiKit.header("The court",18))
+ var ch = HBoxContainer.new()
+ var ct = UiKit.header("The court",18)
+ ct.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ ch.add_child(ct)
+ # The soft cap (owner spec 2026-10-07): it grows with Realm Standing; births slow as the court fills.
+ var cv = data.court_view()
+ var capl = UiKit.label("%d / %d members%s" % [cv.size,cv.cap,"  ·  births slowing" if float(cv.birth_factor)<0.5 and int(cv.size)<int(cv.cap) else ("  ·  full: no births" if int(cv.size)>=int(cv.cap) else "")],14,UiKit.TEXT_DIM)
+ capl.name = "CourtCap"
+ capl.tooltip_text = "A court grows to a size set by your Realm Standing (%d now). Births slow as it fills and stop at the cap." % int(cv.cap)
+ capl.mouse_filter = Control.MOUSE_FILTER_PASS
+ ch.add_child(capl)
+ lv.add_child(ch)
  var sc = ScrollContainer.new()
  sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
  sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED

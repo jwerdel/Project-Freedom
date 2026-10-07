@@ -23,8 +23,8 @@
   "slots": {"_note": "A unit's recruitment slot: its role's slot plus its tier (line1, line2, ... missile1, ...); monsters and siege by role.", "line": ["line1", "line2", "line3", "elite", "elite"], "missile": ["missile1", "missile2", "missile2", "missile_elite", "missile_elite"], "cavalry": ["cavalry1", "cavalry1", "cavalry2", "cavalry_elite", "cavalry_elite"], "siege": ["siege", "siege", "siege", "siege", "siege"], "monster": ["monster", "monster", "monster", "monster", "legendary"], "banners": ["banners", "banners", "banners", "banners", "banners"]},
   "unlock_rules": {
    "banners": {"never": true},
-   "line1": {"barracks": 1}, "line2": {"barracks": 2}, "line3": {"barracks": 3}, "elite": {"barracks": 3, "level": 3},
-   "missile1": {"archery_range": 1}, "missile2": {"archery_range": 2}, "missile_elite": {"archery_range": 2, "level": 3},
+   "line1": [{"level": 1}, {"barracks": 1}], "line2": {"barracks": 2}, "line3": {"barracks": 3}, "elite": {"barracks": 3, "level": 3},
+   "missile1": [{"level": 2}, {"archery_range": 1}], "missile2": {"archery_range": 2}, "missile_elite": {"archery_range": 2, "level": 3},
    "cavalry1": {"stables": 1}, "cavalry2": {"stables": 2}, "cavalry_elite": {"stables": 2, "level": 3},
    "siege": {"barracks": 3},
    "monster": {"temple": 2, "level": 3}, "legendary": {"temple": 2, "barracks": 3, "level": 3}

@@ -35,7 +35,13 @@ static func square_tower(parent: Node3D,pos: Vector3,w: float,height: float,ston
 
 # A curtain wall along a closed ring (a circle of `radius`, or a polygon), on the ground, with towers
 # every `every` metres and gatehouses at the given angles. Returns the number of towers.
+# A landmark's wall: since 2026-10-07 a terrain-following trace (wall_trace; owner: walls never read as
+# circles). `every` is kept for the callers and no longer used. Returns the towers built.
 static func wall_ring(parent: Node3D,h: Callable,center: Vector3,radius: float,height: float,thick: float,stone: Color,every := 14.0,gates := [],tower_roof = null) -> int:
+ return wall_trace(parent,h,center,radius,height,thick,stone,gates,tower_roof,int(radius*97.0+center.x*13.0+center.z*7.0),0.14).size()
+
+# The old circular ring (kept for reference; no landmark uses it).
+static func _wall_circle(parent: Node3D,h: Callable,center: Vector3,radius: float,height: float,thick: float,stone: Color,every := 14.0,gates := [],tower_roof = null) -> int:
  var segs = maxi(12,int(TAU*radius/3.2))
  var towers = 0
  var since = 0.0
@@ -131,3 +137,62 @@ static func water(parent: Node3D,pos: Vector3,r: float,c := Color("3f7fa6"),inne
   var mid = (r+inner)*0.5
   var n = node(parent,pos+Vector3(cos(a)*mid,0,sin(a)*mid),-a+PI*0.5)
   S.box(n,Vector3(TAU*mid/segs+0.1,0.25,r-inner),Vector3.ZERO,c)
+
+# A wall that follows the terrain (owner 2026-10-07: walls must never read as circles): corner points
+# around the centre at radius x (1 - spread .. 1 + spread), each pushed to the highest ground in its
+# range (walls keep to the crest), joined by straight stretches stepped along the slope, a tower at
+# every corner and a gatehouse on the stretch nearest each gate angle. Deterministic per seed.
+static func wall_trace(parent: Node3D,h: Callable,center: Vector3,radius: float,height: float,thick: float,stone: Color,gates := [],tower_roof = null,seed := 1,spread := 0.16) -> Array:
+ var rng = RandomNumberGenerator.new()
+ rng.seed = seed
+ var n = clampi(int(TAU*radius/14.0),9,13)
+ var corners = []
+ for i in n:
+  var a = (i+rng.randf_range(-0.28,0.28))*TAU/n
+  var best_r = radius
+  var best_h = -INF
+  for k in 7:
+   var r = radius*(1.0-spread+2.0*spread*k/6.0)
+   var gh = ground(h,center.x+cos(a)*r,center.z+sin(a)*r)+rng.randf_range(-0.3,0.3)
+   if gh>best_h:
+    best_h = gh
+    best_r = r
+  corners.append(center+Vector3(cos(a)*best_r,0,sin(a)*best_r))
+ # The gate stretches: the edge whose midpoint lies nearest each gate angle.
+ var gate_edges = {}
+ for g in gates:
+  var bi = 0
+  var bd = INF
+  for i in n:
+   var m = (corners[i]+corners[(i+1)%n])*0.5-center
+   var dd = absf(angle_difference(atan2(m.z,m.x),g))
+   if dd<bd:
+    bd = dd
+    bi = i
+  gate_edges[bi] = true
+ for i in n:
+  var a = corners[i]
+  var b = corners[(i+1)%n]
+  var d = Vector2(b.x-a.x,b.z-a.z)
+  var len = d.length()
+  var yaw = -atan2(d.y,d.x)
+  var steps = maxi(1,int(len/3.2))
+  for s in steps:
+   var t0 = float(s)/steps
+   var t1 = float(s+1)/steps
+   var p = a.lerp(b,(t0+t1)*0.5)
+   p.y = ground(h,p.x,p.z)
+   var nd = node(parent,p,yaw)
+   if gate_edges.has(i) and absi(s-steps/2)<=0:
+    for sx in [-1.0,1.0]: S.box(nd,Vector3(2.4,height+4.0,thick+1.4),Vector3(sx*2.2,-2.0,0),stone.darkened(0.04))
+    S.box(nd,Vector3(2.0,height-3.4,thick+1.0),Vector3(0,3.4,0),stone.darkened(0.04))
+    S.box(nd,Vector3(1.8,3.4,thick+1.1),Vector3(0,-0.1,0),Color("1e1a16"))
+    continue
+   S.box(nd,Vector3(len/steps+0.2,height+2.0,thick),Vector3(0,-2.0,0),stone)
+   for k in 2: S.box(nd,Vector3(0.6,0.6,0.4),Vector3(-0.8+k*1.6,height,thick*0.5-0.2),stone.darkened(0.08))
+  # A tower at every other corner (towers at every corner read as a heap of towers).
+  if i%2 == 0:
+   var tp = a
+   tp.y = ground(h,tp.x,tp.z)
+   round_tower(parent,tp,thick*1.15,height+2.5,stone,tower_roof,thick*1.8)
+ return corners

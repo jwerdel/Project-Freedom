@@ -1497,3 +1497,161 @@ The self-test passes.
 **Known issues:**
 - Brinecrag's own inlet of dark water sits as a disc in the snowy plain: the settlement point is inland, away from the coast (Part A landmark; not changed here).
 - Starting net income rose with the cheaper lowest-tier culture units: Varn +340, Varrenus +224, the Aurekids +359 (Part A: +211 / +124 / +211).
+
+## Playtest fixes, Part A (2026-10-07)
+
+TW:WH3 references studied first: `docs/reference/tw/lothern_lords.png`, `terrain_1.png` and `terrain_2.png`. Every rule below is in `docs/tw-ui-parity.md` §18.
+
+**A1 Campaign movement:**
+- **Free movement:** lords move anywhere passable.
+  - A dirt road is now 35% faster than open ground (cost multiplier 0.74, was 0.8); the planner takes roads when they are faster.
+  - Forest costs 1.6. New terrain "marsh" (swamp and marsh climates) costs 1.8; it was appended, so older bakes stay valid.
+  - Water, peaks and rivers stay impassable, except at bridges and fords.
+- **Path display:**
+  - The path shows on hover; holding right click also previews; releasing, or a single right click, commits.
+  - The path is a ribbon drawn over everything (no depth test), with chevrons running toward the destination: this turn bright green, later turns amber, red when blocked.
+  - A numbered marker sits at each turn break; the end marker shows the action (move, attack, enter, merge, besiege, blocked). The cursor shows the same action.
+  - The selected army's order is drawn in full; your other armies' orders are faint lines (a setting, on by default).
+  - The reachable area is a soft gold fill with a crisp edge.
+- **Movement bar** under your banners and on the army panel.
+- **Hotkeys:**
+  - Backspace cancels the order.
+  - Space toggles the animation speed.
+  - Double-clicking an army centres the camera on it.
+- Walks start where the figure stands and end where it will stand, so nothing snaps.
+- **The auto-move bug.** No player army moved without an order: tested over 8 turns for three houses. Every case found is an order the player gave in an earlier turn:
+  1. A right-click past this turn's reach silently becomes a multi-turn order. `Movement.end_turn` walked every standing order at End Turn.
+  2. `UiData._refresh_attack_orders` re-planned your attack orders before End Turn and walked them at once.
+  3. `Hosts.follow` re-ordered Host members toward their leader at End Turn.
+  4. Levies raised at End Turn marched straight to the muster point.
+
+  Fix: Settings "Continue multi-turn orders automatically" (default off). With it off, none of these walk at End Turn: the path stays drawn and waits for "Continue order" or "Continue all orders" on the army panel, and waiting orders are an End Turn notification. AI factions are unaffected. Test: `tests/test_order_hold.gd`.
+- **Path planning worst cases (15–19 ms):**
+  - The first plan of a session built caches on the spot: 20 ms. `Movement.prewarm` now builds them at campaign load.
+  - The first window search built its row index: 8 ms. Also prewarmed.
+  - Long routes ran two live searches across whole regions (Varos regions are about 1 km across). The start and goal now attach to the nearest stored-path nodes of their region part, so live legs stay short.
+
+**A2 Lords:**
+- Lords are 2x (lord_scale 4.0) and grow with camera height from 900 m up to 1.8x.
+- Banners are 2x close (2.0) and 1.6 far. The first try grew banners with height too; at the top zoom they covered the map, so banners no longer grow with height.
+- Garrisoned lords stand just outside their settlement's walls.
+
+**A3 End Turn button.**
+- The pending item's icon is on the button, with a count badge and a red plate across its foot naming the item.
+- A click goes to the item, the next click to the next. With nothing pending it shows the hourglass and ends the turn.
+- End turn anyway: the small button on the ring, Shift+click or Shift+Enter.
+- The separate warning box is gone.
+- New pending kinds: choices (absorbed families, careers due), diplomatic replies, waiting orders.
+- Screenshot conflict: `terrain_2.png` also shows a stack of red event ribbons above the button. Your spec removes any separate stack, so it is not built (Event Messages carries events).
+
+**A4 Text:**
+- Body font is now Fira Sans (OFL, Mozilla) instead of Alegreya Sans. Fira Sans was designed for small screens: a large x-height (about 0.53 em, against about 0.45 for Alegreya Sans), open shapes and clear spacing, so 13–15 px text stays crisp at 1080p and 1440p. Cinzel stays for headers.
+- Labels are at least 14 px, and dim text is brighter.
+- Settlement names have a dark outline on their plates; a lord's name shows on a plate when hovered or selected.
+
+**A5 Construction:**
+- Every slot can build at the same time, each paid at start (save schema 7 migrates the old single `construction`).
+- A realm construction queue (top-right hammer) lists every build with turns left, a jump to the settlement, and cancel with refund.
+- Placement rules: Port needs the sea coast; the new Fishing Camp needs the sea, a lake or a river; Mines need hills or mountains. The site comes from the baked movement grid around each settlement, and unavailable chains are not offered.
+- Test `test_terrain_buildings_only_where_the_land_allows` covers the test map and Varos.
+
+**A6 Recruitment:**
+- One card per unit with its best source: local, else global. The global drawer lists only what cannot be recruited locally.
+- Bug found: on Varos a new realm could recruit nothing until it built a barracks. The main building now gives the basic infantry (line1), and settlement level 2 the first missile unit.
+
+**A7 Diplomacy:**
+- Quick filters (Hates me through Not met) and an attitude sort; red-to-green faces; attitude reasons on hover.
+- Add Item leaves out items already active between you (shown as Active with Cancel, locked while protected) and items already in the offer, on both sides. "No more items available" when none remain.
+- **Why your envoys never answered.** They did answer, but only as a one-line entry in the collapsed "Court and Realm" group of Event Messages. There was no notification, nothing on the End Turn button and no reply window. Pending envoys showed only as a small note in the treaty column. An immediate answer was a toast, and a decline gave the first listed reason, sometimes a positive one.
+- Now every envoy and proposal of yours creates a reply record (saved), shown as a reply pop-up with the ruler's portrait, their words by attitude and the outcome. Replies feed the End Turn button. Envoys on the road are listed with turns to arrival, and a decline names the weightiest objection.
+- Test `test_every_sent_proposal_resolves`.
+
+**A8 Turn summary:**
+- The Event Messages are now:
+  - Turn Summary: your settlements, your armies and battles, diplomacy, your court, threats near your borders; every row jumps to its subject (saved as `GameState.last_summary`);
+  - Your Wars and Battles;
+  - Court and Realm;
+  - World (this turn only, collapsed by default).
+- World news (others' wars, captures, titles and marriages between other houses) expires after one turn.
+- The "Envoys await you" line no longer repeats every turn.
+
+**A9 Carry-overs:**
+- **Births soft cap:** from 16 members at the lowest Realm Standing to 40 at the highest. Births slow as a court fills, as (1 - members/cap)^1.5. The Court screen shows "members / cap".
+- **AI marriages** need a purpose: an heir, an alliance with a friendly house, or absorbing a weaker minor. At most one every 6 turns per house. Marriages per seed fell from 330–390 to 157–173; characters from about 950 to about 610.
+- **AI peace by outcome:**
+  - Each war records both sides' settlements and power at its declaration.
+  - A losing side sues for peace with gold, then a border settlement, then fealty for a weak minor. A winner refuses plain peace (-700 in its valuation).
+  - Even wars settle after 12 turns.
+- **Brinecrag** moved 140 m to the Western Isles' storm coast. The new validator rule "coastal landmarks must touch the sea" then flagged Goldspire Rock (sea cliff), Oldstone Citadel (lighthouse) and Tempest Keep (storm cliff), and all three moved onto their coasts. Roads were re-planned. Varos is now version 3: older Varos saves are refused.
+- **Snowtusk and Grimhollow** have a "raider" trait: aggression x3, war range x3. They now declare wars on the Greywall lands and march. Grimhollow still goes broke after about 30 turns: its raids take nothing. Part B's raiding stance will pay them.
+- **Frosthold** stands in a new snow climate shape (the vale is white). Every landmark wall (`wall_ring`) is now a terrain-following trace: corners pushed to the high ground, straight stretches, towers on every other corner. No landmark draws circular walls any more.
+
+**Soak** (Varos, seeds 11/22/33/44 x 50 turns, debug):
+
+| | Part B (before) | Part A (after) |
+|---|---|---|
+| Captures (+ ceded in peace) | 4–8 | 11–22 (+2–7) |
+| Destroyed / vassalized | 0–1 / 6–10 | 2–3 / 2–6 |
+| Marriages | 332–389 | 157–173 |
+| Peace: plain / paid / land / fealty | 45–61 / – / – / – | 35–56 / 5–15 / 2–7 / 0–3 |
+| Idle factions | Snowtusk 3 of 4 | none in 2 seeds; Snowtusk, Verrin, Grimhollow once each |
+| End Turn debug, average / worst | 793–812 ms / 1.06 s | 822–863 ms / 1.33 s |
+| Deterministic | yes | yes |
+
+- Captures plus cessions are 18–24 per seed, inside the 15–25 target.
+- Destroyed plus vassalized is 5–8 per seed: two seeds are above the 3–6 target, through diplomatic vassalization of minors.
+
+**Budgets:**
+- **Release, Varos, 20 turns:**
+  - End Turn 530 ms on average, 706 ms worst (budget 10 s);
+  - sliced End Turn 515 ms, longest chunk 137 ms;
+  - save 5.8 ms on the main thread.
+- **Path planning (release, budget 5 ms), p95 / worst:**
+  - 60 m: 0.30 / 0.35 ms;
+  - 150 m: 0.71 / 0.90 ms;
+  - 400 m: 3.04 / 3.99 ms;
+  - 1,000 m: 1.58 / 2.02 ms.
+
+  The 15–19 ms worst cases are gone.
+- **GPU** (RTX 4060, 1440x900, debug), all within budget:
+
+| View | GPU ms | Draw calls | Triangles | VRAM |
+|---|---|---|---|---|
+| Highest zoom (Varn) | 5.04 | 1,281 | 0.26 M | 652 MB |
+| Highest zoom (centre) | 5.29 | 1,040 | 0.20 M | 632 MB |
+| Close, 150 m, with a path preview | 5.91 | 688 | 0.32 M | 674 MB |
+
+**Captures** (`captures/`):
+
+| What | File |
+|---|---|
+| Multi-turn path with range | `a_path_multiturn` |
+| Path over Frosthold's walls | `a_path_over_wall` |
+| End Turn with a notification | `a_endturn_notification` |
+| End Turn with nothing pending | `a_endturn_empty` |
+| Fonts before | `fonts_before_*` |
+| Fonts after | `fonts_after_*` |
+| Construction queue | `a_construction_queue` |
+| All slots building | `a_all_slots_building` |
+| Diplomacy: Hates me | `a_dip_hates` |
+| Add Item with active items removed | `a_add_item` |
+| Reply pop-up | `a_reply_popup` |
+| Turn summary | `a_turn_summary` |
+| Lords, close | `a_lords_close` |
+| Lords, high | `a_lords_high` |
+| Lords, max zoom | `a_lords_max` |
+| Brinecrag | `a_brinecrag` |
+| Frosthold | `a_frosthold` |
+
+**Tests:** 361 GUT tests pass. New or updated ones cover:
+- no player army moving without an order; holding and continuing orders;
+- free movement off-road; the road bonus; marsh;
+- the path drawn over occluders (the shader's `depth_test_disabled`), turn numbers and action markers;
+- End Turn button states;
+- one card per unit;
+- port, fishing and mine placement on both maps; parallel builds with the realm queue;
+- Add Item exclusions; every proposal resolving;
+- world events expiring; the grouped summary;
+- the births soft cap.
+
+The self-test passes.

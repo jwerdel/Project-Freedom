@@ -24,17 +24,18 @@ func make():
  S.cylinder(self,0.9,1.4,7.0,t,BARK,8)
  for i in 5: S.dome(self,3.2-i*0.3,t+Vector3(cos(i*1.3)*1.8,6.0+i*0.7,sin(i*1.3)*1.8),LEAVES.lightened(i*0.04),0.8)
  features.append("hearthtree")
- K.wall_ring(self,h,c,17.0,7.0,2.4,STONE,24.0,[PI*0.5],SLATE)
+ # Walls follow the ground (owner 2026-10-07: no circles), towers at the corners.
+ K.wall_trace(self,h,c,17.0,7.0,2.4,STONE,[PI*0.5],SLATE,41,0.13)
  features.append("inner_wall")
  if stage>=2:
   for p in [Vector3(4.0,0,-8.0),Vector3(-10.0,0,8.0),Vector3(2.0,0,10.0)]:
    K.water(self,at(p.x,p.z,0.05),2.4,Color("8fd0d8"))
    S.box(self,Vector3(0.6,1.2,0.6),at(p.x,p.z),Color(1,1,1,1).darkened(0.05)) # a steam marker
   features.append("hot_springs")
-  K.wall_ring(self,h,c,24.0,8.5,2.8,STONE,30.0,[PI*0.5,-PI*0.5],SLATE)
+  K.wall_trace(self,h,c,25.0,8.5,2.8,STONE,[PI*0.5,-PI*0.5],SLATE,77,0.1)
   features.append("double_walls")
  if stage>=3:
   for s in [-1.0,1.0]: K.spire(self,c+Vector3(-3.0+s*3.0,14.0,-6.0),1.0,10.0,STONE,SLATE)
   S.box(self,Vector3(6.0,2.8,3.2),at(-9.0,6.0),Color("9ec8b8")) # greenhouse
-  K.houses(self,h,"medieval",c,27.0,36.0,22,421)
+  K.houses(self,h,"medieval",c,30.0,38.0,22,421)
   features.append("town")

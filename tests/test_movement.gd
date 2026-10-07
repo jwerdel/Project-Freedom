@@ -110,6 +110,8 @@ func test_water_and_mountains_are_impassable_except_at_passes():
  assert_true(used,"the route crosses the pass")
 
 func test_long_orders_continue_on_end_turn_and_points_refill():
+ # Settings "Continue multi-turn orders automatically" on (off by default: tests/test_order_hold.gd).
+ Movement.continue_player_orders = true
  var s = GameState.from_data()
  var target = Vector2(-250,-332)
  var r = Movement.order(s,ARMY,target)
@@ -132,6 +134,7 @@ func test_long_orders_continue_on_end_turn_and_points_refill():
  # Without an order, End Turn just refills the allowance.
  TurnLoop.end_turn(s)
  assert_eq(a.points,Movement.max_points())
+ Movement.continue_player_orders = false
 
 func test_cancel_keeps_position_and_drops_the_order():
  var s = GameState.from_data()

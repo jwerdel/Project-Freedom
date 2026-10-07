@@ -59,13 +59,18 @@ static func unlocks(levels: Dictionary,settlement_level: int,culture: String) ->
  var rules = data().unlock_rules
  for id in units_of(culture):
   var rule = rules.get(str(UnitTypes.get_type(id).slot),{"never":true})
-  if bool(rule.get("never",false)): continue
-  var ok = true
-  for k in rule:
-   if k == "level":
-    if settlement_level<int(rule.level): ok = false
-   elif int(levels.get(k,0))<int(rule[k]): ok = false
-  if ok: out.append(id)
+  # A rule is {chain: level, level: settlement level} (all must hold) or a list of such (any one).
+  var alts = rule if rule is Array else [rule]
+  for alt in alts:
+   if bool(alt.get("never",false)): continue
+   var ok = true
+   for k in alt:
+    if k == "level":
+     if settlement_level<int(alt.level): ok = false
+    elif int(levels.get(k,0))<int(alt[k]): ok = false
+   if ok:
+    out.append(id)
+    break
  return out
 
 static func reset():

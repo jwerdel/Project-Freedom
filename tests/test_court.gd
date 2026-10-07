@@ -157,7 +157,8 @@ func test_renaming_and_absorbed_families():
 func test_births_pause_at_the_court_cap():
  var s = GameState.from_data()
  var f = "house_varn"
- var cap = int(Court.data().births.max_court)
+ var cap = Court.court_cap(s,f)
+ assert_between(cap,16,40,"the soft cap follows Realm Standing")
  var hus = Court.new_character(s,f,{"name":"Aric","gender":"m","age":25.0})
  var wife = Court.new_character(s,f,{"name":"Bera","gender":"f","age":22.0,"house":"Ashby"})
  assert_true(Court.marry(s,hus,wife).ok)
@@ -171,3 +172,15 @@ func test_births_pause_at_the_court_cap():
  Court._births(s,f)
  Court.reset()
  assert_eq(Court.members(s,f).size(),before,"no births in a full court")
+
+# Soft cap (owner spec 2026-10-07): the cap rises with Realm Standing; births slow as a court fills.
+func test_births_slow_as_the_court_fills_and_the_cap_grows_with_standing():
+ var s = GameState.from_data()
+ var f = "house_varn"
+ var cap = Court.court_cap(s,f)
+ assert_gt(Court.birth_factor(s,f,0),Court.birth_factor(s,f,cap/2),"slower half full")
+ assert_gt(Court.birth_factor(s,f,cap/2),Court.birth_factor(s,f,cap-1),"slower still near the cap")
+ assert_eq(Court.birth_factor(s,f,cap),0.0,"none at the cap")
+ for sid in s.settlements.keys().slice(0,30): s.settlements[sid].owner = f
+ assert_gt(Court.court_cap(s,f),cap,"a greater realm keeps a larger court")
+ assert_lte(Court.court_cap(s,f),40)

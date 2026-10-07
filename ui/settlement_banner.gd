@@ -77,7 +77,9 @@ func _draw():
  var name = settlement.name.to_upper()
  var f = UiKit.head_font()
  var tw = f.get_string_size(name,HORIZONTAL_ALIGNMENT_LEFT,-1,15).x
- draw_string(f,Vector2(cx-tw*0.5,plate.position.y+18),name,HORIZONTAL_ALIGNMENT_LEFT,-1,15,Color("f3e3bd"))
+ # A dark outline under the letters (2026-10-07): the name reads on any terrain behind the plate.
+ draw_string_outline(f,Vector2(cx-tw*0.5,plate.position.y+18),name,HORIZONTAL_ALIGNMENT_LEFT,-1,15,4,Color(0.02,0.01,0.0,0.95))
+ draw_string(f,Vector2(cx-tw*0.5,plate.position.y+18),name,HORIZONTAL_ALIGNMENT_LEFT,-1,15,Color("fff0cc"))
  # Level pips under the plate.
  for i in MAX_LEVEL:
   var p = Vector2(cx+(i-1)*12,plate.end.y+6)

@@ -44,7 +44,8 @@ static func personality(faction: String) -> Dictionary:
    if k == "composition": p.composition = table[t][k]
    elif k in ["assault","vengeful","opportunist"]: p[k] = maxi(int(p[k]),int(table[t][k]))
    elif k == "wariness": p.wariness = float(p.wariness)+float(table[t][k])
-   else: p[k] = float(p[k])*float(table[t][k])
+   elif k.begins_with("_"): continue
+   else: p[k] = float(p.get(k,1.0))*float(table[t][k])
  return p
 
 # --- Strength estimates ---------------------------------------------------------------------
@@ -293,13 +294,15 @@ static func war_range(state,f: String) -> float:
  var lo = float(r.war_meters)
  var hi = float(r.war_max_meters)
  var nearest = INF
+ var look = hi*float(personality(f).get("range",1.0))
  for sid in state.settlements_of(f):
   var at = WorldMap.settlement_position(sid)
-  for o in WorldMap.settlements_near(at,hi):
+  for o in WorldMap.settlements_near(at,look):
    if state.settlements[o].owner == f or bool(WorldMap.faction(state.settlements[o].owner).get("untouchable",false)): continue
    nearest = minf(nearest,at.distance_to(WorldMap.settlement_position(o)))
- if nearest == INF: return lo
- return clampf(nearest*float(r.war_neighbourhood),lo,hi)
+ var range_f = float(personality(f).get("range",1.0)) # raiders reach farther
+ if nearest == INF: return lo*range_f
+ return clampf(nearest*float(r.war_neighbourhood),lo,hi)*range_f
 
 # Targets an army could strike this turn (reach default) or march on (war_meters): foreign
 # settlements and field armies, strongest odds first.

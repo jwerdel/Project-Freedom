@@ -131,3 +131,45 @@ static func effect_lines(chain_id: String,level: int) -> Array:
  for u in e.get("unlocks",[]): out.append("Unlocks recruitment: %s" % UnitTypes.get_type(u).display_name)
  if e.get("public_order",0): out.append("+%d public order (not simulated yet)" % int(e.public_order))
  return out
+
+# --- Where a building may stand (owner spec 2026-10-07, A5) ---------------------------------------
+# A chain's "requires" in data/buildings.json: coastal (on the sea: the map's coastal flag), water
+# (sea, lake or river within reach), hills (hills, passes or mountains within reach), forest (wooded
+# land within reach). Chains whose site fails are not offered at all. The geography is read from the
+# map's baked movement grid around the settlement (gameplay data, never the terrain mesh), cached per map.
+const SITE_REACH = 90.0 # metres around the settlement point that count as its land
+static var _geo = {}     # map id -> {settlement id: {water, hills, forest}}
+
+static func geography(state,id: String) -> Dictionary:
+ var MapRegistry = load("res://core/map_registry.gd")
+ var cache = _geo.get_or_add(MapRegistry.active,{})
+ if cache.has(id): return cache[id]
+ var Movement = load("res://core/movement.gd")
+ var WorldMap = load("res://core/world_map.gd")
+ var g = Movement.grid()
+ var at = WorldMap.settlement_position(id)
+ var names: Array = g.names
+ var counts = {}
+ var total = 0
+ for c in Movement._area_cells(at,SITE_REACH):
+  var n = names[g.terrain[c]] if g.terrain[c]<names.size() else ""
+  counts[n] = int(counts.get(n,0))+1
+  total += 1
+ var share = func(keys: Array) -> float:
+  var k = 0
+  for key in keys: k += int(counts.get(key,0))
+  return float(k)/maxf(1.0,float(total))
+ var coastal = bool(state.settlements[id].get("coastal",false))
+ var out = {"coastal":coastal,"water":coastal or int(counts.get("water",0))>=2,
+  "hills":share.call(["hills","pass","mountain"])>=0.08,"forest":share.call(["forest"])>=0.12}
+ cache[id] = out
+ return out
+
+# "" when the chain may stand in this settlement, else why not ("Requires a coast").
+static func site_reason(state,id: String,chain_id: String) -> String:
+ var req = chain(chain_id).get("requires",{})
+ if req.is_empty(): return ""
+ var geo = geography(state,id)
+ for k in [["coastal","Requires a coast"],["water","Requires the sea, a lake or a river"],["hills","Requires hills or mountains"],["forest","Requires woodland"]]:
+  if bool(req.get(k[0],false)) and not bool(geo.get(k[0],false)): return k[1]
+ return ""

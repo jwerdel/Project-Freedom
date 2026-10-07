@@ -174,6 +174,14 @@ static func _finish(state,ctx: Dictionary,ai: Dictionary) -> Dictionary:
    p.erase("approach") # the attacker has already marched; nothing left to plan
    state.pending_battles.append(p)
   entries.append_array(ai.entries)
+  # Marriages between other houses: world news for this turn (owner spec 2026-10-07).
+  var WorldMap = load("res://core/world_map.gd")
+  for a in ai.realm.get("actions",[]):
+   if str(a.action) != "marriage" or str(a.get("with","")) == "" or state.player_faction in [str(a.faction),str(a.with)]: continue
+   var e = Chronicle.entry(ctx.ended,"world","A marriage of houses","%s and %s are joined by marriage." % [WorldMap.faction(a.faction).name,WorldMap.faction(a.with).name],str(a.faction))
+   e.with = str(a.with)
+   state.chronicle.append(e)
+   entries.append(e)
  # 11. The loss condition: grace periods start, count down, end (survived or destroyed).
  var realm = Realm.check_survival(state)
  # 12. Skill points (placeholder skills, no effects yet).

@@ -104,15 +104,24 @@ func test_a_full_army_fits_the_panel():
 
 # --- Movement preview and map overlays (Phase C) -------------------------------------------------
 
-func test_paths_and_blocked_markers_carry_no_numbers():
+# Owner spec 2026-10-07 (supersedes the earlier "no numbers on the map"): a numbered marker at each
+# turn break, the action at the destination, and a red path with the blocked marker when blocked.
+func test_paths_carry_turn_numbers_and_an_action_marker():
  var o = MovementOverlay.new()
  add_child_autofree(o)
  o.setup(func(_x,_z): return 0.0)
- o.show_path("preview",[Vector2(0,0),Vector2(30,0),Vector2(60,0),Vector2(90,0)],[0,0,1,2])
- for n in o.get_node("preview").get_children(): assert_false(n is Label3D,"no text on the path")
- o.show_blocked(Vector2(5,5),"Impassable terrain")
- var texts = o.get_node("preview").get_children().filter(func(n): return n is Label3D).map(func(n): return n.text)
- assert_eq(texts,["X"],"a blocked destination is a red cross only")
+ o.show_path("preview",[Vector2(0,0),Vector2(30,0),Vector2(60,0),Vector2(90,0)],[0,0,1,2],{"action":"attack"})
+ var marks = o._markers.preview.map(func(m): return m.node)
+ var turns = marks.filter(func(n): return n is MovementOverlay.TurnMarker).map(func(n): return n.n)
+ assert_eq(turns,[1,2],"a numbered marker where turns 1 and 2 end")
+ var ends = marks.filter(func(n): return n is MovementOverlay.EndMarker)
+ assert_eq(ends.size(),1)
+ assert_eq(ends[0].action,"attack","the end marker shows the action")
+ var mesh = o.get_node("preview").get_child(0)
+ assert_true(mesh.material_override.shader.code.contains("depth_test_disabled"),"drawn over trees, walls and hills")
+ o.show_blocked(Vector2(5,5),"Impassable terrain",Vector2(0,0))
+ ends = o._markers.preview.map(func(m): return m.node).filter(func(n): return n is MovementOverlay.EndMarker)
+ assert_eq(ends[0].action,"blocked","a blocked destination: red path and the blocked marker")
 
 func test_attack_preview_names_the_target_and_plans_the_approach():
  var data = UiData.new(GameState.from_data())
@@ -149,7 +158,8 @@ func test_map_selection_preview_and_end_turn_follow_tw():
  assert_eq(main.desired_distance,77.0)
  main.select_army(HOST)
  # A held right click previews; releasing gives the order; Esc during the hold cancels it.
- var screen = main.camera.unproject_position(main.ground(Vector2(-20,-10)))
+ # (A point clear of the lord: lords are bigger and stand outside the walls since 2026-10-07.)
+ var screen = main.camera.unproject_position(main.ground(Vector2(-118,-30)))
  var press = InputEventMouseButton.new()
  press.button_index = MOUSE_BUTTON_RIGHT
  press.pressed = true
@@ -173,7 +183,7 @@ func test_map_selection_preview_and_end_turn_follow_tw():
  assert_true(m.points<before or not m.order.is_empty(),"releasing gives the order")
  # The preview itself: no numbers; the movement bar shows the spend.
  main.preview_key = Vector2i(1<<20,0)
- var t = main.preview_move(Vector2(-118,-30))
+ var t = main.preview_move(Vector2(-20,-10)) # the army now stands at (-118,-30)
  assert_eq(t,"","a valid move shows no tooltip text")
  assert_gt(main.ui.movement_bar.spend,0.0)
  main.cancel_move_preview()

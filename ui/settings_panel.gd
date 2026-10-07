@@ -89,6 +89,19 @@ func _ready():
  edge.button_pressed = Settings.edge_pan()
  edge.toggled.connect(func(on): Settings.set_value("edge_pan",on))
  grid.add_child(edge)
+ # Movement (owner spec 2026-10-07): multi-turn orders wait for your confirm unless this is on; other
+ # armies' committed orders show as faint lines.
+ for mk in [["continue_orders","Continue multi-turn orders automatically","ContinueOrders"],["show_orders","Show my armies' orders on the map","ShowOrders"]]:
+  grid.add_child(UiKit.label(mk[1],16))
+  var cb = CheckBox.new()
+  cb.name = mk[2]
+  cb.focus_mode = Control.FOCUS_NONE
+  cb.button_pressed = bool(Settings.get_value(mk[0]))
+  var key = mk[0]
+  cb.toggled.connect(func(on):
+   Settings.set_value(key,on)
+   Settings.apply_movement())
+  grid.add_child(cb)
  grid.add_child(UiKit.label("Debug keys (F5-F8, L)",16))
  var dbg = CheckBox.new()
  dbg.name = "DebugKeys"

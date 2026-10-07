@@ -7,6 +7,7 @@ extends GutTest
 const GameState = preload("res://core/game_state.gd")
 const Economy = preload("res://core/economy.gd")
 const Buildings = preload("res://core/buildings.gd")
+const MapRegistry = preload("res://core/map_registry.gd")
 const Construction = preload("res://core/construction.gd")
 const TurnLoop = preload("res://core/turn_loop.gd")
 const AssetManifest = preload("res://core/asset_manifest.gd")
@@ -60,12 +61,13 @@ func test_level_caps_are_enforced():
  assert_false(check.ok)
  assert_string_contains(", ".join(check.reasons),"settlement level 3")
  assert_false(Construction.start(s,GS,mine_slot,"mine").ok)
- # Duplicates and wrong settlement types are refused; only one construction at a time.
+ # Duplicates and wrong settlement types are refused; every slot builds at once (owner spec 2026-10-07).
  var slot = empty_slot(s,GS)
  assert_false(Construction.can_build(s,GS,slot,"port").ok,"port already built")
  assert_false(Construction.can_build(s,GS,slot,"farm").ok,"no farms in a city")
  assert_true(Construction.start(s,GS,slot,"market").ok)
- assert_false(Construction.can_build(s,GS,0,s.settlements[GS].buildings[0].chain).ok,"one construction at a time")
+ assert_false(Construction.can_build(s,GS,slot,"market").ok,"that slot is already building")
+ assert_true(Construction.can_build(s,GS,0,s.settlements[GS].buildings[0].chain).ok,"the main building can upgrade at the same time")
  # Not enough gold.
  var poor = GameState.from_data()
  poor.treasury.house_aurek = 10
@@ -186,14 +188,11 @@ func test_ports_require_a_coastal_settlement():
  Construction.set_level(s,"willowmere",2)
  var check = Construction.can_build(s,"willowmere",empty_slot(s,"willowmere"),"port")
  assert_false(check.ok)
- assert_has(check.reasons,"Requires coast")
- var option = {}
- for o in Construction.options(s,"willowmere",empty_slot(s,"willowmere")):
-  if o.chain == "port": option = o
- assert_false(option.available)
- assert_has(option.reasons,"Requires coast")
+ assert_has(check.reasons,"Requires a coast")
+ # Not offered at all (owner spec 2026-10-07: port and fishing only where there is water).
+ assert_false(Construction.options(s,"willowmere",empty_slot(s,"willowmere")).any(func(o): return o.chain == "port"),"no port offered inland")
  # Coastal settlements are not affected; every starting port stands on the coast.
- assert_false("Requires coast" in Construction.can_build(s,GS,2,"port").reasons)
+ assert_false("Requires a coast" in Construction.can_build(s,GS,2,"port").reasons)
  for id in s.settlements:
   for b in s.settlements[id].buildings:
    if b.get("chain","") == "port": assert_true(s.settlements[id].coastal,id+" has a port inland")
@@ -201,4 +200,52 @@ func test_ports_require_a_coastal_settlement():
  for i in 15:
   TurnLoop.end_turn(s)
   for id in s.settlements:
-   if not s.settlements[id].coastal: assert_ne(Construction.in_progress(s,id).get("chain",""),"port",id)
+   if not s.settlements[id].coastal: assert_false(Construction.jobs(s,id).any(func(j): return j.chain == "port"),id)
+
+# Parallel builds (owner spec 2026-10-07): every empty slot under construction at once, each paid
+# when started; the realm queue lists them all with cancel and refund.
+func test_every_slot_builds_at_the_same_time():
+ var s = GameState.from_data()
+ s.treasury.house_aurek = 100000
+ Construction.set_level(s,GS,3) # every slot open
+ var data = UiData.new(s)
+ var started = 0
+ for i in s.settlements[GS].buildings.size():
+  if s.settlements[GS].buildings[i].has("chain"): continue
+  for o in Construction.options(s,GS,i):
+   if o.available and Construction.start(s,GS,i,o.chain).ok:
+    started += 1
+    break
+ assert_gt(started,1,"several slots building at once")
+ assert_eq(Construction.jobs(s,GS).size(),started)
+ var q = data.realm_constructions()
+ assert_eq(q.size(),started,"the realm queue lists every construction")
+ var gold = s.treasury.house_aurek
+ var refund = data.cancel_construction(GS,int(q[0].slot))
+ assert_gt(refund,0)
+ assert_eq(s.treasury.house_aurek,gold+refund)
+ assert_eq(Construction.jobs(s,GS).size(),started-1)
+ for t in 4: TurnLoop.end_turn(s)
+ assert_true(Construction.jobs(s,GS).is_empty(),"all complete")
+
+# Placement rules (validator): no settlement without water offers a port or fishing, none without
+# hills offers mines; on the test map and on Varos.
+func test_terrain_buildings_only_where_the_land_allows():
+ for map in [MapRegistry.DEFAULT,MapRegistry.CAMPAIGN]:
+  MapRegistry.set_active(map)
+  var s = GameState.from_data()
+  var water = 0
+  for id in s.settlements:
+   var geo = Buildings.geography(s,id)
+   if geo.water: water += 1
+   var offered = []
+   var st = s.settlements[id]
+   while st.buildings.size()<Buildings.slot_count(st.type,Buildings.max_level(Buildings.main_chain_id(st.type))): st.buildings.append({})
+   for i in st.buildings.size():
+    if st.buildings[i].has("chain"): continue
+    for o in Construction.options(s,id,i): offered.append(o.chain)
+   if not geo.coastal: assert_false("port" in offered,"%s %s: a port without a coast" % [map,id])
+   if not geo.water: assert_false("fishing" in offered,"%s %s: fishing without water" % [map,id])
+   if not geo.hills: assert_false("mine" in offered,"%s %s: mines without hills" % [map,id])
+  assert_gt(water,0,map+": some settlements have water")
+ MapRegistry.set_active(MapRegistry.DEFAULT)

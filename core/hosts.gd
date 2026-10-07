@@ -122,7 +122,7 @@ static func _raise_levies(state,f: String):
   var id = new_detachment(state,f,sid,[])
   for i in n: state.army_state[id].units.append({"unit":unit,"men":size,"max_men":size,"rank":0,"levy_from":sid})
   state.settlements[sid].levied = int(state.settlements[sid].get("levied",0))+n
-  if sid != m.point: Movement.order(state,id,WorldMap.settlement_position(m.point))
+  if sid != m.point: Movement.order(state,id,WorldMap.settlement_position(m.point),not Movement.holds_orders(state,f))
  m.pending = []
 
 # A captain-led detachment at a settlement (no general; game-design §12.3).
@@ -200,11 +200,13 @@ static func leave_host(state,id: String):
   state.hosts[k].members.erase(id)
 
 # Host armies follow their leader (after the leader moves, and at End Turn).
-static func follow(state):
+static func follow(state,end_turn := false):
  for k in _h(state).keys():
   if not state.army_state.has(k):
    state.hosts.erase(k)
    continue
+  # At End Turn the player's Host waits for the player like any order (Movement.holds_orders).
+  if end_turn and Movement.holds_orders(state,str(state.army_state[k].faction)): continue
   var lead = Movement.position(state,k)
   for id in state.hosts[k].members.duplicate():
    if not state.army_state.has(id):
@@ -266,7 +268,7 @@ static func end_turn(state) -> Array:
      keep.append(u)
     a.units = keep
  out.append_array(merge_detachments(state).map(func(x): return {"faction":state.army_state[x.into].faction if state.army_state.has(x.into) else "","kind":"merged","text":"Levies joined the army."}))
- follow(state)
+ follow(state,true)
  return out
 
 # Movement allowance factor for an army at a position (war-and-realm §2.6).

@@ -5,10 +5,11 @@ extends RefCounted
 #    and slot count, and moves the settlement visual to the next growth stage.
 #  - Other slots hold one building chain each (no duplicates per settlement), built from level 1
 #    and upgraded one level at a time. In V1 availability is gated by settlement level, plus
-#    geography where a chain requires it (ports need a coastal settlement).
-#  - Gold is paid when construction starts; it completes after the level's turns (1 turn = 1 year)
-#    during End Turn. One construction at a time per settlement (data). Cancelling refunds in full
-#    in the turn it started, partially afterwards (PLACEHOLDER rule in data).
+#    geography where a chain requires it (data "requires": coastal, water (sea, lake or river), hills).
+#  - Every slot can be under construction at the same time (owner spec 2026-10-07: parallel builds),
+#    each paid when it starts; each completes after its level's turns (1 turn = 1 year) during End
+#    Turn. Cancelling refunds in full in the turn it started, partially afterwards (PLACEHOLDER rule).
+#    State: settlement "constructions" = [{slot, chain, level, turns_left, turns_total, cost, started_turn}].
 #  - AI factions build through start() like the player (core/ai.gd decides what).
 # OPEN (constitution): converting a city to a fortress or back is confirmed but deferred, not built.
 
@@ -18,11 +19,37 @@ const CATEGORY_ORDER = ["economic","civic","military","defense"]
 static func rules() -> Dictionary:
  return Buildings.data().construction
 
+# Every construction under way in a settlement (one per slot).
+static func jobs(state,id: String) -> Array:
+ var s = state.settlements[id]
+ if not s.has("constructions") or not s.constructions is Array: s.constructions = []
+ return s.constructions
+
+# The construction in a slot, or {}.
+static func in_slot(state,id: String,slot: int) -> Dictionary:
+ for j in jobs(state,id):
+  if int(j.slot) == slot: return j
+ return {}
+
+# The first construction under way ({} when nothing builds); "is anything building here" for callers
+# that need no more.
 static func in_progress(state,id: String) -> Dictionary:
- return state.settlements[id].get("construction",{})
+ var j = jobs(state,id)
+ return j[0] if not j.is_empty() else {}
+
+# Every construction of a faction across its realm (the realm construction queue): [{settlement, job}].
+static func realm_jobs(state,faction: String) -> Array:
+ var out = []
+ var ids = state.settlements.keys()
+ ids.sort()
+ for id in ids:
+  if state.settlements[id].owner != faction: continue
+  for j in jobs(state,id): out.append({"settlement":id,"job":j})
+ return out
 
 # What building a slot offers: [{chain, level, name, cost, turns, upkeep, effects, available, reasons}].
-# Empty slot: level 1 of every chain this settlement type can build. Built slot: its next level.
+# Empty slot: level 1 of every chain this settlement type can build and whose site fits (a chain that
+# needs water, hills or woodland is not offered without them). Built slot: its next level.
 static func options(state,id: String,slot: int) -> Array:
  var s = state.settlements[id]
  var b = s.buildings[slot]
@@ -30,11 +57,13 @@ static func options(state,id: String,slot: int) -> Array:
  if b.has("chain"):
   if int(b.level)<Buildings.max_level(b.chain): out.append(_option(state,id,slot,b.chain,int(b.level)+1))
  else:
-  # Chains already standing elsewhere here are upgraded from their own slot, so not listed.
+  # Chains already standing or building elsewhere here are not listed again.
   var present = []
   for other in s.buildings: present.append(other.get("chain",""))
+  for j in jobs(state,id): present.append(str(j.chain))
   for c in Buildings.chains_for(s.type):
-   if not c in present: out.append(_option(state,id,slot,c,1))
+   if c in present or Buildings.site_reason(state,id,c) != "": continue
+   out.append(_option(state,id,slot,c,1))
   out.sort_custom(func(a,b): return [CATEGORY_ORDER.find(a.category),a.cost,a.chain]<[CATEGORY_ORDER.find(b.category),b.cost,b.chain])
  return out
 
@@ -53,6 +82,7 @@ static func can_build(state,id: String,slot: int,chain_id: String) -> Dictionary
  var b = s.buildings[slot]
  var main = Buildings.main_chain_id(s.type)
  var level = 1
+ if not in_slot(state,id,slot).is_empty(): return {"ok":false,"reasons":["Already under construction in this slot"],"level":0}
  if b.has("chain"):
   if b.chain != chain_id: return {"ok":false,"reasons":["Slot holds %s" % Buildings.chain(b.chain).name],"level":0}
   level = int(b.level)+1
@@ -62,13 +92,15 @@ static func can_build(state,id: String,slot: int,chain_id: String) -> Dictionary
    return {"ok":false,"reasons":["%s cannot be built in a %s" % [Buildings.chain(chain_id).name,s.type]],"level":level}
   for other in s.buildings:
    if other.get("chain","") == chain_id: reasons.append("Already built in this settlement")
-  var pending = in_progress(state,id)
-  if pending.get("chain","") == chain_id: reasons.append("Already under construction here")
- if Buildings.chain(chain_id).get("requires",{}).get("coastal",false) and not s.get("coastal",false): reasons.append("Requires coast")
+  for j in jobs(state,id):
+   if str(j.chain) == chain_id: reasons.append("Already under construction here")
+ # The land decides new buildings only; one already standing keeps upgrading.
+ var site = Buildings.site_reason(state,id,chain_id) if not b.has("chain") else ""
+ if site != "": reasons.append(site)
  if not Buildings.is_main(chain_id) and level>int(s.level):
   reasons.append("Requires %s (settlement level %d)" % [Buildings.building_name(id,main,level),level])
- if not in_progress(state,id).is_empty() and not "Already under construction here" in reasons:
-  reasons.append("Another construction is in progress here")
+ var cap = int(rules().get("max_per_settlement",0))
+ if cap>0 and jobs(state,id).size()>=cap: reasons.append("Another construction is in progress here")
  var cost = int(Buildings.level_data(chain_id,level).cost)
  if int(state.treasury.get(s.owner,0))<0: reasons.append("In debt: no construction until the treasury is out of debt")
  elif int(state.treasury.get(s.owner,0))<cost: reasons.append("Not enough gold (%d needed)" % cost)
@@ -81,23 +113,28 @@ static func start(state,id: String,slot: int,chain_id: String) -> Dictionary:
  var s = state.settlements[id]
  var l = Buildings.level_data(chain_id,check.level)
  state.treasury[s.owner] -= int(l.cost)
- s.construction = {"slot":slot,"chain":chain_id,"level":check.level,"turns_left":int(l.turns),"turns_total":int(l.turns),"cost":int(l.cost),"started_turn":state.turn}
+ jobs(state,id).append({"slot":slot,"chain":chain_id,"level":check.level,"turns_left":int(l.turns),"turns_total":int(l.turns),"cost":int(l.cost),"started_turn":state.turn})
  return check
 
-static func refund_amount(state,id: String) -> int:
- var c = in_progress(state,id)
+# The refund for cancelling the construction in a slot (-1: the first one).
+static func refund_amount(state,id: String,slot := -1) -> int:
+ var c = in_progress(state,id) if slot<0 else in_slot(state,id,slot)
  if c.is_empty(): return 0
  var ratio = rules().cancel_refund_same_turn if int(c.started_turn) == state.turn else rules().cancel_refund_later
  return int(round(float(c.cost)*float(ratio)))
 
-# Cancel this settlement's construction; returns the gold refunded.
-static func cancel(state,id: String) -> int:
- var refund = refund_amount(state,id)
- if in_progress(state,id).is_empty(): return 0
- var s = state.settlements[id]
- state.treasury[s.owner] += refund
- s.construction = {}
+# Cancel the construction in a slot (-1: the first one); returns the gold refunded.
+static func cancel(state,id: String,slot := -1) -> int:
+ var c = in_progress(state,id) if slot<0 else in_slot(state,id,slot)
+ if c.is_empty(): return 0
+ var refund = refund_amount(state,id,int(c.slot))
+ state.treasury[state.settlements[id].owner] += refund
+ jobs(state,id).erase(c)
  return refund
+
+# Drop every construction of a settlement (it changed hands): nothing is refunded.
+static func clear(state,id: String):
+ state.settlements[id].constructions = []
 
 # End Turn: advance every construction by one turn; returns the completions of this turn.
 static func advance(state) -> Array:
@@ -105,30 +142,31 @@ static func advance(state) -> Array:
  var ids = state.settlements.keys()
  ids.sort()
  for id in ids:
-  var c = in_progress(state,id)
-  if c.is_empty(): continue
-  c.turns_left = int(c.turns_left)-1
-  if c.turns_left>0: continue
+  var list = jobs(state,id)
+  if list.is_empty(): continue
   var s = state.settlements[id]
-  s.construction = {}
-  var slot = s.buildings[int(c.slot)]
-  if not slot.has("chain"): s.buildings[int(c.slot)] = {"chain":c.chain,"level":c.level}
-  else: slot.level = c.level
-  var main = Buildings.is_main(c.chain)
-  if main: _set_settlement_level(state,id,int(c.level))
-  Buildings.refresh(state,id)
-  done.append({"settlement":id,"faction":s.owner,"chain":c.chain,"level":int(c.level),"main":main,"name":Buildings.building_name(id,c.chain,int(c.level))})
+  for c in list.duplicate():
+   c.turns_left = int(c.turns_left)-1
+   if c.turns_left>0: continue
+   list.erase(c)
+   var slot = s.buildings[int(c.slot)]
+   if not slot.has("chain"): s.buildings[int(c.slot)] = {"chain":c.chain,"level":c.level}
+   else: slot.level = c.level
+   var main = Buildings.is_main(c.chain)
+   if main: _set_settlement_level(state,id,int(c.level))
+   Buildings.refresh(state,id)
+   done.append({"settlement":id,"faction":s.owner,"chain":c.chain,"level":int(c.level),"main":main,"name":Buildings.building_name(id,c.chain,int(c.level))})
  return done
 
 # Settlement level follows the main building; new slots open as empty slots. Shrinking (debug
-# only) keeps occupied slots and drops trailing empty ones.
+# only) keeps occupied slots and slots under construction, and drops trailing empty ones.
 static func _set_settlement_level(state,id: String,level: int):
  var s = state.settlements[id]
  s.level = level
  s.buildings[0].level = level
  var count = Buildings.slot_count(s.type,level)
  while s.buildings.size()<count: s.buildings.append({})
- while s.buildings.size()>count and s.buildings.back().is_empty() and not (int(in_progress(state,id).get("slot",-1)) == s.buildings.size()-1): s.buildings.pop_back()
+ while s.buildings.size()>count and s.buildings.back().is_empty() and in_slot(state,id,s.buildings.size()-1).is_empty(): s.buildings.pop_back()
 
 # Debug/developer override (prototype keys and capture flags): set the main building level directly.
 static func set_level(state,id: String,level: int):
