@@ -13,11 +13,18 @@ func test_max_level_sprawl_stays_inside_its_footprint():
  var flat = func(_p): return "open"
  for t in fp.radius:
   var worst = 0.0
+  var far = 0.0
   for c in Sprawl.culture_data().cultures:
    for b in [[],[{"chain":"farm","level":3}],[{"chain":"mine","level":3}],[{"chain":"barracks","level":3}]]:
     var s = {"id":"fp_%s_%s_%d" % [t,c,b.size()],"type":t,"level":3,"position":Vector2.ZERO,"from":c,"to":c,"value":1.0,"buildings":b}
-    for e in Sprawl.layout(s,flat): worst = maxf(worst,Vector2(e.pos).length()+maxf(e.scale.x,e.scale.z)*1.5)
+    for e in Sprawl.layout(s,flat):
+     var reach = Vector2(e.pos).length()+maxf(e.scale.x,e.scale.z)*1.5
+     if e.get("countryside",false): far = maxf(far,reach)
+     else: worst = maxf(worst,reach)
   assert_lte(worst,float(fp.radius[t]),"%s sprawl reaches %.1f m" % [t,worst])
+  # Hamlets and their fields (A8) live in the countryside ring, inside the footprint circle.
+  assert_gt(far,float(fp.radius[t])*0.8,t+" has countryside hamlets or fields")
+  assert_lte(far,float(fp.radius[t])+float(fp.countryside),"%s countryside reaches %.1f m" % [t,far])
 
 func test_footprints_hold_on_the_test_map():
  var v = Validator.validate(MapRegistry.DEFAULT)

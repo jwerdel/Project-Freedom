@@ -402,15 +402,11 @@
       "population": 2815,
       "buildings": [
         {
-          "chain": "farm",
+          "chain": "mine",
           "level": 1
         },
         {
           "chain": "walls",
-          "level": 2
-        },
-        {
-          "chain": "temple",
           "level": 1
         }
       ]
@@ -885,7 +881,7 @@
       "buildings": [
         {
           "chain": "market",
-          "level": 1
+          "level": 2
         },
         {
           "chain": "farm",
@@ -1010,16 +1006,12 @@
       "population": 4457,
       "buildings": [
         {
-          "chain": "farm",
+          "chain": "mine",
           "level": 1
         },
         {
           "chain": "walls",
           "level": 2
-        },
-        {
-          "chain": "temple",
-          "level": 1
         }
       ]
     },

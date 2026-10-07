@@ -88,7 +88,10 @@ static func layout(s: Dictionary,terrain_at: Callable,height_at := Callable()) -
  ctx.roads = road_a
  if lm>0.0:
   # A landmark keeps its own model at the centre: the town grows around it, no walls through it.
+  # A landmark with walls of its own (landmark_walls) gets no generic wall ring; one without them
+  # gets the culture's ring around its town when the settlement type has walls.
   for p in _ring_lots(ctx,lm+3.0,float(cfg.suburb),4.4): _lot(ctx,p[0],p[1],"house")
+  if float(cfg.get("wall",0))>0.0 and not bool(s.get("landmark_walls",false)) and not ctx.inner.is_empty() and not ctx.style in ["wild","camp"]: _outline_walls(ctx)
  else:
   match ctx.style:
    "grid": _grid(ctx,false)
@@ -105,6 +108,7 @@ static func layout(s: Dictionary,terrain_at: Callable,height_at := Callable()) -
   if float(cfg.get("wall",0))>0.0: _walls(ctx)
  _suburbs(ctx)
  _countryside(ctx)
+ _hamlets(ctx)
  _crowds(ctx)
  return ctx.out
 
@@ -551,7 +555,10 @@ static func _walls(ctx: Dictionary):
    for s in [[-1,-1],[1,-1],[1,1],[-1,1]]: corners.append(ctx.center+g.ax*s[0]*(g.rx+3.0)+g.ay*s[1]*(g.ry+3.0))
    _wall_ring(ctx,corners,4)
    return
- # The outline: per direction, the farthest building plus a margin, smoothed.
+ _outline_walls(ctx)
+
+# Walls along the town's outline: per direction, the farthest building plus a margin, smoothed.
+static func _outline_walls(ctx: Dictionary):
  var c: Vector2 = ctx.center
  var bins = 40
  var r = []
@@ -720,6 +727,50 @@ static func _countryside(ctx: Dictionary):
   for i in int(sd.chains.watchtower.watch)*int(chains.watchtower):
    var a = ctx.roads[i%ctx.roads.size()]
    _lot(ctx,c+Vector2.from_angle(a)*(farm_r*0.8)+Vector2.from_angle(a+PI*0.5)*5.0,a,"tower",false,false,0.8)
+
+# Hamlets and fields in the countryside ring (data/settlement_sprawl.json "hamlets"; owner
+# 2026-10-06): a few clusters of houses with fences and fields near the roads out of town, and more
+# fields on open ground, all inside the settlement's own footprint circle (countryside: true marks
+# them; tests/test_footprints.gd lets them reach the countryside ring, never beyond).
+static func _hamlets(ctx: Dictionary):
+ var hd = sprawl_data().get("hamlets",{})
+ if hd.is_empty(): return
+ var fp = sprawl_data().footprint
+ var t = str(ctx.s.get("type","city"))
+ var R = float(fp.radius.get(t,60))
+ var r0 = R*float(hd.ring[0])
+ var r1 = R+float(fp.countryside)*float(hd.ring[1])
+ var c: Vector2 = ctx.center
+ var rng: RandomNumberGenerator = ctx.rng
+ var count = int(hd.count.get(t,[1,1,1])[ctx.L-1])
+ var colors = sprawl_data().colors.fields
+ var farming = path_of(ctx.s) == "farming"
+ var field = func(p: Vector2,a: float) -> bool:
+  if _cls(ctx,p) != "open" or not _free(ctx,p,3.0) or p.distance_to(c)>r1-6.0: return false
+  var sz = rng.randf_range(5.0,7.5)
+  ctx.out.append({"piece":"kit.field","culture":ctx.to,"ruin":false,"pos":p,"rot":a,"scale":Vector3(sz,1,sz*rng.randf_range(0.7,1.3)),"color":Color(colors[rng.randi_range(0,colors.size()-1)]),"countryside":true})
+  _take(ctx,p,2.5)
+  return true
+ for k in count:
+  # Near a road out of town, part way across the ring.
+  var a = ctx.roads[k%ctx.roads.size()]+rng.randf_range(0.35,0.8)*(1.0 if k%2 == 0 else -1.0)
+  var hc = c+Vector2.from_angle(a)*rng.randf_range(r0+4.0,r1-10.0)
+  if not _land(ctx,hc): continue
+  var before = ctx.out.size()
+  for i in rng.randi_range(int(hd.houses[0]),int(hd.houses[1])):
+   var p = hc+Vector2.from_angle(rng.randf()*TAU)*rng.randf_range(1.5,6.5)
+   _lot(ctx,p,(hc-p).angle()+rng.randf_range(-0.4,0.4),"hut" if rng.randf()<0.4 else "house",false,false)
+  for i in 2: _put(ctx,"kit.fence",hc+Vector2.from_angle(rng.randf()*TAU)*rng.randf_range(6.0,8.5),rng.randf()*TAU)
+  for i in rng.randi_range(int(hd.fields[0]),int(hd.fields[1])):
+   for tries in 6:
+    if field.call(hc+Vector2.from_angle(rng.randf()*TAU)*rng.randf_range(9.0,16.0),rng.randf()*TAU): break
+  for i in range(before,ctx.out.size()): ctx.out[i].countryside = true
+ var extra = int(hd.extra_fields[ctx.L-1])*(2 if farming else 1)
+ var tries = extra*5
+ while extra>0 and tries>0:
+  tries -= 1
+  var a = rng.randf()*TAU
+  if field.call(c+Vector2.from_angle(a)*rng.randf_range(r0,r1-6.0),a+PI*0.5): extra -= 1
 
 # The path's signature building: placed first and always (on the nearest dry ground).
 static func _sig(ctx: Dictionary,at: Vector2,path: String):

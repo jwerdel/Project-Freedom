@@ -556,6 +556,27 @@ func declare_war(target_faction: String) -> Dictionary:
 func at_war(other_faction: String) -> bool:
  return Battles.at_war(state,state.player_faction,other_faction)
 
+# A faction's relation to the player for the diplomacy map mode: "self", "vassal", "ally", "trade",
+# "neutral", "hostile" or "war" (core/diplomacy.gd when it exists; lore rivals count as hostile).
+func relation_to_player(f: String) -> String:
+ var me = state.player_faction
+ if f == me: return "self"
+ if at_war(f): return "war"
+ var D = _diplomacy()
+ if D != null: return D.relation(state,me,f)
+ if str(WorldMap.faction(me).get("relations",{}).get(f,"")) == "rival": return "hostile"
+ return "neutral"
+
+# The faction this one is a vassal of ("" = independent).
+func liege_of(f: String) -> String:
+ var D = _diplomacy()
+ return D.liege_of(state,f) if D != null else ""
+
+static var _dip_script = null
+func _diplomacy():
+ if _dip_script == null and ResourceLoader.exists("res://core/diplomacy.gd"): _dip_script = load("res://core/diplomacy.gd")
+ return _dip_script
+
 # --- Diplomacy screen (docs/tw-ui-parity.md §15; docs/diplomacy-design.md) ---------------------
 # Real: war and peace status, holdings and strength, faction tendencies, who is at war with whom.
 # PLACEHOLDERS until the diplomacy system: attitude (neutral start, diplomacy-design §3.3),

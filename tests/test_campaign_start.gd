@@ -67,3 +67,19 @@ func test_the_ai_never_targets_caeloth():
  for id in s.army_state:
   if s.army_state[id].faction == "throne_church": continue
   for t in Ai.targets_for(s,id,5000.0): assert_ne(str(t.faction),"throne_church",id)
+
+# A5 (owner 2026-10-06): no faction starts in deficit, and the three playable houses start within
+# reach of each other (Varrenus's single city earns less than Varn's two, by design, but not by much).
+func test_no_faction_starts_with_negative_income():
+ var Economy = load("res://core/economy.gd")
+ for map in [MapRegistry.CAMPAIGN,MapRegistry.DEFAULT]:
+  MapRegistry.set_active(map)
+  var s = GameState.from_data()
+  for f in s.factions():
+   if s.settlements_of(f).is_empty(): continue
+   var l = Economy.faction_ledger(s,f)
+   assert_gte(int(l.net),0,"%s on %s starts at %d net" % [f,map,int(l.net)])
+ MapRegistry.set_active(MapRegistry.CAMPAIGN)
+ var s = GameState.from_data()
+ var nets = PLAYABLE.map(func(p): return int(Economy.faction_ledger(s,p).net))
+ assert_gte(nets.min(),nets.max()*0.5,"playable starts within a factor of two: %s" % str(nets))

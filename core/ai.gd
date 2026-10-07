@@ -282,7 +282,22 @@ static func assess(state,f: String,p: Dictionary) -> Dictionary:
   var def = settlement_defense(state,sid)
   threats[sid] = {"threat":t,"defense":def}
   if t>def*float(d.defend.threatened_ratio): threatened.append(sid)
- return {"enemies":enemies,"threats":threats,"threatened":threatened}
+ return {"enemies":enemies,"threats":threats,"threatened":threatened,"war_range":war_range(state,f)}
+
+# How far a faction looks for wars and marches: war_meters, or war_neighbourhood x the distance to
+# its nearest foreign settlement when that is farther, never beyond war_max_meters.
+static func war_range(state,f: String) -> float:
+ var r = data().reach
+ var lo = float(r.war_meters)
+ var hi = float(r.war_max_meters)
+ var nearest = INF
+ for sid in state.settlements_of(f):
+  var at = WorldMap.settlement_position(sid)
+  for o in WorldMap.settlements_near(at,hi):
+   if state.settlements[o].owner == f or bool(WorldMap.faction(state.settlements[o].owner).get("untouchable",false)): continue
+   nearest = minf(nearest,at.distance_to(WorldMap.settlement_position(o)))
+ if nearest == INF: return lo
+ return clampf(nearest*float(r.war_neighbourhood),lo,hi)
 
 # Targets an army could strike this turn (reach default) or march on (war_meters): foreign
 # settlements and field armies, strongest odds first.
@@ -318,10 +333,11 @@ static func targets_for(state,army_id: String,reach := -1.0) -> Array:
 
 # What the faction could bring against a target over a few turns: its field armies within
 # war_meters of it, times gather_share (not all of them will arrive or be spared).
-static func strategic_power(state,f: String,at: Vector2) -> float:
+static func strategic_power(state,f: String,at: Vector2,within := -1.0) -> float:
+ if within<0.0: within = float(data().reach.war_meters)
  var p = 0.0
  for id in field_armies(state,f):
-  if state.army_state[id].units.size()>=int(data().recruitment.garrison_units) and Movement.position(state,id).distance_to(at)<=float(data().reach.war_meters): p += army_power(state,id)
+  if state.army_state[id].units.size()>=int(data().recruitment.garrison_units) and Movement.position(state,id).distance_to(at)<=within: p += army_power(state,id)
  return p*float(data().war.gather_share)
 
 static func field_armies(state,f: String) -> Array:
@@ -339,12 +355,12 @@ static func _consider_war(state,f: String,p: Dictionary,look: Dictionary,rng: Ra
  var best = {}
  for id in field_armies(state,f):
   if state.army_state[id].units.size()<int(data().recruitment.garrison_units) and not landless: continue
-  for t in targets_for(state,id,float(data().reach.war_meters)):
+  for t in targets_for(state,id,float(look.get("war_range",data().reach.war_meters))):
    if t.faction in look.enemies or t.faction == "": continue
    if bool(WorldMap.faction(t.faction).get("untouchable",false)): continue # Caeloth: no faction's goal is to take it (constitution)
    if landless and t.kind != "settlement": continue
    # The whole field force that could gather against it, not one army.
-   var ratio = maxf(float(t.ratio),strategic_power(state,f,t.position)/maxf(1.0,float(t.defense)))
+   var ratio = maxf(float(t.ratio),strategic_power(state,f,t.position,float(look.get("war_range",-1.0)))/maxf(1.0,float(t.defense)))
    var score = ratio
    # A walled target the force could besiege (a match for it without the walls) counts as weak
    # enough to start a war over, at siege_weight.
@@ -367,13 +383,25 @@ static func _consider_war(state,f: String,p: Dictionary,look: Dictionary,rng: Ra
 
 # --- Economy ----------------------------------------------------------------------------------
 
-static func reserve(f: String,p: Dictionary) -> int:
- return int(float(data().economy.reserve_gold)*float(p.reserve))
+# The gold a faction keeps in hand: reserve_turns x its gross income, between reserve_min and
+# reserve_gold, times its personality's reserve (small realms keep a small reserve); at war only
+# war_reserve_share of it (the war chest is spent).
+static func reserve(state,f: String,p: Dictionary) -> int:
+ var e = data().economy
+ var gross = float(Economy.faction_ledger(state,f).income_total)
+ var war = 1.0 if at_war_with(state,f).is_empty() else float(e.war_reserve_share)
+ return int(clampf(gross*float(e.reserve_turns),float(e.reserve_min),float(e.reserve_gold))*float(p.reserve)*war)
+
+# The net income a faction keeps after new upkeep (a share of its gross income, within bounds).
+static func min_net(state,f: String) -> int:
+ var e = data().economy
+ if not at_war_with(state,f).is_empty(): return int(e.min_net_floor) # at war the treasury pays for the war, never into debt
+ return int(clampf(float(Economy.faction_ledger(state,f).income_total)*float(e.min_net_share),float(e.min_net_floor),float(e.min_net_income)))
 
 static func _build(state,f: String,p: Dictionary,look: Dictionary,report: Dictionary):
  var e = data().economy
  for n in int(e.max_builds_per_turn):
-  var surplus = int(state.treasury.get(f,0))-reserve(f,p)
+  var surplus = int(state.treasury.get(f,0))-reserve(state,f,p)
   var net = int(Economy.faction_ledger(state,f).net)
   var best = {}
   for sid in state.settlements_of(f):
@@ -388,7 +416,7 @@ static func _build(state,f: String,p: Dictionary,look: Dictionary,report: Dictio
    for i in s.buildings.size():
     if s.buildings[i].is_empty() and i != first_empty: continue
     for o in Construction.options(state,sid,i):
-     if not o.available or o.cost>surplus or net-int(o.upkeep)<int(e.min_net_income): continue
+     if not o.available or o.cost>surplus or net-int(o.upkeep)<min_net(state,f): continue
      var wgt = float(weights.get(o.category,0.0))
      if o.category in ["main","economic"]: wgt *= float(p.economy)
      if o.category in ["defense","military"]: wgt *= float(p.defense)
@@ -437,7 +465,7 @@ static func _raise(state,f: String,p: Dictionary,report: Dictionary):
  var have = Armies.armies_of(state,f).size()
  if have>=want: return
  # With no army at all, a faction digs into its reserve (keeps emergency_reserve_share of it).
- var floor = reserve(f,p)+int(r.raise_margin) if have>0 else int(reserve(f,p)*float(r.emergency_reserve_share))
+ var floor = reserve(state,f,p)+int(r.raise_margin) if have>0 else int(reserve(state,f,p)*float(r.emergency_reserve_share))
  if int(state.treasury.get(f,0))-int(Armies.data().armies.general_cost)<floor: return
  var best = ""
  for sid in state.settlements_of(f):
@@ -462,21 +490,21 @@ static func _recruit(state,f: String,p: Dictionary,report: Dictionary):
  # With hardly any troops left, recruiting digs into the reserve like an emergency raise.
  var total = 0
  for id in Armies.armies_of(state,f): total += state.army_state[id].units.size()+state.army_state[id].queue.size()
- var floor = reserve(f,p) if total>=int(r.garrison_units) else int(reserve(f,p)*float(r.emergency_reserve_share))
+ var floor = reserve(state,f,p) if total>=int(r.garrison_units) else int(reserve(state,f,p)*float(r.emergency_reserve_share))
  for id in Armies.armies_of(state,f):
   var a = state.army_state[id]
   if not Armies.recruit_context(state,id).ok: continue
   for n in int(r.max_recruits_per_turn):
    var size = a.units.size()+a.queue.size()
    # A rich faction fills its armies past the field size, up to the army cap.
-   var target = int(r.field_units) if int(state.treasury[f])<reserve(f,p)*float(r.rich_factor) else Armies.max_units()-1
+   var target = int(r.field_units) if int(state.treasury[f])<reserve(state,f,p)*float(r.rich_factor) else Armies.max_units()-1
    if size>=target: break
    var counts = {}
    for u in a.units: counts[role_of(u.unit)] = counts.get(role_of(u.unit),0)+1
    for q in a.queue: counts[role_of(q.unit)] = counts.get(role_of(q.unit),0)+1
    var best = {}
    for o in Armies.options(state,id):
-    if not o.available or int(state.treasury[f])-o.cost<floor or net-o.upkeep<int(data().economy.min_net_income): continue
+    if not o.available or int(state.treasury[f])-o.cost<floor or net-o.upkeep<min_net(state,f): continue
     var role = role_of(o.unit)
     var shortfall = float(comp.get(role,0.0))*(size+1)-float(counts.get(role,0))
     var key = [-shortfall,-unit_power({"unit":o.unit,"men":o.men})/maxf(1.0,o.cost),o.unit]
@@ -568,6 +596,7 @@ static func _army_order(state,id: String,f: String,p: Dictionary,look: Dictionar
  if _try_attack(state,id,f,p,look,report,opts,controlled): return
  if _flee(state,id,f,report): return
  if _stage(state,id,f,p,look,report): return
+ if _patrol(state,id,f,report): return
  _rest(state,id,f,report)
 
 static func _try_attack(state,id: String,f: String,p: Dictionary,look: Dictionary,report: Dictionary,opts: Dictionary,controlled: Array) -> bool:
@@ -678,11 +707,11 @@ static func _stage(state,id: String,f: String,p: Dictionary,look: Dictionary,rep
  var last_home = a.garrison == cap and Movement.garrison_of(state,cap).size()<=1 and Armies.armies_of(state,f).size()<=1
  if not last_home:
   var tries = 0
-  for t in targets_for(state,id,float(data().reach.war_meters)):
+  for t in targets_for(state,id,float(look.get("war_range",data().reach.war_meters))):
    if not t.faction in look.enemies: continue
    if tries>=int(data().reach.plan_candidates): break
    tries += 1
-   var force = maxf(float(t.ratio),strategic_power(state,f,t.position)/maxf(1.0,float(t.defense)))
+   var force = maxf(float(t.ratio),strategic_power(state,f,t.position,float(look.get("war_range",-1.0)))/maxf(1.0,float(t.defense)))
    if t.kind == "settlement" and walled(state,t.id): force *= (1.0+float(data().power.wall_bonus))*float(data().war.siege_weight)
    if force<float(data().attack.march_ratio)/float(p.boldness): continue
    var appr = Battles.approach(state,id,t)
@@ -708,6 +737,48 @@ static func _stage(state,id: String,f: String,p: Dictionary,look: Dictionary,rep
  var r = _move(state,report,id,WorldMap.settlement_position(best))
  if r.ok: report.actions.append({"action":"stage","faction":f,"army":id,"to":best})
  return r.ok
+
+# Nothing else to do (quiet-AI fix): every patrol_every turns an army of patrol_min_units or more marches to a watch point
+# patrol_share of the way from its home toward the nearest foreign settlement (a show of force on
+# the frontier); _rest brings it home the turn after. The capital keeps its last army.
+static func _patrol(state,id: String,f: String,report: Dictionary) -> bool:
+ var r = data().recruitment
+ var a = state.army_state[id]
+ if a.units.size()<int(r.patrol_min_units) or not a.order.is_empty() or a.garrison == "": return false
+ if (int(state.turn)+abs(hash(id)))%int(r.patrol_every) != 0: return false
+ # A patrol is short (out one turn, home the next) and the walls hold meanwhile, so even the
+ # capital's last army goes; at war it watches toward the enemy.
+ var home = WorldMap.settlement_position(a.garrison)
+ # The nearest foreign settlements, then watch points at a few shares of the way (on land: coasts
+ # and lakes lie between many neighbours), then a march to another own settlement.
+ var near = []
+ var enemies = at_war_with(state,f)
+ for o in WorldMap.settlements_near(home,float(data().reach.war_max_meters)):
+  if state.settlements[o].owner != f and (enemies.is_empty() or state.settlements[o].owner in enemies): near.append(o)
+ if near.is_empty():
+  for o in WorldMap.settlements_near(home,float(data().reach.war_max_meters)):
+   if state.settlements[o].owner != f: near.append(o)
+ near.sort_custom(func(x,y): return home.distance_to(WorldMap.settlement_position(x))<home.distance_to(WorldMap.settlement_position(y)) or (home.distance_to(WorldMap.settlement_position(x)) == home.distance_to(WorldMap.settlement_position(y)) and x<y))
+ var tries = 0
+ for o in near.slice(0,3):
+  var q = WorldMap.settlement_position(o)
+  for share in [float(r.patrol_share),float(r.patrol_share)*0.6,float(r.patrol_share)*0.35,float(r.patrol_share)*1.3]:
+   var watch = home.lerp(q,share)
+   if Movement.terrain_at(watch) in ["water","mountain"]: continue
+   if tries>=4: break
+   tries += 1
+   var m = _move(state,report,id,watch)
+   if m.ok:
+    report.actions.append({"action":"patrol","faction":f,"army":id,"to":[watch.x,watch.y]})
+    return true
+ for o in state.settlements_of(f):
+  if o == a.garrison: continue
+  var m = _move(state,report,id,WorldMap.settlement_position(o))
+  if m.ok:
+   report.actions.append({"action":"patrol","faction":f,"army":id,"to":o})
+   return true
+  break
+ return false
 
 # Nothing to do: go home (garrisoned armies replenish and recruit).
 static func _rest(state,id: String,f: String,report: Dictionary):

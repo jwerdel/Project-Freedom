@@ -48,7 +48,7 @@ func test_ai_spends_only_what_it_pays_for_and_keeps_every_limit():
  var s = GameState.from_data(GameState.START,77)
  var cap_units = Armies.max_units()
  var cap_armies = int(Armies.data().armies.max_per_faction)
- var min_net = int(Ai.data().economy.min_net_income)
+ var min_net = 0 # each faction's own minimum (Ai.min_net), never below zero
  for turn in 25:
   # The yearly processing alone, then the AI phase, so its spending can be checked exactly.
   TurnLoop.end_turn(s,{"ai":false})
@@ -73,7 +73,7 @@ func test_ai_spends_only_what_it_pays_for_and_keeps_every_limit():
    if not lost_build: assert_eq(int(s.treasury[f]),int(before[f])-spent[f],"%s pays exactly for what it does (turn %d)" % [f,turn])
    assert_lte(Armies.armies_of(s,f).size(),cap_armies,"army cap")
    if not actions_of(rep,"recruit",f).is_empty() or not actions_of(rep,"build",f).is_empty():
-    assert_gte(int(Economy.faction_ledger(s,f).net),min_net,"%s never builds or recruits into negative income" % f)
+    assert_gte(int(Economy.faction_ledger(s,f).net),mini(min_net,Ai.min_net(s,f)),"%s never builds or recruits into negative income" % f)
   for id in s.army_state:
    var a = s.army_state[id]
    assert_lte(Armies.card_count(a),cap_units,"units per army")

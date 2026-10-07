@@ -114,6 +114,8 @@ const COMING = "\nComing later."
 signal menu_requested
 signal camera_setting_changed(key: String,value)
 signal army_chosen(army_id: String)       # from the Lords and heroes list
+signal frame_realm_requested # the minimap's Frame my realm button
+signal capital_requested     # the minimap's Go to capital button
 signal settlement_chosen(settlement_id: String)
 
 var top_buttons := {}
@@ -246,6 +248,21 @@ func _build_minimap():
  placeholder.name = "Placeholder"
  minimap_slot.add_child(placeholder)
  _anchor(minimap_frame,1,0,1,0,Rect2(-250,62,-14,298))
+ # Beside the minimap: Frame my realm (Shift+Home) and Go to capital (Home).
+ var nav = VBoxContainer.new()
+ nav.name = "MapNav"
+ nav.add_theme_constant_override("separation",6)
+ var fr = _round("borders","Frame my realm (Shift+Home)
+Fit the camera to all your land",30)
+ fr.name = "FrameRealm"
+ fr.pressed.connect(func(): frame_realm_requested.emit())
+ nav.add_child(fr)
+ var cap = _round("settlements","Go to capital (Home)
+Pan to your capital",30)
+ cap.name = "GoCapital"
+ cap.pressed.connect(func(): capital_requested.emit())
+ nav.add_child(cap)
+ _anchor(nav,1,0,1,0,Rect2(-288,64,-254,136))
 
 func _build_overlays():
  pass # display toggles live in the camera settings (TW: Ctrl+T toggles labels)
@@ -1591,13 +1608,13 @@ func _fit_bottom():
  bottom_panel.offset_top = bottom_panel.offset_bottom-bottom_panel.get_combined_minimum_size().y
 
 # Replace the minimap placeholder with the live minimap (see ui/minimap.gd).
-func setup_minimap(world: World3D,world_rect: Rect2,camera_footprint: Callable) -> Control:
+func setup_minimap(strategic_map,world_rect: Rect2,camera_footprint: Callable) -> Control:
  var placeholder = minimap_slot.get_node_or_null("Placeholder")
  if placeholder: placeholder.queue_free()
  minimap = Minimap.new()
  minimap.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  minimap_slot.add_child(minimap)
- minimap.setup(data,world,world_rect,camera_footprint)
+ minimap.setup(data,strategic_map,world_rect,camera_footprint)
  minimap.tooltip_text = "Minimap: click or drag to move the camera"
  return minimap
 

@@ -24,14 +24,14 @@ func make():
  S.cylinder(self,0.9,1.4,7.0,t,BARK,8)
  for i in 5: S.dome(self,3.2-i*0.3,t+Vector3(cos(i*1.3)*1.8,6.0+i*0.7,sin(i*1.3)*1.8),LEAVES.lightened(i*0.04),0.8)
  features.append("hearthtree")
- K.wall_ring(self,h,c,17.0,7.0,2.4,STONE,13.0,[PI*0.5],SLATE)
+ K.wall_ring(self,h,c,17.0,7.0,2.4,STONE,24.0,[PI*0.5],SLATE)
  features.append("inner_wall")
  if stage>=2:
   for p in [Vector3(4.0,0,-8.0),Vector3(-10.0,0,8.0),Vector3(2.0,0,10.0)]:
    K.water(self,at(p.x,p.z,0.05),2.4,Color("8fd0d8"))
    S.box(self,Vector3(0.6,1.2,0.6),at(p.x,p.z),Color(1,1,1,1).darkened(0.05)) # a steam marker
   features.append("hot_springs")
-  K.wall_ring(self,h,c,24.0,8.5,2.8,STONE,14.0,[PI*0.5,-PI*0.5],SLATE)
+  K.wall_ring(self,h,c,24.0,8.5,2.8,STONE,30.0,[PI*0.5,-PI*0.5],SLATE)
   features.append("double_walls")
  if stage>=3:
   for s in [-1.0,1.0]: K.spire(self,c+Vector3(-3.0+s*3.0,14.0,-6.0),1.0,10.0,STONE,SLATE)

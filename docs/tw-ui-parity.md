@@ -118,8 +118,9 @@ This is a checklist of each interaction and UI element. For each it gives how TW
 |---|---|---|
 | WASD (+Shift) | pan (faster) | same |
 | Q / E | rotate | same |
-| Wheel | zoom | same |
-| Home / End | pan to capital / default rotation | same |
+| Wheel | zoom | zoom toward the cursor; past the farthest 3D zoom it opens the strategic map; on the strategic map, scrolling in returns to the 3D map at its highest zoom (Ctrl+wheel zooms the parchment) |
+| Home / End | pan to capital / default rotation | same; Home is also the "Go to capital" button beside the minimap |
+| Shift+Home | (none; camera-mod convenience) | **Frame my realm** (owner 2026-10-06): fits the camera to all your land and armies from nearly straight above; also a button beside the minimap |
 | `,` / `.` | previous / next army or settlement | same |
 | Backspace | cancel order | same (selected army) |
 | Enter / Shift+Enter | end turn / skip warnings | same |
@@ -128,7 +129,7 @@ This is a checklist of each interaction and UI element. For each it gives how TW
 | Ctrl+P | disband selection | same (selected unit) |
 | 3 / 4 | building browser / recruitment | same |
 | Hold Space | overlays | settlement banners at any zoom |
-| Tab | strategic map | hides the interface until a strategic map exists |
+| Tab | strategic map | same |
 | Esc | game menu | closes the top panel, then the pause menu (by design) |
 | F12 | (screenshot, Steam) | screenshot |
 
@@ -144,7 +145,7 @@ Debug keys (ours, behind the Settings switch): F5, F6, F7, L, and F8 (traffic pa
 - Attack flow (owner, 2026-10-05): a war declaration window first, then the lord marches over as many turns as needed; the pre-battle panel opens only on arrival or when the target is in attack range this turn (§15).
 - Lords & Heroes window (owner, 2026-10-05): also opened from a magnifying-glass button on each row of the top-bar Lords list (TW's list only selects and pans). Skills are a placeholder tree (`data/skills.json`, rows Command / Logistics / Conquest, one point per level, no gameplay effect yet); auto-allocate is per general and always on for AI generals (§15).
 - Diplomacy screen layout (owner, 2026-10-05): TW:WH3's three columns (your faction left, known factions with Quick Deal / Negotiate / War Coordination centre, the selected faction mirrored right). This replaces the column layout sketched in docs/diplomacy-design.md §15 for the screen's frame; the proposal builder, reasons and acceptance bar from that section arrive with the diplomacy system. Wired now: declaring war (with a confirmation), war/peace status, strength and tendencies; attitude ("Indifferent"), reliability and deal chances are placeholders; treaties are greyed "Coming later".
-- Strategic map zoom (2026-10-05, ours): the wheel zooms the parchment map (up to 3×, around the cursor; right/middle drag pans); scrolling in at the closest zoom returns to the 3D map there, as before. Zoomed out it names provinces and the larger settlements; zoomed in, every settlement. The painted look follows `docs/reference/world/varos_map.jpg` (palette and style only).
+- Strategic map zoom (2026-10-05, ours; changed 2026-10-06): scrolling in returns to the 3D map at its highest zoom, centred on the cursor (owner); Ctrl+wheel zooms the parchment map (up to 3×, around the cursor; right/middle drag pans). Zoomed out it names provinces and the larger settlements; zoomed in, every settlement. The painted look follows `docs/reference/world/varos_map.jpg` (palette and style only).
 - Lord figure (2026-10-05): the rigged Blender general (`art_source/general_aurek`, exported to `assets/models/general_aurek.glb`) replaces the procedural figure, at the same campaign size, with the faction colours on its cape, tabard and shield and the faction standard beside it. It has no walk animation yet.
 
 ## 11. Open: needs in-game observation, or an owner decision
@@ -186,10 +187,10 @@ Legend:
 | C3 | Wheel zoom | Matched | |
 | C4 | Middle-drag | By design (owner) | Orbits |
 | C5 | Right-drag | Matched | No camera move (it is the preview) |
-| C6 | Edge scroll | Open | |
+| C6 | Edge scroll | Matched (owner 2026-10-06) | The camera mods' edge pan, on by default (Settings), speed scaling with height like WASD; never in captures |
 | C7 | Home pans to the capital, End resets rotation | Matched | |
-| C8 | Tilt follows zoom | Matched | Our curve: about 35° close in |
-| C9 | Strategic map: Tab or zooming out | Matched | Painted parchment map (relief, mountain and forest glyphs, rivers, inked coasts, watercolour territory, owner borders), settlement and army icons; the wheel zooms it (labels thin out zoomed out), click or scroll in past the closest zoom returns there (L11) |
+| C8 | Tilt follows zoom | Matched (owner 2026-10-06) | One smooth curve over a continuous zoom from close to a high overview (TW:WH3 plus its camera mods): about 40° close, 60° mid, 87° at the top (core/camera_rig.gd, data/campaign_view.json "camera"); the farthest 3D zoom is half the map's longer side (Varos: about 7 km up) |
+| C9 | Strategic map: Tab or zooming out | Matched | Only scrolling out past the farthest 3D zoom opens it; scrolling in on it returns to the 3D map at the highest zoom, centred on the cursor (2026-10-06). Map modes: Political and Diplomacy (Religion, Culture, Resources ready; Culture, order, development and terrain kept). Painted parchment map (relief, mountain and forest glyphs, rivers, inked coasts, watercolour territory, owner borders), settlement and army icons; the wheel zooms it (labels thin out zoomed out), click or scroll in past the closest zoom returns there (L11) |
 | C10 | `,` / `.` cycle armies or settlements at the current zoom | Matched | C removed |
 | C11 | Notification jumps | Matched (owner) | Pan at the current zoom |
 | C12 | Hold Space for overlays | Matched | Settlement banners at any zoom; debug traffic pause moved to F8 |
@@ -356,3 +357,14 @@ Web research (guides, Steam discussions, patch notes and UI mods; the Fandom wik
 - Steam community discussions in app 1142710: AI movement display, notifications, skill auto-allocate, upgrade arrows, zone-of-control attacks.
 - gamewatcher.com autoresolve article.
 - moddb "Building progression icons".
+
+## 16. Territory, zoom and minimap (owner, 2026-10-06)
+
+| Item | Ours | Notes |
+|---|---|---|
+| High zoom | Fog thins, trees give way to the forest canopy carpet, small props and houses cull, lord figures give way to their banners (crests), small settlements show only their pennants while your own and the great cities keep their names | Far terrain tiles (2 km) replace the 256 m chunks beyond 2.6 km (`map/map_view.gd`), so the whole world costs a few dozen terrain draw calls |
+| Borders on the 3D map | Projected by the terrain shader: a thin line between regions, a thicker line in the owner's colour between factions, the player's realm border thickest in the player's colour with a soft glow band inside; widths grow with camera height | `map/terrain_view.gdshader` |
+| Faction wash | None up close, rising to about 24% (others) and 34% (yours) at the highest 3D zoom | Hovering a settlement or army (or its banner) washes that faction's whole territory more strongly |
+| Strategic map modes | Political (default): your land saturated and outlined in your colour, others muted, occupied or besieged land hatched in the occupier's colour, vassals striped in the liege's colour, Caeloth stippled gold on ivory; Diplomacy: you, vassals, allies, trade partners, neutral, hostile, at war, with a legend | Crest and name labels at each realm's centre, sized by realm size |
+| Minimap | The strategic map's political painting at minimap size, settlement dots, army pips, the camera's view box; click or drag to jump | Shares the strategic map's textures (`ui/minimap.gd`) |
+| Frame my realm / Go to capital | Shift+Home / Home, and two buttons beside the minimap | Ours (camera-mod conveniences); TW:WH3 has Home only |

@@ -60,6 +60,13 @@ static func instantiate(id: String) -> Node3D:
 static func is_landmark(settlement_id: String) -> bool:
  return landmarks().has(settlement_id)
 
+# A landmark with its own walls at this growth stage (manifest "walls_from": the first stage whose
+# model has walls); the settlement layout then adds no generic wall ring (map/sprawl.gd).
+static func landmark_has_walls(settlement_id: String,stage: int) -> bool:
+ if not is_landmark(settlement_id): return false
+ var from = int(landmarks()[settlement_id].get("walls_from",0))
+ return from>0 and stage>=from
+
 # Scene path for a settlement at a growth stage (1..3): its landmark scene if it has one,
 # otherwise the generic stage visual. A landmark must define all three stages.
 static func settlement_stage_path(settlement_id: String, stage: int, generic := "settlement.city") -> String:

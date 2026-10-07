@@ -11,9 +11,11 @@
     "reinforce_share": 0.7
   },
   "reach": {
-    "_note": "An army can threaten or strike targets within reach_meters straight-line distance (about one turn's 60 movement points at mixed terrain cost). war_meters: how far a faction looks for targets when choosing a war and where to march (a few turns). Movement.plan confirms the chosen action; plan_candidates caps how many targets per army are path-checked per turn (A* is the expensive part).",
+    "_note": "War range (owner 2026-10-06, quiet-AI fix): a faction looks for wars and marches within war_meters, or war_neighbourhood x the distance to its nearest foreign settlement when farther (Varos neighbours sit 300-1000 m apart after the 2.5x enlargement), never beyond war_max_meters. An army can threaten or strike targets within reach_meters straight-line distance (about one turn's 60 movement points at mixed terrain cost). war_meters: how far a faction looks for targets when choosing a war and where to march (a few turns). Movement.plan confirms the chosen action; plan_candidates caps how many targets per army are path-checked per turn (A* is the expensive part).",
     "reach_meters": 137.5,
     "war_meters": 400.0,
+    "war_neighbourhood": 1.6,
+    "war_max_meters": 1400.0,
     "threat_meters": 175.0,
     "plan_candidates": 3
   },
@@ -48,16 +50,24 @@
     "max_wars": 2
   },
   "economy": {
-    "_note": "Construction. Keep reserve_gold (x personality reserve) in the treasury, and net income after new upkeep at least min_net_income. Safe: build by economy_weights; threatened: by threatened_weights. Weight = category weight x personality multiplier; ties by cheapest, then settlement id. max_builds_per_turn per faction.",
+    "_note": "Construction. Keep a reserve in the treasury: reserve_turns x the faction's gross income, between reserve_min and reserve_gold (x personality reserve); and net income after new upkeep at least min_net_share x gross income, between min_net_floor and min_net_income (quiet-AI fix 2026-10-06: the flat 1200 and 50 froze the small Varos realms). At war a faction keeps only war_reserve_share of its reserve and only min_net_floor of net income: the war chest pays for the war, never into debt. Safe: build by economy_weights; threatened: by threatened_weights. Weight = category weight x personality multiplier; ties by cheapest, then settlement id. max_builds_per_turn per faction.",
     "reserve_gold": 1200,
+    "reserve_min": 300,
+    "reserve_turns": 1.5,
     "min_net_income": 50,
+    "min_net_floor": 10,
+    "min_net_share": 0.08,
+    "war_reserve_share": 0.5,
     "max_builds_per_turn": 1,
     "economy_weights": {"main": 1.2, "economic": 1.0, "civic": 0.4, "military": 0.5, "defense": 0.3},
     "threatened_weights": {"main": 0.5, "economic": 0.3, "civic": 0.1, "military": 1.0, "defense": 1.5}
   },
   "recruitment": {
-    "_note": "Armies recruit toward a target composition (shares of each role; role of a unit: levy if peasant_levy, else spear if it braces, else its category). The unit with the largest shortfall among those available, affordable (above the reserve) and within upkeep is queued; max_recruits_per_turn per army. A faction raises a new army when under its army target (base_armies x personality armies, capped by the faction army cap) and it can pay the general plus raise_margin gold above its reserve; a faction with no army at all only keeps emergency_reserve_share of its reserve, and so does recruiting while the faction has fewer than garrison_units units in all. garrison_units: a home army aims for at least this many units before it is sent out. field_units: the usual army size; a faction with more than rich_factor x its reserve fills armies up to the army cap instead.",
+    "_note": "Armies recruit toward a target composition (shares of each role; role of a unit: levy if peasant_levy, else spear if it braces, else its category). The unit with the largest shortfall among those available, affordable (above the reserve) and within upkeep is queued; max_recruits_per_turn per army. A faction raises a new army when under its army target (base_armies x personality armies, capped by the faction army cap) and it can pay the general plus raise_margin gold above its reserve; a faction with no army at all only keeps emergency_reserve_share of its reserve, and so does recruiting while the faction has fewer than garrison_units units in all. garrison_units: a home army aims for at least this many units before it is sent out. field_units: the usual army size; a faction with more than rich_factor x its reserve fills armies up to the army cap instead. Patrols (quiet-AI fix 2026-10-06): an army of at least patrol_min_units units with nothing else to do marches out every patrol_every turns to a watch point patrol_share of the way from its home toward the nearest foreign settlement, and rests at home the next turn, so no realm stands frozen.",
     "max_recruits_per_turn": 2,
+    "patrol_every": 3,
+    "patrol_min_units": 1,
+    "patrol_share": 0.4,
     "base_armies": 2,
     "raise_margin": 1000,
     "garrison_units": 6,

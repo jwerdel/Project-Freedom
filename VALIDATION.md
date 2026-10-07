@@ -1264,3 +1264,93 @@ All GPU rows are within budget (≤ 8 ms 3D, ≤ 3 ms strategic, ≤ 1,500 draw 
 - **The world is quiet:** about 17 of 42 factions take no action for 10 turns or more. A tuning question for the playtest.
 
 **Tests:** 306 GUT tests pass; the self-test passes.
+
+## Fix pass after the Stage A playtest (Part A, 2026-10-06)
+
+**A1 Camera zoom** (`core/camera_rig.gd`, `data/campaign_view.json` "camera"):
+- One continuous scroll from 10 m to half the map's longer side (Varos: 7,040 m up), zooming toward the cursor. The tilt follows one smooth curve: 40° close, 60° halfway (log scale), 87° at the top.
+- Only scrolling out at the maximum opens the strategic map; scrolling in on it returns to the 3D map at the maximum, centred on the cursor (Ctrl+wheel zooms the parchment). M and Tab still open it.
+- High zoom: the far plane and near plane follow the distance; the haze thins; trees give way to the canopy carpet; houses and small props cull; lord figures give way to their banners beyond 600 m; small foreign settlements show only their pennants.
+- Far terrain: 2 km tiles (64 quads) replace the 256 m chunks beyond 2.6 km through Godot visibility parents, so the whole world is about 42 terrain draw calls at the top.
+- Edge pan (Settings, on by default, never in captures); WASD and edge pan speed scale with height.
+
+**A2 Territory:**
+- 3D map (terrain shader): a thin line between regions, a thicker owner-colour line between factions, and the player's border thickest in the player's colour with a glow band inside. Widths grow with camera height. Owners are compared by index, not colour.
+- A faction wash rises from 0 up close to 24% (others) and 34% (yours) at the top. Hovering a settlement, army or banner highlights that faction's land.
+- Strategic map modes: Political (default; your land saturated and outlined, others muted, occupied or besieged land hatched in the occupier's colour, vassals striped in the liege's colour, Caeloth stippled gold) and Diplomacy (you, vassals, allies, trade partners, neutral, hostile, at war, with a legend). Religion and Resources are greyed for later; Culture, public order, development and terrain stay.
+- Crest and name labels sit at each realm's centre, sized by realm size.
+- Frame my realm (Shift+Home) and Go to capital (Home) are buttons beside the minimap; both are recorded in docs/tw-ui-parity.md §16.
+
+**A3 Minimap:** rebuilt from the strategic map's political painting, sharing its textures (`ui/minimap.gd`): your realm highlighted, settlement dots, army pips, the camera's view box, click or drag to jump. Before: `captures/a3_minimap_before.png` (the old orthographic render). After: `captures/a3_minimap_after.png`.
+
+**A4 Quiet AI.** Diagnosis (a diagnostic over 4 seeds × 50 turns, counting builds, raises, recruits, wars, attacks, sieges, marches, patrols and armies on the move):
+- War range: 400 m, while Varos neighbours sit 300–980 m apart (median 458, p90 809) since the 2.5x enlargement. Most factions saw no foreign settlement in range and never declared war or marched.
+- Economy gates: a flat 1,200 gold reserve and +50 minimum net income. Small realms (net +60 to +300) could never afford a build (cheapest about 1,000). The fortress-only realms ran at a deficit, so they could not build or recruit at all.
+- Full armies with nothing in range had no job.
+
+Fixes (`core/ai.gd`, `data/ai.json`):
+- The war range is 1.6 × the distance to the nearest foreign settlement (400–1,400 m).
+- The reserve is 1.5 × gross income (300–1,200 gold), half of it at war.
+- The minimum net income is 8% of gross (10–50 gold), and 10 at war.
+- An army with nothing else to do patrols every 3 turns: out to a watch point toward its neighbours (on land), then home.
+
+Idle streaks per faction (the longest run of turns with no real action, max over 4 seeds):
+
+| | Before | After |
+|---|---|---|
+| Factions with a 5-turn idle window | 32 of 42 | 6 of 42 |
+| Longest streaks | barrow_lords, snowtusk, skulkmire_brood, both reaver captains, grimhollow 50; wardens 49; stonefast 35; hold_emberdeep 32; 23 others 5–14 | house_bracke 7, delos_minor 6, tullan_estates 6, gen_riverforks 6, stonefast 5, skulkmire_brood 5; all others 0–4 |
+
+- The six left: an island colony (patrols need land), and realms gone broke or into debt at war.
+- Side effect: the world is now very warlike, with 44–47 wars, 37–56 captures and 6–11 factions destroyed per seed in 50 turns (no peace exists until Part B's diplomacy). Debt desertion of 1,000–2,000 men per seed remains.
+- End Turn (debug) about 570 ms average, 4.1 s worst; deterministic.
+
+**A5 Starting economy:** no faction on Varos or the test map starts with negative income (tested).
+- The fortress economic factor rose from 0.6 to 0.8.
+- The Barrow-lords, the Skulkmire Brood and the two reaver captains start with smaller hosts.
+- Barrowmere and the Skulkmire got a mine instead of a temple.
+- Varrenum's market is level 2. Varrenus is now +124 a turn, against +211 for Varn and the Aurekids: it holds one city to their two-settlement or richer starts.
+
+**A6 Northern snow:**
+- The pipeline bakes the sketch's climates into a coarse look texture (snow, frost, dryness, wetness), blurred over 220 m, into the render cache (format 3).
+- The terrain shader frosts and greys the ground, brings the snow line down, lays drifting snow that keeps the relief (blue-grey in hollows), snows on the forest canopy, dries the south and darkens the marshes. Trees in snowy climates are frosted.
+
+**A7 Landmarks:**
+- Each landmark records in the manifest the stage from which its own walls stand ("walls_from"). The settlement layout adds the culture's wall ring only to landmarks without walls of their own (tested).
+- Frosthold keeps its lore double walls with half the towers.
+- The Greywall has a battered plinth, buttresses, crenellated parapets and a wall walk; towers every 120 m with crenellated tops and roofed turrets; and at every pass a gatehouse with two great towers and a high gate block over the road. Wardens' Gate's own stretch got the same treatment.
+- `docs/reference/landmarks/emberdeep.jpg` (the dwarf hold) was not in the folder; it was restored from git's earlier brinecrag.jpg, and both images were re-encoded without metadata. Emberdeep's code points at it.
+- Brinecrag was rebuilt from the new brinecrag.jpg (style, not layout):
+  - black gothic towers with spikes and needle spires on sea stacks;
+  - sagging chain bridges with lantern cages, violet and green windows;
+  - sea gates with portcullises;
+  - quays and a fleet with purple sails;
+  - its own inlet of dark water.
+- `--view-landmark=<id>` centres a landmark's model in captures.
+
+**A8 Countryside:**
+- Hamlets (3–5 houses, fences, 2–4 fields each) and extra fields fill each settlement's countryside ring, inside its own footprint circle (the footprint test allows countryside pieces out to radius + countryside, never beyond).
+- Lone trees and small groves of the land's biome are scattered on open land through the chunk tree MultiMeshes with their LODs. The forest canopy carpet stands in for distant trees; there is no separate impostor.
+
+**Budgets** (RTX 4060, 1440×900, debug build, the campaign view with interface and banners):
+
+| View | GPU ms | Draw calls | Triangles | VRAM |
+|---|---|---|---|---|
+| City close, 150 m (Theros) | 5.02 | 456 | 0.35 M | 641 MB |
+| Mid zoom, 700 m (Frosthold) | 5.42 | 418 | 0.16 M | 641 MB |
+| 1,500 m over central Varos | 5.35 | 516 | 0.17 M | 647 MB |
+| Highest zoom, 7,040 m (north) | 5.04 | 1,187 | 0.25 M | 640 MB |
+| Highest zoom, 7,040 m (centre) | 5.14 | 1,314 | 0.27 M | 647 MB |
+
+- Everything is within budget (GPU ≤ 8 ms, ≤ 1,500 draw calls, ≤ 4 M triangles).
+- At the highest zoom the draw calls are mostly the interface and the screen-space banners (about 150 settlement and 40 army banners).
+- Path planning and saves are unchanged.
+
+**Tests:** 318 GUT tests pass, including:
+- the zoom curve, the map-switch threshold and the zoom range;
+- territory flags and highlight;
+- the Political and Diplomacy modes;
+- no negative starting income;
+- the landmark wall rule, the Greywall and the far tiles.
+
+The self-test passes.

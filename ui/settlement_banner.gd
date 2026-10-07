@@ -13,6 +13,7 @@ const SIEGE_H = 20.0
 var settlement_id := ""
 var settlement := {}
 var selected := false
+var compact := false # high zoom: the pennant only (the name is in the tooltip)
 
 func _init(s: Dictionary):
  settlement_id = s.id
@@ -27,10 +28,21 @@ func _init(s: Dictionary):
 func update_settlement(s: Dictionary):
  settlement = s
  tooltip_text = "%s\n%s\n%s\n%s · level %d" % [s.name,s.faction.name,s.province_name,s.type.capitalize(),s.level]
- var w = maxf(PENNANT.x+12,UiKit.head_font().get_string_size(s.name.to_upper(),HORIZONTAL_ALIGNMENT_LEFT,-1,15).x+28)
- custom_minimum_size = Vector2(w,PENNANT.y+PLATE_H+12+(SIEGE_H if not s.get("siege",{}).is_empty() else 0.0))
+ _resize()
+
+func _resize():
+ var s = settlement
+ var w = PENNANT.x+12 if compact else maxf(PENNANT.x+12,UiKit.head_font().get_string_size(s.name.to_upper(),HORIZONTAL_ALIGNMENT_LEFT,-1,15).x+28)
+ var h = PENNANT.y+4 if compact else PENNANT.y+PLATE_H+12
+ custom_minimum_size = Vector2(w,h+(SIEGE_H if not s.get("siege",{}).is_empty() else 0.0))
  size = custom_minimum_size
  queue_redraw()
+
+# High zoom (main.gd): small settlements show only their pennant so the map stays readable.
+func set_compact(on: bool):
+ if on == compact: return
+ compact = on
+ _resize()
 
 func set_selected(on: bool):
  if on == selected: return
@@ -54,6 +66,10 @@ func _draw():
  outline.append(pts[0])
  draw_polyline(outline,trim,2.0 if not selected else 3.0)
  draw_line(Vector2(cx-PENNANT.x*0.5-4,top),Vector2(cx+PENNANT.x*0.5+4,top),Color("3a2a1a"),4)
+ if compact:
+  var sg0 = settlement.get("siege",{})
+  if not sg0.is_empty(): draw_rect(Rect2(Vector2(cx-PENNANT.x*0.5,PENNANT.y+2),Vector2(PENNANT.x,SIEGE_H-6)),Color("7a1c1c",0.92))
+  return
  # Name plate.
  var plate = Rect2(Vector2(2,PENNANT.y+2),Vector2(size.x-4,PLATE_H))
  draw_rect(plate,Color(0.07,0.05,0.04,0.9))

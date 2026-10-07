@@ -9,7 +9,7 @@ const UI_SCALES = [0.8,1.0,1.25,1.5]
 const DEFAULTS = {"resolution":[1440,900],"fullscreen":false,"ui_scale":1.0,"debug_keys":true,
  "follow_ai":"off","ai_speed":1,"army_speed":1,
  "warn_funds":true,"warn_settlement_upgrade":true,"warn_construction":true,"warn_army_moves":true,
- "warn_skill_points":true,"warn_recruit":true}
+ "warn_skill_points":true,"warn_recruit":true,"edge_pan":true}
 
 static var _current = null
 
@@ -33,6 +33,10 @@ static func set_value(key: String,value):
 
 static func debug_keys() -> bool:
  return bool(get_value("debug_keys"))
+
+# Pan the campaign camera when the mouse touches the screen edge (camera mods; on by default).
+static func edge_pan() -> bool:
+ return bool(get_value("edge_pan"))
 
 # Following AI movements at End Turn (owner, docs/tw-ui-parity.md L10): off (default), only the
 # armies whose path comes near your territory or armies, or all of them. Space or Esc skips.

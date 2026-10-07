@@ -1,8 +1,8 @@
 extends "res://visuals/landmarks/landmark_base.gd"
 # Emberdeep (world bible landmark 13, Hold Emberdeep, the dwarves' High King): a gate carved as two
 # colossal dwarf kings in a red mountain face, forge vents glowing in the rock, carved halls in tiers
-# and the Hall of the Book of Grudges within. Style after the dwarf-hold reference image (the file
-# docs/reference/landmarks/brinecrag.jpg, which shows a dwarf hold, not Brinecrag).
+# and the Hall of the Book of Grudges within. Style after docs/reference/landmarks/emberdeep.jpg (the
+# dwarf hold; it was filed as brinecrag.jpg until 2026-10-06).
 # Stage 1: the mountain face, the gate and the two kings. Stage 2: carved tiers and forge vents.
 # Stage 3: the curved outer wall, its towers and the foundries outside.
 

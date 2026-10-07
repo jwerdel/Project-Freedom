@@ -118,3 +118,43 @@ func test_baked_piece_keeps_material_colours_in_linear_vertex_colours():
  if mat0 is BaseMaterial3D:
   var c = KitCache.baked("kit.wall").surface_get_arrays(0)[Mesh.ARRAY_COLOR][0]
   assert_true(c.is_equal_approx(mat0.albedo_color.srgb_to_linear()) or absf(c.r-mat0.albedo_color.srgb_to_linear().r)<0.01)
+
+# Territory clarity (owner 2026-10-06): every region's owner index and flags in the owners texture
+# (row 1: 1 = the player's land, 2 = the highlighted faction's), the highlight follows the hovered
+# faction, and the wash and border widths follow the zoom.
+func test_territory_marks_the_player_and_the_highlighted_faction():
+ var vs = make_view()
+ var v = vs[0]
+ var s = vs[1]
+ var me = s.player_faction
+ var other = ""
+ for sid in s.settlements:
+  if s.settlements[sid].owner != me and s.settlements[sid].owner != "": other = s.settlements[sid].owner
+ assert_ne(other,"")
+ var flags_of = func(sid: String) -> int: return v.owners_img.get_pixel(v.region_names.find(sid)+1,1).b8
+ for sid in s.settlements:
+  var o = s.settlements[sid].owner
+  if o == "": continue
+  assert_eq(flags_of.call(sid) & 1,1 if o == me else 0,sid+" player flag")
+  assert_eq(flags_of.call(sid) & 2,0,"nothing highlighted yet")
+ v.set_highlight(other)
+ for sid in s.settlements:
+  assert_eq(flags_of.call(sid) & 2,2 if s.settlements[sid].owner == other else 0,sid+" highlight")
+ v.set_highlight("")
+ for sid in s.settlements: assert_eq(flags_of.call(sid) & 2,0)
+ # Owners compare by index (two factions never share a border colour by accident).
+ var ids = {}
+ for sid in s.settlements:
+  var o = s.settlements[sid].owner
+  if o == "": continue
+  var px = v.owners_img.get_pixel(v.region_names.find(sid)+1,1)
+  var idx = px.r8+256*px.g8
+  assert_gt(idx,0)
+  if ids.has(o): assert_eq(ids[o],idx)
+  ids[o] = idx
+ assert_eq(ids.values().size(),Dictionary(Array(ids.values()).reduce(func(d,x): d[x] = true; return d,{})).size(),"one index per owner")
+ v.set_zoom_look(50.0,0.0)
+ assert_eq(float(v.material.get_shader_parameter("wash")),0.0,"no wash up close")
+ v.set_zoom_look(5000.0,1.0)
+ assert_eq(float(v.material.get_shader_parameter("wash")),1.0,"full wash at the top")
+ assert_gt(float(v.material.get_shader_parameter("border_scale")),10.0,"borders widen with height")

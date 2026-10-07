@@ -45,6 +45,26 @@ vec4 pal(float id, int row) {
 	return texelFetch(palette, ivec2(int(id), row), 0);
 }
 
+// Palette rows 2 and 3 (ui/strategic_map.gd _write_palette): the owner's index and the marks.
+uniform bool political = false;
+uniform vec4 player_color : source_color = vec4(1.0);
+float owner_of(float id) {
+	vec4 t = pal(id, 2);
+	return floor(t.r * 255.0 + 0.5) + 256.0 * floor(t.g * 255.0 + 0.5);
+}
+int marks_of(float id) {
+	return int(pal(id, 2).b * 255.0 + 0.5);
+}
+// Land of another owner within d (uv) in eight directions (the sea does not count).
+bool other_owner(vec2 uv, float oid, vec2 d) {
+	for (int k = 0; k < 8; k++) {
+		vec2 o = vec2(cos(float(k) * 0.785398), sin(float(k) * 0.785398)) * d;
+		float n = id_at(uv + o);
+		if (n > 0.0 && owner_of(n) != oid) return true;
+	}
+	return false;
+}
+
 float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
@@ -121,19 +141,40 @@ void fragment() {
 	vec4 f = pal(id, 0);
 	// Watercolour fills on land only.
 	col.rgb = mix(col.rgb, f.rgb, f.a * mix(1.0, 0.55, float(painted)) * land);
+	vec4 own = pal(id, 1);
+	float oid = owner_of(id);
+	int marks = marks_of(id);
+	vec4 pat = pal(id, 3);
+	vec2 spx = UV / max(px, vec2(1e-6)); // screen pixels
+	// Political marks: vassals striped in the liege's colour, occupied or besieged land hatched in the
+	// occupier's colour, Caeloth stippled gold (its own neutral style).
+	if (political && land > 0.5) {
+		if ((marks & 2) != 0 && pat.a > 0.5 && fract((spx.x - spx.y) / 14.0) < 0.38) col.rgb = mix(col.rgb, pat.rgb, 0.62);
+		if ((marks & 4) != 0 && pat.a > 0.5) {
+			float hx = min(fract((spx.x + spx.y) / 7.0), fract((spx.x - spx.y) / 7.0));
+			if (hx < 0.22) col.rgb = mix(col.rgb, pat.rgb * 0.85, 0.8);
+		}
+		if ((marks & 8) != 0 && fract(spx.x / 5.0) < 0.3 && fract(spx.y / 5.0) < 0.3) col.rgb = mix(col.rgb, vec3(0.78, 0.62, 0.24), 0.45);
+	}
 	// Neighbours owner_width pixels away: any different region means a border is near.
 	vec2 d = px * owner_width;
 	float n0 = id_at(UV + vec2(d.x, 0.0));
 	float n1 = id_at(UV - vec2(d.x, 0.0));
 	float n2 = id_at(UV + vec2(0.0, d.y));
 	float n3 = id_at(UV - vec2(0.0, d.y));
-	vec4 own = pal(id, 1);
-	// Painted maps: a soft band of the owner's colour inside its border (TW-style glow).
-	if (painted && own.a > 0.5) {
-		vec2 g = px * owner_width * 4.0;
-		if (pal(id_at(UV + vec2(g.x, 0.0)), 1) != own || pal(id_at(UV - vec2(g.x, 0.0)), 1) != own || pal(id_at(UV + vec2(0.0, g.y)), 1) != own || pal(id_at(UV - vec2(0.0, g.y)), 1) != own) {
-			col.rgb = mix(col.rgb, own.rgb, 0.28 * land);
+	bool mine = (marks & 1) != 0;
+	// The player's realm (political mode): a thick border in the player's colour and a glow band.
+	if (political && mine && land > 0.5) {
+		vec2 g = px * owner_width * 6.0;
+		if (other_owner(UV, oid, g)) {
+			col.rgb = mix(col.rgb, player_color.rgb, 0.35);
+			if (other_owner(UV, oid, px * owner_width * 2.2)) col.rgb = mix(col.rgb, player_color.rgb * 0.8, 1.0);
 		}
+	}
+	// Painted maps: a soft band of the owner's colour inside its border (TW-style glow).
+	if (painted && own.a > 0.5 && !(political && mine)) {
+		vec2 g = px * owner_width * 4.0;
+		if (other_owner(UV, oid, g)) col.rgb = mix(col.rgb, own.rgb, 0.28 * land);
 	}
 	if (n0 != id || n1 != id || n2 != id || n3 != id) {
 		// Thin outline of every region (one pixel, where the right or lower neighbour differs).
@@ -141,7 +182,7 @@ void fragment() {
 			col.rgb = mix(col.rgb, thin_color.rgb, thin_color.a * land);
 		}
 		// Owned regions: a strong border in the owner's colour along any edge with another owner.
-		if (own.a > 0.5 && (pal(n0, 1) != own || pal(n1, 1) != own || pal(n2, 1) != own || pal(n3, 1) != own)) {
+		if (own.a > 0.5 && !(political && mine) && (owner_of(n0) != oid || owner_of(n1) != oid || owner_of(n2) != oid || owner_of(n3) != oid)) {
 			col.rgb = mix(col.rgb, own.rgb, land);
 		}
 	}

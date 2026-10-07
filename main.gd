@@ -28,6 +28,7 @@ const Ai = preload("res://core/ai.gd")
 const TurnLoop = preload("res://core/turn_loop.gd")
 const BattleSim = preload("res://core/battle_sim.gd")
 const MapView = preload("res://map/map_view.gd")
+const CameraRig = preload("res://core/camera_rig.gd")
 const Construction = preload("res://core/construction.gd")
 const WALK_SPEED = 12.0 # map meters per second while the figure walks (presentation only)
 const STRATEGIC_RETURN_DISTANCE = 150.0 # zoom after returning from the strategic map to a place
@@ -101,6 +102,9 @@ var strategic: Control # the strategic map (Tab or zooming out)
 var spectating := {}           # {id, hold}: the AI army the camera follows now
 var rmb_held := false       # right mouse held with an army selected: path preview (TW:WH3)
 var pitch_offset := 0.0     # middle-drag tilt on top of the zoom-dependent tilt
+var max_zoom := 210.0       # the farthest 3D zoom on this map (core/camera_rig.gd); past it, the strategic map
+var haze := {}             # data/campaign_view.json "atmosphere" (pipeline maps); the zoom scales it
+var forced_highlight := "" # --highlight=<faction> (captures): keep that faction's land highlighted
 var preview_key = Vector2i(1<<20,0)
 var preview_text = ""
 var forced_preview = null # capture flag --preview=x,z: preview this point instead of the mouse
@@ -127,7 +131,7 @@ func _ready():
  # Captures and the self-test never touch the player's saves.
  if capture_mode or "--self-test" in OS.get_cmdline_user_args(): SaveSystem.dir = "user://capture_saves"
  kit = ProtoKit.shared()
- set_pitch(OVERVIEW_PITCH) # the overview's tilt at its zoom
+ pitch_offset = 0.0 # the overview's tilt follows the zoom curve (core/camera_rig.gd)
  Settings.apply(get_tree())
  # First start with this map version: build its render cache behind the preparation screen (a
  # worker thread), then load the campaign again. Headless runs build it inline (map/map_view.gd).
@@ -145,6 +149,7 @@ func _ready():
  for arg in OS.get_cmdline_user_args():
   if arg.begins_with("--faction=") and loaded_from in ["","new"]: early_state.player_faction = arg.get_slice("=",1)
  pipeline = str(MapRegistry.meta().get("kind","")) == "pipeline"
+ max_zoom = CameraRig.max_distance(map_world_rect().size) if pipeline else CameraRig.max_distance(Vector2.ZERO)
  if pipeline and WorldMap.region(GOLDSPIRE_ID).get("settlement") is Dictionary: GOLDSPIRE = WorldMap.settlement_position(GOLDSPIRE_ID)
  var mine = early_state.armies_of(early_state.player_faction)
  if not early_state.army_state.has(COMMANDER_ARMY) and not mine.is_empty(): COMMANDER_ARMY = mine[0]
@@ -335,6 +340,30 @@ func _ready():
    target = ground(Vector2(float(v[0]),float(v[1])))
    distance = float(v[2])
    desired_distance = distance
+  # --zoom=max|<metres> (captures): the camera distance on the zoom curve (tilt from the curve).
+  if arg.begins_with("--zoom="):
+   var z = arg.get_slice("=",1)
+   desired_distance = max_zoom if z == "max" else clampf(float(z),CameraRig.min_distance(),max_zoom)
+   distance = desired_distance
+   pitch_offset = 0.0
+  # --frame-realm (captures): Frame my realm (Shift+Home).
+  if arg == "--frame-realm":
+   frame_realm()
+   distance = desired_distance
+  # --highlight=<faction> (captures): that faction's territory highlighted, as when hovering it.
+  if arg.begins_with("--highlight="): forced_highlight = arg.get_slice("=",1)
+  # --view-landmark=<id>[,<distance>] (captures): frame a landmark's model, which reaches out toward
+  # the water from its settlement point, centred on screen.
+  if arg.begins_with("--view-landmark=") and map_view != null:
+   var v = arg.get_slice("=",1).split(",")
+   var p = WorldMap.settlement_position(v[0])
+   var r = float(AssetManifest.landmarks().get(v[0],{}).get("radius",24.0))
+   var th = map_view._toward_water(p)
+   var c = p+Vector2(sin(th),cos(th))*r*0.9 # the model reaches out along its local +z
+   target = ground(c,4.0)
+   distance = float(v[1]) if v.size()>1 else r*3.4
+   desired_distance = distance
+   map_view.update(target)
  for arg in OS.get_cmdline_user_args():
   if arg.begins_with("--end-turns="):
    for i in int(arg.get_slice("=",1)):
@@ -398,6 +427,7 @@ func _ready():
  if "--self-test" in OS.get_cmdline_user_args():
   run_checks()
  print("FREEDOM_READY | city=%s road=%s traffic=%s seed=%d" % [city_level,road_level,traffic.size(),ui_data.state.seed])
+ if capture_mode and _gpu_run(): _measure_gpu.call_deferred()
 
 func make_environment():
  environment = Environment.new()
@@ -767,6 +797,8 @@ func make_ui():
   select_army(id)
   if army_figures.has(id): pan_to(army_figures[id].position+Vector3(0,2.2,0)))
  ui.settlement_chosen.connect(func(id): if settlement_anchors.has(id): select_settlement(id,true))
+ ui.frame_realm_requested.connect(frame_realm)
+ ui.capital_requested.connect(pan_to_capital)
  if pipeline:
   # Every settlement of the map; a landmark's banner floats above its model.
   settlement_anchors = {}
@@ -784,9 +816,10 @@ func make_ui():
   for p in pins: p.button.update_settlement(ui_data.settlement(p.id)))
  ui_data.changed.connect(sync_settlement_visuals)
  var wr = map_world_rect() if pipeline else TerritoryOverlay.RECT
- minimap = ui.setup_minimap(get_viewport().world_3d,wr,camera_footprint)
- var lim = wr.grow(-wr.size.x*0.12)
- minimap.minimap_clicked.connect(func(p: Vector2): target = Vector3(clampf(p.x,lim.position.x,lim.end.x),height_at(p.x,p.y),clampf(p.y,lim.position.y,lim.end.y)))
+ minimap = ui.setup_minimap(strategic,wr,camera_footprint)
+ minimap.minimap_clicked.connect(func(p: Vector2):
+  var lim = camera_limits()
+  target = Vector3(clampf(p.x,lim.position.x,lim.end.x),height_at(p.x,p.y),clampf(p.y,lim.position.y,lim.end.y)))
  movement_overlay = MovementOverlay.new()
  add_child(movement_overlay)
  movement_overlay.setup(height_at)
@@ -869,6 +902,24 @@ func pan_to_capital():
  var cap = load("res://core/armies.gd").capital(ui_data.state,ui_data.player_faction_id())
  if cap != "" and settlement_anchors.has(cap): pan_to(ground(Vector2(settlement_anchors[cap].x,settlement_anchors[cap].z)))
 
+# Frame my realm (Shift+Home, the button beside the minimap): fit the camera, from nearly straight
+# above, to all your settlements and armies.
+func frame_realm():
+ var pts = []
+ var s = ui_data.state
+ for sid in s.settlements_of(s.player_faction): pts.append(WorldMap.settlement_position(sid))
+ for id in s.armies_of(s.player_faction): pts.append(Movement.position(s,id))
+ if pts.is_empty(): return
+ var r = Rect2(pts[0],Vector2.ZERO)
+ for p in pts: r = r.expand(p)
+ r = r.grow(maxf(60.0,maxf(r.size.x,r.size.y)*0.08))
+ var vp = get_viewport().get_visible_rect().size
+ var d = CameraRig.frame_distance(r.size,camera.fov,vp.x/maxf(vp.y,1.0))*1.25 # the interface covers the screen's edges
+ desired_distance = clampf(d,CameraRig.min_distance(),max_zoom)
+ target = ground(r.get_center())
+ # From nearly straight above, whatever the zoom curve says at that height.
+ pitch_offset = maxf(0.0,deg_to_rad(80.0)-tilt_for(desired_distance))
+
 # Left click on empty ground: cancel the selection (TW:WH3).
 func deselect():
  if ui.selected_settlement == "" and ui.selected_army == "": return
@@ -935,15 +986,20 @@ func open_strategic_map(instant := false):
  strategic.open_map(instant)
  pins_root.visible = false
 
-# world: where to return (null: where the camera was).
-func close_strategic_map(world = null):
+# world: where to return (null: where the camera was). from_scroll: scrolling in on the strategic map
+# returns at the highest 3D zoom (TW:WH3), a click returns zoomed in.
+func close_strategic_map(world = null,from_scroll := false):
  if not map_open(): return
  strategic.close_map()
  get_viewport().disable_3d = false
  pins_root.visible = ui.visible and overlays.get("settlements",true)
  if world != null:
   pan_to(ground(world))
-  desired_distance = minf(desired_distance,STRATEGIC_RETURN_DISTANCE)
+  if from_scroll:
+   desired_distance = max_zoom
+   distance = desired_distance
+   pitch_offset = 0.0
+  else: desired_distance = minf(desired_distance,STRATEGIC_RETURN_DISTANCE)
 
 func cancel_move_preview():
  rmb_held = false
@@ -1055,14 +1111,18 @@ func update_army_presentation():
  var near_far = clampf(inverse_lerp(18.0,210.0,distance),0.0,1.0)
  var bscale = maxf(float(v.banner_min_scale),lerpf(float(v.banner_scale_near),float(v.banner_scale_far),near_far))
  var fade = clampf(inverse_lerp(float(v.banner_fade_end),float(v.banner_fade_start),distance),0.0,1.0)
+ # High zoom: lord figures give way to their banners (TW:WH3's far zoom shows banner icons).
+ var hz = CameraRig.high_zoom(distance,max_zoom)
+ var figures_on = overlays.armies and (hz<float(CameraRig.cfg().figure_hide) or distance<float(CameraRig.cfg().figure_hide_min))
  for id in army_figures:
   var f = army_figures[id]
+  f.visible = figures_on
   var s = figure_scale(f.position)
   f.scale = Vector3.ONE*s
   if not army_banners.has(id): continue
   var b = army_banners[id]
-  var top = f.position+Vector3(0,float(v.figure_height)*s+float(v.banner_lift)*s,0)
-  b.visible = f.visible and overlays.armies and fade>0.01 and not camera.is_position_behind(top)
+  var top = f.position+Vector3(0,float(v.figure_height)*s+float(v.banner_lift)*s,0) if figures_on else f.position
+  b.visible = overlays.armies and fade>0.01 and not camera.is_position_behind(top)
   if not b.visible: continue
   b.set_banner_scale(bscale)
   b.modulate.a = fade
@@ -1363,7 +1423,7 @@ func reset_camera():
  target = overview_target()
  yaw = OVERVIEW_YAW
  desired_distance = OVERVIEW_DISTANCE
- set_pitch(OVERVIEW_PITCH)
+ pitch_offset = 0.0
 
 func focus_at(p: Vector3,d: float):
  target = p
@@ -1427,10 +1487,8 @@ func _unhandled_input(event):
  # it); middle drag orbits; the wheel zooms. Selecting never moves the camera.
  if event is InputEventMouseButton:
   if event.pressed:
-   if event.button_index == MOUSE_BUTTON_WHEEL_UP: desired_distance = clampf(desired_distance*0.88,10,210)
-   if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-    if desired_distance>=209.9: open_strategic_map() # past the farthest zoom (TW:WH3)
-    desired_distance = clampf(desired_distance*1.13,10,210)
+   if event.button_index == MOUSE_BUTTON_WHEEL_UP: wheel_zoom(event.position,true)
+   if event.button_index == MOUSE_BUTTON_WHEEL_DOWN: wheel_zoom(event.position,false)
    if event.button_index == MOUSE_BUTTON_LEFT:
     press_pos = event.position
     map_press = true
@@ -1462,7 +1520,9 @@ func _unhandled_input(event):
   if event.keycode == KEY_T: toggle_labels()
   return
  if event is InputEventKey and event.pressed and not event.echo:
-  if event.keycode == KEY_HOME: pan_to_capital()
+  if event.keycode == KEY_HOME:
+   if event.shift_pressed: frame_realm()
+   else: pan_to_capital()
   if event.keycode == KEY_END:
    yaw = OVERVIEW_YAW
    pitch_offset = 0.0
@@ -1501,14 +1561,49 @@ func _unhandled_input(event):
    if event.keycode == KEY_F7: upgrade_roads()
    if event.keycode == KEY_L: toggle_light()
 
+# One wheel notch (TW:WH3): zoom toward the ground under the cursor; scrolling out at the farthest
+# zoom opens the strategic map (core/camera_rig.gd).
+func wheel_zoom(at: Vector2,zoom_in: bool):
+ var w = CameraRig.wheel(desired_distance,max_zoom,zoom_in)
+ if w.strategic:
+  open_strategic_map()
+  return
+ var ground_hit = cursor_ground(at)
+ if ground_hit != null: target = CameraRig.zoom_toward(target,ground_hit,desired_distance,w.distance)
+ desired_distance = w.distance
+
+# The ground point under a screen position (the terrain, by marching the view ray), or null.
+func cursor_ground(at: Vector2):
+ if camera == null: return null
+ var o = camera.project_ray_origin(at)
+ var d = camera.project_ray_normal(at)
+ if d.y>-0.01: return null
+ var step = maxf(2.0,distance*0.01)
+ var p = o
+ for i in 400:
+  var q = p+d*step
+  if q.y<=height_at(q.x,q.z):
+   # Refine between p and q.
+   for k in 6:
+    var m = (p+q)*0.5
+    if m.y<=height_at(m.x,m.z): q = m
+    else: p = m
+   return q
+  p = q
+ return null
+
 func camera_update(delta: float):
  var dir = Vector3.ZERO
  if Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP): dir.z-=1
  if Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN): dir.z+=1
  if Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT): dir.x-=1
  if Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT): dir.x+=1
+ # Edge pan (camera mods; Settings): the mouse in the screen's edge band, never in captures.
+ if dir == Vector3.ZERO and Settings.edge_pan() and not capture_mode and DisplayServer.window_is_focused():
+  var e = CameraRig.edge_dir(get_viewport().get_mouse_position(),get_viewport().get_visible_rect().size)
+  dir = Vector3(e.x,0,e.y)
  if Input.is_key_pressed(KEY_CTRL) or pause_menu != null or map_open(): dir = Vector3.ZERO # Ctrl+S is quicksave; paused means paused
- target += dir.rotated(Vector3.UP,yaw)*delta*distance*(0.75 if Input.is_key_pressed(KEY_SHIFT) else 0.30)
+ target += dir.rotated(Vector3.UP,yaw)*delta*CameraRig.pan_speed(distance,Input.is_key_pressed(KEY_SHIFT))
  var cl = camera_limits()
  target.x = clampf(target.x,cl.position.x,cl.end.x)
  target.z = clampf(target.z,cl.position.y,cl.end.y)
@@ -1519,11 +1614,26 @@ func camera_update(delta: float):
  distance = lerpf(distance,desired_distance,minf(1,delta*9))
  # The tilt follows the zoom (steeper high up, flatter close in, as in TW:WH3); middle drag adds an
  # offset.
- pitch = clampf(tilt_for(distance)+pitch_offset,0.15,1.25)
+ pitch = clampf(tilt_for(distance)+pitch_offset,0.15,1.55)
  var offset = Vector3(sin(yaw)*cos(pitch),sin(pitch),cos(yaw)*cos(pitch))*distance
  camera.position = target+offset
  camera.position.y = maxf(camera.position.y,height_at(camera.position.x,camera.position.z)+2.0)
  camera.look_at(target)
+ _zoom_look()
+
+# The high-zoom look (pipeline maps): the far plane follows the zoom, the haze thins out with height
+# so the land stays readable from above, and the terrain's territory wash rises (map/map_view.gd).
+func _zoom_look():
+ var c = CameraRig.cfg()
+ camera.far = maxf(700.0,float(c.far_base)+float(c.far_factor)*distance)
+ camera.near = clampf(distance*0.0025,0.25,8.0)
+ if not pipeline or haze.is_empty(): return
+ var hz = CameraRig.high_zoom(distance,max_zoom)
+ environment.fog_depth_begin = float(haze.haze_begin)+distance*0.9
+ environment.fog_depth_end = float(haze.haze_end)+distance*2.2
+ environment.fog_density = lerpf(float(haze.haze_max),float(haze.haze_max)*0.3,hz)
+ environment.fog_aerial_perspective = lerpf(float(haze.aerial_perspective),0.12,hz)
+ if map_view != null: map_view.set_zoom_look(distance,hz)
 
 func _process(delta):
  if preparing: return
@@ -1575,14 +1685,27 @@ func _process(delta):
  camera_update(delta)
  if map_view != null: map_view.update(target)
  update_army_presentation()
+ # High zoom: small settlements show only their pennants; your own and the great cities keep
+ # their names.
+ var hz = CameraRig.high_zoom(distance,max_zoom)
+ var me = ui_data.player_faction_id()
  for p in pins:
   var b = p.button
   # Hold Space (TW:WH3 overlays): settlement banners at any zoom.
   b.visible = overlays.settlements and not camera.is_position_behind(p.world) and (distance>18 or (Input.is_physical_key_pressed(KEY_SPACE) and not spectating_now()))
-  if b.visible: b.position = camera.unproject_position(p.world)-b.anchor_offset()
+  if b.visible:
+   b.set_compact(hz>0.3 and int(b.settlement.level)<3 and str(b.settlement.get("owner","")) != me)
+   b.position = camera.unproject_position(p.world)-b.anchor_offset()
   b.set_selected(ui.selected_settlement == p.id)
  var mouse = get_viewport().get_mouse_position()
  var hit = "" if get_viewport().gui_get_hovered_control() != null else pick(mouse)
+ # Hovering a settlement or army (or its banner) highlights that faction's whole territory.
+ if map_view != null:
+  var hov = hit
+  var hc = get_viewport().gui_get_hovered_control()
+  if hc != null and hc.get("settlement_id") != null and str(hc.settlement_id) != "": hov = str(hc.settlement_id)
+  elif hc != null and hc.get("army_id") != null and str(hc.army_id) != "": hov = "army:"+str(hc.army_id)
+  map_view.set_highlight(forced_highlight if forced_highlight != "" else faction_of_hit(hov))
  # Path preview only while right click is held (TW:WH3); --preview captures force it.
  var previewing = army_selected() and not walks.has(selected_army_id()) and (forced_preview != null or (rmb_held and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)))
  if rmb_held and not Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT): rmb_held = false
@@ -1603,7 +1726,7 @@ func _process(delta):
  ui.set_fps("%d FPS" % Engine.get_frames_per_second())
  if capture_mode:
   capture_frames += 1
-  if capture_frames==180: screenshot_requested = true
+  if capture_frames==180 and not _gpu_run(): screenshot_requested = true
   if capture_frames%60==0: print("FRAME ",capture_frames," FPS ",Engine.get_frames_per_second()," delta ",delta," draws ",Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
  if screenshot_requested:
   screenshot_requested = false
@@ -2131,7 +2254,7 @@ func show_game_over():
 # Camera tilt for a zoom distance: about 35 degrees close in, steeper when high (TW:WH3's
 # zoom-linked pitch; docs/tw-ui-parity.md C8).
 func tilt_for(d: float) -> float:
- return lerpf(0.61,1.0,clampf((d-10.0)/200.0,0.0,1.0))
+ return CameraRig.pitch_at(d,max_zoom)
 
 # Set the camera tilt for the current zoom target (views, captures, loaded saves).
 func set_pitch(p: float):
@@ -2212,6 +2335,7 @@ func _jump_to(item: Dictionary):
 # perspective, grade) and two shadow cascades (enough at campaign distances).
 func _pipeline_atmosphere():
  var at = JSON.parse_string(FileAccess.get_file_as_string("res://data/campaign_view.json")).atmosphere
+ haze = at
  environment.fog_mode = Environment.FOG_MODE_DEPTH
  environment.fog_light_color = Color(at.haze)
  environment.fog_depth_begin = float(at.haze_begin)
@@ -2241,12 +2365,16 @@ func _clicked(hit: String):
  var twice = hit != "" and hit == last_click.hit and now-int(last_click.at)<=DOUBLE_CLICK_MS
  last_click = {"hit":hit,"at":-10000 if twice else now}
  if not twice: return
- var f = ""
+ var f = faction_of_hit(hit)
+ if f != "" and f != ui_data.player_faction_id(): ui.open_diplomacy(f)
+
+# The faction of a pick result ("army:<id>" or a settlement id), or "".
+func faction_of_hit(hit: String) -> String:
  if hit.begins_with("army:"):
   var id = hit.get_slice(":",1)
-  if ui_data.state.army_state.has(id): f = ui_data.state.army_state[id].faction
- elif ui_data.state.settlements.has(hit): f = ui_data.state.settlements[hit].owner
- if f != "" and f != ui_data.player_faction_id(): ui.open_diplomacy(f)
+  return str(ui_data.state.army_state[id].faction) if ui_data.state.army_state.has(id) else ""
+ if ui_data.state.settlements.has(hit): return str(ui_data.state.settlements[hit].owner)
+ return ""
 
 # The active map's world rectangle (x/z): the strategic map, the minimap and camera limits use it.
 func map_world_rect() -> Rect2:
@@ -2280,3 +2408,41 @@ func overview_target() -> Vector3:
   var q = WorldMap.settlement_position(own[0])
   return Vector3(q.x,height_at(q.x,q.y),q.y)
  return OVERVIEW_TARGET
+
+# --gpu=<label> [--out=<file>] (with --capture): measure the frame for 3 s after a warm-up (GPU and
+# render CPU time, peak draw calls and primitives, VRAM), print and append one line, then take the
+# capture and quit. Budgets run in the real campaign view (interface, banners, figures).
+func _gpu_run() -> bool:
+ return Array(OS.get_cmdline_user_args()).any(func(a): return a.begins_with("--gpu="))
+
+func _measure_gpu():
+ var rid = get_viewport().get_viewport_rid()
+ RenderingServer.viewport_set_measure_render_time(rid,true)
+ for i in 150: await get_tree().process_frame
+ var gpu = 0.0
+ var cpu = 0.0
+ var frames = 0
+ var dc = 0
+ var prims = 0
+ var t0 = Time.get_ticks_msec()
+ while Time.get_ticks_msec()-t0<3000:
+  await get_tree().process_frame
+  gpu += RenderingServer.viewport_get_measured_render_time_gpu(rid)
+  cpu += RenderingServer.viewport_get_measured_render_time_cpu(rid)
+  dc = maxi(dc,int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))
+  prims = maxi(prims,int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)))
+  frames += 1
+ var label = ""
+ var out = ""
+ for a in OS.get_cmdline_user_args():
+  if a.begins_with("--gpu="): label = a.get_slice("=",1)
+  if a.begins_with("--out="): out = a.get_slice("=",1)
+ var st = map_view.stats() if map_view != null else {}
+ var line = "GPU %s gpu_ms=%.2f render_cpu_ms=%.2f fps=%.1f draw_calls=%d primitives=%d vram_mb=%.0f distance=%.0f settlements_built=%d trees=%d window=%s" % [label,gpu/maxi(frames,1),cpu/maxi(frames,1),Engine.get_frames_per_second(),dc,prims,Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED)/1048576.0,distance,int(st.get("settlements_built",0)),int(st.get("trees",0)),str(DisplayServer.window_get_size())]
+ print(line)
+ if out != "":
+  var f = FileAccess.open(out,FileAccess.READ_WRITE) if FileAccess.file_exists(out) else FileAccess.open(out,FileAccess.WRITE)
+  f.seek_end()
+  f.store_line(line)
+  f.close()
+ screenshot_requested = true

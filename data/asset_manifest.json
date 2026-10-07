@@ -121,61 +121,71 @@
       "stage_1": "res://visuals/landmarks/goldspire_rock_stage_1.tscn",
       "stage_2": "res://visuals/landmarks/goldspire_rock_stage_2.tscn",
       "stage_3": "res://visuals/landmarks/goldspire_rock_stage_3.tscn",
-      "radius": 24.0
+      "radius": 24.0,
+      "walls_from": 2
     },
     "caeloth": {
       "stage_1": "res://visuals/landmarks/caeloth_stage_1.tscn",
       "stage_2": "res://visuals/landmarks/caeloth_stage_2.tscn",
       "stage_3": "res://visuals/landmarks/caeloth_stage_3.tscn",
-      "radius": 36.0
+      "radius": 36.0,
+      "walls_from": 1
     },
     "crownhaven": {
       "stage_1": "res://visuals/landmarks/crownhaven_stage_1.tscn",
       "stage_2": "res://visuals/landmarks/crownhaven_stage_2.tscn",
       "stage_3": "res://visuals/landmarks/crownhaven_stage_3.tscn",
-      "radius": 32.0
+      "radius": 32.0,
+      "walls_from": 2
     },
     "frosthold": {
       "stage_1": "res://visuals/landmarks/frosthold_stage_1.tscn",
       "stage_2": "res://visuals/landmarks/frosthold_stage_2.tscn",
       "stage_3": "res://visuals/landmarks/frosthold_stage_3.tscn",
-      "radius": 26.0
+      "radius": 26.0,
+      "walls_from": 1
     },
     "wardens_gate": {
       "stage_1": "res://visuals/landmarks/wardens_gate_stage_1.tscn",
       "stage_2": "res://visuals/landmarks/wardens_gate_stage_2.tscn",
       "stage_3": "res://visuals/landmarks/wardens_gate_stage_3.tscn",
-      "radius": 20.0
+      "radius": 20.0,
+      "walls_from": 1
     },
     "skyreach": {
       "stage_1": "res://visuals/landmarks/skyreach_stage_1.tscn",
       "stage_2": "res://visuals/landmarks/skyreach_stage_2.tscn",
       "stage_3": "res://visuals/landmarks/skyreach_stage_3.tscn",
-      "radius": 22.0
+      "radius": 22.0,
+      "walls_from": 3
     },
     "harrow_crossing": {
       "stage_1": "res://visuals/landmarks/harrow_crossing_stage_1.tscn",
       "stage_2": "res://visuals/landmarks/harrow_crossing_stage_2.tscn",
       "stage_3": "res://visuals/landmarks/harrow_crossing_stage_3.tscn",
-      "radius": 28.0
+      "radius": 28.0,
+      "walls_from": 2
     },
     "highbloom": {
       "stage_1": "res://visuals/landmarks/highbloom_stage_1.tscn",
       "stage_2": "res://visuals/landmarks/highbloom_stage_2.tscn",
       "stage_3": "res://visuals/landmarks/highbloom_stage_3.tscn",
-      "radius": 31.0
+      "radius": 31.0,
+      "walls_from": 1
     },
     "oldstone_citadel": {
       "stage_1": "res://visuals/landmarks/oldstone_citadel_stage_1.tscn",
       "stage_2": "res://visuals/landmarks/oldstone_citadel_stage_2.tscn",
       "stage_3": "res://visuals/landmarks/oldstone_citadel_stage_3.tscn",
-      "radius": 24.0
+      "radius": 24.0,
+      "walls_from": 2
     },
     "tempest_keep": {
       "stage_1": "res://visuals/landmarks/tempest_keep_stage_1.tscn",
       "stage_2": "res://visuals/landmarks/tempest_keep_stage_2.tscn",
       "stage_3": "res://visuals/landmarks/tempest_keep_stage_3.tscn",
-      "radius": 20.0
+      "radius": 20.0,
+      "walls_from": 2
     },
     "skulkmire": {
       "stage_1": "res://visuals/landmarks/skulkmire_stage_1.tscn",
@@ -187,13 +197,15 @@
       "stage_1": "res://visuals/landmarks/emberdeep_stage_1.tscn",
       "stage_2": "res://visuals/landmarks/emberdeep_stage_2.tscn",
       "stage_3": "res://visuals/landmarks/emberdeep_stage_3.tscn",
-      "radius": 26.0
+      "radius": 26.0,
+      "walls_from": 3
     },
     "brinecrag": {
       "stage_1": "res://visuals/landmarks/brinecrag_stage_1.tscn",
       "stage_2": "res://visuals/landmarks/brinecrag_stage_2.tscn",
       "stage_3": "res://visuals/landmarks/brinecrag_stage_3.tscn",
-      "radius": 22.0
+      "radius": 22.0,
+      "walls_from": 2
     }
   }
 }

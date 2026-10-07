@@ -106,7 +106,7 @@ func houses(layout: Array) -> Array:
 
 func extent(layout: Array) -> float:
  var r = 0.0
- for p in houses(layout): r = maxf(r,p.pos.length())
+ for p in houses(layout.filter(func(q): return not q.get("countryside",false))): r = maxf(r,p.pos.length()) # the town, not its countryside hamlets
  return r
 
 func test_each_level_grows_the_footprint_and_the_houses():

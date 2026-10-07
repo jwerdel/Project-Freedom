@@ -82,6 +82,13 @@ func _ready():
   cb.button_pressed = bool(Settings.get_value(wk[0]))
   cb.toggled.connect(func(on): Settings.set_value(wk[0],on))
   grid.add_child(cb)
+ grid.add_child(UiKit.label("Pan at the screen edge",16))
+ var edge = CheckBox.new()
+ edge.name = "EdgePan"
+ edge.focus_mode = Control.FOCUS_NONE
+ edge.button_pressed = Settings.edge_pan()
+ edge.toggled.connect(func(on): Settings.set_value("edge_pan",on))
+ grid.add_child(edge)
  grid.add_child(UiKit.label("Debug keys (F5-F8, L)",16))
  var dbg = CheckBox.new()
  dbg.name = "DebugKeys"

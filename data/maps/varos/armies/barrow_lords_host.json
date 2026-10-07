@@ -12,10 +12,6 @@
     {
       "unit": "spearmen",
       "strength": 0.95
-    },
-    {
-      "unit": "archers",
-      "strength": 0.95
     }
   ]
 }

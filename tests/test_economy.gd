@@ -94,8 +94,7 @@ func test_population_approaches_but_does_not_pass_capacity():
  var s = state_with("village",1,{"wood":0,"stone":0,"food":5,"minerals":0},2000.0)
  # Keep the placeholder AI from upgrading the settlement (which would raise the cap).
  for i in 200:
-  s.treasury.house_lannet = 0
-  TurnLoop.end_turn(s)
+  TurnLoop.end_turn(s,{"ai":false})
  var cap = Economy.data().settlement_types.village.capacity[0]
  assert_lt(s.settlements.greyhaven.population,cap+0.5)
  assert_gt(s.settlements.greyhaven.population,cap*0.95)

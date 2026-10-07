@@ -59,14 +59,20 @@ static func cache_dir(map_id: String) -> String:
  return CACHE+map_id+"/"
 
 # The render cache is valid for one build of one map version (stamp written by the build).
-static func write_render_cache(map_id: String,cell: float,origin: Vector2,cols: int,rows: int,heights: PackedFloat32Array,colors: PackedByteArray,rivers := PackedByteArray()):
+# Bump CACHE_FORMAT when the render cache gains or changes a file: older caches then count as stale
+# and are rebuilt on the next start (the first-run preparation screen).
+const CACHE_FORMAT = 3 # 2: climate looks (2026-10-06); 3: their values retuned
+
+static func write_render_cache(map_id: String,cell: float,origin: Vector2,cols: int,rows: int,heights: PackedFloat32Array,colors: PackedByteArray,rivers := PackedByteArray(),climate := PackedByteArray(),ccols := 0,crows := 0):
  var dir = cache_dir(map_id)
  DirAccess.make_dir_recursive_absolute(dir)
  _write_zstd(dir+"heights.bin",heights.to_byte_array())
  _write_zstd(dir+"colors.bin",colors)
  if rivers.size() == cols*rows: _write_zstd(dir+"rivers.bin",rivers) # river strength per cell (0-255), drawn as water
  elif FileAccess.file_exists(dir+"rivers.bin"): DirAccess.remove_absolute(dir+"rivers.bin")
- write_json(dir+"meta.json",{"map_version":MapRegistry.version(map_id),"cell":cell,"origin":[origin.x,origin.y],"cols":cols,"rows":rows,"stamp":stamp(map_id)})
+ if climate.size() == ccols*crows*4 and ccols>0: _write_zstd(dir+"climate.bin",climate) # climate looks per coarse texel (RGBA: snow, frost, dry, wet)
+ elif FileAccess.file_exists(dir+"climate.bin"): DirAccess.remove_absolute(dir+"climate.bin")
+ write_json(dir+"meta.json",{"map_version":MapRegistry.version(map_id),"cell":cell,"origin":[origin.x,origin.y],"cols":cols,"rows":rows,"stamp":stamp(map_id),"format":CACHE_FORMAT,"climate_size":[ccols,crows]})
 
 # Changes whenever the committed bakes change (their meta files' modification times and sizes).
 static func stamp(map_id: String) -> String:
@@ -80,13 +86,13 @@ static func render_cache_valid(map_id: String) -> bool:
  var dir = cache_dir(map_id)
  if not FileAccess.file_exists(dir+"meta.json"): return false
  var meta = JSON.parse_string(FileAccess.get_file_as_string(dir+"meta.json"))
- return meta is Dictionary and int(meta.map_version) == MapRegistry.version(map_id) and str(meta.stamp) == stamp(map_id)
+ return meta is Dictionary and int(meta.map_version) == MapRegistry.version(map_id) and str(meta.stamp) == stamp(map_id) and int(meta.get("format",1)) == CACHE_FORMAT
 
 static func load_render_cache(map_id: String) -> Dictionary:
  var dir = cache_dir(map_id)
  if not FileAccess.file_exists(dir+"meta.json"): return {}
  var meta = JSON.parse_string(FileAccess.get_file_as_string(dir+"meta.json"))
- if int(meta.map_version) != MapRegistry.version(map_id) or str(meta.stamp) != stamp(map_id): return {}
+ if int(meta.map_version) != MapRegistry.version(map_id) or str(meta.stamp) != stamp(map_id) or int(meta.get("format",1)) != CACHE_FORMAT: return {}
  var cols = int(meta.cols)
  var rows = int(meta.rows)
  var h = _read_zstd(dir+"heights.bin",cols*rows*4)
@@ -96,7 +102,12 @@ static func load_render_cache(map_id: String) -> Dictionary:
  if rv.size() != cols*rows:
   rv = PackedByteArray()
   rv.resize(cols*rows)
- return {"cell":float(meta.cell),"origin":Vector2(meta.origin[0],meta.origin[1]),"cols":cols,"rows":rows,
+ var cs = meta.get("climate_size",[0,0])
+ var climate: Image = null
+ if int(cs[0])>0 and FileAccess.file_exists(dir+"climate.bin"):
+  var cb = _read_zstd(dir+"climate.bin",int(cs[0])*int(cs[1])*4)
+  if cb.size() == int(cs[0])*int(cs[1])*4: climate = Image.create_from_data(int(cs[0]),int(cs[1]),false,Image.FORMAT_RGBA8,cb)
+ return {"cell":float(meta.cell),"origin":Vector2(meta.origin[0],meta.origin[1]),"cols":cols,"rows":rows,"climate":climate,
   "heights":Image.create_from_data(cols,rows,false,Image.FORMAT_RF,h),"colors":Image.create_from_data(cols,rows,false,Image.FORMAT_RGB8,c),
   "rivers":Image.create_from_data(cols,rows,false,Image.FORMAT_R8,rv)}
 

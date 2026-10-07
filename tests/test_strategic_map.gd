@@ -38,17 +38,19 @@ func build_map(data) -> Control:
 func test_layers_available_and_greyed():
  var m = build_map(UiData.new(GameState.from_data()))
  var ids = StrategicMap.LAYERS.map(func(l): return l.id)
- assert_eq(ids,["affiliation","diplomatic","attitude","order","development","climate","faith","culture"])
- for id in ["attitude","faith"]:
+ assert_eq(ids,["political","diplomacy","religion","culture","resources","order","development","climate"])
+ for id in ["religion","resources"]:
   assert_true(m.layer_buttons[id].disabled,id+" greyed")
   assert_string_contains(m.layer_buttons[id].tooltip_text,"Coming later")
  assert_false(m.layer_buttons.culture.disabled,"the Culture layer works (land conversion, 2026-10-04)")
- m.set_layer("attitude")
- assert_eq(m.layer,"affiliation","a greyed layer cannot be chosen")
+ m.set_layer("religion")
+ assert_eq(m.layer,"political","a greyed layer cannot be chosen")
+ m.set_layer("diplomatic")
+ assert_eq(m.layer,"diplomacy","old capture names still work")
  m.set_layer("development")
  assert_eq(m.layer,"development")
  assert_true(m.layer_buttons.development.button_pressed)
- assert_false(m.layer_buttons.affiliation.button_pressed)
+ assert_false(m.layer_buttons.political.button_pressed)
 
 func test_layer_colours_follow_the_campaign_state():
  var data = UiData.new(GameState.from_data())
@@ -57,9 +59,10 @@ func test_layer_colours_follow_the_campaign_state():
  var mine = data.state.settlements_of(me)[0]
  var other = data.settlement_ids().filter(func(s): return data.state.settlements[s].owner != me and data.state.settlements[s].owner != "")[0]
  var foe = data.state.settlements[other].owner
- m.set_layer("affiliation")
- assert_eq(Color(m.region_color(mine),1.0),Color(data.faction(me).primary))
- m.set_layer("diplomatic")
+ m.set_layer("political")
+ assert_true(Color(m.region_color(mine),1.0).is_equal_approx(Color(data.faction(me).primary).lightened(0.05)),"your realm in your own colour")
+ assert_gt(m.region_color(mine).a,m.region_color(other).a,"your realm stronger than other realms")
+ m.set_layer("diplomacy")
  var peace = m.region_color(other)
  data.state.wars.append(Battles.war_key(me,foe))
  assert_ne(m.region_color(other),peace,"war changes the diplomatic colour")
@@ -120,25 +123,27 @@ func test_click_or_scroll_in_chooses_a_location():
  m.open_map(true)
  watch_signals(m)
  var target = Vector2(-75,25)
- var click = func(button):
+ var click = func(button,ctrl := false):
   var e = InputEventMouseButton.new()
   e.button_index = button
   e.pressed = true
+  e.ctrl_pressed = ctrl
   e.position = m.to_screen(target)
   m._gui_input(e)
  click.call(MOUSE_BUTTON_LEFT)
  assert_signal_emit_count(m,"location_chosen",1)
  assert_almost_eq(get_signal_parameters(m,"location_chosen")[0],target,Vector2(0.01,0.01))
- # The wheel zooms the parchment around the cursor first; past the closest zoom it returns there.
- click.call(MOUSE_BUTTON_WHEEL_UP)
+ assert_false(get_signal_parameters(m,"location_chosen")[1],"a click is not a scroll")
+ # Ctrl+wheel zooms the parchment around the cursor without choosing.
+ click.call(MOUSE_BUTTON_WHEEL_UP,true)
  assert_gt(m.zoom,1.0)
- assert_signal_emit_count(m,"location_chosen",1,"zooming in is not choosing")
+ assert_signal_emit_count(m,"location_chosen",1,"zooming the parchment is not choosing")
  assert_almost_eq(m.to_world(m.to_screen(target)),target,Vector2(0.01,0.01))
- for i in 10:
-  if m.zoom<StrategicMap.MAX_ZOOM: click.call(MOUSE_BUTTON_WHEEL_UP)
+ # Scrolling in (TW:WH3) returns to the 3D map there, at once.
  click.call(MOUSE_BUTTON_WHEEL_UP)
  assert_signal_emit_count(m,"location_chosen",2)
  assert_almost_eq(get_signal_parameters(m,"location_chosen",1)[0],target,Vector2(0.5,0.5))
+ assert_true(get_signal_parameters(m,"location_chosen",1)[1],"scrolling in returns at the highest zoom")
  for i in 10: click.call(MOUSE_BUTTON_WHEEL_DOWN)
  assert_eq(m.zoom,1.0,"scrolling out zooms back to the whole world")
  click.call(MOUSE_BUTTON_WHEEL_DOWN)
@@ -195,16 +200,27 @@ func test_map_scene_hotkeys_and_strategic_transition():
  key(main,KEY_ESCAPE)
  assert_false(main.map_open())
  # Zooming out past the farthest zoom opens it; choosing a place returns there, zoomed in.
- main.desired_distance = 210.0
+ main.desired_distance = main.max_zoom*0.5
  var wheel = InputEventMouseButton.new()
  wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
  wheel.pressed = true
  main._unhandled_input(wheel)
+ assert_false(main.map_open(),"below the farthest zoom the wheel only zooms out")
+ main.desired_distance = main.max_zoom
+ main._unhandled_input(wheel)
  assert_true(main.map_open())
- main.strategic.location_chosen.emit(Vector2(-100,30))
+ main.strategic.location_chosen.emit(Vector2(-100,30),false)
  assert_false(main.map_open())
  assert_almost_eq(Vector2(main.target.x,main.target.z),Vector2(-100,30),Vector2(0.01,0.01))
  assert_lte(main.desired_distance,main.STRATEGIC_RETURN_DISTANCE)
+ # Scrolling in on the strategic map returns at the highest 3D zoom, centred there.
+ main.desired_distance = main.max_zoom
+ main._unhandled_input(wheel)
+ assert_true(main.map_open())
+ main.strategic.location_chosen.emit(Vector2(-60,40),true)
+ assert_false(main.map_open())
+ assert_almost_eq(Vector2(main.target.x,main.target.z),Vector2(-60,40),Vector2(0.01,0.01))
+ assert_eq(main.desired_distance,main.max_zoom)
  # K hides the interface; Alt+K adds letterbox bars; Esc brings it back.
  key(main,KEY_K)
  assert_false(main.ui.visible)
@@ -289,7 +305,9 @@ func test_palette_holds_the_layer_fills_and_owners():
  m.set_layer("affiliation")
  var sid = data.state.settlements_of(data.player_faction_id())[0]
  var px = m._palette.get_pixel(m._index[sid],0)
- assert_true(px.is_equal_approx(m._fills[sid]) or px.to_html() == m._fills[sid].to_html(),"fill in row 0")
+ var f = m._fills[sid]
+ assert_true(absf(px.r-f.r)<0.006 and absf(px.g-f.g)<0.006 and absf(px.b-f.b)<0.006 and absf(px.a-f.a)<0.006,"fill in row 0 (8-bit)")
+ assert_eq(int(m._palette.get_pixel(m._index[sid],2).b8) & 1,1,"row 2 marks your land")
  assert_eq(m._palette.get_pixel(m._index[sid],1).a,1.0,"owned: border colour in row 1")
  m.set_layer("climate")
  assert_eq(m._palette.get_pixel(m._index[sid],0).a,0.0,"climate: no fills")

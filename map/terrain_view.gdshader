@@ -14,11 +14,24 @@ uniform sampler2D classes : filter_nearest, repeat_disable;     // R8: data/move
 uniform sampler2D regions : filter_nearest, repeat_disable;     // RGBA8: region id = R + 256 G (0 = none)
 uniform sampler2D palette : filter_nearest, repeat_disable;     // per region (x = id): R from, G to, B value
 uniform sampler2D owners : filter_nearest, repeat_disable;      // per region (x = id): owner colour, alpha 1 = owned
-uniform float border_width = 1.4; // metres: faction border lines (TW:WH3)
+uniform float border_width = 1.4; // metres (kept for older materials)
+// Territory look (map/map_view.gd set_zoom_look): widths in metres at border_scale 1.
+uniform float region_line = 0.6;
+uniform float faction_line = 1.4;
+uniform float player_line = 2.4;
+uniform float border_scale = 1.0;
+uniform float wash = 0.0;          // 0 close .. 1 at the farthest 3D zoom
+uniform float wash_other = 0.24;   // wash strength at wash 1
+uniform float wash_player = 0.34;
+uniform vec4 player_color : source_color = vec4(1.0);
 uniform sampler2D culture_colors : source_color, filter_nearest, repeat_disable; // x = ground layer, y = culture (sRGB)
 uniform sampler2D culture_params : filter_nearest, repeat_disable; // x = culture: R snow line / 100 m
 uniform sampler2D rivers : filter_linear, repeat_disable;       // R8 river strength
 uniform sampler2D roads : filter_linear, repeat_disable;        // R8 road cells (0 or 1/255)
+// Climate looks (map/pipeline.gd CLIMATE_LOOK, blurred): R snow cover, G frost, B dryness, A wetness.
+uniform sampler2D climate : filter_linear, repeat_disable;
+uniform bool has_climate = false;
+uniform vec2 climate_scale = vec2(1.0); // grid uv -> climate uv (its texels cover a few cells each)
 uniform vec2 origin;      // world x/z of the grid's corner
 uniform vec2 world_size;  // metres covered by the textures
 uniform vec2 grid_size;   // cells
@@ -53,6 +66,28 @@ int region_id(vec2 xz) {
 	ivec2 c = clamp(ivec2(floor((xz - origin) / world_size * grid_size)), ivec2(0), ivec2(grid_size) - 1);
 	vec4 r = texelFetch(regions, c, 0);
 	return int(r.r * 255.0 + 0.5) + 256 * int(r.g * 255.0 + 0.5);
+}
+
+// The owner of a region as an index (0 = none) and its flags (1 the player's, 2 highlighted).
+float owner_id(int rid) {
+	vec4 t = texelFetch(owners, ivec2(rid, 1), 0);
+	return floor(t.r * 255.0 + 0.5) + 256.0 * floor(t.g * 255.0 + 0.5);
+}
+int owner_flags(int rid) {
+	return int(texelFetch(owners, ivec2(rid, 1), 0).b * 255.0 + 0.5);
+}
+// Another owner within w metres (eight directions).
+bool other_owner_within(vec2 xz, float oid, float w) {
+	for (int k = 0; k < 8; k++) {
+		vec2 d = vec2(cos(float(k) * 0.785398), sin(float(k) * 0.785398)) * w;
+		int r = region_id(xz + d);
+		if (r > 0 && owner_id(r) != oid) return true; // the sea (region 0) is not a border
+	}
+	return false;
+}
+// Another region within w metres (four directions).
+bool region_within(vec2 xz, int rid, float w) {
+	return region_id(xz + vec2(w, 0.0)) != rid || region_id(xz - vec2(w, 0.0)) != rid || region_id(xz + vec2(0.0, w)) != rid || region_id(xz - vec2(0.0, w)) != rid;
 }
 
 float h_at(vec2 xz) {
@@ -213,6 +248,7 @@ void fragment() {
 	float road = smoothstep(0.35, 0.65, texture(roads, uv).r * 255.0) * (1.0 - ww);
 	float beach = (1.0 - smoothstep(0.4, 1.6, h - sea_level)) * (1.0 - wm);
 
+	vec4 cl = has_climate ? texture(climate, uv * climate_scale) : vec4(0.0);
 	vec3 cols[2];
 	cols[1] = vec3(0.0);
 	// The second culture only where the land is converting (most regions are not).
@@ -220,17 +256,31 @@ void fragment() {
 	if (conv > 0.999) { from_c = to_c; passes = 1; conv = 0.0; }
 	for (int s = 0; s < passes; s++) {
 		int cu = s == 0 ? from_c : to_c;
-		vec3 ground = mix(layer(GRASS, cu), layer(DRY, cu), w_dry);
+		vec3 ground = mix(layer(GRASS, cu), layer(DRY, cu), clamp(w_dry + cl.b * 0.8, 0.0, 1.0));
 		ground = mix(ground, layer(DIRT, cu), w_dirt);
 		// Forest: the floor between crowns, the canopy on them (a carpet from afar).
 		vec3 canopy = layer(CANOPY, cu) * (0.62 + 0.55 * cr) * (0.85 + 0.3 * n2);
+		canopy = mix(canopy, layer(SNOW, cu) * 0.92, clamp(cl.r * 0.75 * (0.35 + 0.65 * cr), 0.0, 0.8)); // snow on the crowns
 		ground = mix(ground, mix(layer(FLOOR, cu), canopy, 0.35 + 0.65 * cr), wf);
 		ground = mix(ground, layer(SCREE, cu) * (0.85 + 0.3 * n3), w_scree);
 		vec3 rock = layer(ROCK, cu) * (0.68 + 0.45 * strata) * (0.85 + 0.3 * n3) * (0.8 + 0.4 * clamp(cavity + 0.5, 0.0, 1.0));
 		ground = mix(ground, rock, w_rock);
-		float snow_line = texelFetch(culture_params, ivec2(cu, 0), 0).r * 100.0;
+		float snow_line = texelFetch(culture_params, ivec2(cu, 0), 0).r * 100.0 - cl.g * 60.0; // frost brings the snow line down
 		float w_snow = smoothstep(snow_line - 2.0, snow_line + 2.0, h + (n2 - 0.5) * 12.0 + cavity * 6.0) * (1.0 - smoothstep(0.7, 1.2, slope) * 0.8);
 		ground = mix(ground, layer(SNOW, cu), w_snow);
+		// Climate: frost greys and cools the ground; snow lies on open land, thinning on slopes and in
+		// hollows in noisy drifts; wet land darkens.
+		if (has_climate) {
+			float lum = dot(ground, vec3(0.333));
+			ground = mix(ground, mix(vec3(lum), vec3(0.80, 0.87, 0.93), 0.4), cl.g * 0.45);
+			float cover = smoothstep(0.22, 0.72, cl.r + (n2 - 0.5) * 0.45 + (n1 - 0.5) * 0.25 + max(cavity, 0.0) * 0.25 - max(slope - 0.55, 0.0) * 0.9) * (1.0 - wf * 0.55);
+			// Snow keeps the land's relief: blue-grey in hollows and on shaded folds, drifts by noise.
+			vec3 snow = layer(SNOW, cu) * (0.8 + 0.12 * n2 + 0.08 * n3) * clamp(1.0 + cavity * 0.55, 0.72, 1.06);
+			snow = mix(snow, snow * vec3(0.86, 0.9, 1.0), clamp(-cavity * 1.5 + (1.0 - n1) * 0.3, 0.0, 1.0));
+			ground = mix(ground, snow, cover * 0.92);
+			ground *= 1.0 - cl.a * 0.16;
+			ground = mix(ground, ground * vec3(0.92, 1.0, 0.86), cl.a * 0.4);
+		}
 		ground = mix(ground, layer(SAND, cu), beach * (1.0 - w_rock));
 		ground = mix(ground, layer(DIRT, cu) * 0.9, road);
 		ground = mix(ground, ground * 0.72, bank);
@@ -250,18 +300,40 @@ void fragment() {
 	n = normalize(n - vec3(rg.x, 0.0, rg.y) * 2.2 * w_rock);
 	col *= mix(1.0, 0.82 + 0.36 * rn, w_rock * 0.6);
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
-	// Faction borders (TW:WH3): a line in the owner's colour where the neighbouring land has another
-	// owner, and a faint line between regions of the same owner.
+	// Territory (TW:WH3; owner 2026-10-06: "painfully obvious which land is mine at every zoom"):
+	//  - a faction-colour wash over owned land, none up close, rising with the zoom (wash 0-1), the
+	//    player's own land stronger and a highlighted faction (hovered settlement or army) stronger still;
+	//  - a thin line between regions, a thicker line in the owner's colour between factions, and the
+	//    player's realm border thickest in the player's colour with a soft glow band inside it.
+	// Widths are metres times border_scale, which grows with the camera distance (map/map_view.gd).
 	int rid = region_id(world_xz);
-	vec4 own = texelFetch(owners, ivec2(rid, 0), 0);
-	int r0 = region_id(world_xz + vec2(border_width, 0.0));
-	int r1 = region_id(world_xz - vec2(border_width, 0.0));
-	int r2 = region_id(world_xz + vec2(0.0, border_width));
-	int r3 = region_id(world_xz - vec2(0.0, border_width));
-	if ((r0 != rid || r1 != rid || r2 != rid || r3 != rid) && rid > 0 && ww < 0.5) {
-		bool other = texelFetch(owners, ivec2(r0, 0), 0) != own || texelFetch(owners, ivec2(r1, 0), 0) != own || texelFetch(owners, ivec2(r2, 0), 0) != own || texelFetch(owners, ivec2(r3, 0), 0) != own;
-		if (other && own.a > 0.5) col = mix(col, own.rgb * 1.2, 0.85);
-		else col *= 0.82;
+	if (rid > 0 && ww < 0.5) {
+		vec4 own = texelFetch(owners, ivec2(rid, 0), 0);
+		float oid = owner_id(rid);
+		int flags = owner_flags(rid);
+		bool mine = (flags & 1) != 0;
+		bool lit = (flags & 2) != 0;
+		if (own.a > 0.5) {
+			float wa = wash * (mine ? wash_player : wash_other) + (lit ? 0.22 + 0.12 * wash : 0.0);
+			col = mix(col, own.rgb, clamp(wa, 0.0, 0.6));
+		}
+		float bs = border_scale;
+		float wr = region_line * bs;
+		float wf = faction_line * bs;
+		float wp = player_line * bs;
+		float reach = mine ? wp * 4.0 : wf;
+		// Cheap test first: nothing different within reach -> no border work.
+		if (region_id(world_xz + vec2(reach, 0.0)) != rid || region_id(world_xz - vec2(reach, 0.0)) != rid || region_id(world_xz + vec2(0.0, reach)) != rid || region_id(world_xz - vec2(0.0, reach)) != rid
+			|| region_id(world_xz + vec2(reach, reach) * 0.7) != rid || region_id(world_xz - vec2(reach, reach) * 0.7) != rid) {
+			if (mine && other_owner_within(world_xz, oid, wp * 4.0)) {
+				col = mix(col, player_color.rgb, 0.3); // the glow band inside the realm
+				if (other_owner_within(world_xz, oid, wp)) col = mix(col, player_color.rgb * 1.25 + 0.06, 0.95);
+			} else if (own.a > 0.5 && other_owner_within(world_xz, oid, wf)) {
+				col = mix(col, own.rgb * 1.2, 0.85);
+			} else if (region_within(world_xz, rid, wr)) {
+				col *= 0.78;
+			}
+		}
 	}
 	ALBEDO = col;
 	ROUGHNESS = mix(0.92, 0.18, riv);

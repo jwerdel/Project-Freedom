@@ -11,8 +11,9 @@ extends Control
 # a few MultiMeshes, and names are placed greedily by importance so they never overlap (fewer show
 # when the map is small on screen, more when it is large).
 
-signal location_chosen(world: Vector2) # click or scroll in: return to the 3D map there
+signal location_chosen(world: Vector2,from_scroll: bool) # click (zoomed in) or scroll in (at the highest 3D zoom): return to the 3D map there
 signal closed
+signal palette_changed # the territory colours changed (the minimap shares them)
 
 const UiKit = preload("res://ui/ui_kit.gd")
 const Widgets = preload("res://ui/widgets.gd")
@@ -21,24 +22,30 @@ const Movement = preload("res://core/movement.gd")
 const Settings = preload("res://core/settings.gd")
 const MapShader = preload("res://ui/strategic_map.gdshader")
 const Paint = preload("res://ui/strategic_paint.gd")
+const Icons = preload("res://ui/icons.gd")
 const FADE = 0.35
-# Map layers (TW:WH3 overlays). available: false = greyed until its system exists.
+# Map modes (TW:WH3 overlays; owner 2026-10-06: Political and Diplomacy first, Religion, Culture and
+# Resources ready for later). available: false = greyed until its system exists.
 const LAYERS = [
- {"id":"affiliation","name":"Affiliation","available":true,"tip":"Who owns each region"},
- {"id":"diplomatic","name":"Diplomatic status","available":true,"tip":"At war with you, at peace, or yours"},
- {"id":"attitude","name":"Attitude","available":false,"tip":"How each faction feels about you"},
+ {"id":"political","name":"Political","available":true,"tip":"Who owns each region: your realm bright and outlined, other realms muted, occupied and besieged land hatched in the occupier's colour, vassals striped with their liege's colour"},
+ {"id":"diplomacy","name":"Diplomacy","available":true,"tip":"Every realm coloured by its relation to you: yours, vassals, allies, trade partners, neutral, hostile, at war"},
+ {"id":"religion","name":"Religion","available":false,"tip":"The faiths of each region"},
+ {"id":"culture","name":"Culture","available":true,"tip":"The culture each region's land belongs to; a region being converted shows both, blended by how far it has turned (game-design §12.13)"},
+ {"id":"resources","name":"Resources","available":false,"tip":"Food, wood, stone and gold in each region"},
  {"id":"order","name":"Public order","available":true,"tip":"Public order of each province (placeholder values until the public order system exists)"},
  {"id":"development","name":"Development","available":true,"tip":"Settlement level of each region"},
- {"id":"climate","name":"Climate and terrain","available":true,"tip":"Terrain: plains, forest, hills, mountains, passes and water"},
- {"id":"faith","name":"Faith","available":false,"tip":"The faiths of each region"},
- {"id":"culture","name":"Culture","available":true,"tip":"The culture each region's land belongs to; a region being converted shows both, blended by how far it has turned (game-design §12.13)"},
+ {"id":"climate","name":"Terrain","available":true,"tip":"Terrain: plains, forest, hills, mountains, passes and water"},
 ]
+const LAYER_ALIASES = {"affiliation":"political","diplomatic":"diplomacy"} # older capture flags
+# Diplomacy mode: relation to the player (UiData.relation_to_player) -> colour and legend name.
+const RELATIONS = [["self",Color("3f9be0"),"You"],["vassal",Color("8fc8f0"),"Your vassals"],["ally",Color("4fb34a"),"Allies"],["trade",Color("c9b84a"),"Trade partners"],["neutral",Color("a9a39a"),"Neutral"],["hostile",Color("d9822b"),"Hostile"],["war",Color("c8382c"),"At war"]]
+const CAELOTH_FILL = Color("f1e8c8")
 const TERRAIN_PARCHMENT = {"open":Color("e6d4ab"),"settlement":Color("e6d4ab"),"forest":Color("c5c48f"),"hills":Color("d8c08a"),"mountain":Color("a58f6c"),"pass":Color("c6ad83"),"water":Color("9fb3ad")}
 const TERRAIN_VIVID = {"open":Color("b8cf7e"),"settlement":Color("b8cf7e"),"forest":Color("5f8f4a"),"hills":Color("c9b16a"),"mountain":Color("8c7a64"),"pass":Color("b59a6c"),"water":Color("4f7f9c")}
 
 var data
 var world_rect: Rect2
-var layer := "affiliation"
+var layer := "political"
 var base_parchment: ImageTexture
 var base_vivid: ImageTexture
 var layer_buttons := {}
@@ -66,6 +73,8 @@ var _glyph_layer: Node2D  # mountains, hills and trees (MultiMeshes)
 var _glyph_key = null
 var _paint := {}          # ui/strategic_paint.gd textures and glyphs
 var _region_labels := []  # province names: [screen position, text, font size, alpha]
+var _realms := []         # [faction id, world centre, settlement count], largest first
+var _realm_labels := []   # placed realm labels: [screen position, text, font size, faction]
 # Zoom (1 = the whole world in the frame, up to MAX_ZOOM) and the world point at the frame centre.
 const MAX_ZOOM = 3.0
 var zoom := 1.0
@@ -146,6 +155,7 @@ On the map: the wheel zooms, right drag pans, click or scroll in past the closes
  set_layer(layer)
 
 func set_layer(id: String):
+ id = LAYER_ALIASES.get(id,id)
  for l in LAYERS:
   if l.id == id and not l.available: return
  layer = id
@@ -189,6 +199,19 @@ func refresh():
   var s = data.settlement(sid)
   _owners[sid] = s.owner
   _seals.append([WorldMap.settlement_position(sid),Color(data.faction(s.owner).primary) if s.owner != "" else Color("777777"),int(s.level),s.name,sid])
+ # Realms: crest and name at each realm's centre, sized by its size (political map).
+ _realms.clear()
+ var by = {}
+ for sid in _owners:
+  var o = _owners[sid]
+  if o == "": continue
+  if not by.has(o): by[o] = []
+  by[o].append(WorldMap.settlement_position(sid))
+ for o in by:
+  var c = Vector2.ZERO
+  for p in by[o]: c += p
+  _realms.append([o,c/by[o].size(),by[o].size()])
+ _realms.sort_custom(func(a,b): return a[2]>b[2] if a[2] != b[2] else a[0]<b[0])
  _armies.clear()
  for id in data.army_ids():
   var m = data.army_movement(id)
@@ -273,12 +296,24 @@ func region_color(id: String) -> Color:
  if s.is_empty(): return Color(0,0,0,0)
  var owner = s.owner
  match layer:
-  "affiliation":
-   return Color(Color(data.faction(owner).primary),0.55) if owner != "" else Color(0,0,0,0)
-  "diplomatic":
-   if owner == data.player_faction_id(): return Color("4fb34a",0.55)
-   if owner != "" and data.at_war(owner): return Color("c8382c",0.6)
-   return Color("8a97a8",0.45)
+  "political":
+   if owner == "": return Color(0,0,0,0)
+   if _is_caeloth(owner): return Color(CAELOTH_FILL,0.8)
+   var col = Color(data.faction(owner).primary)
+   # An occupied region keeps its rightful owner's colour under the occupier's hatching.
+   var home = _home_owner(id)
+   if home != owner and _occupied(id): col = Color(data.faction(home).primary)
+   # Your realm saturated and strong; other realms muted (TW:WH3 political map).
+   if owner == data.player_faction_id(): return Color(col.lightened(0.05),0.78)
+   var g = col.get_luminance()
+   return Color(col.lerp(Color(g,g,g),0.35),0.48)
+  "diplomacy":
+   if owner == "": return Color(0,0,0,0)
+   if _is_caeloth(owner) and owner != data.player_faction_id(): return Color(CAELOTH_FILL,0.8)
+   var rel = data.relation_to_player(owner)
+   for r in RELATIONS:
+    if r[0] == rel: return Color(r[1],0.72 if rel == "self" else 0.6)
+   return Color(0,0,0,0)
   "order":
    var po = float(data.province_stats(s.province).public_order)
    return Color("c8382c").lerp(Color("4fb34a"),clampf((po+100.0)/200.0,0,1))*Color(1,1,1,0.6)
@@ -288,6 +323,46 @@ func region_color(id: String) -> Color:
    var l = data.land(id)
    return Color(Color(l.from_color).lerp(Color(l.to_color),float(l.value)),0.62)
  return Color(0,0,0,0)
+
+# Political-mode marks per region (the shader's palette rows 2 and 3): flags 1 = the player's land,
+# 2 = a vassal (striped in its liege's colour), 4 = occupied or besieged (hatched in the occupier's
+# colour), 8 = Caeloth (its own neutral style); and the pattern colour.
+func region_marks(id: String) -> Dictionary:
+ var out = {"flags":0,"pattern":Color(0,0,0,0)}
+ var s = data.state.settlements.get(id,{})
+ if s.is_empty(): return out
+ var owner = str(s.owner)
+ if owner == "": return out
+ if owner == data.player_faction_id(): out.flags |= 1
+ if _is_caeloth(owner): out.flags |= 8
+ if layer != "political": return out
+ var liege = data.liege_of(owner)
+ if liege != "":
+  out.flags |= 2
+  out.pattern = Color(data.faction(liege).primary)
+ var sg = s.get("siege",{})
+ if not sg.is_empty() and data.state.army_state.has(sg.get("army","")):
+  out.flags |= 4
+  out.pattern = Color(data.faction(data.state.army_state[sg.army].faction).primary)
+ elif _occupied(id):
+  out.flags |= 4
+  out.pattern = Color(data.faction(owner).primary)
+ return out
+
+func _is_caeloth(f: String) -> bool:
+ return bool(WorldMap.faction(f).get("untouchable",false))
+
+# The region's owner at the start of the campaign (its rightful owner for the political map).
+func _home_owner(id: String) -> String:
+ return str(WorldMap.region(id).get("owner",""))
+
+# Taken from a faction that still stands and is at war with the holder.
+func _occupied(id: String) -> bool:
+ var owner = str(data.state.settlements[id].owner)
+ var home = _home_owner(id)
+ if home == "" or home == owner or home in data.state.destroyed: return false
+ if data.state.settlements_of(home).is_empty(): return false
+ return load("res://core/battles.gd").at_war(data.state,home,owner)
 
 func _fill_legend():
  if legend == null: return
@@ -310,13 +385,18 @@ func _fill_legend():
  if legend_collapsed: return
  var rows = []
  match layer:
-  "affiliation":
+  "political":
+   rows.append([Color(data.faction(data.player_faction_id()).primary),"Your realm (outlined)"])
+   rows.append([Color(0,0,0,0),"Hatched: occupied or besieged"])
+   rows.append([Color(0,0,0,0),"Striped: a vassal, in its liege's colour"])
    # Only the factions you have met (yours, at war with you, or near your lands and armies).
    for f in data.known_factions():
     if not data.state.settlements_of(f).is_empty(): rows.append([Color(data.faction(f).primary),data.faction(f).name])
    var hidden = data.state.factions().size()-data.known_factions().size()
    if hidden>0: rows.append([Color(0,0,0,0),"(%d factions not met)" % hidden])
-  "diplomatic": rows = [[Color("4fb34a"),"Yours"],[Color("c8382c"),"At war with you"],[Color("8a97a8"),"Not at war"]]
+  "diplomacy":
+   for r in RELATIONS: rows.append([r[1],r[2]])
+   rows.append([CAELOTH_FILL,"Caeloth (untouchable)"])
   "order": rows = [[Color("4fb34a"),"High"],[Color("c9a43a"),"Neutral"],[Color("c8382c"),"Low (unrest)"]]
   "development": rows = [[Color("f4e2a6"),"Level 1"],[Color("bf9a5a"),"Level 2"],[Color("8a5a12"),"Level 3"]]
   "culture":
@@ -353,7 +433,7 @@ func _draw():
 func _build_surface():
  var rr = _region_raster()
  for i in rr.names.size(): _index[rr.names[i]] = i+1
- _palette = Image.create(rr.names.size()+1,2,false,Image.FORMAT_RGBA8)
+ _palette = Image.create(rr.names.size()+1,4,false,Image.FORMAT_RGBA8)
  _palette_tex = ImageTexture.create_from_image(_palette)
  _clip = Control.new()
  _clip.name = "MapClip"
@@ -481,21 +561,63 @@ static func rasterize(names: Array,origin: Vector2,span: Vector2,cols: int,rows:
     for x in range(x0,x1+1): ids[z*cols+x] = i+1
  return ids
 
-# Palette: row 0 the current layer's fills, row 1 owner colours (borders).
+# Palette: row 0 the current layer's fills, row 1 owner colours (borders), row 2 the owner's index
+# (R + 256 G, so borders compare owners, not colours) and the region's marks in B, row 3 the marks'
+# pattern colour (stripes and hatching).
 func _update_palette():
  if _palette == null: return
- _palette.fill(Color(0,0,0,0))
- for id in _fills:
-  if _index.has(id): _palette.set_pixel(_index[id],0,_fills[id])
- for id in _owners:
-  var o = _owners[id]
-  if o != "" and _index.has(id): _palette.set_pixel(_index[id],1,Color(Color(data.faction(o).primary).darkened(0.2),1.0))
+ _write_palette(_palette,_fills)
  _palette_tex.update(_palette)
+ # The minimap always shows the political map (A3): its own palette, filled the same way.
+ if mini_palette_tex != null:
+  var keep = layer
+  layer = "political"
+  var fills = {}
+  for id in WorldMap.regions():
+   var c = region_color(id)
+   if c.a>0.0: fills[id] = c
+  _write_palette(mini_palette,fills)
+  layer = keep
+  mini_palette_tex.update(mini_palette)
  _surface.texture = base_vivid if layer == "climate" or debug == "movement" else base_parchment
  # Painted parchment except for the movement classes; the climate layer washes the ground colours
  # in strongly.
  _surface.material.set_shader_parameter("painted",debug != "movement")
  _surface.material.set_shader_parameter("wash",0.85 if layer == "climate" else 0.5)
+ _surface.material.set_shader_parameter("player_color",Color(data.faction(data.player_faction_id()).primary))
+ _surface.material.set_shader_parameter("political",layer == "political")
+ palette_changed.emit()
+
+func _write_palette(img: Image,fills: Dictionary):
+ img.fill(Color(0,0,0,0))
+ for id in fills:
+  if _index.has(id): img.set_pixel(_index[id],0,fills[id])
+ var index = {}
+ for id in _owners:
+  var o = _owners[id]
+  if o == "" or not _index.has(id): continue
+  if not index.has(o): index[o] = index.size()+1
+  var own = Color(data.faction(o).primary).darkened(0.2)
+  if _is_caeloth(o): own = Color("b89a4a")
+  img.set_pixel(_index[id],1,Color(own,1.0))
+  var m = region_marks(id)
+  img.set_pixel(_index[id],2,Color8(index[o]%256,index[o]/256,m.flags,255))
+  img.set_pixel(_index[id],3,m.pattern)
+
+# The territory surface's material for another view of the same map (the minimap): the same region
+# raster and paint, the political palette.
+var mini_palette: Image
+var mini_palette_tex: ImageTexture
+func minimap_material() -> ShaderMaterial:
+ if mini_palette_tex == null:
+  mini_palette = _palette.duplicate()
+  mini_palette_tex = ImageTexture.create_from_image(mini_palette)
+  _update_palette()
+ var m: ShaderMaterial = _surface.material.duplicate()
+ m.set_shader_parameter("palette",mini_palette_tex)
+ m.set_shader_parameter("political",true)
+ m.set_shader_parameter("wash",0.5)
+ return m
 
 # Positions follow the screen: the surface, the glyphs, the icons and the names are laid out again
 # when the size, the zoom or the campaign state changes.
@@ -713,6 +835,21 @@ func _place_labels():
   var p = to_screen(s[0])
   _take(taken,Rect2(p-Vector2(9,8),Vector2(18,23)))
  var r = frame_rect().intersection(map_rect())
+ # Realm names first on the political and diplomacy maps: crest and name at each realm's centre,
+ # larger for larger realms (TW:WH3 faction labels); a one-settlement realm only when zoomed in.
+ _realm_labels.clear()
+ if layer in ["political","diplomacy"]:
+  var hf0 = UiKit.head_font()
+  for rl in _realms:
+   if int(rl[2])<2 and zoom<ALL_SETTLEMENTS_FROM and rl[0] != me: continue
+   var fs0 = int(clampf(13.0+4.0*sqrt(float(rl[2])),14.0,34.0))
+   var text0 = str(data.faction(rl[0]).name).to_upper()
+   var w0 = hf0.get_string_size(text0,HORIZONTAL_ALIGNMENT_LEFT,-1,fs0).x+fs0*1.2
+   var p0 = to_screen(rl[1])+Vector2(0,-30)
+   var box0 = Rect2(p0+Vector2(-w0*0.5-NAME_PAD,-fs0),Vector2(w0+NAME_PAD*2,fs0*1.25))
+   if not r.encloses(box0) or _hits(taken,box0): continue
+   _take(taken,box0)
+   _realm_labels.append([p0+Vector2(-w0*0.5,0),text0,fs0,rl[0]])
  # Province names first while zoomed out (they matter most at that scale).
  var pa = clampf((PROVINCE_NAMES_UNTIL-zoom)/(PROVINCE_NAMES_UNTIL-1.0),0.0,1.0)
  if pa>0.0:
@@ -772,6 +909,19 @@ func _draw_overlay():
   _overlay.draw_rect(f.grow(-i*2.5),Color(0.24,0.16,0.08,0.05),false,2.5)
  var hf = UiKit.head_font()
  for l in _region_labels: _overlay.draw_string(hf,l[0],l[1],HORIZONTAL_ALIGNMENT_LEFT,-1,l[2],Color(0.22,0.14,0.08,0.62*l[3]))
+ # Realm labels: the crest (a small shield) before the name, in the faction's colours.
+ for l in _realm_labels:
+  var fs = float(l[2])
+  var fd = data.faction(l[3])
+  var sh = Rect2(l[0]+Vector2(0,-fs*0.95),Vector2(fs*0.8,fs*1.0))
+  var pts = PackedVector2Array([sh.position,sh.position+Vector2(sh.size.x,0),sh.position+Vector2(sh.size.x,sh.size.y*0.62),sh.position+Vector2(sh.size.x*0.5,sh.size.y),sh.position+Vector2(0,sh.size.y*0.62)])
+  Icons.crest(_overlay,fd,pts,sh.grow(-sh.size.x*0.18))
+  var outline = pts.duplicate()
+  outline.append(pts[0])
+  _overlay.draw_polyline(outline,Color(0.16,0.1,0.05),1.5)
+  var at = l[0]+Vector2(fs*1.2,0)
+  _overlay.draw_string_outline(hf,at,l[1],HORIZONTAL_ALIGNMENT_LEFT,-1,int(fs),5,Color(0.95,0.9,0.76,0.9))
+  _overlay.draw_string(hf,at,l[1],HORIZONTAL_ALIGNMENT_LEFT,-1,int(fs),Color(fd.primary).darkened(0.45))
  var font = UiKit.FONT_BOLD
  for l in _labels: _overlay.draw_string_outline(font,l[0],l[1],HORIZONTAL_ALIGNMENT_LEFT,-1,l[2],4,Color(0.93,0.87,0.72,0.85))
  for l in _labels: _overlay.draw_string(font,l[0],l[1],HORIZONTAL_ALIGNMENT_LEFT,-1,l[2],Color("2a1c10"))
@@ -781,8 +931,9 @@ func _draw_overlay():
   var shield = PackedVector2Array([p+Vector2(-6,-8),p+Vector2(6,-8),p+Vector2(6,2),p+Vector2(0,9),p+Vector2(-6,2),p+Vector2(-6,-8)])
   _overlay.draw_polyline(shield,Color("f2cf6a"),2.0)
 
-# Left click returns to the 3D map there. The wheel zooms the parchment in (around the cursor) and
-# out; scrolling in at the closest zoom returns to the 3D map there. Right or middle drag pans.
+# Left click returns to the 3D map there, zoomed in. Scrolling in returns to the 3D map at its highest
+# zoom, centred on the cursor (TW:WH3). Ctrl+wheel zooms the parchment itself (around the cursor);
+# scrolling out zooms it back out. Right or middle drag pans a zoomed parchment.
 func _gui_input(e):
  if not showing: return
  if e is InputEventMouseMotion:
@@ -798,11 +949,15 @@ func _gui_input(e):
   if not e.pressed: return
   var r = map_rect()
   if not r.has_point(e.position) or not frame_rect().has_point(e.position): return
-  if e.button_index == MOUSE_BUTTON_LEFT or (e.button_index == MOUSE_BUTTON_WHEEL_UP and zoom>=MAX_ZOOM):
-   location_chosen.emit(to_world(e.position))
+  if e.button_index == MOUSE_BUTTON_LEFT:
+   location_chosen.emit(to_world(e.position),false)
+   accept_event()
+  elif e.button_index == MOUSE_BUTTON_WHEEL_UP and not e.ctrl_pressed:
+   # TW:WH3: scrolling in returns to the 3D map, at its highest zoom, centred on the cursor.
+   location_chosen.emit(to_world(e.position),true)
    accept_event()
   elif e.button_index == MOUSE_BUTTON_WHEEL_UP:
-   zoom_at(e.position,1.25)
+   zoom_at(e.position,1.25) # Ctrl+wheel zooms the parchment itself
    accept_event()
   elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN:
    zoom_at(e.position,1.0/1.25)
