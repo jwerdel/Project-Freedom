@@ -1,14 +1,16 @@
 extends RefCounted
 # Campaign UI look, modeled on Total War: Warhammer III: dark panels with ornate metal frames,
-# parchment tooltips, Cinzel headers and Alegreya Sans body text. Built from the Kenney Fantasy
+# parchment tooltips, Cinzel headers and Fira Sans body text (2026-10-07: Alegreya Sans read poorly
+# at small sizes; Fira Sans has a large x-height and open shapes built for screens). Built from the Kenney Fantasy
 # UI Borders (9-slice, tinted) and UI Pack RPG Expansion, tinted per faction.
 
 const FONT_HEAD = preload("res://assets/fonts/Cinzel-Variable.ttf")
-# Body fonts with one extra pixel per space: Alegreya Sans' spaces are narrow (about 0.18 em) and
-# nearly vanished at small sizes once the 1600x1000 canvas is scaled to the window.
-const FONT_BODY = preload("res://assets/fonts/alegreya_sans_regular_spaced.tres")
-const FONT_BOLD = preload("res://assets/fonts/alegreya_sans_bold_spaced.tres")
-const SMALL_TEXT = 13 # at or below this size, labels get one more pixel per space
+# Body text: Fira Sans Regular, and SemiBold for emphasis and buttons (bolder weights clog at small
+# sizes). Labels are never smaller than MIN_TEXT (owner 2026-10-07: text was hard to read).
+const FONT_BODY = preload("res://assets/fonts/FiraSans-Regular.ttf")
+const FONT_BOLD = preload("res://assets/fonts/FiraSans-SemiBold.ttf")
+const MIN_TEXT = 14
+const SMALL_TEXT = 14 # at or below this size, labels get one more pixel per space
 const FRAMES = {
  "main": preload("res://assets/kenney/fantasy-ui-borders/panel-border-010.png"),
  "card": preload("res://assets/kenney/fantasy-ui-borders/panel-border-001.png"),
@@ -30,7 +32,7 @@ const BAR = {
 }
 const INK = Color("2a1c10")
 const TEXT = Color("eadfc4")
-const TEXT_DIM = Color("b9ab8c")
+const TEXT_DIM = Color("cbbd9d") # brighter than before (2026-10-07): dim text must still read on the dark panels
 const PANEL_BG = Color("16110d")
 
 static var _head_bold: FontVariation
@@ -98,7 +100,7 @@ static func theme_for(faction: Dictionary) -> Theme:
  t.set_color("font_hover_color","Button",Color("fff3d6"))
  t.set_color("font_pressed_color","Button",Color("f3d58c"))
  t.set_font("font","Button",FONT_BOLD)
- t.set_font_size("font_size","Button",15)
+ t.set_font_size("font_size","Button",16)
  t.set_stylebox("panel","TooltipPanel",textured(PARCHMENT,12,12))
  t.set_color("font_color","TooltipLabel",INK)
  t.set_font("font","TooltipLabel",FONT_BODY)
@@ -108,6 +110,7 @@ static func theme_for(faction: Dictionary) -> Theme:
 static func label(text: String,size := 16,color := TEXT,font: Font = null) -> Label:
  var l = Label.new()
  l.text = text
+ size = maxi(size,MIN_TEXT)
  l.add_theme_font_size_override("font_size",size)
  l.add_theme_color_override("font_color",color)
  if size<=SMALL_TEXT and (font == null or font == FONT_BODY or font == FONT_BOLD): font = small_font(font if font else FONT_BODY)

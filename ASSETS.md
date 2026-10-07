@@ -124,8 +124,8 @@ Downloaded 2026-09-30 from the Google Fonts repository (https://github.com/googl
 | File | Font | Source | Copyright | SHA-256 |
 |---|---|---|---|---|
 | `Cinzel-Variable.ttf` | Cinzel (variable weight), headers | `ofl/cinzel/Cinzel[wght].ttf`; project https://github.com/NDISCOVER/Cinzel | 2020 The Cinzel Project Authors | `f4d83d34d1f6c741193e4acf4b3dff9531e5a67b6aa65228d00a7db72a4e0f34` |
-| `AlegreyaSans-Regular.ttf`, `AlegreyaSans-Bold.ttf` | Alegreya Sans, body text | `ofl/alegreyasans/`; project https://github.com/huertatipografica/Alegreya-Sans | 2013 The Alegreya Sans Project Authors | `8fab6341…ea10` (Regular), `a3055a18…fb8e` (Bold) |
-| `Cinzel-OFL.txt`, `AlegreyaSans-OFL.txt` | License texts | `OFL.txt` in each font folder | — | — |
+| `FiraSans-Regular.ttf`, `FiraSans-SemiBold.ttf` | Fira Sans, body text (replaced Alegreya Sans on 2026-10-07: easier to read at small sizes) | `ofl/firasans/` (downloaded 2026-10-07); project https://github.com/mozilla/Fira | 2012-2015 The Mozilla Foundation and Telefonica S.A. | `c29556a2719bf613ef3d5e070e40d903a8965d9c081beca1375dc1e6e0f93c23` (Regular), `db0321f83eb3e9f527b8af384a1b3fefdc1039cf2b06fd39b3f61492bda9561c` (SemiBold) |
+| `Cinzel-OFL.txt`, `FiraSans-OFL.txt` | License texts | `OFL.txt` in each font folder | — | — |
 
 ## Reviewed and rejected
 
