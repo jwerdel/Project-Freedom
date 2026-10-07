@@ -368,3 +368,14 @@ Web research (guides, Steam discussions, patch notes and UI mods; the Fandom wik
 | Strategic map modes | Political (default): your land saturated and outlined in your colour, others muted, occupied or besieged land hatched in the occupier's colour, vassals striped in the liege's colour, Caeloth stippled gold on ivory; Diplomacy: you, vassals, allies, trade partners, neutral, hostile, at war, with a legend | Crest and name labels at each realm's centre, sized by realm size |
 | Minimap | The strategic map's political painting at minimap size, settlement dots, army pips, the camera's view box; click or drag to jump | Shares the strategic map's textures (`ui/minimap.gd`) |
 | Frame my realm / Go to capital | Shift+Home / Home, and two buttons beside the minimap | Ours (camera-mod conveniences); TW:WH3 has Home only |
+
+## 17. Court, realm and diplomacy screens (Part 4, 2026-10-06)
+
+| Item | Ours | Notes |
+|---|---|---|
+| Court | Round button "Court" (top left): a full screen with the family tree (ruler and spouse, children and grandchildren, siblings beside them; placeholder portraits), the rest of the court, and the selected character's card: name and epithet, age, career, level, traits, loyalty with its reasons in the tooltip, role; actions Name heir, Make ruler, Arrange marriage, Appoint governor, Choose a path (formative years), Gift, Rename, Details | Ours (CK depth in a TW frame); TW:WH3 has no court screen. Details opens the Lords & Heroes window with the career's skill tree, traits, loyalty breakdown and history |
+| Realm | Round button "The Realm" (top left): tabs Vassals (loyalty with reasons, goal, economic goal, tribute, the cap, gifts), Titles (holders, conditions, powers, granting), Realm Standing (level, progress, caps, reputation), Banners and Hosts (standing's terms, muster points, dismiss levies) | Ours. Hosts form from the army panel (Form Host / Leave Host) |
+| Diplomacy | TW:WH3's three columns; the centre lists every faction (met first; envoys reach anyone) with attitude faces, relation and treaty locks, and the proposal builder (You offer / You demand, items grouped: Treaties, Payments, Land, Characters) with the live acceptance bar and their reasons with numbers; Send envoy, Send embassy, Declare war (with justification, betrayal warning and allies), Order (allies and vassals); a Dossier tab | docs/diplomacy-design.md §15. Orders from a right-click on the map: later |
+| Proposals | AI offers and calls to arms wait at the top of the Diplomacy screen (Accept / Decline; Join / Support / Refuse), announced in Event Messages | At most one per AI faction a turn |
+| Map | Host leaders' banners carry a gold star, Host armies a gold pip; a muster point's banner reads MUSTER | |
+| Recruitment bar | Culture rosters run to 16 units: the card row scrolls sideways inside the army panel | TW:WH3 scrolls its recruitment bar the same way |
