@@ -352,15 +352,12 @@ func _ready():
    distance = desired_distance
   # --highlight=<faction> (captures): that faction's territory highlighted, as when hovering it.
   if arg.begins_with("--highlight="): forced_highlight = arg.get_slice("=",1)
-  # --view-landmark=<id>[,<distance>] (captures): frame a landmark's model, which reaches out toward
-  # the water from its settlement point, centred on screen.
+  # --view-landmark=<id>[,<distance>] (captures): frame a landmark's model, centred on screen.
   if arg.begins_with("--view-landmark=") and map_view != null:
    var v = arg.get_slice("=",1).split(",")
    var p = WorldMap.settlement_position(v[0])
    var r = float(AssetManifest.landmarks().get(v[0],{}).get("radius",24.0))
-   var th = map_view._toward_water(p)
-   var c = p+Vector2(sin(th),cos(th))*r*0.9 # the model reaches out along its local +z
-   target = ground(c,4.0)
+   target = ground(p,4.0) # the landmark models are centred on their settlement point (mesh bounds checked)
    distance = float(v[1]) if v.size()>1 else r*3.4
    desired_distance = distance
    map_view.update(target)
@@ -420,12 +417,15 @@ func _ready():
   if arg.begins_with("--layer="): strategic.set_layer(arg.get_slice("=",1))
  if "--strategic" in OS.get_cmdline_user_args(): open_strategic_map(true)
  for arg in OS.get_cmdline_user_args():
+  # --strategic-zoom=<factor>[,<settlement id>] (captures): zoom the parchment there (default Goldspire).
   if arg.begins_with("--strategic-zoom="):
+   var zv = arg.get_slice("=",1).split(",")
    strategic._layout()
-   strategic.zoom_at(strategic.to_screen(WorldMap.settlement_position(GOLDSPIRE_ID)),float(arg.get_slice("=",1)))
+   strategic.zoom_at(strategic.to_screen(WorldMap.settlement_position(zv[1] if zv.size()>1 else GOLDSPIRE_ID)),float(zv[0]))
  if "--pause-menu" in OS.get_cmdline_user_args(): open_pause_menu()
  if "--self-test" in OS.get_cmdline_user_args():
   run_checks()
+ _realm_capture_flags()
  print("FREEDOM_READY | city=%s road=%s traffic=%s seed=%d" % [city_level,road_level,traffic.size(),ui_data.state.seed])
  if capture_mode and _gpu_run(): _measure_gpu.call_deferred()
 
@@ -815,6 +815,7 @@ func make_ui():
  ui_data.changed.connect(func():
   for p in pins: p.button.update_settlement(ui_data.settlement(p.id)))
  ui_data.changed.connect(sync_settlement_visuals)
+ ui_data.changed.connect(func(): ui.show_absorptions())
  var wr = map_world_rect() if pipeline else TerritoryOverlay.RECT
  minimap = ui.setup_minimap(strategic,wr,camera_footprint)
  minimap.minimap_clicked.connect(func(p: Vector2):
@@ -1128,6 +1129,7 @@ func update_army_presentation():
   b.modulate.a = fade
   b.position = camera.unproject_position(top)-b.anchor_offset()
   b.set_selected(selected_army_id() == id)
+  b.set_host("leader" if ui_data.state.hosts.has(id) else ("member" if ui_data.host_of(id) != "" else ""))
 
 func place_commander():
  for id in army_figures:
@@ -1466,8 +1468,8 @@ func _unhandled_input(event):
  if preparing: return
  if pause_menu != null or game_over != null: return
  if turn_running: return # End Turn in progress (spread over frames)
- # Full-screen diplomacy takes the keys; Esc closes it.
- if ui.diplomacy_visible():
+ # Full-screen diplomacy, court and realm take the keys; Esc closes them.
+ if ui.diplomacy_visible() or ui.court_visible() or ui.realm_visible():
   if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
    ui.close_top_panel()
    get_viewport().set_input_as_handled()
@@ -2446,3 +2448,86 @@ func _measure_gpu():
   f.store_line(line)
   f.close()
  screenshot_requested = true
+
+# Part 4 capture flags (court, realm and diplomacy screens; setups for vassals, musters and Hosts):
+#  --setup-vassal=<faction>[,<faction>...]  those houses swear fealty to you
+#  --setup-host   raise a second army beside your first and form a Host
+#  --call-banners[=<settlement>]  call your banners (to your capital by default)
+#  --realm-turns=N   N End Turns after the setups (levies set out, titles change hands)
+#  --court[=<character>]  the Court screen; --character=<id|ruler>  the character details
+#  --diplomacy=<faction> [--offer=give:gold:1000+take:trade] [--dossier]
+#  --realm=vassals|titles|standing|banners   the Realm screen;  --recruit  the recruitment drawer
+func _realm_capture_flags():
+ var args = OS.get_cmdline_user_args()
+ var s = ui_data.state
+ var me = s.player_faction
+ var C = load("res://core/court.gd")
+ for arg in args:
+  # --meet=<faction>[,<faction>] (captures): contact and an embassy both ways, as if envoys had arrived.
+  if arg.begins_with("--meet="):
+   var Dp = load("res://core/diplomacy.gd")
+   for f in arg.get_slice("=",1).split(","):
+    Dp.open_embassy(s,me,f)
+    Dp.open_embassy(s,f,me)
+  if arg.begins_with("--setup-vassal="):
+   for f in arg.get_slice("=",1).split(","): load("res://core/vassals.gd").swear(s,f,me,"diplomacy")
+  if arg == "--setup-host":
+   var lead = s.armies_of(me)[0]
+   s.treasury[me] = int(s.treasury[me])+5000
+   var sid = s.settlements_of(me)[-1]
+   for g in Movement.garrison_of(s,sid): s.army_state[g].garrison = ""
+   var r = load("res://core/armies.gd").raise_army(s,me,sid)
+   if r.ok:
+    # Both armies take the field just outside the walls, so the Host shows on open ground.
+    var lp = Movement.position(s,lead)+Vector2(0.0,80.0)
+    s.army_state[lead].position = [lp.x,lp.y]
+    s.army_state[r.army].units = s.army_state[lead].units.duplicate(true)
+    s.army_state[r.army].position = [lp.x+14.0,lp.y+8.0]
+    s.army_state[r.army].garrison = ""
+    s.army_state[lead].garrison = ""
+    load("res://core/hosts.gd").form_host(s,lead,[r.army])
+  if arg.begins_with("--call-banners"):
+   var sid = arg.get_slice("=",1) if "=" in arg else load("res://core/armies.gd").capital(s,me)
+   ui_data.call_banners(sid)
+ for arg in args:
+  if arg.begins_with("--realm-turns="):
+   for i in int(arg.get_slice("=",1)):
+    ui_data.end_turn()
+    update_walk(1000.0)
+ ui_data.changed.emit()
+ refresh_army_overlays()
+ # --focus-host (captures): select the player's first army (the Host leader) and frame it close.
+ if "--focus-host" in args:
+  var lead = s.armies_of(me)[0]
+  select_army(lead)
+  focus_at(ground(Movement.position(s,lead)),140.0)
+ for arg in args:
+  if arg.begins_with("--court"): ui.open_court(arg.get_slice("=",1) if "=" in arg else "")
+  if arg.begins_with("--character="):
+   var id = arg.get_slice("=",1)
+   if id == "ruler": id = C.ruler(s,me)
+   if id == "heir": id = C.heir(s,me)
+   ui.open_character(id,"skills" if "--skills" in args else "details")
+  if arg.begins_with("--realm="): ui.open_realm(arg.get_slice("=",1))
+  if arg.begins_with("--diplomacy="):
+   ui.open_diplomacy(arg.get_slice("=",1))
+   var scr = ui.diplomacy_screen
+   for a2 in args:
+    if a2 == "--dossier": scr.tab = "dossier"
+    if a2.begins_with("--offer="):
+     for part in a2.get_slice("=",1).split("+"):
+      var bits = part.split(":")
+      var it = {"kind":bits[1]}
+      if bits[1] in ["gold","tribute"]: it.amount = int(bits[2])
+      if bits[1] == "tribute": it.turns = 10
+      if bits[1] == "region": it.settlement = bits[2]
+      if bits[1] == "marriage":
+       var pal = ui_data.offer_palette(arg.get_slice("=",1)).filter(func(p): return p.item.kind == "marriage")
+       if pal.is_empty(): continue # no marriageable pair: leave it out
+       it = pal[0].item
+      scr.offer[bits[0]].append(it)
+   scr.refresh()
+  if arg == "--recruit":
+   select_army(s.armies_of(me)[0])
+   ui.open_recruitment(s.armies_of(me)[0])
+

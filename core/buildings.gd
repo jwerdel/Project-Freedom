@@ -104,8 +104,18 @@ static func unlocked_units(state,id: String) -> Array:
 # reads unlocks). Call after any building change.
 static func refresh(state,id: String):
  var e = effects(state,id)
- state.settlements[id].defense = int(e.defense)
- state.settlements[id].unlocks = e.unlocks.duplicate()
+ var s = state.settlements[id]
+ s.defense = int(e.defense)
+ s.unlocks = e.unlocks.duplicate()
+ # Culture rosters (docs/v1-content.md §1): an owner with a culture recruits its own units, each
+ # unlocked by the buildings its slot needs (data/rosters.json unlock_rules).
+ var Rosters = load("res://core/rosters.gd")
+ var cul = str(load("res://core/world_map.gd").faction(str(s.owner)).get("culture",""))
+ if Rosters.has_roster(cul):
+  var levels = {}
+  for b in s.buildings:
+   if b.has("chain"): levels[b.chain] = maxi(int(levels.get(b.chain,0)),int(b.level))
+  s.unlocks = Rosters.unlocks(levels,int(s.level),cul)
 
 # Readable effect lines for one chain level (building browser and tooltips).
 static func effect_lines(chain_id: String,level: int) -> Array:

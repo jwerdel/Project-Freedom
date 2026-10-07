@@ -26,7 +26,7 @@ func build_ui(data) -> Control:
 func test_top_bar_has_tw_buttons_in_order_with_missing_systems_greyed():
  var ui = build_ui(UiData.new(GameState.from_data()))
  var left = ui.find_child("TopLeft",true,false).get_children().map(func(b): return String(b.name))
- assert_eq(left,["Top_menu","Top_advisor","Top_help","Top_units","Top_camera"])
+ assert_eq(left,["Top_menu","Top_advisor","Top_help","Top_units","Top_camera","Top_court","Top_realm"])
  var right = ui.find_child("TopRight",true,false).get_children().map(func(b): return String(b.name))
  assert_eq(right,["Top_tactical","Top_events","Top_lords","Top_provinces","Top_missions","Top_factions","Top_summary"])
  for k in ["advisor","help","units","missions"]:
@@ -206,8 +206,8 @@ func test_diplomacy_screen_three_columns_and_declare_war():
  ui.round_buttons.diplomacy.pressed.emit()
  assert_true(ui.diplomacy_visible())
  var d = ui.diplomacy_screen
- for n in ["DiplomacyMe","DiplomacyCentre","DiplomacyThem","QuickDeal","Acceptance","Reliability","Attitude","WarStatus"]: assert_not_null(d.find_child(n,true,false),n)
- for n in ["Deal_peace","Deal_trade","Negotiate","WarCoordination"]: assert_true(d.find_child(n,true,false).disabled,n+" greyed")
+ for n in ["DiplomacyMe","DiplomacyCentre","DiplomacyThem","Acceptance","Standing","WarStatus","Propose"]: assert_not_null(d.find_child(n,true,false),n)
+ assert_true(d.find_child("Propose",true,false).disabled,"an empty offer cannot be proposed")
  var target = d.selected
  assert_ne(target,"")
  assert_false(data.at_war(target))

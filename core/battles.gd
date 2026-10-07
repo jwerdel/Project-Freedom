@@ -64,6 +64,9 @@ static func appoint_general(state,army_id: String) -> Dictionary:
  state.treasury[a.faction] -= cost
  var name = Armies.general_name(state,a.faction)
  a.commander = {"name":name,"rank":1,"xp":0.0,"status":"ok"}
+ if state.get("courts") != null and not state.courts.is_empty():
+  load("res://core/court.gd").promote_captain(state,army_id)
+  name = a.commander.name
  return {"ok":true,"name":name}
 
 # --- Building a battle --------------------------------------------------------------------
@@ -86,8 +89,12 @@ static func target_at(state,army_id: String,point: Vector2) -> Dictionary:
 # Where the attacker stands to fight: next to the target on the way in. Returns {ok, reason, point, plan}.
 static func approach(state,army_id: String,target: Dictionary) -> Dictionary:
  if not can_move(state,army_id): return {"ok":false,"reason":"No general: a captain cannot lead an attack"}
+ if bool(state.army_state[army_id].get("captain",false)): return {"ok":false,"reason":"Levies under a captain defend only: merge them into a lord's army"}
  var from = Movement.position(state,army_id)
  var reach = maxf(float(Movement.data().armies.block_radius),float(Movement.data().settlements.radius))+1.0
+ # A large army's zone of control is fought at its edge (core/hosts.gd zoc_radius).
+ if str(target.get("kind","")) == "army" and state.army_state.has(str(target.get("id",""))) and state.get("courts") != null and not state.courts.is_empty():
+  reach = maxf(reach,load("res://core/hosts.gd").zoc_radius(state,target.id,float(Movement.data().armies.block_radius))+1.0)
  if from.distance_to(target.position)<=reach+0.5: return {"ok":true,"point":from,"plan":{}}
  var dir = (from-target.position).normalized()
  for k in [0,1,-1,2,-2,3,-3]:
@@ -273,7 +280,7 @@ static func aftermath(state,pb: Dictionary,result: Dictionary) -> Dictionary:
  var winner_f = att_f if result.winner == 0 else def_f
  var loser_f = def_f if result.winner == 0 else att_f
  var out = {"winner":winner_f,"loser":loser_f,"attacker_won":result.winner == 0,"destroyed_units":[],"destroyed_armies":[],
-  "generals":[],"captured":"","retreated":[],"promoted":[],"entries":[]}
+  "generals":[],"captured":"","retreated":[],"promoted":[],"entries":[],"deeds":[]}
  # 1. Casualties and experience, unit by unit; destroyed units leave their army.
  var removals = {}
  for side in 2:
@@ -311,6 +318,8 @@ static func aftermath(state,pb: Dictionary,result: Dictionary) -> Dictionary:
   var g = result.sides[side].general
   var fate = "won" if won else ("routed" if g.get("fled",false) or g.get("killed",false) else "lost")
   if a.units.is_empty(): fate = "destroyed"
+  var cid = str(c.get("character",""))
+  if cid != "" and c.status == "ok": out.deeds.append({"character":cid,"won":won,"stronger":enemy_men[side]>_men_of(result,side)*1.2,"desperate":won and side == 1 and enemy_men[side]>_men_of(result,side)*1.5,"faction":a.faction})
   if c.status == "ok":
    c.xp = float(c.xp)+float(xp.general_per_battle)+(float(xp.general_per_victory) if won else 0.0)
    c.rank = maxi(int(c.rank),_rank_for(c.xp,xp.general_rank_thresholds))
@@ -318,7 +327,7 @@ static func aftermath(state,pb: Dictionary,result: Dictionary) -> Dictionary:
    var die = float(cfg().general_death[fate])
    var wound = float(cfg().general_wound[fate])
    if roll<die:
-    out.generals.append({"army":id,"name":c.name,"fate":"killed","faction":a.faction})
+    out.generals.append({"army":id,"name":c.name,"fate":"killed","faction":a.faction,"character":cid})
     a.commander = {"name":"Captain of %s" % a.display_name.trim_prefix("The "),"rank":1,"xp":0.0,"status":"captain","fallen":c.name}
    elif roll<die+wound:
     out.generals.append({"army":id,"name":c.name,"fate":"wounded","faction":a.faction})
@@ -328,6 +337,8 @@ static func aftermath(state,pb: Dictionary,result: Dictionary) -> Dictionary:
    # A captain who wins an important or big battle is promoted to general.
    var name = Armies.general_name(state,a.faction)
    a.commander = {"name":name,"rank":1,"xp":float(xp.general_per_victory),"status":"ok"}
+   load("res://core/court.gd").promote_captain(state,id)
+   name = a.commander.name
    out.promoted.append({"army":id,"name":name,"faction":a.faction})
  # 3. Armies with no units left are destroyed.
  for pair in involved:
@@ -357,7 +368,14 @@ static func aftermath(state,pb: Dictionary,result: Dictionary) -> Dictionary:
   if r.destroyed: out.destroyed_armies.append({"army":id,"name":r.name,"faction":loser_f})
  out.entries = Chronicle.battle_entries(state.year,pb,result,out)
  state.chronicle.append_array(out.entries)
+ # Characters, reputation and fallen houses (core/court.gd; game-design §4.4, §4.10).
+ if state.get("courts") != null and not state.courts.is_empty(): load("res://core/court.gd").on_battle(state,pb,out)
  return out
+
+static func _men_of(result: Dictionary,side: int) -> int:
+ var n = 0
+ for u in result.sides[side].units: n += int(u.men_start)
+ return maxi(1,n)
 
 # Move a beaten army toward its nearest own settlement on a reduced allowance; destroyed if no path.
 static func retreat(state,army_id: String,share: float) -> Dictionary:

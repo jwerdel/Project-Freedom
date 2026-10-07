@@ -1,5 +1,5 @@
 {
-  "_note": "STUB: generated names for newly hired generals until the character and family system exists (constitution: generals are drawn from the court). Given-name pools are placeholders in the style of the existing names (Ser Alaric Aurek); docs/archive/world-v1.md does not define naming conventions yet. pattern placeholders: {given}, {house}. Culture pools (world bible §10, 2026-10-06) name generated generals on maps whose factions carry a culture and a house (Varos).",
+  "_note": "Names for characters (core/court.gd) and newly hired generals: given (men), female and houses (court families) per culture, PLACEHOLDER pools. Earlier: STUB: generated names for newly hired generals until the character and family system exists (constitution: generals are drawn from the court). Given-name pools are placeholders in the style of the existing names (Ser Alaric Aurek); docs/archive/world-v1.md does not define naming conventions yet. pattern placeholders: {given}, {house}. Culture pools (world bible §10, 2026-10-06) name generated generals on maps whose factions carry a culture and a house (Varos).",
   "cultures": {
     "westerlands": {
       "pattern": "Ser {given} {house}",
@@ -40,6 +40,8 @@
       ]
     },
     "medieval": {
+      "houses": ["Ashby","Morrow","Coldwell","Harrowgate","Blackmoor","Thorne","Wyndham","Greaves"],
+      "female": ["Rowena","Matilda","Aldith","Edith","Gwen","Isolde","Maud","Elswyth","Brienna","Cathryn","Wenna","Hilde"],
       "pattern": "Ser {given} {house}",
       "given": [
         "Edric",
@@ -57,6 +59,8 @@
       ]
     },
     "roman": {
+      "houses": ["Calvus","Sulla","Petronius","Tullius","Aquila","Vetus","Cassius","Marcellus"],
+      "female": ["Livia","Claudia","Aurelia","Valeria","Cornelia","Julia","Octavia","Flavia","Junia","Severa"],
       "pattern": "{given} {house}",
       "given": [
         "Lucan",
@@ -72,6 +76,8 @@
       ]
     },
     "greek": {
+      "houses": ["Philandros","Kleonides","Andrakos","Theodotos","Lykides","Nikandros"],
+      "female": ["Thalia","Ione","Kallisto","Melaina","Phoebe","Xanthe","Iris","Daphne","Alkmene","Theano"],
       "pattern": "{given} {house}",
       "given": [
         "Kallias",
@@ -86,6 +92,8 @@
       ]
     },
     "dwarf": {
+      "houses": ["Ironbrow","Deepvein","Anvilhand","Stonebeard","Coalfist"],
+      "female": ["Brunhild","Dagna","Helga","Thora","Ingrid","Kelda","Sigrun"],
       "pattern": "{given} of Hold {house}",
       "given": [
         "Durgrim",
@@ -98,6 +106,8 @@
       ]
     },
     "orc": {
+      "houses": ["Skullsplit","Bonegnaw","Redtusk","Gutripper"],
+      "female": ["Grukka","Shagra","Murza","Ulka","Bazga","Rogga"],
       "pattern": "{given} {house}",
       "given": [
         "Gruk",
@@ -109,6 +119,8 @@
       ]
     },
     "dark_elf": {
+      "houses": ["Vael","Drak","Morthil","Shadrae","Kharys"],
+      "female": ["Morwyn","Sylvara","Ilthra","Naeryss","Vaelith","Drisska"],
       "pattern": "Captain {given} {house}",
       "given": [
         "Malveth",
@@ -119,6 +131,8 @@
       ]
     },
     "ratmen": {
+      "houses": ["Gnawtail","Sklarr","Rotfang","Ichor-Clan"],
+      "female": ["Skrikka","Nissa","Vetchka","Grissa","Tikka"],
       "pattern": "Warlock {given}",
       "given": [
         "Skrit",

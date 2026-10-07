@@ -231,7 +231,7 @@ func test_hiring_a_general_raises_a_new_garrisoned_army():
  assert_false(Armies.can_raise(s,"house_aurek","greyhaven").ok)
  s.army_state[r.army].garrison = ""
  s.army_state[r.army].position = [150.0,-25.0]
- while Armies.armies_of(s,"house_aurek").size()<int(Armies.data().armies.max_per_faction):
+ while Armies.armies_of(s,"house_aurek").size()<Armies.lord_army_cap(s,"house_aurek"):
   var n = Armies.raise_army(s,"house_aurek","crownwatch")
   assert_true(n.ok)
   s.army_state[n.army].garrison = ""

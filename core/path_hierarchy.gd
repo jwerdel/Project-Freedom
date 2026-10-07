@@ -223,6 +223,9 @@ static func _leg(Movement,a: AStarGrid2D,p: Vector2i,q: Vector2i,faction: String
  if a.is_point_solid(q): return []
  var w = Movement.window_cells(Movement.route_road_level,faction,p,q,LEG_PAD)
  if not w.is_empty(): return w
+ # The AI's searches stay in windows (Movement.ai_cap): an army sealed in by zones of control would
+ # otherwise search the whole map for every failed leg (half a second each in the debug build).
+ if Movement.ai_cap: return []
  return Array(a.get_id_path(p,q))
 
 # The coarse route for a preview (no leg searches): from, the crossings the region graph visits,

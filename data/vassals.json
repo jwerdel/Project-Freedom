@@ -1,0 +1,22 @@
+{
+  "_note": "Vassals (war-and-realm §4; docs/diplomacy-design.md §9). Fealty, not absorption: a vassal keeps its own faction, family, lands, armies and banners. PLACEHOLDER numbers.",
+  "cap_share": 0.4,
+  "_cap_note": "No vassal may exceed cap_share of its overlord's total strength (regions x 10 plus army power; core/reputation.gd strength). The vassal AI stops expanding at the cap.",
+  "tribute_share": 0.1,
+  "start_loyalty": {"diplomacy": 60, "conquest": 40, "surrender": 40, "debt": 45, "marriage": 70, "protection": 65},
+  "gains": {"_note": "Loyalty rises (war-and-realm §4.4) with marriages, protection, shared enemies, gifts (per gift_gold), honouring oaths, winning wars together, helping their goals, time (up to time_to), titles granted.", "marriage": 10, "protected": 6, "shared_enemy": 1, "gift_gold": 300, "gift": 5, "victory": 4, "goal_helped": 15, "time": 1, "time_to": 70, "title": 12, "plunder": 3},
+  "losses": {"_note": "Loyalty only falls through neglect (goals ignored: neglect per turn after neglect_after turns; calls for help ignored), dishonour (betrayal, attacking a fellow vassal), humiliation (banners called with no plunder or glory) and enemy intrigue (hook). Every change is logged with its reason.", "neglect_after": 12, "neglect": 1, "ignored_call": 10, "betrayal": 25, "attacked_fellow": 20, "humiliation": 4},
+  "warn_below": 15,
+  "_warn_note": "A neglected vassal at rock bottom shows multi-turn warnings (warning_turns countdown); the breakaway itself is deferred to the realm-mechanics part (hook only).",
+  "warning_turns": 5,
+  "reliable_at": 30,
+  "_reliable_note": "Obligations (war calls, troops, tribute) are always met at loyalty reliable_at or more; below it each is a chance of loyalty / reliable_at (diplomacy-design §18.11).",
+  "econ_goals": {
+   "_note": "Broad economic goals the overlord sets per vassal (war-and-realm §4.2); the vassal AI's construction weights by category.",
+   "fortify": {"name": "Fortify", "weights": {"main": 0.5, "economic": 0.3, "civic": 0.3, "military": 0.9, "defense": 1.6}},
+   "military": {"name": "Military", "weights": {"main": 0.6, "economic": 0.4, "civic": 0.2, "military": 1.6, "defense": 0.7}},
+   "economy": {"name": "Economy", "weights": {"main": 1.4, "economic": 1.5, "civic": 0.6, "military": 0.2, "defense": 0.2}},
+   "balanced": {"name": "Balanced", "weights": {"main": 1.2, "economic": 1.0, "civic": 0.4, "military": 0.5, "defense": 0.4}}
+  },
+  "goals": {"_note": "Personal goals (war-and-realm §4.3): land (a neighbouring region they want), marriage (into your family), title (one of your lesser titles), revenge (war on a rival). Helping (the goal met) earns goal_helped loyalty and gives the overlord a cut: cut_gold gold, or the troops and land shares the AI handles.", "cut_gold": 400}
+}

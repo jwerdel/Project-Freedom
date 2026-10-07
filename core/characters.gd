@@ -15,7 +15,11 @@ const DATA = "res://data/skills.json"
 static var _data = null
 
 static func data() -> Dictionary:
- if _data == null: _data = JSON.parse_string(FileAccess.get_file_as_string(DATA))
+ if _data == null:
+  _data = JSON.parse_string(FileAccess.get_file_as_string(DATA))
+  # The other careers' trees (docs/v1-content.md §2.4).
+  var more = JSON.parse_string(FileAccess.get_file_as_string("res://data/career_skills.json"))
+  for k in more.careers: _data.careers[k] = more.careers[k]
  return _data
 
 static func rows(career := "general") -> Array:
@@ -29,10 +33,10 @@ static func skill_points(c: Dictionary) -> int:
 
 # {ok, reason} for taking a skill now: one point free, the level reached, the skill before it in
 # its row taken, not taken already.
-static func can_take(c: Dictionary,skill_id: String) -> Dictionary:
+static func can_take(c: Dictionary,skill_id: String,career := "general") -> Dictionary:
  var taken = c.get("skills",[])
  if skill_id in taken: return {"ok":false,"reason":"Already learned"}
- for r in rows():
+ for r in rows(career if data().careers.has(career) else "general"):
   for i in r.skills.size():
    var s = r.skills[i]
    if s.id != skill_id: continue

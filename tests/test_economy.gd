@@ -131,8 +131,10 @@ func test_chronicle_records_each_year_in_the_grey_scribes_voice():
  var s = GameState.from_data()
  var start = s.chronicle.size()
  TurnLoop.end_turn(s)
- assert_eq(s.chronicle.size(),start+2)
- var summary = s.chronicle[start]
+ # The year's own entries (court news may follow: births, careers, envoys).
+ var year = s.chronicle.slice(start).filter(func(e): return e.category == "turn")
+ assert_eq(year.size(),2)
+ var summary = year[0]
  assert_eq(summary.year,1)
  assert_string_contains(summary.text,"House Aurek")
- assert_eq(s.chronicle[start+1].year,2)
+ assert_eq(year[1].year,2)

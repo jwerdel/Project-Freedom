@@ -1,0 +1,25 @@
+{
+  "_note": "Characters and court (game-design §4; docs/v1-content.md §2). One turn is one year. PLACEHOLDER numbers throughout.",
+  "aging": {"_note": "Ages 0 to child_until move child_years_per_turn per turn; then one year per turn through the formative years (the career is chosen before formative_until); adults age one year per turn until prime, then stop (game-design §4.2: no old age, no sickness).", "child_until": 12, "child_years_per_turn": 2.5, "formative_until": 16, "prime": 32},
+  "careers": {
+   "general": {"name": "General", "text": "Leads armies; required to attack."},
+   "warlord": {"name": "Warlord", "text": "A single-entity champion: duels and lord-killing (map actions come with agents)."},
+   "assassin": {"name": "Assassin", "text": "Wounds and kills characters, sabotages (map actions come with agents)."},
+   "spy": {"name": "Spy", "text": "Intelligence, rumours and forged letters (map actions come with agents)."},
+   "politician": {"name": "Politician", "text": "Envoys, marriages, embassies and governing."},
+   "merchant": {"name": "Merchant", "text": "Trade deals, secret funding and smuggling (map actions come with agents)."},
+   "wizard": {"name": "Wizard", "text": "Campaign spells and battle magic (map actions come with agents)."},
+   "priest": {"name": "Priest", "text": "Church influence and the faith (map actions come with agents)."}
+  },
+  "xp": {"_note": "Experience: every adult earns per_turn of its career's work each turn, deeds add more (data/traits.json deeds). The level needed for xp is level_xp x (level - 1) ^ level_power, with no cap; one skill point per level. Generals level from battle experience as before (their army's rank). immortal_level: a character who reaches it becomes immortal; a defeated immortal returns after return_defeated turns (game-design §4.5).", "per_turn": 12, "level_xp": 100, "level_power": 1.6, "immortal_level": 20, "return_defeated": 5},
+  "births": {"_note": "A married couple with both adults (age 18-45 for the mother) has a child with chance per turn, up to max_children together. Children take the father's race and culture (game-design §4.9). No one dies of old age, so births pause while the court has max_court living members (keeps courts and End Turn bounded; a placeholder until deaths, schemes and marriages out thin courts).", "chance": 0.22, "max_children": 4, "mother_until": 45, "max_court": 24},
+  "courtiers": {"_note": "Lesser nobles and adventurers ask to join a powerful or famous court: chance per turn x Realm Standing level, while the court has fewer than max members.", "chance_per_level": 0.04, "max_members": 18},
+  "loyalty": {"_note": "One visible loyalty per character, 0-100, every change logged with its reason (game-design §4.6). start: a family member's starting loyalty; courtiers and absorbed families start lower. Neglect: an adult with no role, title or gift for neglect_after turns loses neglect_loss a turn. Favouritism: when one branch (a child of the ruler and their descendants) holds favouritism_share or more of the court's roles, every other branch loses favouritism_loss a turn. gift_per: loyalty per gift_gold gold given.", "start": 70, "courtier_start": 45, "absorbed_start": 30, "spouse_start": 55, "role_gain": {"heir": 12, "governor": 10, "general": 10, "title": 15, "marriage": 8}, "role_loss": {"heir": -15, "governor": -8, "general": -8}, "gift_gold": 300, "gift_per": 6, "neglect_after": 8, "neglect_loss": 2, "favouritism_share": 0.6, "favouritism_loss": 1, "drift_to": 60, "log": 24},
+  "marriage": {"_note": "Adults of age 16+ who are unmarried may marry, within a faction or across (a cross-faction marriage is also a diplomatic item). The spouse joins the husband's court unless married into the wife's ruling family (matrilineal when the wife is the ruler or heir). Cross-race allowed; children take the father's race.", "min_age": 16},
+  "family": {"_note": "Generated family to fill out each house at the start (founders and named lords from the world bible and docs/v1-content.md; everyone else generated from the culture's name pools, PLACEHOLDER): a spouse, children_min-children_max children aged 1-17, siblings_min-siblings_max adult siblings, and courtiers_min-courtiers_max courtiers for major and playable houses (minor houses get fewer).", "children_min": 1, "children_max": 3, "siblings_min": 0, "siblings_max": 2, "courtiers_min": 1, "courtiers_max": 2},
+  "founders": {
+   "house_varn": {"name": "Edric", "house": "Varn", "epithet": "the Winter Shield", "traits": ["pious", "brave", "honorable", "paranoid"], "age": 44, "career": "general", "level": 6},
+   "house_varrenus": {"name": "Lucan", "house": "Varrenus", "epithet": "the Silver Tongue", "traits": ["charismatic", "deceitful", "pious", "ambitious"], "age": 47, "career": "politician", "level": 6},
+   "the_aurekids": {"name": "Kallias", "house": "Aurekos", "epithet": "the Gold-Handed", "traits": ["greedy", "charismatic", "ambitious", "calm"], "age": 41, "career": "merchant", "level": 6}
+  }
+}

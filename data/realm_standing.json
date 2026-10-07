@@ -1,0 +1,13 @@
+{
+  "_note": "Realm Standing (game-design §11.6, adapted from Rome II's Imperium; war-and-realm §2.5): a level that rises with territory, population and wealth. score = regions x per_region + population / 1000 x per_thousand_people + gross income x per_gold. Each level needs thresholds[level - 1] points and sets the caps: lord_armies (enforced now: the number of lord-led armies a faction may field), agents (per career) and decrees (stored for the agents and decrees systems, not used yet). No growth penalties (confirmed). PLACEHOLDER numbers.",
+  "per_region": 10.0,
+  "per_thousand_people": 1.0,
+  "per_gold": 0.02,
+  "thresholds": [0, 30, 70, 130, 220, 340, 500],
+  "names": ["Holding", "Lordship", "Domain", "Realm", "Great Realm", "Kingdom", "Empire"],
+  "caps": {
+    "lord_armies": [2, 3, 4, 5, 7, 9, 12],
+    "agents": [1, 1, 2, 2, 3, 3, 4],
+    "decrees": [1, 1, 2, 2, 3, 4, 5]
+  }
+}

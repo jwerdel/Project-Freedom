@@ -1,0 +1,12 @@
+{
+  "_note": "Hosts and calling the banners (war-and-realm §2.1-2.5; game-design §12.3-12.4). PLACEHOLDER numbers.",
+  "levy": {"_note": "Levies are drawn from young men only: each own settlement gives per_thousand levy units per 1,000 people (times turnout), at most max_per_settlement, of its culture's levy unit (data/rosters.json levy; the generic peasant_levy otherwise). While they serve, the settlement's income drops by production_drop per unit (at most max_drop) and returns when they are disbanded. Total population is kept (war-and-realm §2.1).", "per_thousand": 0.45, "max_per_settlement": 4, "min_population": 1500, "production_drop": 0.08, "max_drop": 0.4},
+  "standing": {"_note": "Turnout and muster speed by the ruler's standing (war-and-realm §2.2): turns until the levies set out, turnout share, field loyalty (low: each levy unit may desert, desertion per turn, and contingents refuse dangerous orders). No extra resource.", "loved": {"turns": 1, "turnout": 1.0, "loyalty": "high"}, "feared": {"turns": 1, "turnout": 1.0, "loyalty": "high"}, "feared_weak": {"turns": 1, "turnout": 1.0, "loyalty": "low"}, "neutral": {"turns": 3, "turnout": 0.5, "loyalty": "normal"}},
+  "desertion": 0.08,
+  "detachment": {"_note": "Captain-led detachments (game-design §12.3): at most max_units units, defend only, foreign_factor of the movement allowance outside friendly land, and they merge into a lord's army of their faction on contact (within merge_radius metres).", "max_units": 6, "foreign_factor": 0.5, "merge_radius": 12.0},
+  "foreign_factor": {"_note": "Movement allowance outside friendly land (war-and-realm §2.6: fast in own and allied land, slow in enemy land; military access counts as allied).", "lord": 0.6},
+  "zoc": {"_note": "Large armies block passage (war-and-realm §2.6): a field army blocks cells within block_radius (data/movement.json) plus per_unit metres per unit beyond from_units, at most max_radius.", "from_units": 6, "per_unit": 2.5, "max_radius": 40.0},
+  "vassal_turnout": {"_note": "A vassal sends its strongest field army to the muster point with chance its reliability x the liege's turnout (war-and-realm §2.2: each vassal's turnout also scales with its own loyalty)."},
+  "notice_metres": 3000,
+  "_notice_note": "Mustering is visible to the world: factions with a settlement within notice_metres of the muster point learn of it (chronicle and AI wariness)."
+}

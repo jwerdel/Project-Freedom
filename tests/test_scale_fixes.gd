@@ -30,7 +30,7 @@ func reference_blocked(s,faction: String) -> Dictionary:
  for sid in WorldMap.settlement_ids():
   if s.settlements[sid].owner != faction: areas.append([WorldMap.settlement_position(sid),float(Movement.data().settlements.radius)])
  for id in s.army_state:
-  if s.army_state[id].faction != faction: areas.append([Movement.position(s,id),float(Movement.data().armies.block_radius)])
+  if s.army_state[id].faction != faction: areas.append([Movement.position(s,id),load("res://core/hosts.gd").zoc_radius(s,id,float(Movement.data().armies.block_radius))]) # large armies block more (zone of control)
  for a in areas:
   for c in Movement._area_cells(a[0],a[1]): out[c] = true
  return out
@@ -121,6 +121,7 @@ func test_no_route_across_components_is_instant():
  if far == Vector2.ZERO:
   pass_test("one land mass on this seed")
   return
+ Movement.plan(s,id,p+Vector2(4,0)) # builds the search grid once (a one-off cost, not the rejection)
  var t = Time.get_ticks_usec()
  var r = Movement.plan(s,id,far)
  assert_false(r.ok)

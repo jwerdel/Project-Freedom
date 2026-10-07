@@ -28,7 +28,7 @@ const Realm = preload("res://core/realm.gd")
 const Land = preload("res://core/land.gd")
 const Characters = preload("res://core/characters.gd")
 const MOCK = "res://data/mock_ui.json"
-const CATEGORIES = [{"id":"turn","name":"Turn Summary"},{"id":"buildings","name":"Buildings Constructed"},{"id":"war","name":"Wars and Battles"},{"id":"world","name":"World Events"}]
+const CATEGORIES = [{"id":"turn","name":"Turn Summary"},{"id":"buildings","name":"Buildings Constructed"},{"id":"war","name":"Wars and Battles"},{"id":"court","name":"Court and Realm"},{"id":"world","name":"World Events"}]
 
 var state
 var mock: Dictionary
@@ -72,7 +72,11 @@ func income_breakdown(faction_id := "") -> Dictionary:
  var f = faction_id if faction_id != "" else player_faction_id()
  var ledger = Economy.faction_ledger(state,f)
  var out = {"income":[],"expenses":[],"income_total":ledger.income_total,"expense_total":ledger.expense_total,"net":ledger.net,"treasury":int(state.treasury[f])}
- for e in ledger.income: out.income.append({"label":"%s (%s)" % [WorldMap.region(e.label).settlement.name,state.settlements[e.label].type],"amount":e.amount})
+ for e in ledger.income:
+  match str(e.get("kind","settlement")):
+   "trade": out.income.append({"label":"Trade with %s" % WorldMap.faction(e.label).name,"amount":e.amount})
+   "title": out.income.append({"label":"Title tolls","amount":e.amount})
+   _: out.income.append({"label":"%s (%s)" % [WorldMap.region(e.label).settlement.name,state.settlements[e.label].type],"amount":e.amount})
  for e in ledger.expenses:
   var label = "Building upkeep: %s" % WorldMap.region(e.label).settlement.name if e.kind == "buildings" else "Army upkeep: %s" % state.army_state[e.label].display_name
   out.expenses.append({"label":label,"amount":e.amount})
@@ -99,6 +103,12 @@ func end_turn_async(tree: SceneTree,budget_ms := 12.0):
  return _after_turn(report,before)
 
 func _after_turn(report: Dictionary,before: Dictionary) -> Dictionary:
+ # Proposals and calls to arms waiting in Diplomacy (diplomacy-design §15: at most one per AI faction).
+ var props = proposals().filter(func(p): return int(state.diplomacy.proposals[p.index].turn) >= int(state.turn)-1)
+ if not props.is_empty():
+  var e = Chronicle.entry(state.year,"court","Envoys await you","%s. Open Diplomacy to answer." % "; ".join(props.map(func(p): return p.text)),state.player_faction)
+  state.chronicle.append(e)
+  report.entries.append(e)
  for e in report.entries: event_added.emit(e)
  # Standing orders walked first, then the AI phase: one path per army for the map to replay.
  var moves = {}
@@ -197,6 +207,10 @@ func settlement(id: String) -> Dictionary:
  var sg = live.get("siege",{})
  s.siege = {} if sg.is_empty() or not state.army_state.has(sg.army) else {"faction":faction(state.army_state[sg.army].faction),"turns":int(sg.turns),"endurance":int(sg.endurance)}
  s.upgrade_available = s.player_owned and upgrade_available(id)
+ # A muster point of a faction calling its banners (seen by everyone: war-and-realm §2.2).
+ s.muster = ""
+ for f in state.musters:
+  if str(state.musters[f].get("point","")) == id: s.muster = str(f)
  return s
 
 # Something can be built or upgraded in this settlement now (TW:WH3 green hammer on the map banner
@@ -329,6 +343,8 @@ func army_ids() -> Array:
 # the skill rows with each skill's state (taken, available, locked + reason), points and the
 # auto-allocate switch, plus the army he leads.
 func character(army_id: String) -> Dictionary:
+ # A court character without an army (the court screen's Details): its own career tree and no army.
+ if not state.army_state.has(army_id) and state.characters.has(army_id): return _court_character(army_id)
  var a = state.army_state[army_id]
  var c = a.commander
  var rows = []
@@ -339,10 +355,18 @@ func character(army_id: String) -> Dictionary:
    skills.append({"id":s.id,"name":s.name,"level":int(s.level),"text":s.text,"taken":s.id in c.get("skills",[]),"available":can.ok,"reason":can.reason})
   rows.append({"id":r.id,"name":r.name,"function":r.function,"skills":skills})
  var m = army_movement(army_id)
- return {"army_id":army_id,"name":c.name,"epithet":str(c.get("epithet","")),"level":Characters.level(c),"xp":Characters.xp_progress(c),
+ var view = {"army_id":army_id,"name":c.name,"epithet":str(c.get("epithet","")),"level":Characters.level(c),"xp":Characters.xp_progress(c),
   "status":str(c.get("status","ok")),"faction":a.faction,"faction_data":faction(a.faction),"player_owned":a.faction == state.player_faction,
   "stats":Characters.stats(c),"traits":Characters.traits(state,army_id),"rows":rows,"points":Characters.skill_points(c),
   "auto":Characters.auto_on(state,army_id),"army":army(army_id),"men":Armies.men(a),"location":m.garrison_name if m.garrison != "" else WorldMap.region(WorldMap.region_at(m.position)).get("name","the wilds") if WorldMap.region_at(m.position) != "" else "the wilds"}
+ # The general as a court member: epithet, life traits, loyalty and history (core/court.gd).
+ var cid = str(c.get("character",""))
+ if cid != "" and state.characters.has(cid):
+  var cv = character_view(cid)
+  view.court = cv
+  view.epithet = cv.epithet
+  for t in cv.traits: view.traits.append({"id":t.id,"name":t.name,"text":"A %s trait, earned from deeds." % t.kind})
+ return view
 
 func take_skill(army_id: String,skill_id: String) -> bool:
  var ok = Characters.take(state,army_id,skill_id)
@@ -547,11 +571,25 @@ func clear_attack(army_id: String):
  if state.army_state.has(army_id): state.army_state[army_id].erase("attack")
 
 # TEMPORARY war rule: the player's confirmation declares war (no peace until diplomacy).
-func declare_war(target_faction: String) -> Dictionary:
- var e = Battles.declare_war(state,state.player_faction,target_faction)
+# Declare war (diplomacy-design §7; the dialog shows declaration_preview first). Breaking a treaty is
+# betrayal (the V1 rule): only with betray = true, after the dialog spelled out the consequences.
+# Returns the chronicle entry ({} if nothing happened).
+func declare_war(target_faction: String,betray := false) -> Dictionary:
+ var D = load("res://core/diplomacy.gd")
+ var pv = D.declaration_preview(state,state.player_faction,target_faction)
+ if pv.betrayal != "" and not betray: return {}
+ var r = D.declare_war(state,state.player_faction,target_faction)
+ var e = r.get("entry",{})
+ if r.get("betrayal",false): e = Chronicle.entry(state.year,"war","Betrayal","You broke your word to %s. Every hand is now raised against you." % faction(target_faction).name)
  if not e.is_empty(): event_added.emit(e)
  changed.emit()
  return e
+
+func declaration_preview(target_faction: String) -> Dictionary:
+ var pv = load("res://core/diplomacy.gd").declaration_preview(state,state.player_faction,target_faction)
+ pv.ally_names = pv.allies.map(func(f): return faction(f).name)
+ pv.angered_names = pv.angered.map(func(f): return faction(f).name)
+ return pv
 
 func at_war(other_faction: String) -> bool:
  return Battles.at_war(state,state.player_faction,other_faction)
@@ -572,10 +610,8 @@ func liege_of(f: String) -> String:
  var D = _diplomacy()
  return D.liege_of(state,f) if D != null else ""
 
-static var _dip_script = null
 func _diplomacy():
- if _dip_script == null and ResourceLoader.exists("res://core/diplomacy.gd"): _dip_script = load("res://core/diplomacy.gd")
- return _dip_script
+ return load("res://core/diplomacy.gd")
 
 # --- Diplomacy screen (docs/tw-ui-parity.md §15; docs/diplomacy-design.md) ---------------------
 # Real: war and peace status, holdings and strength, faction tendencies, who is at war with whom.
@@ -584,21 +620,358 @@ func _diplomacy():
 const ATTITUDE_STEPS = ["Hostile","Unfriendly","Indifferent","Friendly","Very friendly"]
 
 func diplomacy_faction(id: String) -> Dictionary:
+ var D = load("res://core/diplomacy.gd")
+ var Rep = load("res://core/reputation.gd")
+ var V = load("res://core/vassals.gd")
  var f = faction(id)
+ var me = state.player_faction
  var men = 0
  for a in Armies.armies_of(state,id): men += Armies.men(state.army_state[a])
  var wars = state.factions().filter(func(o): return o != id and Battles.at_war(state,id,o)).map(func(o): return faction(o).name)
+ var att = D.attitude(state,id,me) if id != me else 0.0
+ var treaties = []
+ var t = D.treaty(state,id,me)
+ if not t.is_empty() and id != me: treaties.append({"name":str(t.kind).capitalize(),"left":D.protected_turns_left(state,id,me)})
+ for n in D.d(state).agreements.get(D.key(id,me),{}):
+  var label = {"trade":"Trade","defensive":"Defensive pact","nap":"Non-aggression"}.get(n,"")
+  if n.begins_with("access:"): label = "Military access (%s)" % ("theirs" if n == "access:"+me else "yours")
+  if n.begins_with("embassy:"): label = "Embassy (%s)" % ("yours" if n == "embassy:"+me else "theirs")
+  if label != "": treaties.append({"name":label,"left":0})
+ if V.liege_of(state,id) == me: treaties.append({"name":"Your vassal","left":0})
+ if V.liege_of(state,me) == id: treaties.append({"name":"Your liege","left":0})
+ var st = Rep.standing(state,id)
  return {"id":id,"name":f.name,"faction_data":f,"realm":f.get("realm",""),"seat":f.get("seat",""),"culture":str(f.get("culture","")).capitalize(),
   "settlements":state.settlements_of(id).size(),"armies":Armies.armies_of(state,id).size(),"men":men,
-  "traits":f.get("traits",[]).map(func(t): return str(t).capitalize()),"wars":wars,"at_war":id != player_faction_id() and at_war(id),
-  "attitude":0,"attitude_label":ATTITUDE_STEPS[2],"reliability":"Reliable"}
+  "traits":f.get("traits",[]).map(func(x): return str(x).capitalize()),"wars":wars,"at_war":id != me and at_war(id),
+  "attitude":att,"face":D.face(att),"attitude_label":ATTITUDE_STEPS[D.face(att)],"attitude_reasons":D.attitude_reasons(state,id,me),
+  "relation":D.relation(state,me,id),"contact":id == me or D.has_contact(state,me,id),"treaties":treaties,
+  "reputation":Rep.labels(state,me if id != me else "",id),"standing":st,
+  "reliability":"Treacherous" if id in D.d(state).betrayers else ("Reliable" if float(Rep.perceived(state,"",id).trust)>-30.0 else "Untrustworthy"),
+  "court":D.court_visibility(state,me,id),"envoy":D.envoys_from(state,me).filter(func(e): return e.to == id).map(func(e): return {"kind":e.kind,"arrive":int(e.arrive)-int(state.turn)}),
+  "minor":D.is_minor(id),"untouchable":D.untouchable(id),"liege":V.liege_of(state,id)}
 
-# The player's faction and the known factions (met or at war), the player first.
+# The player's faction and every other faction: those met first (contact), then the rest (envoys can
+# reach anyone, war-and-realm §0.2), the player first.
 func diplomacy() -> Dictionary:
- var others = []
- for f in known_factions():
-  if f != player_faction_id() and not f in state.destroyed: others.append(diplomacy_faction(f))
- return {"me":diplomacy_faction(player_faction_id()),"factions":others}
+ var D = load("res://core/diplomacy.gd")
+ var met = []
+ var unmet = []
+ for f in state.factions():
+  if f == player_faction_id() or f in state.destroyed or state.settlements_of(f).is_empty(): continue
+  var v = diplomacy_faction(f)
+  if v.contact: met.append(v)
+  else: unmet.append(v)
+ var envoys = D.envoys_from(state,player_faction_id()).map(func(e): return {"to":e.to,"name":faction(e.to).name,"kind":e.kind,"turns":int(e.arrive)-int(state.turn)})
+ return {"me":diplomacy_faction(player_faction_id()),"factions":met+unmet,"envoys":envoys,"proposals":proposals()}
+
+# --- Diplomacy: offers, envoys, proposals, dossiers (core/diplomacy.gd) -------------------------------
+
+# The item palette for a deal with faction f, grouped as in TW:WH3, each with its eligibility both ways.
+func offer_palette(f: String) -> Array:
+ var D = load("res://core/diplomacy.gd")
+ var me = player_faction_id()
+ var out = []
+ var treaty_items = [["alliance","Military alliance"],["defensive","Defensive pact"],["nap","Non-aggression pact"],["ceasefire","Ceasefire"],["peace","Peace"],["trade","Trade agreement"],["embassy","Embassy"]]
+ for t in treaty_items:
+  var e = D.eligible(state,me,f,{"kind":t[0]})
+  out.append({"group":"Treaties","item":{"kind":t[0]},"name":t[1],"give":e,"take":e})
+ out.append({"group":"Treaties","item":{"kind":"access"},"name":"Military access","give":D.eligible(state,me,f,{"kind":"access"}),"take":D.eligible(state,f,me,{"kind":"access"})})
+ out.append({"group":"Treaties","item":{"kind":"vassalage"},"name":"Vassalage","give":D.eligible(state,me,f,{"kind":"vassalage"}),"take":D.eligible(state,f,me,{"kind":"vassalage"})})
+ for g in [500,1000,2500]:
+  out.append({"group":"Payments","item":{"kind":"gold","amount":g},"name":"%d gold" % g,"give":D.eligible(state,me,f,{"kind":"gold","amount":g}),"take":D.eligible(state,f,me,{"kind":"gold","amount":g})})
+ for g in [50,150]:
+  out.append({"group":"Payments","item":{"kind":"tribute","amount":g,"turns":10},"name":"Tribute %d a turn (10 turns)" % g,"give":D.eligible(state,me,f,{"kind":"tribute","amount":g}),"take":D.eligible(state,f,me,{"kind":"tribute","amount":g})})
+ for sid in state.settlements_of(me)+state.settlements_of(f):
+  var mine = state.settlements[sid].owner == me
+  var it = {"kind":"region","settlement":sid}
+  out.append({"group":"Land","item":it,"name":WorldMap.region(sid).settlement.name,"give":D.eligible(state,me,f,it) if mine else {"ok":false,"reason":"Not yours"},"take":D.eligible(state,f,me,it) if not mine else {"ok":false,"reason":"Already yours"}})
+ # Marriages: your unmarried adults with theirs (when you can see their court).
+ var C = load("res://core/court.gd")
+ if D.court_visibility(state,me,f) != "unknown":
+  for a in C.members(state,me):
+   var ca = state.characters[a]
+   if str(ca.spouse) != "" or not C.is_adult(ca) or ca.legendary: continue
+   for b in C.members(state,f):
+    var cb = state.characters[b]
+    if cb.gender == ca.gender or str(cb.spouse) != "" or not C.is_adult(cb) or cb.legendary: continue
+    var it = {"kind":"marriage","a":a,"b":b}
+    var e = C.can_marry(state,a,b)
+    out.append({"group":"Characters","item":it,"name":"Marriage: %s and %s" % [C.full_name(ca),C.full_name(cb)],"give":e,"take":e})
+ for id in C.members(state,f)+C.members(state,me):
+  var c = state.characters[id]
+  if str(c.role) == "prisoner:"+me: out.append({"group":"Characters","item":{"kind":"captive","character":id},"name":"Release %s" % C.full_name(c),"give":{"ok":true,"reason":""},"take":{"ok":false,"reason":"Not their captive"}})
+ return out
+
+# The receiver's view of an offer (score, chance label, reasons with numbers).
+func evaluate_offer(f: String,offer: Dictionary) -> Dictionary:
+ return load("res://core/diplomacy.gd").evaluate(state,player_faction_id(),f,offer)
+
+func propose_offer(f: String,offer: Dictionary) -> Dictionary:
+ var r = load("res://core/diplomacy.gd").propose(state,player_faction_id(),f,offer)
+ if r.get("accept",false): add_event("court","Agreement with %s" % faction(f).name,"They accept your proposal.")
+ changed.emit()
+ return r
+
+func send_envoy(f: String,kind := "embassy") -> Dictionary:
+ var r = load("res://core/diplomacy.gd").send_envoy(state,player_faction_id(),f,kind)
+ changed.emit()
+ return r
+
+func cancel_agreement(f: String,name: String) -> Dictionary:
+ var r = load("res://core/diplomacy.gd").cancel(state,player_faction_id(),f,name)
+ changed.emit()
+ return r
+
+# AI proposals and calls to arms waiting for the player's answer (diplomacy-design §15).
+func proposals() -> Array:
+ var out = []
+ var D = load("res://core/diplomacy.gd")
+ var i = 0
+ for p in D.d(state).proposals:
+  if p.to == player_faction_id():
+   var v = {"index":i,"from":p.from,"name":faction(p.from).name,"offer":p.offer,"call":str(p.offer.get("call",""))}
+   v.text = "%s calls you to war against %s" % [faction(p.from).name,faction(v.call).name] if v.call != "" else _offer_text(p.from,p.offer)
+   out.append(v)
+  i += 1
+ return out
+
+func _offer_text(f: String,offer: Dictionary) -> String:
+ var parts = []
+ for it in offer.get("give",[]): parts.append("they offer "+_item_name(it))
+ for it in offer.get("take",[]): parts.append("they ask for "+_item_name(it))
+ return "%s: %s" % [faction(f).name,", ".join(parts)]
+
+func _item_name(it: Dictionary) -> String:
+ var C = load("res://core/court.gd")
+ match str(it.kind):
+  "gold": return "%d gold" % int(it.amount)
+  "tribute": return "tribute of %d a turn" % int(it.amount)
+  "region": return WorldMap.region(it.settlement).settlement.name
+  "marriage": return "a marriage (%s and %s)" % [C.full_name(C.get_char(state,it.a)),C.full_name(C.get_char(state,it.b))]
+  "vassalage": return "vassalage"
+  "access": return "military access"
+  "nap": return "a non-aggression pact"
+  "defensive": return "a defensive pact"
+ return str(it.kind)
+
+func answer_proposal(index: int,accept: bool,answer := "") -> Dictionary:
+ var D = load("res://core/diplomacy.gd")
+ var list = D.d(state).proposals
+ if index<0 or index>=list.size(): return {"ok":false}
+ var p = list[index]
+ if p.offer.has("call"):
+  D.answer_call(state,p.from,str(p.offer.call),answer if answer != "" else ("join" if accept else "refuse"))
+ else:
+  list.remove_at(index)
+  if accept:
+   # The AI's offer, checked again from the player's side only for eligibility.
+   var ok = true
+   for it in p.offer.get("give",[]): ok = ok and D.eligible(state,p.from,player_faction_id(),it).ok
+   for it in p.offer.get("take",[]): ok = ok and D.eligible(state,player_faction_id(),p.from,it).ok
+   if ok: D.apply_offer(state,p.from,player_faction_id(),p.offer)
+ changed.emit()
+ return {"ok":true}
+
+# A faction's dossier (diplomacy-design §4): court (when visible), blurbs in the Grey Scribes' voice
+# from real history, who hates whom, reputation, tendencies, treaties and wars.
+func dossier(f: String) -> Dictionary:
+ var D = load("res://core/diplomacy.gd")
+ var C = load("res://core/court.gd")
+ var vis = D.court_visibility(state,player_faction_id(),f)
+ var court = []
+ if vis != "unknown":
+  for id in C.members(state,f):
+   if vis == "basic" and id != C.ruler(state,f): continue
+   court.append(character_view(id))
+ var hates = []
+ for g in state.factions():
+  if g == f or state.settlements_of(g).is_empty(): continue
+  var a = D.attitude(state,f,g)
+  if a<=-25.0:
+   var why = D.attitude_reasons(state,f,g)
+   hates.append({"faction":faction(g).name,"value":a,"why":why[0].text if not why.is_empty() else ""})
+ hates.sort_custom(func(x,y): return x.value<y.value)
+ var v = diplomacy_faction(f)
+ v.visibility = vis
+ v.court_members = court
+ v.hates = hates.slice(0,5)
+ v.blurbs = court.map(func(c): return {"name":c.full_name,"text":c.blurb})
+ v.history = D.d(state).log.filter(func(l): return faction(f).name in l.text).map(func(l): return "Year %d. %s" % [l.year,l.text]).slice(-6)
+ return v
+
+# --- Court and characters (core/court.gd; game-design §4) ---------------------------------------------
+
+func character_view(id: String) -> Dictionary:
+ var C = load("res://core/court.gd")
+ var c = C.get_char(state,id)
+ if c.is_empty(): return {}
+ var role = str(c.role)
+ var role_text = {"ruler":"Ruler","courtier":"Courtier","child":"Child","exile":"In exile"}.get(role,role.capitalize())
+ if role.begins_with("governor:"): role_text = "Governor of %s" % WorldMap.region(role.get_slice(":",1)).settlement.name
+ if role.begins_with("general:") or str(c.army) != "": role_text = ("Ruler, leads " if C.ruler(state,c.faction) == id else "Leads ")+(state.army_state[c.army].display_name if state.army_state.has(c.army) else "an army")
+ if role.begins_with("prisoner:"): role_text = "Prisoner of %s" % faction(role.get_slice(":",1)).name
+ if C.heir(state,c.faction) == id: role_text = "Heir · "+role_text
+ var titles = []
+ for t in state.titles:
+  if str(state.titles[t].get("character","")) == id: titles.append(load("res://core/titles.gd").data().titles[t].name)
+ var blurb = "%s, %s%s." % [C.full_name(c),role_text.to_lower(),(", "+str(int(c.age))+" years old")]
+ if not c.history.is_empty(): blurb = "The Scribes record of %s: %s" % [c.name,str(c.history[-1].text).to_lower()]
+ return {"id":id,"name":str(c.name),"house":str(c.house),"full_name":C.full_name(c),"epithet":str(c.epithet),"age":int(c.age),"gender":str(c.gender),
+  "race":str(c.race),"culture":str(c.culture),"career":str(c.career),"career_name":str(C.data().careers.get(str(c.career),{}).get("name","")),"career_pending":bool(c.career_pending),
+  "level":int(c.level),"xp":float(c.xp),"next_xp":C.xp_for_level(int(c.level)+1),"points":C.skill_points(c),"traits":C.visible_traits(c),"loyalty":int(c.loyalty),
+  "loyalty_reasons":C.loyalty_reasons(c),"role":role,"role_text":role_text,"spouse":str(c.spouse),"father":str(c.father),"mother":str(c.mother),"children":c.children.duplicate(),
+  "immortal":bool(c.immortal),"legendary":bool(c.legendary),"dead":bool(c.dead),"faction":str(c.faction),"army":str(c.army),"history":c.history.duplicate(),
+  "titles":titles,"ruler":C.ruler(state,c.faction) == id,"heir":C.heir(state,c.faction) == id,"blurb":blurb,"defeated":int(c.defeated_until)>=0,"skills":c.skills.duplicate()}
+
+# The player's court (or another faction's when visible): ruler, heir, members by family branch.
+func court_view(f := "") -> Dictionary:
+ var C = load("res://core/court.gd")
+ f = f if f != "" else player_faction_id()
+ var members = C.members(state,f).map(func(id): return character_view(id))
+ return {"faction":f,"faction_data":faction(f),"ruler":C.ruler(state,f),"heir":C.heir(state,f),"members":members,"pending_careers":C.careers_pending(state,f),
+  "careers":C.data().careers.keys().map(func(k): return {"id":k,"name":C.data().careers[k].name,"text":C.data().careers[k].text})}
+
+func _court_call(r: Dictionary) -> Dictionary:
+ changed.emit()
+ return r
+
+func set_heir(id: String) -> Dictionary: return _court_call(load("res://core/court.gd").set_heir(state,player_faction_id(),id))
+func make_ruler(id: String) -> Dictionary: return _court_call(load("res://core/court.gd").make_ruler(state,player_faction_id(),id,"chosen"))
+func choose_career(id: String,career: String) -> Dictionary: return _court_call(load("res://core/court.gd").choose_career(state,id,career))
+func appoint_governor(id: String,sid: String) -> Dictionary: return _court_call(load("res://core/court.gd").appoint_governor(state,player_faction_id(),id,sid))
+func gift_character(id: String,gold: int) -> Dictionary: return _court_call(load("res://core/court.gd").gift(state,player_faction_id(),id,gold))
+func rename_character(id: String,new_name: String) -> bool:
+ var ok = load("res://core/court.gd").rename(state,id,new_name)
+ if ok: changed.emit()
+ return ok
+func take_character_skill(id: String,skill: String) -> bool:
+ var ok = load("res://core/court.gd").take_skill(state,id,skill)
+ if ok: changed.emit()
+ return ok
+
+# Marry two characters: within your court at once; across courts as an offer to the other faction.
+func arrange_marriage(a: String,b: String) -> Dictionary:
+ var C = load("res://core/court.gd")
+ var cb = C.get_char(state,b)
+ if cb.is_empty(): return {"ok":false,"reason":"Unknown character"}
+ if str(cb.faction) == player_faction_id(): return _court_call(C.marry(state,a,b))
+ return propose_offer(str(cb.faction),{"give":[{"kind":"marriage","a":a,"b":b}],"take":[]})
+
+# Characters the player could marry `id` to: own court and courts in contact (whose court is visible).
+func marriage_candidates(id: String) -> Array:
+ var C = load("res://core/court.gd")
+ var D = load("res://core/diplomacy.gd")
+ var out = []
+ for f in state.courts:
+  if f != player_faction_id() and (not D.has_contact(state,player_faction_id(),f) or D.court_visibility(state,player_faction_id(),f) == "unknown" or Battles.at_war(state,player_faction_id(),f)): continue
+  for o in C.members(state,f):
+   if C.can_marry(state,id,o).ok and not state.characters[o].legendary:
+    var v = character_view(o)
+    v.faction_name = faction(f).name
+    out.append(v)
+ return out
+
+# --- Realm: standing, reputation, titles, vassals, banners, hosts -------------------------------------
+
+func realm_standing(f := "") -> Dictionary:
+ return load("res://core/realm_standing.gd").summary(state,f if f != "" else player_faction_id())
+
+func reputation_view(f := "") -> Dictionary:
+ var Rep = load("res://core/reputation.gd")
+ f = f if f != "" else player_faction_id()
+ var e = Rep.entry(state,f)
+ return {"standing":Rep.standing(state,f),"labels":Rep.labels(state,"",f),"ruler":e.ruler,"house":e.house,"first_impressions":Rep.in_first_impressions(state,f),"deeds":e.deeds.slice(-8)}
+
+func titles_panel() -> Array:
+ var T = load("res://core/titles.gd")
+ var out = T.panel(state,player_faction_id())
+ for t in out: t.holder_name = faction(t.holder).name if t.holder != "" else ""
+ return out
+
+func grant_title(title: String,to_faction := "",character := "") -> Dictionary:
+ var r = load("res://core/titles.gd").grant(state,title,player_faction_id(),to_faction,character)
+ changed.emit()
+ return r
+
+func vassals_view() -> Array:
+ var V = load("res://core/vassals.gd")
+ var out = []
+ for f in V.vassals_of(state,player_faction_id()):
+  var s = V.summary(state,f)
+  s.name = faction(f).name
+  s.faction_data = faction(f)
+  s.settlements = state.settlements_of(f).size()
+  s.armies = Armies.armies_of(state,f).size()
+  out.append(s)
+ return out
+
+func set_vassal_goal(f: String,goal: String) -> bool:
+ var ok = load("res://core/vassals.gd").set_econ_goal(state,f,goal)
+ changed.emit()
+ return ok
+
+func gift_vassal(f: String,gold: int) -> Dictionary:
+ var r = load("res://core/vassals.gd").gift(state,player_faction_id(),f,gold)
+ changed.emit()
+ return r
+
+# Order an ally or vassal: kind attack / besiege / defend, target a settlement or army id.
+func order_ally(f: String,kind: String,target: String,gold := 0) -> Dictionary:
+ var r = load("res://core/diplomacy.gd").give_order(state,player_faction_id(),f,kind,target,gold)
+ changed.emit()
+ return r
+
+func banner_terms() -> Dictionary:
+ var H = load("res://core/hosts.gd")
+ var t = H.terms(state,player_faction_id())
+ var plan = H.levy_plan(state,player_faction_id(),float(t.turnout))
+ var n = 0
+ for k in plan: n += int(plan[k])
+ t.levies = n
+ t.vassals = load("res://core/vassals.gd").vassals_of(state,player_faction_id()).size()
+ t.mustering = H.mustering(state,player_faction_id())
+ t.muster = state.musters.get(player_faction_id(),{})
+ return t
+
+func call_banners(sid: String) -> Dictionary:
+ var r = load("res://core/hosts.gd").call_banners(state,player_faction_id(),sid)
+ if r.ok: add_event("court","The banners are called","Your banners gather at %s: %d levy units%s, %s." % [WorldMap.region(sid).settlement.name,int(r.levies),(" and %d vassal hosts" % int(r.contingents)) if int(r.contingents)>0 else "","setting out at once" if int(r.turns)<=0 else "setting out in %d turns" % int(r.turns)])
+ changed.emit()
+ return r
+
+func dismiss_levies() -> int:
+ var n = load("res://core/hosts.gd").dismiss_levies(state,player_faction_id())
+ changed.emit()
+ return n
+
+func form_host(leader: String,members: Array) -> Dictionary:
+ var r = load("res://core/hosts.gd").form_host(state,leader,members)
+ changed.emit()
+ return r
+
+func leave_host(army_id: String):
+ load("res://core/hosts.gd").leave_host(state,army_id)
+ changed.emit()
+
+func host_of(army_id: String) -> String:
+ return load("res://core/hosts.gd").host_of(state,army_id)
+
+# Own armies near an army (that could join its Host).
+func armies_near(army_id: String,radius := 120.0) -> Array:
+ var at = Movement.position(state,army_id)
+ var f = state.army_state[army_id].faction
+ return Armies.armies_of(state,f).filter(func(id): return id != army_id and Movement.position(state,id).distance_to(at)<=radius)
+
+# Fallen houses awaiting the player's choice (game-design §4.10).
+func absorptions() -> Array:
+ return state.absorptions.map(func(a): return {"fallen":a.fallen,"name":faction(a.fallen).name,"settlement":a.settlement,"settlement_name":WorldMap.region(a.settlement).settlement.name})
+
+func resolve_absorption(fallen: String,choice: String) -> Dictionary:
+ var a = state.absorptions.filter(func(x): return x.fallen == fallen)
+ if a.is_empty(): return {"ok":false}
+ var r = load("res://core/court.gd").resolve_absorption(state,player_faction_id(),fallen,a[0].settlement,choice)
+ changed.emit()
+ return r
 
 # Pre-battle panel data (see Battles.prebattle) with readable army lists added.
 func prebattle(army_id: String,point: Vector2) -> Dictionary:
@@ -963,3 +1336,20 @@ func known_factions() -> Array:
    if near: break
   if near: out.append(f)
  return out
+
+# A court character's details (no army): stats at its level, its career's skill tree, traits.
+func _court_character(id: String) -> Dictionary:
+ var C = load("res://core/court.gd")
+ var c = C.get_char(state,id)
+ var cv = character_view(id)
+ var rows = []
+ for r in C.career_rows(c):
+  var skills = []
+  for s in r.skills:
+   var can = C.can_take_skill(c,s.id)
+   skills.append({"id":s.id,"name":s.name,"level":int(s.level),"text":s.text,"taken":s.id in c.skills,"available":can.ok,"reason":can.reason})
+  rows.append({"id":r.id,"name":r.name,"function":r.function,"skills":skills})
+ var traits = cv.traits.map(func(t): return {"id":t.id,"name":t.name,"text":"A %s trait, earned from deeds." % t.kind})
+ return {"army_id":id,"character_id":id,"name":cv.full_name,"epithet":cv.epithet,"level":cv.level,"xp":{"xp":cv.xp,"from":C.xp_for_level(cv.level),"to":cv.next_xp},
+  "status":"ok","faction":cv.faction,"faction_data":faction(cv.faction),"player_owned":cv.faction == state.player_faction,
+  "stats":Characters.stats({"rank":cv.level}),"traits":traits,"rows":rows,"points":cv.points,"auto":false,"army":{},"men":0,"location":cv.role_text,"court":cv}

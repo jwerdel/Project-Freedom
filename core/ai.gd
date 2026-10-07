@@ -269,6 +269,8 @@ static func _faction_step(k: int,state,f: String,c: Dictionary,report: Dictionar
 static func assess(state,f: String,p: Dictionary) -> Dictionary:
  var d = data()
  var enemies = at_war_with(state,f)
+ # Neighbours mustering their banners near us are treated as a threat (war-and-realm §2.2).
+ var mustering = load("res://core/hosts.gd").musters_near(state,f) if state.get("musters") != null else []
  var threats = {}
  var threatened = []
  for sid in state.settlements_of(f):
@@ -277,7 +279,7 @@ static func assess(state,f: String,p: Dictionary) -> Dictionary:
   for e in _armies(state):
    if e.faction == f: continue
    if e.pos.distance_to(at)>float(d.reach.threat_meters): continue
-   var w = 1.0 if e.faction in enemies else float(personality(e.faction).wariness)
+   var w = 1.0 if (e.faction in enemies or e.faction in mustering) else float(personality(e.faction).wariness)
    if w>0.0: t += army_power(state,e.id)*w
   var def = settlement_defense(state,sid)
   threats[sid] = {"threat":t,"defense":def}
@@ -351,6 +353,11 @@ static func _consider_war(state,f: String,p: Dictionary,look: Dictionary,rng: Ra
  var w = data().war
  var landless = int(p.landless)>=0
  if look.enemies.size()>=int(w.max_wars) and not landless: return
+ # A vassal follows its liege's diplomatic lead (core/vassals.gd): no wars of its own, and none at the cap.
+ var V = load("res://core/vassals.gd")
+ var liege = V.liege_of(state,f) if state.get("vassals") != null else ""
+ if liege != "" and (not landless or V.at_cap(state,f)): return
+ var D = load("res://core/diplomacy.gd") if state.get("courts") != null and not state.courts.is_empty() else null
  # The best target among factions at peace, from any army with enough units.
  var best = {}
  for id in field_armies(state,f):
@@ -358,6 +365,8 @@ static func _consider_war(state,f: String,p: Dictionary,look: Dictionary,rng: Ra
   for t in targets_for(state,id,float(look.get("war_range",data().reach.war_meters))):
    if t.faction in look.enemies or t.faction == "": continue
    if bool(WorldMap.faction(t.faction).get("untouchable",false)): continue # Caeloth: no faction's goal is to take it (constitution)
+   if D != null and D.would_betray(state,f,t.faction) != "": continue # the AI never betrays
+   if D != null and V.liege_of(state,t.faction) == f: continue # never its own vassals
    if landless and t.kind != "settlement": continue
    # The whole field force that could gather against it, not one army.
    var ratio = maxf(float(t.ratio),strategic_power(state,f,t.position,float(look.get("war_range",-1.0)))/maxf(1.0,float(t.defense)))
@@ -375,7 +384,11 @@ static func _consider_war(state,f: String,p: Dictionary,look: Dictionary,rng: Ra
  # Only for a fight it expects to win (the curve estimate; the attack itself is re-checked by
  # simulation before it is made).
  if curve_odds(float(best.score))<float(data().attack.min_odds)/float(p.boldness): return
- var e = Battles.declare_war(state,f,best.target.faction)
+ var e = {}
+ if D != null:
+  var r = D.declare_war(state,f,best.target.faction,true)
+  if r.ok: e = r.entry
+ else: e = Battles.declare_war(state,f,best.target.faction)
  if not e.is_empty():
   report.entries.append(e)
   report.actions.append({"action":"war","faction":f,"against":best.target.faction,"chance":chance})
@@ -407,6 +420,9 @@ static func _build(state,f: String,p: Dictionary,look: Dictionary,report: Dictio
   for sid in state.settlements_of(f):
    if not Construction.in_progress(state,sid).is_empty(): continue
    var weights = e.threatened_weights if sid in look.threatened else e.economy_weights
+   if not sid in look.threatened and state.get("vassals") != null:
+    var vw = load("res://core/vassals.gd").build_weights(state,f)
+    if vw != null: weights = vw
    var s = state.settlements[sid]
    var first_empty = -1
    for i in s.buildings.size():
@@ -579,11 +595,44 @@ static func _command(state,f: String,p: Dictionary,look: Dictionary,report: Dict
    if r.ok:
     busy[id] = true
     report.actions.append({"action":"defend","faction":f,"army":id,"settlement":sid})
+ # 1b. Orders from an overlord or ally (docs/diplomacy-design.md §8): the committed army goes for the
+ #     target with real force.
+ if state.get("diplomacy") != null and not state.diplomacy.is_empty(): _orders(state,f,p,look,report,opts,controlled,busy)
  if prelude_only != null:
   prelude_only.busy = busy
   return
  # 2.-5. Every other army: attack or besiege, flee, stage, rest.
  for id in field_armies(state,f): _army_order(state,id,f,p,look,report,opts,controlled,busy)
+
+# Orders from a liege or ally: the committed army attacks or besieges the target when it can this turn,
+# else marches on it; a defend order holds the region's settlement.
+static func _orders(state,f: String,p: Dictionary,look: Dictionary,report: Dictionary,opts: Dictionary,controlled: Array,busy: Dictionary):
+ var D = load("res://core/diplomacy.gd")
+ for o in D.orders_for(state,f):
+  var id = str(o.army)
+  if not state.army_state.has(id) or busy.has(id) or not Battles.can_move(state,id): continue
+  busy[id] = true
+  var pos = D._target_pos(state,str(o.target))
+  if pos == Vector2.INF: continue
+  if o.kind == "defend":
+   var m = _move(state,report,id,pos)
+   if m.ok: report.actions.append({"action":"order","faction":f,"army":id,"kind":"defend","target":o.target})
+   continue
+  var t = {}
+  for c in targets_for(state,id):
+   if c.id == str(o.target): t = c
+  if not t.is_empty() and t.faction in at_war_with(state,f):
+   var appr = Battles.approach(state,id,t)
+   if appr.ok:
+    if o.kind == "besiege" and t.kind == "settlement" and walled(state,t.id) and not state.settlements[t.id].has("siege"):
+     _record(report,id,Battles.move_to_attack(state,id,appr))
+     if Battles.besiege(state,id,t.id).ok:
+      report.actions.append({"action":"besiege","faction":f,"army":id,"settlement":t.id,"order":true})
+      continue
+    _attack(state,id,t,appr,report,opts,controlled)
+    continue
+  var m = _move(state,report,id,pos)
+  if m.ok: report.actions.append({"action":"march","faction":f,"army":id,"target":o.target,"order":true})
 
 # Steps 0-1 of _command; returns the armies they took (the sliced turn then orders the rest one by one).
 static func _command_prelude(state,f: String,look: Dictionary,report: Dictionary) -> Dictionary:
@@ -602,6 +651,7 @@ static func _army_order(state,id: String,f: String,p: Dictionary,look: Dictionar
 static func _try_attack(state,id: String,f: String,p: Dictionary,look: Dictionary,report: Dictionary,opts: Dictionary,controlled: Array) -> bool:
  var d = data()
  var a = state.army_state[id]
+ if bool(a.get("captain",false)): return false # captain-led detachments defend only (game-design §12.3)
  # A home army keeps building up before it marches out.
  if a.units.size()<int(d.recruitment.garrison_units) and look.enemies.is_empty(): return false
  var tries = 0

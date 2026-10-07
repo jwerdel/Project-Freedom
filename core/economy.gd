@@ -49,9 +49,11 @@ static func settlement_income(state,id: String) -> Dictionary:
  var factor = float(t.economic_factor)
  # Climate (game-design §10.9): land of another culture yields less until it converts (core/land.gd).
  var climate = Land.climate_factor(state,id) if state.get("land") != null else 1.0
- var raw = ((base+tax)*(1.0+bonus+e.income_pct)+e.income)*factor*climate
+ # Levies serving away from home (core/hosts.gd): the young men are gone, production drops.
+ var levy = load("res://core/hosts.gd").production_factor(s) if int(s.get("levied",0))>0 else 1.0
+ var raw = ((base+tax)*(1.0+bonus+e.income_pct)+e.income)*factor*climate*levy
  var ceiling = float(t.income_ceiling[i])
- return {"total":int(round(minf(raw,ceiling))),"base":base,"tax":tax,"buildings":e.income,"building_pct":e.income_pct,"economic_factor":factor,"climate":climate,"resource_bonus":bonus,"ceiling":ceiling,"capped":raw>ceiling}
+ return {"total":int(round(minf(raw,ceiling))),"base":base,"tax":tax,"buildings":e.income,"building_pct":e.income_pct,"economic_factor":factor,"climate":climate,"levy":levy,"resource_bonus":bonus,"ceiling":ceiling,"capped":raw>ceiling}
 
 static func building_upkeep(state,id: String) -> int:
  return Buildings.upkeep(state,id)
@@ -72,6 +74,11 @@ static func faction_ledger(state,faction: String) -> Dictionary:
   var up = building_upkeep(state,id)
   if up>0: expenses.append({"label":id,"amount":up,"kind":"buildings"})
  for army_id in state.armies_of(faction): expenses.append({"label":army_id,"amount":army_upkeep(state,army_id),"kind":"army"})
+ # Trade agreements (core/diplomacy.gd; tariffs at war) and title tolls (core/titles.gd).
+ if state.get("diplomacy") != null and not state.diplomacy.is_empty():
+  for t in load("res://core/diplomacy.gd").trade_income(state,faction): income.append({"label":t.partner,"amount":int(t.amount),"kind":"trade"})
+  var toll = load("res://core/titles.gd").toll_income(state,faction)
+  if toll>0: income.append({"label":"tolls","amount":toll,"kind":"title"})
  var inc = 0
  var exp = 0
  for e in income: inc += e.amount

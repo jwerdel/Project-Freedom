@@ -12,6 +12,7 @@ var army_id := ""
 var faction := {}
 var selected := false
 var banner_scale := 1.0
+var host_role := "" # "leader" or "member" of a Host (war-and-realm §2.5), "" otherwise
 
 func _init(id: String,faction_data: Dictionary,tip: String):
  army_id = id
@@ -30,6 +31,11 @@ func set_banner_scale(s: float):
  banner_scale = s
  custom_minimum_size = (BASE+Vector2(10,8))*s
  size = custom_minimum_size
+ queue_redraw()
+
+func set_host(role: String):
+ if role == host_role: return
+ host_role = role
  queue_redraw()
 
 func set_selected(on: bool):
@@ -62,3 +68,13 @@ func _draw():
  var outline = pts.duplicate()
  outline.append(pts[0])
  draw_polyline(outline,trim,maxf(1.5,(2.6 if selected else 1.8)*s))
+ # A Host: the commanding lord's banner carries a gold star, its armies a gold pip.
+ if host_role == "leader":
+  var sc = Vector2(cx+w*0.5+2*s,top+2*s)
+  var star = PackedVector2Array()
+  for i in 10:
+   var rr = (6.0 if i%2 == 0 else 2.6)*s
+   star.append(sc+Vector2.from_angle(-PI*0.5+i*PI/5.0)*rr)
+  draw_colored_polygon(star,Color("f2cf6a"))
+ elif host_role == "member":
+  draw_circle(Vector2(cx+w*0.5+1*s,top+3*s),3.0*s,Color("f2cf6a"))

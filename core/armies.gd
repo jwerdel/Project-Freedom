@@ -102,10 +102,19 @@ static func recruit_source(state,ctx: Dictionary,unit_id: String) -> String:
    if p>q or (p == q and (sid == ctx.region or (best != ctx.region and sid<best))): best = sid
  return best
 
-static func recruitable_types() -> Array:
+# The unit types a faction can ever recruit: its culture's roster (levies come only from the banners),
+# or the generic units when it has no roster (the test map). Without a faction: every generic type.
+static func recruitable_types(faction := "") -> Array:
  var out = []
+ var R = load("res://core/rosters.gd")
+ var cul = str(WorldMap.faction(faction).get("culture","")) if faction != "" else ""
+ if faction != "" and R.has_roster(cul):
+  for id in R.units_of(cul):
+   if not bool(UnitTypes.get_type(id).get("levy",false)): out.append(id)
+  return out
  for id in UnitTypes.ids():
-  if UnitTypes.get_type(id).recruitment != null: out.append(id)
+  var u = UnitTypes.get_type(id)
+  if u.recruitment != null and str(u.get("culture","")) == "": out.append(id)
  return out
 
 # The building level that unlocks a unit, for locked reasons ("Requires Barracks: Garrison").
@@ -188,7 +197,7 @@ static func options(state,army_id: String,mode := "local") -> Array:
  var out = []
  var a = army(state,army_id)
  var extra = overflow_turns(a.queue.size(),capacity(state,army_id))
- for id in recruitable_types():
+ for id in recruitable_types(a.faction):
   var u = UnitTypes.get_type(id)
   var check = can_recruit(state,army_id,id,mode)
   out.append({"unit":id,"name":u.display_name,"cost":mode_cost(id,mode),"turns":mode_turns(id,mode)+extra,"overflow":extra>0,"mode":mode,
@@ -341,27 +350,65 @@ static func can_raise(state,faction: String,settlement_id: String) -> Dictionary
  var reasons = []
  var r = data().armies
  if not state.settlements.has(settlement_id) or state.settlements[settlement_id].owner != faction: return {"ok":false,"reasons":["Not your settlement"]}
- if armies_of(state,faction).size()>=int(r.max_per_faction): reasons.append("Army limit reached (%d, placeholder)" % int(r.max_per_faction))
+ var cap = lord_army_cap(state,faction)
+ if lord_armies(state,faction).size()>=cap: reasons.append("Army limit reached (%d lord armies at your Realm Standing)" % cap)
  if not Movement.garrison_of(state,settlement_id).is_empty(): reasons.append("An army is already garrisoned here")
  if int(state.treasury.get(faction,0))<0: reasons.append("In debt: no new armies until the treasury is out of debt")
  elif int(state.treasury.get(faction,0))<int(r.general_cost): reasons.append("Not enough gold (%d needed)" % int(r.general_cost))
  return {"ok":reasons.is_empty(),"reasons":reasons}
 
-# Hire a general at a settlement: a new army, garrisoned there with no units yet.
-static func raise_army(state,faction: String,settlement_id: String) -> Dictionary:
+# Lord-led armies (detachments under captains do not count; game-design §12.3).
+static func lord_armies(state,faction: String) -> Array:
+ return armies_of(state,faction).filter(func(id): return not bool(state.army_state[id].get("captain",false)))
+
+# The lord-army cap: Realm Standing (game-design §11.6, war-and-realm §2.5), never above the
+# max_per_faction override (soak scaling) when that is set higher than the default.
+static func lord_army_cap(state,faction: String) -> int:
+ if state.get("courts") == null or state.courts.is_empty(): return int(data().armies.max_per_faction)
+ var c = load("res://core/realm_standing.gd").cap(state,faction,"lord_armies")
+ return maxi(c,int(data().armies.max_per_faction)) if int(data().armies.max_per_faction)>3 else c
+
+# Court members who could lead a new army: idle adults, generals first.
+static func general_candidates(state,faction: String) -> Array:
+ if state.get("courts") == null or state.courts.is_empty(): return []
+ var C = load("res://core/court.gd")
+ var out = C.members(state,faction).filter(func(id):
+  var c = state.characters[id]
+  return C.is_adult(c) and str(c.army) == "" and not str(c.role).begins_with("prisoner") and str(c.role) != "exile" and int(c.defeated_until)<0)
+ out.sort_custom(func(a,b):
+  var ca = state.characters[a]
+  var cb = state.characters[b]
+  if (ca.career == "general") != (cb.career == "general"): return ca.career == "general"
+  if (C.ruler(state,faction) == a) != (C.ruler(state,faction) == b): return C.ruler(state,faction) != a
+  return int(ca.level)>int(cb.level) or (int(ca.level) == int(cb.level) and a<b))
+ return out
+
+# Hire a general at a settlement: a new army, garrisoned there with no units yet. The general comes from
+# the court (character, or the best idle adult); with nobody free a lesser noble joins to lead it.
+static func raise_army(state,faction: String,settlement_id: String,character := "") -> Dictionary:
  var check = can_raise(state,faction,settlement_id)
  if not check.ok: return check
  var n = 1
  while state.army_state.has("%s_army_%d" % [faction,n]): n += 1
  var id = "%s_army_%d" % [faction,n]
  var name = general_name(state,faction)
+ var cid = ""
+ if state.get("courts") != null and not state.courts.is_empty():
+  var C = load("res://core/court.gd")
+  var cands = general_candidates(state,faction)
+  cid = character if character in cands else (cands[0] if not cands.is_empty() else "")
+  if cid == "": cid = C.new_character(state,faction,{"name":name.split(" ")[maxi(0,name.split(" ").size()-2)] if name.split(" ").size()>1 else name,"gender":"m","age":26.0,"career":"general","loyalty":int(C.data().loyalty.courtier_start)})
+  name = C.full_name(state.characters[cid])
  var a = Movement.new_army_state(faction,WorldMap.settlement_position(settlement_id))
- a.merge({"display_name":"Army of %s" % name,"commander":{"name":name,"rank":1},"units":[],"queue":[]})
+ a.merge({"display_name":"Army of %s" % name,"commander":{"name":name,"rank":maxi(1,int(state.characters[cid].level) if cid != "" else 1),"character":cid},"units":[],"queue":[]})
  a.garrison = settlement_id
  state.treasury[faction] -= int(data().armies.general_cost)
  state.army_state[id] = a
  state.armies.append(id)
- return {"ok":true,"reasons":[],"army":id,"name":name}
+ if cid != "":
+  state.characters[cid].army = id
+  load("res://core/court.gd").set_role(state,cid,"general:"+id)
+ return {"ok":true,"reasons":[],"army":id,"name":name,"character":cid}
 
 # --- Helpers for the campaign AI (core/ai.gd) -----------------------------------------------
 

@@ -119,6 +119,18 @@ static func settlements_near(p: Vector2,radius: float) -> Array:
  var out = []
  var lo = Vector2i(((p-Vector2.ONE*radius)/BUCKET).floor())
  var hi = Vector2i(((p+Vector2.ONE*radius)/BUCKET).floor())
+ # A wide radius (war range, muster notice) covers more buckets than there are settlements: scan the
+ # settlements instead, in the same order the bucket walk gives (bucket row, column, then load order).
+ if (hi.x-lo.x+1)*(hi.y-lo.y+1)>_settlement_ids.size():
+  var keyed = []
+  for i in _settlement_ids.size():
+   var id = _settlement_ids[i]
+   if _positions[id].distance_to(p)>radius: continue
+   var b = Vector2i((_positions[id]/BUCKET).floor())
+   keyed.append([b.y,b.x,i,id])
+  keyed.sort()
+  for k in keyed: out.append(k[3])
+  return out
  for bz in range(lo.y,hi.y+1):
   for bx in range(lo.x,hi.x+1):
    for id in _buckets.get(Vector2i(bx,bz),[]):

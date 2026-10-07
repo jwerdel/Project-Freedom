@@ -12,7 +12,7 @@ const SaveCodec = preload("res://core/save_codec.gd")
 const GameState = preload("res://core/game_state.gd")
 const WorldMap = preload("res://core/world_map.gd")
 const MapRegistry = preload("res://core/map_registry.gd")
-const SCHEMA = 5
+const SCHEMA = 6
 const OLDEST = 1 # oldest schema a migration chain still reaches
 const DIR = "user://saves"
 const AUTOSAVES = 3
@@ -22,7 +22,7 @@ const BACKDROP = Vector2i(960,600)
 # Migration hook: migrations()[n] turns a schema-n save dictionary into schema n+1. Add one each
 # time SCHEMA rises (and keep OLDEST at the first version still convertible).
 static func migrations() -> Dictionary:
- return {1:_v1_to_v2,2:_v2_to_v3,3:_v3_to_v4,4:_v4_to_v5}
+ return {1:_v1_to_v2,2:_v2_to_v3,3:_v3_to_v4,4:_v4_to_v5,5:_v5_to_v6}
 
 # Schema 2 (campaign AI block): pending AI attacks on the player and the camera view are saved.
 # A schema-1 save has neither: no pending attacks, and the default camera.
@@ -49,6 +49,12 @@ static func _v3_to_v4(d: Dictionary) -> Dictionary:
 # Schema 5 (land conversion): each region's land culture. Older saves start with every region's land
 # as its owner's culture (GameState.from_dict fills it in when absent).
 static func _v4_to_v5(d: Dictionary) -> Dictionary:
+ return d
+
+# Schema 6 (characters and realm, Part 4): courts, reputation, diplomacy, vassals, titles, musters and
+# hosts. An older save gets fresh courts and a neutral diplomatic world (GameState.from_dict seeds them
+# when absent, as at campaign start).
+static func _v5_to_v6(d: Dictionary) -> Dictionary:
  return d
 
 static var dir := DIR # tests and captures point this elsewhere

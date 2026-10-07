@@ -138,7 +138,9 @@ func _build_menu():
  row.add_theme_constant_override("separation",6)
  var items = [["menu","faction","Menu (Esc)\nSave, load, settings, quit",true],["advisor","objectives","Advisor",false],
   ["help","finance","Help pages\nThe encyclopedia",false],["units","lords","Unit and spell browser",false],
-  ["camera","year","Camera settings\nFollowing AI armies, AI turn speed, your armies' speed, map labels",true]]
+  ["camera","year","Camera settings\nFollowing AI armies, AI turn speed, your armies' speed, map labels",true],
+  ["court","lords","Court\nYour family and court: heirs, marriages, careers, governors",true],
+  ["realm","tower","The Realm\nVassals, titles, Realm Standing, banners and hosts",true]]
  for it in items:
   var b = _round(it[1],it[2],44,it[3])
   b.name = "Top_"+it[0]
@@ -146,6 +148,8 @@ func _build_menu():
   row.add_child(b)
  top_buttons.menu.pressed.connect(func(): menu_requested.emit())
  top_buttons.camera.pressed.connect(func(): open_camera_settings())
+ top_buttons.court.pressed.connect(func(): open_court())
+ top_buttons.realm.pressed.connect(func(): open_realm())
  _anchor(row,0,0,0,0,Rect2(14,10,0,0))
 
 func _build_resources():
@@ -674,6 +678,26 @@ func show_army(army_id: String,location: String):
   disband.tooltip_text = "Disband the selected unit (Ctrl+P); its men return to the population of this region." if selected_unit>=0 else "Click a unit card to select it."
   disband.pressed.connect(disband_selected)
   actions.add_child(disband)
+  # Hosts (war-and-realm §2.5): this lord commands the armies nearby as one Host.
+  var host = Button.new()
+  host.name = "HostButton"
+  host.focus_mode = Control.FOCUS_NONE
+  var in_host = data.host_of(army_id)
+  var near = data.armies_near(army_id)
+  if in_host != "":
+   host.text = "Leave Host"
+   host.tooltip_text = "Leave the Host of %s." % data.army(in_host).display_name if in_host != army_id else "Dissolve this Host."
+   host.pressed.connect(func():
+    data.leave_host(army_id)
+    show_army(army_id,army_location))
+  else:
+   host.text = "Form Host"
+   host.disabled = near.is_empty() or bool(data.state.army_state[army_id].get("captain",false))
+   host.tooltip_text = "Form a Host under this lord with your armies nearby (%d): they move together and fight as one battle." % near.size() if not near.is_empty() else "Form a Host\nNo other army of yours is near."
+   host.pressed.connect(func():
+    data.form_host(army_id,near)
+    show_army(army_id,army_location))
+  actions.add_child(host)
   if not where.ok:
    var why = UiKit.label("Local: %s" % where.reason,13,Color("ef8a6a"))
    why.name = "RecruitReason"
@@ -1087,7 +1111,15 @@ func _recruitment_drawer(army_id: String) -> Control:
    why.mouse_filter = Control.MOUSE_FILTER_PASS
    col.add_child(why)
   row.add_child(col)
- box.add_child(row)
+ # Culture rosters run to 16 units: the row scrolls sideways (TW:WH3's recruitment bar) instead of
+ # widening the panel past the screen edge.
+ var scroll = ScrollContainer.new()
+ scroll.name = "RecruitScroll"
+ scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+ scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+ scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ scroll.add_child(row)
+ box.add_child(scroll)
  box.add_child(UiKit.divider(colors.trim))
  return box
 
@@ -1153,7 +1185,16 @@ func open_battle_flow(army_id: String,point: Vector2,target: Dictionary):
  if target.needs_war:
   battle_box.add_child(UiKit.header("This means war with %s" % target.faction_name,22))
   battle_box.add_child(UiKit.divider(colors.trim))
-  var t = UiKit.label("Attacking %s declares war on them. Your lord will march on the target, over as many turns as it takes, and the battle begins when the lord arrives. (Diplomacy does not exist yet: under the temporary rule there is no peace until it does.)" % target.faction_name,15)
+  # The declaration (diplomacy-design §7; the temporary "attacking declares war" rule is retired):
+  # its justification or reputation cost, a treaty it would break (betrayal), the allies it calls.
+  var pv = data.declaration_preview(target.faction)
+  var lines = ["Attacking %s means declaring war on them. Your lord will march on the target, over as many turns as it takes, and the battle begins when the lord arrives." % target.faction_name]
+  if pv.betrayal != "": lines.append("BETRAYAL: you have %s with them. Breaking it means war with every faction and the loss of every ally and trade partner." % pv.betrayal)
+  elif pv.justified: lines.append("Justified: "+", ".join(pv.justifications.map(func(j): return j.text))+".")
+  else: lines.append("No justification: your reputation suffers and their allies see an unprovoked war.")
+  if not pv.ally_names.is_empty(): lines.append("Their allies may join: "+", ".join(pv.ally_names)+".")
+  var t = UiKit.label("
+".join(lines),15)
   t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
   t.custom_minimum_size = Vector2(900,0)
   battle_box.add_child(t)
@@ -1162,8 +1203,9 @@ func open_battle_flow(army_id: String,point: Vector2,target: Dictionary):
   yes.name = "DeclareWar"
   yes.text = "Declare war"
   yes.focus_mode = Control.FOCUS_NONE
+  yes.text = "Betray them" if pv.betrayal != "" else "Declare war"
   yes.pressed.connect(func():
-   data.declare_war(target.faction)
+   data.declare_war(target.faction,pv.betrayal != "")
    target.needs_war = false
    close_battle()
    war_declared_for.emit(army_id,point,target))
@@ -2037,6 +2079,12 @@ func close_top_panel() -> bool:
  if alert_visible():
   _next_alert()
   return true
+ if court_visible():
+  if not court_screen.close_popup(): close_court()
+  return true
+ if realm_visible():
+  close_realm()
+  return true
  if diplomacy_visible():
   if diplomacy_screen.confirm and is_instance_valid(diplomacy_screen.confirm):
    diplomacy_screen.confirm.queue_free()
@@ -2252,3 +2300,78 @@ func hide_turn_banner():
 
 func turn_banner_text() -> String:
  return turn_banner_title.text if turn_banner != null and turn_banner.visible else ""
+
+# --- Court and Realm full screens (ui/court_screen.gd, ui/realm_screen.gd) -----------------------------
+
+const CourtScreen = preload("res://ui/court_screen.gd")
+const RealmScreen = preload("res://ui/realm_screen.gd")
+var court_screen: Control
+var realm_screen: Control
+var absorb_box: Control
+
+func open_court(focus := ""):
+ close_court()
+ close_dropdown()
+ court_screen = CourtScreen.new(data,colors,focus)
+ court_screen.closed.connect(close_court)
+ court_screen.details_requested.connect(func(id): open_character(id,"details"))
+ add_child(court_screen)
+
+func close_court():
+ if court_screen:
+  remove_child(court_screen)
+  court_screen.queue_free()
+ court_screen = null
+
+func court_visible() -> bool:
+ return court_screen != null
+
+func open_realm(tab := "vassals"):
+ close_realm()
+ close_dropdown()
+ realm_screen = RealmScreen.new(data,colors,tab)
+ realm_screen.closed.connect(close_realm)
+ add_child(realm_screen)
+
+func close_realm():
+ if realm_screen:
+  remove_child(realm_screen)
+  realm_screen.queue_free()
+ realm_screen = null
+
+func realm_visible() -> bool:
+ return realm_screen != null
+
+# A fallen house awaits your choice (game-design §4.10): leave the family in power as a vassal, take it
+# into your court, or remove it (exile, imprison, execute; reputation effects).
+func show_absorptions():
+ var list = data.absorptions()
+ if list.is_empty() or (absorb_box != null and is_instance_valid(absorb_box)): return
+ var a = list[0]
+ absorb_box = Widgets.Framed.new("main",colors.trim,Color(colors.panel,0.98))
+ absorb_box.name = "AbsorbDialog"
+ var v = VBoxContainer.new()
+ v.add_theme_constant_override("separation",8)
+ absorb_box.add_child(v)
+ v.add_child(UiKit.header("The fall of %s" % a.name,20))
+ var t = UiKit.label("With %s taken, their house has no lands left. What becomes of their family?" % a.settlement_name,14,UiKit.TEXT)
+ t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+ t.custom_minimum_size.x = 460
+ v.add_child(t)
+ for c in [["vassal","Leave them in power as vassals","They keep %s and swear fealty to you (Merciful)." % a.settlement_name],["court","Take them into your court","Their family joins your court with low loyalty."],["exile","Exile them","They leave (a little Cruel)."],["imprison","Imprison them","Captives you can bargain with (Cruel)."],["execute","Execute them","The line ends (very Cruel)."]]:
+  var b = Button.new()
+  b.name = "Absorb_"+c[0]
+  b.text = c[1]
+  b.tooltip_text = c[2]
+  b.focus_mode = Control.FOCUS_NONE
+  var choice = c[0]
+  b.pressed.connect(func():
+   data.resolve_absorption(a.fallen,choice)
+   absorb_box.queue_free()
+   absorb_box = null
+   show_absorptions())
+  v.add_child(b)
+ add_child(absorb_box)
+ absorb_box.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+ absorb_box.grow_horizontal = Control.GROW_DIRECTION_BOTH
+ absorb_box.grow_vertical = Control.GROW_DIRECTION_BOTH

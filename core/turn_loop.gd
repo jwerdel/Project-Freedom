@@ -9,6 +9,10 @@ extends RefCounted
 #       attacks on a human player wait in state.pending_battles for the player's answer.
 #   11. the loss condition (grace periods, destruction; core/realm.gd).
 #   12. generals with auto-allocation on (all AI generals) spend their skill points (core/characters.gd).
+#   9b. the realm (Part 4): courts age and grow (core/court.gd), envoys arrive and treaties expire
+#       (core/diplomacy.gd), vassals pay tribute and their loyalty moves (core/vassals.gd), levies set
+#       out and Hosts follow their leaders (core/hosts.gd), titles change hands (core/titles.gd).
+#   10b. the AI's court, diplomacy, vassal and banner layer (core/ai_realm.gd).
 # Randomness is only drawn from generators seeded by the campaign seed and year (chronicle
 # wording, AI choices).
 
@@ -22,6 +26,12 @@ const Ai = preload("res://core/ai.gd")
 const Realm = preload("res://core/realm.gd")
 const Land = preload("res://core/land.gd")
 const Characters = preload("res://core/characters.gd")
+const Court = preload("res://core/court.gd")
+const Diplomacy = preload("res://core/diplomacy.gd")
+const Vassals = preload("res://core/vassals.gd")
+const Hosts = preload("res://core/hosts.gd")
+const Titles = preload("res://core/titles.gd")
+const AiRealm = preload("res://core/ai_realm.gd")
 
 # Returns a report: {year (the year that ended), ledgers, growth, completed, moves (army id ->
 # points walked), recruited, replenished, sieges, entries, ai (Ai.take_turns report)}.
@@ -115,7 +125,7 @@ static func _begin_rest_sliced(state,ended: int,ledgers: Dictionary,slicer) -> D
  return ctx
 
 # Steps 1-9 as stages (end_turn runs them in a row; end_turn_sliced may give a frame back between).
-const BEGIN_STAGES = 10
+const BEGIN_STAGES = 11
 static func _begin_stage(k: int,state,ctx: Dictionary):
  match k:
   0:
@@ -150,10 +160,13 @@ static func _begin_stage(k: int,state,ctx: Dictionary):
    entries.append_array(Chronicle.year_entries(state,ctx.ended,ctx.ledgers,ctx.growth,rng))
    state.chronicle.append_array(entries)
    ctx.entries = entries
+  10: ctx.realm = realm_year(state,ctx)
 
 # Steps 10 (the AI phase's results) and 11 (the loss condition).
 static func _finish(state,ctx: Dictionary,ai: Dictionary) -> Dictionary:
  var entries = ctx.entries
+ # 10b. The AI's court, diplomacy, vassals and banners.
+ if ai.get("ran",true): ai.realm = AiRealm.take_turns(state,state.factions())
  if ai.get("ran",true):
   state.pending_battles = []
   for pb in ai.pending:
@@ -168,4 +181,24 @@ static func _finish(state,ctx: Dictionary,ai: Dictionary) -> Dictionary:
  var realm_entries = Realm.entries(state,state.year,ctx.debt+realm)
  state.chronicle.append_array(realm_entries)
  entries.append_array(realm_entries)
- return {"year":ctx.ended,"ledgers":ctx.ledgers,"growth":ctx.growth,"completed":ctx.completed,"moves":ctx.moves,"recruited":ctx.recruited,"replenished":ctx.replenished,"sieges":ctx.sieges,"land":ctx.land,"entries":entries,"ai":ai,"debt":ctx.debt,"realm":realm}
+ return {"year":ctx.ended,"ledgers":ctx.ledgers,"growth":ctx.growth,"completed":ctx.completed,"moves":ctx.moves,"recruited":ctx.recruited,"replenished":ctx.replenished,"sieges":ctx.sieges,"land":ctx.land,"entries":entries,"ai":ai,"debt":ctx.debt,"realm":realm,"court":ctx.realm}
+
+# 9b. The realm's yearly processing; notable events for the player go to the chronicle ("court").
+static func realm_year(state,ctx: Dictionary) -> Dictionary:
+ var out = {"court":Court.end_turn(state),"diplomacy":Diplomacy.end_turn(state),"vassals":Vassals.end_turn(state),"hosts":Hosts.end_turn(state),"titles":Titles.end_turn(state)}
+ var me = state.player_faction
+ var year = ctx.ended
+ var WorldMap = load("res://core/world_map.gd")
+ var news = []
+ for e in out.court:
+  if e.faction == me and e.kind in ["birth","courtier","career","returned"]: news.append(Chronicle.entry(year,"court",{"birth":"A child is born","courtier":"A courtier asks to join","career":"A path to choose","returned":"Returned"}[e.kind],e.text,me))
+ for e in out.vassals:
+  if e.liege == me: news.append(Chronicle.entry(year,"court","Your vassal" if e.kind != "warning" else "A vassal wavers",e.text,me))
+ for e in out.titles:
+  var t = Titles.data().titles[e.title].name
+  news.append(Chronicle.entry(year,"world","%s %s" % [t,"claimed" if e.kind == "earned" else "lost"],"%s %s the title %s." % [WorldMap.faction(e.faction).name,"claims" if e.kind == "earned" else "loses",t]))
+ for r in out.diplomacy.envoys:
+  if r.from == me: news.append(Chronicle.entry(year,"court","Your envoy arrives","Your envoy reached %s: %s." % [WorldMap.faction(r.to).name,"they accept" if r.ok else ("they refuse (%s)" % r.reason if r.reason != "" else "they refuse")],me))
+ state.chronicle.append_array(news)
+ ctx.entries.append_array(news)
+ return out

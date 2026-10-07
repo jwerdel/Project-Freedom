@@ -9,8 +9,34 @@ const EXPECTED = ["archers","cavalry","commander","heavy_infantry","peasant_levy
 func after_each():
  UnitTypes.reset()
 
+func generic_ids() -> Array:
+ return UnitTypes.ids().filter(func(id): return str(UnitTypes.get_type(id).get("culture","")) == "")
+
 func test_all_expected_unit_types_exist():
- assert_eq(UnitTypes.ids(),EXPECTED)
+ assert_eq(generic_ids(),EXPECTED)
+
+# The culture rosters (docs/v1-content.md §1, generated from data/rosters.json): every culture has at
+# least a levy, a line, an anti-large, a missile, a cavalry or fast unit, an elite and 1-3 monsters;
+# the three playable human rosters are complete (§1.2-1.4).
+func test_culture_rosters_cover_every_role():
+ var rosters = JSON.parse_string(FileAccess.get_file_as_string("res://data/rosters.json"))
+ var counts = {"medieval":17,"roman":16,"greek":15}
+ for cul in rosters.cultures:
+  var units = UnitTypes.ids().filter(func(id): return str(UnitTypes.get_type(id).get("culture","")) == cul)
+  assert_eq(units.size(),rosters.cultures[cul].units.size(),cul+" units generated")
+  if counts.has(cul): assert_eq(units.size(),counts[cul],cul+" roster complete")
+  var roles = units.map(func(id): return str(UnitTypes.get_type(id).role))
+  assert_has(roles,"levy",cul)
+  assert_true(roles.has("line") or roles.has("shock"),cul+" line")
+  assert_has(roles,"anti_large",cul)
+  assert_true(roles.has("missile") or roles.has("skirmish"),cul+" missile")
+  assert_true(roles.has("cav_shock") or roles.has("cav_skirmish") or roles.has("skirmish") or roles.has("flying"),cul+" fast")
+  assert_true(units.any(func(id): return int(UnitTypes.get_type(id).tier)>=3),cul+" elite")
+  var monsters = roles.filter(func(r): return r in ["monster","monster_cav","flying"]).size()
+  assert_between(monsters,1,4,cul+" monsters")
+  for id in units:
+   var u = UnitTypes.get_type(id)
+   assert_true(u.battle.melee_attack>0 and u.recruitment.cost>0 and u.placeholder_stats.upkeep>0,id)
 
 func test_unit_types_have_required_fields_and_placeholder_stats():
  for id in UnitTypes.ids():
@@ -28,7 +54,7 @@ func test_every_unit_visual_builds():
 
 func test_infantry_types_differ_in_loadout_or_outfit():
  var seen = {}
- for id in UnitTypes.ids():
+ for id in generic_ids():
   var u = UnitTypes.get_type(id)
   var look = [u.visual,u.outfit,u.loadout]
   assert_false(seen.has(str(look)),"%s looks like %s" % [id,seen.get(str(look),"")])

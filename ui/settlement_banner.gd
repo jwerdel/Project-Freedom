@@ -85,6 +85,13 @@ func _draw():
   draw_circle(p,3.0,Color("f2cf6a") if i<int(settlement.level) else Color(0.35,0.3,0.25))
  # Something can be built or upgraded here (the player's own settlements): the TW:WH3 green hammer.
  if settlement.get("upgrade_available",false): Icons.upgrade_hammer(self,Vector2(plate.end.x-2,plate.position.y-2),9.0)
+ # A muster point: the banners gather here (visible to the world).
+ if str(settlement.get("muster","")) != "":
+  var mt = Rect2(Vector2(cx-40,plate.position.y-18),Vector2(80,15))
+  draw_rect(mt,Color(UiKit.colors(settlement.faction).primary.darkened(0.3),0.95))
+  draw_rect(mt,Color("f2cf6a"),false,1.2)
+  var mw = UiKit.FONT_BOLD.get_string_size("MUSTER",HORIZONTAL_ALIGNMENT_LEFT,-1,11).x
+  draw_string(UiKit.FONT_BOLD,Vector2(cx-mw*0.5,mt.position.y+12),"MUSTER",HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color("f2cf6a"))
  # Under siege: a red tag under the pips with the besieger and the turns held.
  var sg = settlement.get("siege",{})
  if not sg.is_empty():

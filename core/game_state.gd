@@ -30,6 +30,19 @@ var pending_battles = [] # AI attacks on the human player awaiting the player's 
 var grace = {}      # faction -> End Turns left to retake a settlement (core/realm.gd)
 var destroyed = []  # factions destroyed (loss condition)
 var land = {}       # region -> {from, to, value, built}: its land's culture and conversion (core/land.gd)
+# Characters and realm (Part 4, 2026-10-06): core/court.gd, core/reputation.gd, core/diplomacy.gd,
+# core/vassals.gd, core/titles.gd, core/hosts.gd.
+var characters = {}  # character id -> character (core/court.gd)
+var courts = {}      # faction -> {ruler, heir, members}
+var next_character := 1
+var reputation = {}  # faction -> {ruler, house, deeds, ruler_since}
+var diplomacy = {}   # treaties, agreements, attitude, envoys, contacts, ... (core/diplomacy.gd)
+var vassals = {}     # vassal faction -> {liege, loyalty, log, econ_goal, goal, ...}
+var tributes = []    # [{from, to, amount, until}]
+var titles = {}      # title id -> {faction, character, since}
+var musters = {}     # faction -> the banners called (core/hosts.gd)
+var hosts = {}       # leader army id -> {faction, members}
+var absorptions = [] # fallen houses awaiting the player's choice: [{fallen, settlement, turn}]
 
 # A new campaign with a random campaign seed (stored in the state; every later random draw is
 # seeded from it, so a campaign replays exactly from its seed).
@@ -64,9 +77,19 @@ static func from_data(path := START,campaign_seed := 0) -> RefCounted:
   Buildings.refresh(s,id)
  s.armies = data.get("armies",[]).duplicate()
  s.road_level = int(data.get("road_level",0))
+ var Rosters = load("res://core/rosters.gd")
  for id in s.armies:
   var p = data.get("army_positions",{}).get(id,[0,0])
   var a = Armies.from_data(id)
+  # Culture rosters (docs/v1-content.md §1): the generic starting units become the faction's own.
+  var cul = str(WorldMap.faction(a.faction).get("culture",""))
+  for u in a.units:
+   var eq = Rosters.equivalent(u.unit,cul)
+   if eq == u.unit: continue
+   var share = float(u.men)/maxf(1.0,float(u.max_men))
+   u.unit = eq
+   u.max_men = int(UnitTypes.get_type(eq).size)
+   u.men = int(round(u.max_men*share))
   var pos = Vector2(p[0],p[1])
   a.merge(Movement.new_army_state(a.faction,pos))
   # An army starting on its own settlement starts garrisoned there.
@@ -78,8 +101,21 @@ static func from_data(path := START,campaign_seed := 0) -> RefCounted:
  # warning from turn 1); later points are the player's to spend.
  var Characters = load("res://core/characters.gd")
  for id in s.army_state: Characters.auto_allocate(s,id)
+ init_realm(s)
  s.chronicle = load("res://core/chronicle.gd").opening_entries()
  return s
+
+# Courts, reputation and diplomacy at campaign start (and for saves made before them).
+static func init_realm(s):
+ load("res://core/reputation.gd").init(s)
+ load("res://core/diplomacy.gd").init(s)
+ load("res://core/court.gd").init(s)
+ s.vassals = {}
+ s.tributes = []
+ s.titles = {}
+ s.musters = {}
+ s.hosts = {}
+ s.absorptions = []
 
 func factions() -> Array:
  var out = treasury.keys()
@@ -107,7 +143,9 @@ func armies_of(faction: String) -> Array:
 # Everything that defines the state: determinism checks and save files (core/save_system.gd).
 # Nothing the campaign needs may live outside these fields.
 func to_dict() -> Dictionary:
- return {"map_id":map_id,"map_version":map_version,"seed":seed,"year":year,"turn":turn,"player_faction":player_faction,"treasury":treasury.duplicate(true),"settlements":settlements.duplicate(true),"armies":armies.duplicate(),"army_state":army_state.duplicate(true),"road_level":road_level,"wars":wars.duplicate(),"battles":battles,"chronicle":chronicle.duplicate(true),"last_ledgers":last_ledgers.duplicate(true),"pending_battles":pending_battles.duplicate(true),"grace":grace.duplicate(),"destroyed":destroyed.duplicate(),"land":land.duplicate(true)}
+ return {"map_id":map_id,"map_version":map_version,"seed":seed,"year":year,"turn":turn,"player_faction":player_faction,"treasury":treasury.duplicate(true),"settlements":settlements.duplicate(true),"armies":armies.duplicate(),"army_state":army_state.duplicate(true),"road_level":road_level,"wars":wars.duplicate(),"battles":battles,"chronicle":chronicle.duplicate(true),"last_ledgers":last_ledgers.duplicate(true),"pending_battles":pending_battles.duplicate(true),"grace":grace.duplicate(),"destroyed":destroyed.duplicate(),"land":land.duplicate(true),
+  "characters":characters.duplicate(true),"courts":courts.duplicate(true),"next_character":next_character,"reputation":reputation.duplicate(true),"diplomacy":diplomacy.duplicate(true),
+  "vassals":vassals.duplicate(true),"tributes":tributes.duplicate(true),"titles":titles.duplicate(true),"musters":musters.duplicate(true),"hosts":hosts.duplicate(true),"absorptions":absorptions.duplicate(true)}
 
 # The inverse of to_dict (a loaded save).
 static func from_dict(d: Dictionary) -> RefCounted:
@@ -132,6 +170,20 @@ static func from_dict(d: Dictionary) -> RefCounted:
  s.destroyed = d.get("destroyed",[]).duplicate()
  s.land = d.get("land",{}).duplicate(true)
  if s.land.is_empty(): load("res://core/land.gd").init(s) # saves from before land conversion
+ # Courts and realm (save schema 6); saves from before them start them fresh.
+ if d.has("characters"):
+  s.characters = d.characters.duplicate(true)
+  s.courts = d.courts.duplicate(true)
+  s.next_character = int(d.next_character)
+  s.reputation = d.reputation.duplicate(true)
+  s.diplomacy = d.diplomacy.duplicate(true)
+  s.vassals = d.get("vassals",{}).duplicate(true)
+  s.tributes = d.get("tributes",[]).duplicate(true)
+  s.titles = d.get("titles",{}).duplicate(true)
+  s.musters = d.get("musters",{}).duplicate(true)
+  s.hosts = d.get("hosts",{}).duplicate(true)
+  s.absorptions = d.get("absorptions",[]).duplicate(true)
+ else: init_realm(s)
  return s
 
 # A hash of the full state in its saved form: values, int/float types and dictionary order.

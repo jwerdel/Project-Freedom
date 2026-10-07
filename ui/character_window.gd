@@ -88,7 +88,7 @@ func _model_column() -> Control:
  ep.tooltip_text = "Epithets are earned from deeds (the Great, the Wise, the Butcher), not chosen.\nThey come with the character system."
  ep.mouse_filter = Control.MOUSE_FILTER_PASS
  col.add_child(ep)
- var sub = UiKit.label("General of %s" % view.faction_data.name,14,UiKit.TEXT_DIM)
+ var sub = UiKit.label(view.court.role_text if view.has("court") else "General of %s" % view.faction_data.name,14,UiKit.TEXT_DIM)
  sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
  col.add_child(sub)
  var box = SubViewportContainer.new()
@@ -214,6 +214,25 @@ func _details():
   tr.add_child(chip)
  if view.traits.is_empty(): tr.add_child(UiKit.label("No traits yet. Life traits are earned from deeds and events (character system).",14,Color(UiKit.TEXT_DIM,0.75)))
  body.add_child(tr)
+ # Loyalty, every change with its reason, and the character's history (game-design §4.6).
+ if view.has("court"):
+  var cv = view.court
+  body.add_child(UiKit.divider(colors.trim))
+  body.add_child(_section("Loyalty %d" % cv.loyalty))
+  var lb = VBoxContainer.new()
+  lb.name = "LoyaltyBreakdown"
+  for r in cv.loyalty_reasons.slice(0,6): lb.add_child(UiKit.label("%+d  %s" % [int(r.delta),r.reason],13,Color("9fd27f") if int(r.delta)>=0 else Color("ef8a6a")))
+  if cv.loyalty_reasons.is_empty(): lb.add_child(UiKit.label("No changes yet.",13,UiKit.TEXT_DIM))
+  body.add_child(lb)
+  body.add_child(_section("History"))
+  var hb = VBoxContainer.new()
+  hb.name = "CharacterHistory"
+  for h in cv.history.slice(maxi(0,cv.history.size()-6)):
+   var l = UiKit.label("Year %d. %s" % [int(h.year),h.text],13,UiKit.TEXT)
+   l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+   hb.add_child(l)
+  body.add_child(hb)
+ if view.army.is_empty(): return
  body.add_child(UiKit.divider(colors.trim))
  body.add_child(_section("Army"))
  var a = view.army
@@ -242,7 +261,7 @@ func _skills():
  auto.text = "Auto-allocate skill points"
  auto.focus_mode = Control.FOCUS_NONE
  auto.button_pressed = view.auto
- auto.disabled = not view.player_owned
+ auto.disabled = not view.player_owned or view.has("character_id")
  auto.tooltip_text = "Spend this general's skill points automatically at End Turn (and now).\nAlso removes him from the unspent-points warning."
  auto.toggled.connect(func(on):
   data.set_auto_skills(army_id,on)
@@ -292,7 +311,8 @@ func _skill_tile(s: Dictionary) -> Control:
  b.add_theme_font_size_override("font_size",13)
  b.disabled = not (s.available and view.player_owned)
  b.pressed.connect(func():
-  data.take_skill(army_id,s.id)
+  if view.has("character_id"): data.take_character_skill(army_id,s.id)
+  else: data.take_skill(army_id,s.id)
   refresh())
  return b
 

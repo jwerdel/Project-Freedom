@@ -38,6 +38,9 @@ func _initialize():
  for sd in seeds:
   var r = run(sd,turns,verbose)
   all_ms.append_array(r.ms)
+  var tr = {}
+  for k in r.treaties: tr[k] = r.treaties[k]
+  print("REALM %d | realm actions %s | treaties at the end %s | vassals at the end %d (max %d) | betrayers %d | characters %d | marriages %d" % [sd,str(r.realm),str(tr),r.vassals_end,r.vassals_max,r.betrayals,r.characters,r.marriages])
   print("SEED %d | wars %d | battles %d | sieges %d | captures %d | withdrawals %d | landless %d, survived %d, destroyed %s | deserted %d | min treasury %s | eliminated %s | treasury %s | armies %s | settlements %s | stuck %s | idle %s | ai ms avg %.1f max %.1f | end turn ms avg %.1f max %.1f" % [sd,r.wars,r.battles,r.sieges,r.captures,r.withdrawals,r.graces,r.survived,str(r.destroyed),r.deserted,str(r.min_treasury),str(r.eliminated),str(r.treasury),str(r.armies),str(r.owned),str(r.stuck),str(r.idle),_avg(r.ms),r.ms.max(),_avg(r.turn_ms),r.turn_ms.max()])
  var a = run(seeds[0],turns,false)
  var b = run(seeds[0],turns,false)
@@ -55,7 +58,8 @@ func run(sd: int,turns: int,verbose: bool) -> Dictionary:
  var s = GameState.from_data(GameState.START,sd)
  var opts = {"factions":s.factions(),"resolve_player":true}
  var start_factions = s.factions().filter(func(f): return not s.settlements_of(f).is_empty())
- var out = {"wars":0,"battles":0,"sieges":0,"captures":0,"withdrawals":0,"ms":[],"eliminated":[],"stuck":[],"idle":[],"graces":0,"survived":0,"deserted":0,"min_treasury":{},"turn_ms":[]}
+ var out = {"wars":0,"battles":0,"sieges":0,"captures":0,"withdrawals":0,"ms":[],"eliminated":[],"stuck":[],"idle":[],"graces":0,"survived":0,"deserted":0,"min_treasury":{},"turn_ms":[],
+  "realm":{},"peace":0,"marriages":0,"vassals_max":0,"banners":0,"betrayals":0}
  var last_pos = {}
  var still = {}
  var last_act = {}
@@ -66,6 +70,11 @@ func run(sd: int,turns: int,verbose: bool) -> Dictionary:
   out.turn_ms.append((Time.get_ticks_usec()-t_turn)/1000.0)
   out.ms.append(rep.ai.ms)
   if rep.ai.ms>30.0 and verbose: print("  SLOW y%d %.1f ms %s actions %s" % [s.year,rep.ai.ms,str(rep.ai.faction_ms),str(rep.ai.actions.map(func(a): return a.action))])
+  # The realm layer (core/ai_realm.gd): treaties, marriages, vassals, banners.
+  for a in rep.ai.get("realm",{}).get("actions",[]):
+   out.realm[a.action] = int(out.realm.get(a.action,0))+1
+  out.vassals_max = maxi(int(out.vassals_max),s.vassals.size())
+  out.betrayals = s.diplomacy.get("betrayers",[]).size()
   for a in rep.ai.actions:
    match a.action:
     "war": out.wars += 1
@@ -103,6 +112,20 @@ func run(sd: int,turns: int,verbose: bool) -> Dictionary:
   out.treasury[f] = s.treasury[f]
   out.armies[f] = "%d (%d units)" % [Armies.armies_of(s,f).size(),Armies.armies_of(s,f).reduce(func(n,id): return n+s.army_state[id].units.size(),0)]
   out.owned[f] = s.settlements_of(f).size()
+ out.treaties = {}
+ for k in s.diplomacy.get("treaties",{}):
+  var kind = str(s.diplomacy.treaties[k].kind)
+  out.treaties[kind] = int(out.treaties.get(kind,0))+1
+ for k in s.diplomacy.get("agreements",{}):
+  for n in s.diplomacy.agreements[k]:
+   var kind2 = n.get_slice(":",0)
+   out.treaties[kind2] = int(out.treaties.get(kind2,0))+1
+ out.vassals_end = s.vassals.size()
+ out.characters = s.characters.size()
+ out.marriages = 0
+ for id in s.characters:
+  if str(s.characters[id].spouse) != "": out.marriages += 1
+ out.marriages /= 2
  out.hash = SaveCodec.to_json(s.to_dict()).hash()
  return out
 

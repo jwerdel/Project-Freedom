@@ -290,15 +290,19 @@ static func _sync_blocks(state):
   if old != null: _blk_add(key,old[0],old[1],sr,-1)
   _blk_add(key,owner,WorldMap.settlement_position(sid),sr,1)
  var ar = float(data().armies.block_radius)
+ # Large armies block passage (war-and-realm §2.6): the zone of control grows with the army's size.
+ var Hosts = load("res://core/hosts.gd") if state.get("courts") != null and not state.courts.is_empty() else null
  for id in state.army_state:
   var key = "a:"+id
   seen[key] = true
   var o = state.army_state[id]
   var at = Vector2(o.position[0],o.position[1])
+  var rad = Hosts.zoc_radius(state,id,ar) if Hosts != null else ar
   var old = areas.get(key)
-  if old != null and old[0] == o.faction and old[1] == at: continue
+  if old != null and old[0] == o.faction and old[1] == at and float(old[3] if old.size()>3 else ar) == rad: continue
   if old != null: _blk_add(key,old[0],old[1],ar,-1)
-  _blk_add(key,o.faction,at,ar,1)
+  _blk_add(key,o.faction,at,rad,1)
+  areas[key].append(rad)
  for key in areas.keys():
   if not seen.has(key): _blk_add(key,areas[key][0],areas[key][1],0.0,-1)
 
@@ -639,9 +643,11 @@ static func end_turn(state) -> Dictionary:
  var moves = {}
  var ids = state.army_state.keys()
  ids.sort()
+ var Hosts = load("res://core/hosts.gd") if state.get("courts") != null and not state.courts.is_empty() else null
  for id in ids:
   var me = state.army_state[id]
-  me.points = float(me.max_points)
+  # Fast in own and allied land, slow abroad (war-and-realm §2.6; core/hosts.gd move_factor).
+  me.points = float(me.max_points)*(Hosts.move_factor(state,id) if Hosts != null else 1.0)
   if not me.order.is_empty(): moves[id] = advance(state,id)
  return moves
 
