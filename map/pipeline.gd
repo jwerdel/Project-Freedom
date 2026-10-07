@@ -28,6 +28,7 @@ const PASS = 3
 const SETTLEMENT = 4
 const MOUNTAIN = 5
 const WATER = 6
+const MARSH = 7 # open or wooded ground under a swamp or marsh climate (data/movement.json "marsh")
 const MOUNTAIN_ABOVE = 22.0
 const HILLS_ABOVE = 8.0
 # Ground tints of the sketch's "climates" layer (render colours only).
@@ -200,7 +201,7 @@ static func build(map_id: String,bakes := true,progress := Callable()) -> Dictio
  cls.resize(n)
  var colors = PackedByteArray()
  colors.resize(n*3)
- var pal = [Color("8fae5a"),Color("4f7a38"),Color("a69a5e"),Color("b59a6c"),Color("8a8466"),Color("8a7f72"),Color("3f6f8e")]
+ var pal = [Color("8fae5a"),Color("4f7a38"),Color("a69a5e"),Color("b59a6c"),Color("8a8466"),Color("8a7f72"),Color("3f6f8e"),Color("5d6b45")]
  var forest_n = Synthetic._fnl(seed+2,0.05*cell,FastNoiseLite.FRACTAL_FBM,3)
  for i in n:
   var x = i%cols
@@ -247,8 +248,10 @@ static func build(map_id: String,bakes := true,progress := Callable()) -> Dictio
     var i0 = mini(rows-1,cz*CLIMATE_STEP+CLIMATE_STEP/2)*cols+mini(cols-1,cx*CLIMATE_STEP+CLIMATE_STEP/2)
     if m[i0] == 0: continue
     for k in 4: clim[(cz*ccols+cx)*4+k] = float(look[k])
+  var wet = cname in ["swamp","marsh"]
   for i in n:
    if m[i] == 0 or cls[i] == WATER: continue
+   if wet and cls[i] in [OPEN,FOREST]: cls[i] = MARSH
    var base = Color8(colors[i*3],colors[i*3+1],colors[i*3+2])
    var col = base.lerp(tint,0.95 if cls[i] == MOUNTAIN and cname in ["snow","redrock","ash","white"] else 0.72)
    colors[i*3] = col.r8

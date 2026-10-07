@@ -2,7 +2,8 @@
   "_note": "Varos, the V1 world. Frame 14080 x 11520 m (owner, 2026-10-06): the approved outline (design Addendum A plus 1,024 m in the south, all enlarged 2.5x so every settlement has clear countryside; movement data scaled to match). Cell 4 m.",
   "id": "varos",
   "name": "Varos",
-  "version": 2,
+  "version": 3,
+  "_version_note": "3 (2026-10-07): Brinecrag, Goldspire Rock, Oldstone Citadel and Tempest Keep moved onto their coasts (coastal landmarks must touch the sea); marsh ground; roads re-planned. Saves from version 2 are refused.",
   "kind": "pipeline",
   "size": [
     14080,

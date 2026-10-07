@@ -6,7 +6,7 @@ extends RefCounted
 
 const Movement = preload("res://core/movement.gd")
 const BattleSim = preload("res://core/battle_sim.gd")
-const MAP_TO_BATTLE = {"open":"open","settlement":"open","forest":"forest","hills":"hills","pass":"pass","mountain":"closed","water":"closed"}
+const MAP_TO_BATTLE = {"open":"open","settlement":"open","forest":"forest","hills":"hills","pass":"pass","mountain":"closed","water":"closed","marsh":"forest"}
 
 # defender_pos / attacker_pos: world x/z. Returns {terrain: [lane][band], lanes, summary}.
 static func sample(defender_pos: Vector2,attacker_pos: Vector2,lanes := -1) -> Dictionary:

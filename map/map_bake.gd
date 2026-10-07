@@ -35,7 +35,7 @@ static func write_movement(dir: String,cell: float,origin: Vector2,cols: int,row
  var d = JSON.parse_string(FileAccess.get_file_as_string("res://data/movement.json"))
  for t in d.terrain:
   if not t.begins_with("_"): names.append(t)
- assert(names == ["open","forest","hills","pass","settlement","mountain","water"],"data/movement.json terrain order changed: update the map generators' class indices")
+ assert(names == ["open","forest","hills","pass","settlement","mountain","water","marsh"],"data/movement.json terrain order changed: update the map generators' class indices")
  write_json(dir+"baked/movement.json",{"_note":"GENERATED movement grid meta (map/map_bake.gd); movement.bin holds the terrain bytes then the road bytes.","cell":cell,"origin":[origin.x,origin.y],"cols":cols,"rows":rows,"names":names})
  var both = classes.duplicate()
  both.append_array(road)
@@ -61,7 +61,7 @@ static func cache_dir(map_id: String) -> String:
 # The render cache is valid for one build of one map version (stamp written by the build).
 # Bump CACHE_FORMAT when the render cache gains or changes a file: older caches then count as stale
 # and are rebuilt on the next start (the first-run preparation screen).
-const CACHE_FORMAT = 3 # 2: climate looks (2026-10-06); 3: their values retuned
+const CACHE_FORMAT = 4 # 2: climate looks (2026-10-06); 3: their values retuned; 4: marsh ground (2026-10-07)
 
 static func write_render_cache(map_id: String,cell: float,origin: Vector2,cols: int,rows: int,heights: PackedFloat32Array,colors: PackedByteArray,rivers := PackedByteArray(),climate := PackedByteArray(),ccols := 0,crows := 0):
  var dir = cache_dir(map_id)
@@ -151,7 +151,7 @@ static func components_of(classes: PackedByteArray,cols: int,rows: int) -> Packe
  queue.resize(n)
  var label = 0
  for s in n:
-  if comp[s] != 0 or classes[s] >= 5: continue # 5 mountain, 6 water (data/movement.json order)
+  if comp[s] != 0 or (classes[s] == 5 or classes[s] == 6): continue # 5 mountain, 6 water (data/movement.json order; 7 marsh is passable)
   label += 1
   comp[s] = label
   var head = 0
@@ -161,19 +161,19 @@ static func components_of(classes: PackedByteArray,cols: int,rows: int) -> Packe
    var i = queue[head]
    head += 1
    var x = i%cols
-   if x>0 and comp[i-1] == 0 and classes[i-1]<5:
+   if x>0 and comp[i-1] == 0 and (classes[i-1]<5 or classes[i-1]>6):
     comp[i-1] = label
     queue[tail] = i-1
     tail += 1
-   if x<cols-1 and comp[i+1] == 0 and classes[i+1]<5:
+   if x<cols-1 and comp[i+1] == 0 and (classes[i+1]<5 or classes[i+1]>6):
     comp[i+1] = label
     queue[tail] = i+1
     tail += 1
-   if i>=cols and comp[i-cols] == 0 and classes[i-cols]<5:
+   if i>=cols and comp[i-cols] == 0 and (classes[i-cols]<5 or classes[i-cols]>6):
     comp[i-cols] = label
     queue[tail] = i-cols
     tail += 1
-   if i<n-cols and comp[i+cols] == 0 and classes[i+cols]<5:
+   if i<n-cols and comp[i+cols] == 0 and (classes[i+cols]<5 or classes[i+cols]>6):
     comp[i+cols] = label
     queue[tail] = i+cols
     tail += 1
@@ -195,7 +195,7 @@ static func parts_of(classes: PackedByteArray,rid: PackedInt32Array,cols: int,ro
  queue.resize(n)
  var label = 0
  for s in n:
-  if part[s] != 0 or classes[s] >= 5 or rid[s] == 0: continue
+  if part[s] != 0 or (classes[s] == 5 or classes[s] == 6) or rid[s] == 0: continue
   label += 1
   part[s] = label
   var r = rid[s]
@@ -206,19 +206,19 @@ static func parts_of(classes: PackedByteArray,rid: PackedInt32Array,cols: int,ro
    var i = queue[head]
    head += 1
    var x = i%cols
-   if x>0 and part[i-1] == 0 and classes[i-1]<5 and rid[i-1] == r:
+   if x>0 and part[i-1] == 0 and (classes[i-1]<5 or classes[i-1]>6) and rid[i-1] == r:
     part[i-1] = label
     queue[tail] = i-1
     tail += 1
-   if x<cols-1 and part[i+1] == 0 and classes[i+1]<5 and rid[i+1] == r:
+   if x<cols-1 and part[i+1] == 0 and (classes[i+1]<5 or classes[i+1]>6) and rid[i+1] == r:
     part[i+1] = label
     queue[tail] = i+1
     tail += 1
-   if i>=cols and part[i-cols] == 0 and classes[i-cols]<5 and rid[i-cols] == r:
+   if i>=cols and part[i-cols] == 0 and (classes[i-cols]<5 or classes[i-cols]>6) and rid[i-cols] == r:
     part[i-cols] = label
     queue[tail] = i-cols
     tail += 1
-   if i<n-cols and part[i+cols] == 0 and classes[i+cols]<5 and rid[i+cols] == r:
+   if i<n-cols and part[i+cols] == 0 and (classes[i+cols]<5 or classes[i+cols]>6) and rid[i+cols] == r:
     part[i+cols] = label
     queue[tail] = i+cols
     tail += 1

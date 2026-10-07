@@ -108,6 +108,8 @@ static func validate(map_id: String,overrides := {}) -> Dictionary:
   if str(stamp.get("hash","")) != Pipeline.sources_hash(map_id): add.call("bakes","error","baked/ is stale: rebuild with scripts/build_map.gd -- --map=%s" % map_id)
  return _summary(out)
 
+const COAST_REACH = 20.0 # metres beyond a landmark's ground radius in which a coastal landmark must meet water
+
 static func _grid_checks(map_id: String,out: Dictionary,add: Callable,regions: Dictionary,majors: Array,prov: Dictionary):
  var dir = MapRegistry.dir(map_id)
  var g = JSON.parse_string(FileAccess.get_file_as_string(dir+"baked/movement.json"))
@@ -168,6 +170,26 @@ static func _grid_checks(map_id: String,out: Dictionary,add: Callable,regions: D
    for k in comps:
     var port = comps[k].any(func(r): return regions[r].settlement.get("coastal",false))
     if not port: add.call("reach","error","%s cannot reach the other majors by land and has no port" % ", ".join(comps[k]))
+ # Coastal landmarks touch the ocean (owner spec 2026-10-07: Brinecrag stood inland): water within the
+ # landmark's ground radius (asset manifest) plus coast_reach metres of its settlement point.
+ if cls.size() == cols*rows:
+  var AssetManifest = load("res://core/asset_manifest.gd")
+  var lms = AssetManifest.landmarks()
+  for rk in regions:
+   var st = regions[rk].get("settlement")
+   if st == null or not lms.has(rk) or not bool(st.get("coastal",false)): continue
+   var at = Vector2(st.position[0],st.position[1])
+   var reach = float(lms[rk].get("radius",24.0))+COAST_REACH
+   var touches = false
+   var c0 = Vector2i(((at-Vector2.ONE*reach-origin)/cell).floor())
+   var c1 = Vector2i(((at+Vector2.ONE*reach-origin)/cell).floor())
+   for z in range(maxi(c0.y,0),mini(c1.y,rows-1)+1):
+    for x in range(maxi(c0.x,0),mini(c1.x,cols-1)+1):
+     if cls[z*cols+x] == water and center.call(z*cols+x).distance_to(at)<=reach:
+      touches = true
+      break
+    if touches: break
+   if not touches: add.call("landmarks","error","coastal landmark %s does not touch the sea (none within %d m)" % [rk,int(reach)],at)
  # Provinces contiguous (regions adjacent through the graph).
  var graph = JSON.parse_string(FileAccess.get_file_as_string(dir+"baked/graph.json")) if FileAccess.file_exists(dir+"baked/graph.json") else {}
  var adj = {}

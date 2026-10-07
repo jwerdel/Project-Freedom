@@ -932,7 +932,8 @@
       "emblem": "armies",
       "kind": "minor",
       "traits": [
-        "expansionist"
+        "expansionist",
+        "raider"
       ],
       "seat": "Snowtusk Camp",
       "seat_region": "snowtusk_camp",
@@ -960,7 +961,8 @@
       "emblem": "armies",
       "kind": "minor",
       "traits": [
-        "expansionist"
+        "expansionist",
+        "raider"
       ],
       "seat": "Grimhollow",
       "seat_region": "grimhollow",

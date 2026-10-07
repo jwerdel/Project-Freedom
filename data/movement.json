@@ -12,11 +12,12 @@
     "pass":       {"symbol": "p", "cost": 2.0},
     "settlement": {"symbol": "s", "cost": 1.0},
     "mountain":   {"symbol": "M", "cost": null},
-    "water":      {"symbol": "w", "cost": null}
+    "water":      {"symbol": "w", "cost": null},
+    "marsh":      {"symbol": "m", "cost": 1.8, "_note": "Swamp and marsh climates (map pipeline): open or wooded ground there is marsh. Appended last so older bakes stay valid."}
   },
   "roads": {
-    "_note": "PLACEHOLDER RULE, not in the constitution: the constitution only confirms that road upgrades change the visible road surface. Here a road cell costs multiplier_by_level[road level] regardless of the terrain under it (dirt 0, gravel 1, stone 2). The road network is per map (data/maps/<id>/movement.json, merged over this file) and is also what the map draws.",
-    "multiplier_by_level": [0.8, 0.65, 0.5],
+    "_note": "PLACEHOLDER RULE, not in the constitution: the constitution only confirms that road upgrades change the visible road surface. Here a road cell costs multiplier_by_level[road level] regardless of the terrain under it (dirt 0, gravel 1, stone 2): a dirt road is about 35% faster than open ground (owner, 2026-10-07). Off-road movement is free everywhere passable; the pathfinder takes roads when they are faster. The road network is per map (data/maps/<id>/movement.json, merged over this file) and is also what the map draws.",
+    "multiplier_by_level": [0.74, 0.62, 0.5],
     "width": 3.0,
     "network": []
   },
