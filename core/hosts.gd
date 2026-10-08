@@ -91,8 +91,8 @@ static func call_banners(state,f: String,point: String) -> Dictionary:
  var seen = _noticed_by(state,f,point)
  var D = load("res://core/diplomacy.gd")
  D._log(state,"%s calls its banners to %s." % [WorldMap.faction(f).name,WorldMap.region(point).settlement.name])
- if t.turns<=0: _raise_levies(state,f)
- return {"ok":true,"levies":units,"contingents":contingents.size(),"turns":int(t.turns),"standing":t.label,"turnout":float(t.turnout),"noticed":seen}
+ var marches = _raise_levies(state,f) if t.turns<=0 else {}
+ return {"ok":true,"marches":marches,"levies":units,"contingents":contingents.size(),"turns":int(t.turns),"standing":t.label,"turnout":float(t.turnout),"noticed":seen}
 
 static func _noticed_by(state,f: String,point: String) -> Array:
  var at = WorldMap.settlement_position(point)
@@ -109,8 +109,10 @@ static func musters_near(state,observer: String) -> Array:
   if f != observer and observer in _noticed_by(state,f,str(state.musters[f].point)): out.append(f)
  return out
 
-# Levies set out: one captain-led detachment per settlement, marching to the muster point.
-static func _raise_levies(state,f: String):
+# Levies set out: one captain-led detachment per settlement, marching to the muster point. Returns
+# the paths walked at once {army id: [points]} (for the map figures).
+static func _raise_levies(state,f: String) -> Dictionary:
+ var marches = {}
  var m = _m(state)[f]
  var unit = levy_unit(f)
  var UnitTypes = load("res://core/unit_types.gd")
@@ -122,8 +124,13 @@ static func _raise_levies(state,f: String):
   var id = new_detachment(state,f,sid,[])
   for i in n: state.army_state[id].units.append({"unit":unit,"men":size,"max_men":size,"rank":0,"levy_from":sid})
   state.settlements[sid].levied = int(state.settlements[sid].get("levied",0))+n
-  if sid != m.point: Movement.order(state,id,WorldMap.settlement_position(m.point),not Movement.holds_orders(state,f))
+  # Levies march to the muster point on their own, also the player's (owner hotfix 2026-10-07).
+  if sid != m.point:
+   state.army_state[id].muster = true
+   var r = Movement.order(state,id,WorldMap.settlement_position(m.point))
+   if r.get("ok",false) and r.get("moved",[]).size()>1: marches[id] = r.moved
  m.pending = []
+ return marches
 
 # A captain-led detachment at a settlement (no general; game-design §12.3).
 static func new_detachment(state,f: String,sid: String,units: Array) -> String:
@@ -199,9 +206,12 @@ static func leave_host(state,id: String):
    return
   state.hosts[k].members.erase(id)
 
-# Host armies follow their leader (after the leader moves, and at End Turn).
-static func follow(state,end_turn := false):
+# Host armies follow their leader (after the leader moves, and at End Turn). Returns the paths walked
+# this turn per member {army id: [points]} for the map figures.
+static func follow(state,end_turn := false,only := "") -> Dictionary:
+ var moved = {}
  for k in _h(state).keys():
+  if only != "" and k != only: continue # one leader just moved: only his Host follows
   if not state.army_state.has(k):
    state.hosts.erase(k)
    continue
@@ -215,7 +225,9 @@ static func follow(state,end_turn := false):
    var me = Movement.position(state,id)
    if me.distance_to(lead)<=8.0: continue
    var off = (me-lead).normalized()*6.0 if me.distance_to(lead)>0.01 else Vector2(6,0)
-   Movement.order(state,id,lead+off)
+   var r = Movement.order(state,id,lead+off)
+   if r.get("ok",false) and r.get("moved",[]).size()>1: moved[id] = r.moved
+ return moved
 
 # Detachments merge into a lord's army of their faction on contact.
 static func merge_detachments(state) -> Array:
@@ -250,8 +262,8 @@ static func end_turn(state) -> Array:
  for f in _m(state).keys():
   var m = state.musters[f]
   if not m.pending.is_empty() and int(state.turn)>=int(m.ready):
-   _raise_levies(state,f)
-   out.append({"faction":f,"kind":"levies","text":"The levies of %s set out for %s." % [WorldMap.faction(f).name,WorldMap.region(m.point).settlement.name]})
+   var marches = _raise_levies(state,f)
+   out.append({"faction":f,"kind":"levies","marches":marches,"text":"The levies of %s set out for %s." % [WorldMap.faction(f).name,WorldMap.region(m.point).settlement.name]})
   if str(m.loyalty) == "low":
    for id in state.army_state.keys():
     var a = state.army_state[id]

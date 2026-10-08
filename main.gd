@@ -97,6 +97,7 @@ var army_figures = {}    # army id -> map figure (the commander visual, banner i
 var follow_army = false   # camera follows the selected army
 var collecting_moves = false # End Turn: moves are gathered, then replayed (AI armies near you followed)
 var collected_moves = {}
+var held_figures = {} # armies whose collected or queued move has not been shown yet: place_commander leaves them where they stand
 var spectate_queue: Array = [] # [[army id, path]] still to show, camera following
 var ai_paused := false # the AI turn bar's Pause (presentation only)
 var strategic: Control # the strategic map (Tab or zooming out)
@@ -1098,8 +1099,7 @@ func sync_army_figures():
 
 # Put each figure where the campaign state says its army is (garrisoned armies stand in the town).
 # --- Lords on the map (data/campaign_view.json) ----------------------------------------------
-# Lords are oversized for readability (about 2x the prototype figure), never smaller on screen than
-# min_figure_px, and carry a floating faction banner that shrinks a little far out and fades when the
+# Lords are oversized for readability (lord_scale), one fixed size at every zoom, and carry a floating faction banner that shrinks a little far out and fades when the
 # camera is very close.
 var army_banners = {}
 var view_cfg = {}
@@ -1108,21 +1108,11 @@ func campaign_view() -> Dictionary:
  if view_cfg.is_empty(): view_cfg = JSON.parse_string(FileAccess.get_file_as_string("res://data/campaign_view.json"))
  return view_cfg
 
-# The figure scale for an army figure at its position (lord_scale, raised to keep min_figure_px).
-# Growth with the camera height (A2): x1 close, up to height_scale[2] far out (log scale), clamped.
-func height_factor() -> float:
- var hs = campaign_view().get("height_scale",[900.0,4000.0,1.0])
- var t = clampf(log(maxf(distance,1.0)/float(hs[0]))/log(float(hs[1])/float(hs[0])),0.0,1.0)
- return lerpf(1.0,float(hs[2]),t)
-
-func figure_scale(at: Vector3) -> float:
- var v = campaign_view()
- var s = float(v.lord_scale)*height_factor()
- if camera == null or camera.is_position_behind(at): return s
- var px_per_m = camera.unproject_position(at).distance_to(camera.unproject_position(at+Vector3.UP))
- var px = px_per_m*float(v.figure_height)*s
- if px>0.01 and px<float(v.min_figure_px): s *= float(v.min_figure_px)/px
- return s
+# The figure scale: one fixed size at every zoom (owner hotfix 2026-10-07: lord_scale, the 2x size;
+# no growth with camera height and no minimum on-screen size). Only the banner and name plate above
+# the lord stay screen-readable far out.
+func figure_scale(_at: Vector3) -> float:
+ return float(campaign_view().lord_scale)
 
 func update_army_presentation():
  var v = campaign_view()
@@ -1152,7 +1142,7 @@ func update_army_presentation():
 
 func place_commander():
  for id in army_figures:
-  if walks.has(id): continue
+  if walks.has(id) or held_figures.has(id): continue
   army_figures[id].position = army_ground(figure_spot(id))
 
 # Where an army's figure stands (presentation only): its position, or for a garrisoned army just
@@ -1394,15 +1384,24 @@ func toggle_follow():
 func _on_army_moved(id: String,walked: Array):
  if walked.size()<2: return
  if collecting_moves:
-  collected_moves[id] = walked
+  # Two moves of one army in one End Turn play as one walk, in order.
+  if collected_moves.has(id): collected_moves[id] = collected_moves[id]+walked.slice(1)
+  else: collected_moves[id] = walked
+  held_figures[id] = true
   return
+ # Never snap: start exactly where the figure stands on screen. Read it BEFORE sync_army_figures():
+ # that calls place_commander(), which puts figures at their armies' logical positions, and the
+ # order has already moved the army there. Reading after it started the walk at the destination,
+ # so the lord jumped ahead and walked back to his start (the reversed move, hotfix 2026-10-07).
+ var had = army_figures.has(id)
+ var fp = army_figures[id].position if had else Vector3.ZERO
+ held_figures[id] = true # place_commander inside the sync must not move it either
  sync_army_figures()
+ held_figures.erase(id)
  if not army_figures.has(id): return
- # Never snap: start where the figure stands and end where it will stand (outside the walls when
- # the march ends in a garrison).
+ # End where the figure will stand (outside the walls when the march ends in a garrison).
  walked = walked.duplicate()
- var fp = army_figures[id].position
- walked[0] = Vector2(fp.x,fp.z)
+ if had: walked[0] = Vector2(fp.x,fp.z)
  walked[-1] = figure_spot(id)
  var total = 0.0
  for i in range(1,walked.size()): total += walked[i-1].distance_to(walked[i])
@@ -1662,9 +1661,13 @@ func _unhandled_input(event):
    focus_goldspire()
   if event.keycode == KEY_F: toggle_follow()
   if event.keycode == KEY_R: toggle_army_speed()
+  # Backspace: during a held right-click preview it drops the preview (no order on release);
+  # otherwise it cancels the selected army's order.
   if event.keycode == KEY_BACKSPACE and army_selected():
-   ui_data.cancel_army_order(selected_army_id())
-   refresh_army_overlays()
+   if rmb_held: cancel_move_preview()
+   else:
+    ui_data.cancel_army_order(selected_army_id())
+    refresh_army_overlays()
   # Space: your armies' movement animation speed, 1x or 2x (owner spec 2026-10-07).
   if event.keycode == KEY_SPACE and not spectating_now():
    Settings.set_value("army_speed",2 if Settings.army_speed() == 1 else 1)
@@ -1841,7 +1844,7 @@ func _process(delta):
   map_view.set_highlight(forced_highlight if forced_highlight != "" else faction_of_hit(hov))
  # Path preview (owner spec 2026-10-07, TW:WH3): with your army selected, the path to the cursor
  # shows on hover at once (and while right click is held); --preview captures force it.
- var over_map = get_viewport().gui_get_hovered_control() == null
+ var over_map = get_viewport().gui_get_hovered_control() == null and not hover_off
  var previewing = army_selected() and not walks.has(selected_army_id()) and (forced_preview != null or over_map or (rmb_held and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)))
  _set_move_cursor(preview_action if previewing and forced_preview == null else "")
  if not previewing: preview_action = ""
@@ -1865,7 +1868,8 @@ func _process(delta):
  ui.set_fps("%d FPS" % Engine.get_frames_per_second())
  if capture_mode:
   capture_frames += 1
-  if capture_frames==180 and not _gpu_run(): screenshot_requested = true
+  if capture_frames==180 and not _gpu_run() and _move_frames_kind() == "": screenshot_requested = true
+  if capture_frames==120 and _move_frames_kind() != "": _capture_move_frames(_move_frames_kind())
   if capture_frames%60==0: print("FRAME ",capture_frames," FPS ",Engine.get_frames_per_second()," delta ",delta," draws ",Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
  if screenshot_requested:
   screenshot_requested = false
@@ -2764,3 +2768,96 @@ func _realm_capture_flags():
    for w in ui_data.WARNINGS: warn_skipped.append(w[0])
    refresh_warnings()
 
+
+# --move-frames=short|multi (captures, owner hotfix 2026-10-07): the lord is selected and ordered by
+# real input events (a left click on him, a right click on the map), and three frames of his walk are
+# saved: captures/move_<kind>_start.png (the order given, before he moves), _mid.png (halfway) and
+# _end.png (stopped: the destination, or this turn's reach with the amber remainder). Then it quits.
+var hover_off := false # --move-frames: the real mouse (outside the parked window) must not draw hover previews
+
+func _move_frames_kind() -> String:
+ for a in OS.get_cmdline_user_args():
+  if a.begins_with("--move-frames="): return a.get_slice("=",1)
+ return ""
+
+func _capture_move_frames(kind: String):
+ var id = selected_army_id() if selected_army_id() != "" else ui_data.state.armies_of(ui_data.player_faction_id())[0]
+ var p = Movement.position(ui_data.state,id)
+ var target = Vector2.INF
+ for r in ([120.0,150.0,100.0] if kind == "short" else [300.0,360.0,260.0]):
+  for k in 32:
+   var t = p+Vector2(r,0).rotated(k*TAU/32.0)
+   if Movement.settlement_at(t) != "": continue
+   var plan = ui_data.plan_move(id,t)
+   if not plan.ok or str(plan.get("settlement","")) != "": continue
+   if (kind == "short" and int(plan.total_turns) == 1) or (kind != "short" and int(plan.total_turns)>=2 and int(plan.reach)>=4):
+    # Both ends must be on the open map, clear of the panels (UI coordinates, 1600 x 1000).
+    target_point_view((p+t)*0.5,maxf(180.0,p.distance_to(t)*1.8))
+    var safe = Rect2(60,100,1080,580)
+    if not safe.has_point(camera.unproject_position(ground(t))) or not safe.has_point(camera.unproject_position(ground(p))): continue
+    target = t
+    break
+  if target.is_finite(): break
+ if not target.is_finite():
+  print("CAPTURE move-frames: no target found")
+  get_tree().quit(1)
+  return
+ var to_win = func(v: Vector2) -> Vector2: return get_viewport().get_final_transform()*v
+ var send = func(e: InputEvent):
+  Input.parse_input_event(e)
+  Input.flush_buffered_events()
+ # The camera frames the start and the target (camera only), as checked above.
+ target_point_view((p+target)*0.5,maxf(180.0,p.distance_to(target)*1.8))
+ for i in 3: await get_tree().process_frame
+ # Select him with a left click on his figure.
+ var f = army_figures[id]
+ var at = to_win.call(camera.unproject_position(f.position+Vector3(0,2.2*f.scale.x,0)))
+ for pressed in [true,false]:
+  var e = InputEventMouseButton.new()
+  e.button_index = MOUSE_BUTTON_LEFT
+  e.pressed = pressed
+  e.position = at
+  e.global_position = at
+  send.call(e)
+  await get_tree().process_frame
+ # Hold right click on the target, then release: the order.
+ var tw = to_win.call(camera.unproject_position(ground(target)))
+ var m = InputEventMouseMotion.new()
+ m.position = tw
+ m.global_position = tw
+ send.call(m)
+ for pressed in [true,false]:
+  var e = InputEventMouseButton.new()
+  e.button_index = MOUSE_BUTTON_RIGHT
+  e.pressed = pressed
+  e.position = tw
+  e.global_position = tw
+  send.call(e)
+  if pressed: for i in 20: await get_tree().process_frame
+ hover_off = true
+ ui.hide_hover()
+ var folder = ProjectSettings.globalize_path("res://captures")
+ DirAccess.make_dir_recursive_absolute(folder)
+ var shot = func(name: String):
+  await RenderingServer.frame_post_draw
+  var path = folder+"/move_%s_%s.png" % [kind,name]
+  var r = get_viewport().get_texture().get_image().save_png(path)
+  print("CAPTURE ",path," result=",r," figure=",army_figures[id].position)
+ if not walks.has(id):
+  print("CAPTURE move-frames: the order did not start a walk")
+  get_tree().quit(1)
+  return
+ await shot.call("start") # one frame after the order: he has barely set out
+ while walks.has(id) and walks[id].dist<walks[id].total*0.5: await get_tree().process_frame
+ await shot.call("mid")
+ while walks.has(id): await get_tree().process_frame
+ for i in 5: await get_tree().process_frame
+ await shot.call("end")
+ SaveSystem.wait_for_images()
+ get_tree().quit(0)
+
+func target_point_view(p: Vector2,d: float):
+ target = ground(p)
+ desired_distance = d
+ distance = d
+ camera_update(0.0)

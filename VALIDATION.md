@@ -1782,3 +1782,60 @@ War-and-realm §2.7, §2.8, §7 and §9. Every number is a placeholder in `data/
 - no faction starting short (both maps).
 
 The self-test passes.
+
+## Hotfix: movement and lord size (2026-10-07)
+
+**The reversed move.**
+- **Symptom:** after a right-click order, the lord appeared at the destination, walked back toward where he started, then walked forward to the end.
+- **Root cause** (`main.gd _on_army_moved`): the order moves the army in the campaign state first, then signals the map. The handler called `sync_army_figures()`, which calls `place_commander()`, which puts every figure not already walking at its army's logical position: the destination. Only after that did it read the figure's position as the walk's start point (`walked[0]`). So the walk ran destination → path start → destination.
+- **Introduced:** by Part A's "walks begin where the figure stands" (2026-10-07).
+- **Same pattern at End Turn:** any `place_commander()` during End Turn could snap figures whose moves were collected or queued for the AI replay.
+- **Fix:**
+  - The handler reads the figure's position before the sync.
+  - New `held_figures`: `place_commander` leaves alone a figure whose move is collected, queued or being set up.
+  - Two moves of one army in one End Turn join into one walk.
+- **Reproduced first** with the input-driven suite against the unfixed code:
+  - short move: first rendered frame 69.2 m from where the lord stood (the destination of a 70 m move), 247 backward frames;
+  - all 10 acceptance tests failed, with first frames 109–199 m from the start.
+
+**Movement acceptance tests** (`tests/test_movement_input.gd`, run with every suite):
+- **How they drive the game:** real events through `Input.parse_input_event` (left click on the lord, right click on the map, Enter, Shift+Enter, Backspace, Ctrl+S, a click on Continue order). The rendered figure position is recorded every frame.
+- **Each walk is checked for:**
+  - the first frame at the start;
+  - progress along the drawn path that never decreases, within 1 m of it;
+  - every step within walk speed × that frame's delta (no snap or teleport);
+  - the last frame at the expected stop.
+- **Results:** all 10 pass.
+
+| Case | Checks beyond the walk itself |
+|---|---|
+| Short move within reach | Reaches the destination; no order left |
+| Past this turn's reach | Stops at the reach; the remainder is drawn as a later turn; Shift+Enter: no move, the figure stays, the order waits |
+| Continue order next turn | A click on Continue order walks on from where he stopped |
+| Off-road across forest and hills | Forest and hills cost more than open ground per metre |
+| Along a road | Cost per metre is about the road multiplier, under 1 |
+| Backspace during a held preview | Drops the preview; releasing gives no order; the figure stays |
+| Host leader | Members walk at once with him, along their own paths, and end next to him; End Turn moves nothing |
+| Levies to a muster point | They march on their own each End Turn |
+| Attack on an adjacent enemy | Walks next to it; the pre-battle panel opens on arrival |
+| Move, save, load, continue | Ctrl+S, then the save rebuilt into a new campaign scene: same place, same order; Continue walks on |
+
+**Frame captures** (windowed, `--capture --move-frames=short|multi`; the order is given by real input events):
+- `captures/move_short_start`, `move_short_mid` and `move_short_end`;
+- `captures/move_multi_start`, `move_multi_mid` and `move_multi_end`.
+
+The lord starts beside Goldspire, is halfway along the path in the middle frame, and stops at the destination (short) or at this turn's reach with the amber remainder (multi).
+
+**Other changes:**
+- **Lord size:** one fixed size at every zoom (lord_scale 4.0, the 2x size). The growth with camera height and the minimum on-screen size are gone; banners and name plates stay screen-readable.
+- **Hosts:** members follow along their real paths, not a straight two-point line. Only the ordered leader's Host follows (before, every Host was re-ordered, AI Hosts included).
+- **Levies:** levies marching to their muster point (army flag `muster`) march on their own each End Turn, as intended. They are not a waiting order, and your own order to them ends it.
+  - Their first march, set out after the movement stage, now reaches the turn's moves, so the map shows it.
+  - Levies raised at once (no muster delay) walk on the map.
+- **Backspace** during a held right-click preview drops the preview; otherwise it cancels the order.
+- **Market:** opening the market added its window twice (an engine error on every open); fixed.
+- **Hotkeys:** Tab opens the strategic map and M the market. M was never bound to the strategic map in code. The full list and clash check are in `docs/tw-ui-parity.md` §20; no clashes. Test: `tests/test_hotkeys.gd`.
+
+**Tests:** 400 GUT tests. 399 passed in the full run; the one failure was the market double-add, which is fixed, and its file passes (3 of 3). The self-test passes.
+
+**Budgets:** not re-measured. The hotfix changes no path search, rendering or End Turn system; it changes only the walk start, the figure scale (now a constant), which Host follows and the levies' march bookkeeping.

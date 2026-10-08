@@ -215,6 +215,11 @@ static func _finish(state,ctx: Dictionary,ai: Dictionary) -> Dictionary:
 # 9b. The realm's yearly processing; notable events for the player go to the chronicle ("court").
 static func realm_year(state,ctx: Dictionary) -> Dictionary:
  var out = {"court":Court.end_turn(state),"diplomacy":Diplomacy.end_turn(state),"vassals":Vassals.end_turn(state),"hosts":Hosts.end_turn(state),"titles":Titles.end_turn(state)}
+ # Levies setting out walk at once (core/hosts.gd): their paths join this turn's moves for the map.
+ for e in out.hosts:
+  for id in e.get("marches",{}):
+   var w = e.marches[id]
+   ctx.moves[id] = ctx.moves[id]+w.slice(1) if ctx.moves.has(id) else w
  var me = state.player_faction
  var year = ctx.ended
  var WorldMap = load("res://core/world_map.gd")

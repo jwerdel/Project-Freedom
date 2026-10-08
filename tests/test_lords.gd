@@ -18,19 +18,16 @@ func before_each():
 func after_each():
  SaveSystem.dir = SaveSystem.DIR
 
-func test_lords_are_scaled_up_and_keep_a_minimum_size():
+func test_lords_are_scaled_up_and_one_size_at_every_zoom():
  var v = main.campaign_view()
- assert_gte(float(v.lord_scale),2.0)
- main.update_army_presentation()
- for id in main.army_figures: assert_gte(main.army_figures[id].scale.x,float(v.lord_scale)-0.001)
- # Far out, the figure grows to keep min_figure_px on screen.
- main.desired_distance = 210.0
- main.distance = 210.0
- main.camera_update(0.0)
- main.update_army_presentation()
- var f = main.army_figures[HOST]
- var px_per_m = main.camera.unproject_position(f.position).distance_to(main.camera.unproject_position(f.position+Vector3.UP))
- assert_gte(px_per_m*float(v.figure_height)*f.scale.x,float(v.min_figure_px)-0.5)
+ assert_gte(float(v.lord_scale),4.0,"the 2x size")
+ # Owner hotfix 2026-10-07: the model never changes size with the zoom.
+ for d in [12.0,60.0,210.0,900.0,3000.0]:
+  main.desired_distance = d
+  main.distance = d
+  main.camera_update(0.0)
+  main.update_army_presentation()
+  for id in main.army_figures: assert_almost_eq(main.army_figures[id].scale.x,float(v.lord_scale),0.0001,"%s at %d m" % [id,d])
 
 func test_every_army_has_a_banner_that_selects_it():
  main.update_army_presentation()

@@ -2629,8 +2629,7 @@ func open_market():
  close_market()
  market_window = _framed()
  market_window.name = "MarketWindow"
- _anchor(market_window,0.5,0.5,0.5,0.5,Rect2(-300,-190,300,190))
- add_child(market_window)
+ _anchor(market_window,0.5,0.5,0.5,0.5,Rect2(-300,-190,300,190)) # (adds it)
  _fill_market()
 
 func _fill_market():

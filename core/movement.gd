@@ -679,7 +679,10 @@ static func end_turn(state) -> Dictionary:
   # Part B: snow slows armies in the north and on high ground in winter; raiders crawl.
   if state.get("seasons") != null and not state.seasons.is_empty():
    me.points = float(me.points)*load("res://core/seasons.gd").move_factor(state,position(state,id))*load("res://core/supply.gd").move_factor(state,id)
-  if not me.order.is_empty() and not holds_orders(state,str(me.faction)): moves[id] = advance(state,id)
+  # Levies marching to their muster point ("muster", core/hosts.gd) march on their own (owner
+  # hotfix 2026-10-07); every other player order waits for the player.
+  if not me.order.is_empty() and (not holds_orders(state,str(me.faction)) or bool(me.get("muster",false))): moves[id] = advance(state,id)
+  if me.order.is_empty(): me.erase("muster")
  return moves
 
 # Cells the army can still reach this turn (Dijkstra limited by its remaining points), with the

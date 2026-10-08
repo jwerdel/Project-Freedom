@@ -458,6 +458,7 @@ func order_move(army_id: String,target: Vector2) -> Dictionary:
  var r = Movement.order(state,army_id,target)
  if r.ok:
   state.army_state[army_id].erase("attack") # a new order replaces an attack order
+  state.army_state[army_id].erase("muster") # your own order replaces the march to the muster point
   army_moved.emit(army_id,r.moved)
   _host_follow(army_id)
   changed.emit()
@@ -962,6 +963,8 @@ func banner_terms() -> Dictionary:
 func call_banners(sid: String) -> Dictionary:
  var r = load("res://core/hosts.gd").call_banners(state,player_faction_id(),sid)
  if r.ok: add_event("court","The banners are called","Your banners gather at %s: %d levy units%s, %s." % [WorldMap.region(sid).settlement.name,int(r.levies),(" and %d vassal hosts" % int(r.contingents)) if int(r.contingents)>0 else "","setting out at once" if int(r.turns)<=0 else "setting out in %d turns" % int(r.turns)])
+ if r.ok:
+  for id in r.get("marches",{}): army_moved.emit(id,r.marches[id])
  changed.emit()
  return r
 
@@ -1411,11 +1414,10 @@ func _court_character(id: String) -> Dictionary:
 func _host_follow(army_id: String):
  if state.get("hosts") == null or not state.hosts.has(army_id): return
  var Hosts = load("res://core/hosts.gd")
- var before = {}
- for m in state.hosts[army_id].members: before[m] = Movement.position(state,m)
- Hosts.follow(state)
- for m in before:
-  if state.army_state.has(m) and Movement.position(state,m) != before[m]: army_moved.emit(m,[before[m],Movement.position(state,m)])
+ # Members walk their own paths (not a straight line) at once, with the leader.
+ var moved = Hosts.follow(state,false,army_id)
+ for m in moved:
+  if state.army_state.has(m): army_moved.emit(m,moved[m])
 
 # Waiting multi-turn orders (Movement.holds_orders): the player's armies whose order still has a
 # path and who have points to walk it. continue_orders walks them (one army or all).
@@ -1423,7 +1425,7 @@ func waiting_orders() -> Array:
  var out = []
  for id in state.armies_of(state.player_faction):
   var a = state.army_state[id]
-  if not a.get("order",[]).is_empty() and float(a.points)>0.5: out.append(id)
+  if not a.get("order",[]).is_empty() and float(a.points)>0.5 and not bool(a.get("muster",false)): out.append(id)
  return out
 
 func continue_orders(ids := []) -> int:

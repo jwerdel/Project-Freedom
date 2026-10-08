@@ -1,8 +1,9 @@
 extends GutTest
 # No player army moves at End Turn unless the player ordered it that turn (playtest 2026-10-07:
-# "my character auto-moved when I started a new turn"). Multi-turn orders, attack orders, Host
-# followers and levies all wait for the player's confirm while Settings "Continue multi-turn orders
-# automatically" is off (core/movement.gd holds_orders); AI armies keep walking.
+# "my character auto-moved when I started a new turn"). Multi-turn orders, attack orders and Host
+# followers wait for the player's confirm while Settings "Continue multi-turn orders automatically"
+# is off (core/movement.gd holds_orders); AI armies keep walking, and levies marching to their muster
+# point march on their own (owner hotfix 2026-10-07).
 
 const MapRegistry = preload("res://core/map_registry.gd")
 const GameState = preload("res://core/game_state.gd")
@@ -29,14 +30,42 @@ func test_no_player_army_moves_without_an_order():
  var s = GameState.from_data()
  s.player_faction = "house_varn"
  var data = UiData.new(s)
- # Banners called: levies and the Host machinery run, yet nothing of ours moves at End Turn.
+ # Banners called: the Host machinery runs, yet no lord of ours moves at End Turn. Levies marching
+ # to the muster point are the exception: they march on their own (owner hotfix 2026-10-07).
  data.call_banners(load("res://core/armies.gd").capital(s,"house_varn"))
  for t in 4:
   var before = {}
-  for id in s.armies_of("house_varn"): before[id] = Movement.position(s,id)
+  for id in s.armies_of("house_varn"):
+   if not bool(s.army_state[id].get("muster",false)): before[id] = Movement.position(s,id)
   data.end_turn()
   for id in before:
    if s.army_state.has(id): assert_eq(Movement.position(s,id),before[id],"%s moved at End Turn %d without an order" % [id,t+1])
+
+func test_levies_march_to_the_muster_point_on_their_own():
+ MapRegistry.set_active(MapRegistry.CAMPAIGN)
+ var s = GameState.from_data()
+ s.player_faction = "house_varn"
+ var data = UiData.new(s)
+ # Muster away from the capital, so the levies raised there have somewhere to march.
+ var cap = load("res://core/armies.gd").capital(s,"house_varn")
+ var point = s.settlements_of("house_varn").filter(func(x): return x != cap)[0]
+ assert_true(data.call_banners(point).ok)
+ var muster = load("res://core/world_map.gd").settlement_position(point)
+ var marched = false
+ var last = {}
+ for t in 8:
+  var report = data.end_turn()
+  for id in s.armies_of("house_varn"):
+   var a = s.army_state[id]
+   if not bool(a.get("captain",false)): continue
+   var d = Movement.position(s,id).distance_to(muster)
+   if last.has(id) and d<last[id]-0.01:
+    marched = true
+    assert_true(report.moves.has(id),"its march is in the turn's moves (the map shows it)")
+   if last.has(id): assert_lte(d,last[id]+0.01,"%s never walks away from the muster point" % id)
+   last[id] = d
+   assert_false(id in data.waiting_orders(),"levies are not a waiting order")
+ assert_true(marched,"levies marched without a confirm")
 
 func test_multi_turn_order_waits_for_the_player():
  var s = GameState.from_data()

@@ -396,7 +396,7 @@ Reference screenshots in `docs/reference/tw/` (`lothern_lords.png`, `terrain_1.p
 | Multi-turn orders | No army of yours moves at End Turn or turn start unless you ordered it that turn. Settings "Continue multi-turn orders automatically" (default off): with it off the order keeps its path and waits for "Continue order" (army panel) or "Continue all orders"; waiting orders are an End Turn notification. Host followers and levies wait the same way | Owner rule (TW continues orders automatically) |
 | Hotkeys | Backspace cancels the selected army's order; Space toggles your armies' movement speed (1x/2x); double-click an army centres the camera on it | Space previously showed labels while held (dropped) |
 | Animation | Lords walk smoothly along the path from where they stand to where they will stand (never snap) | |
-| Lords | Twice the previous size (lord_scale 4.0, banners x2), growing further with camera height up to x2.2 (clamped); garrisoned lords stand just outside their settlement's walls | Matches `lothern_lords.png` |
+| Lords | Twice the previous size (lord_scale 4.0, banners x2) and one fixed size at every zoom (hotfix 2026-10-07 removed the growth with camera height and the minimum on-screen size; only banners and name plates stay screen-readable); garrisoned lords stand just outside their settlement's walls | Matches `lothern_lords.png` |
 | End Turn button | The notification is the button: the top pending item's icon on it, a count badge, and a red plate across its foot naming the item ("Lord has skill points"); a click goes to it, the next click to the next; nothing pending: the hourglass and End Turn. End turn anyway: the small button on the ring, Shift+click or Shift+Enter. The separate "warning" box above the button is gone | `terrain_2.png` shows the blocker plate under the button (as built) and a stack of red event ribbons above it; the owner's spec removes any separate stack, so the ribbons are not built (Event Messages carries events) |
 | Pending items | Choices (absorbed families, careers due), diplomatic replies and proposals, low funds, skill points, settlement upgrades, idle building slots, waiting orders, lords that have not moved, armies that can recruit | Each switchable in the notification settings |
 | Text | Fira Sans (OFL) body text, Cinzel headers; labels at least 14 px; brighter dim text; settlement names with a dark outline on their plates; a lord's name plate on hover or selection | Replaces Alegreya Sans |
@@ -419,3 +419,44 @@ Reference screenshots in `docs/reference/tw/` (`lothern_lords.png`, `terrain_1.p
 | End Turn | Food: "Food will run out" while food runs out within 3 turns (or "Your people are starving"); Supply: "Army low on supply" | Through the same End Turn notification as Part A (§18) |
 | Seasons | The forecast and the change of season arrive as pop-ups ("Winter is coming", "Winter has come", "The thaw"); the terrain whitens over two winter turns, most in the north, and thaws in summer | TW has no seasons; built from the war-and-realm spec |
 | Trade routes | Each of your trade agreements is a steady gold band from capital to capital, under army orders and without chevrons or markers | TW:WH3 draws trade routes on the map only for sea trade; ours are land lines from the spec |
+
+## 20. Hotkeys (hotfix, 2026-10-07)
+
+Every key the campaign map handles (`main.gd _unhandled_input`, `camera_update`; panels close on Esc). The owner's rule follows TW:WH3: **Tab opens the strategic map, M opens the market.** M was never bound to the strategic map in code (only Tab was); M became the market key in Part B.
+
+| Key | Action | Notes |
+|---|---|---|
+| W A S D, arrow keys | Pan the camera | Off while Ctrl is held (Ctrl+S, Ctrl+L) |
+| Q / E | Rotate the camera | |
+| Shift (held) | Pan faster | |
+| Mouse wheel | Zoom toward the cursor; scrolling out at the maximum opens the strategic map | |
+| Middle drag | Orbit | |
+| Left click | Select (army, settlement); empty ground deselects. Double-click an army: centre on it | |
+| Right click | Order the selected army (hold to preview, release to order) | |
+| Tab | Strategic map (open and close) | TW:WH3 |
+| M | Market (open and close) | Owner rule |
+| Enter | End Turn (first goes to the pending notification) | TW:WH3 |
+| Shift+Enter | End Turn anyway (skips the notifications) | TW:WH3 |
+| H | Go to the next pending notification | |
+| Esc | Cancel a held preview, then close the top panel, then the pause menu | TW:WH3 |
+| Backspace | During a held preview: drop it (no order on release); otherwise cancel the selected army's order | Owner rule |
+| Space | Your armies' walk speed 1x / 2x; while AI moves play: skip them | Context: no clash |
+| R | Your armies' walk speed 1x / 2x | Same action as Space (duplicate, kept) |
+| F | Camera follows the selected army (on/off) | |
+| , / . | Previous / next own army (or own settlement when a settlement is selected) | |
+| Home / Shift+Home | Centre on the capital / frame the whole realm | |
+| End | Reset the camera rotation and tilt | |
+| 1 / 2 | Settlement panel: buildings / garrison tab | |
+| 3 | First empty building slot of the selected settlement | |
+| 4 | Recruitment for the selected army | |
+| 5 | Heroes (coming later) | |
+| K / Alt+K | Hide the interface | |
+| G | Goldspire (test map shortcut) | Prototype |
+| F12 | Save a screenshot to captures/ | |
+| Ctrl+S / Ctrl+L | Quicksave / quickload | Ctrl branch handled first: no clash with S (pan) or L (debug light) |
+| Ctrl+P | Disband the selected army | |
+| Ctrl+T | Show or hide map labels | |
+| F5 F6 F7 F8, L | Debug keys (Settings: on by default): upgrade city, cycle Goldspire, upgrade roads, pause, light | Debug only |
+| F9 | Strategic map debug layer (debug keys) | Debug only |
+
+Clashes checked: none left. Tab is only the strategic map; M is only the market; Space's two actions never apply at the same time; R duplicates Space on purpose; Ctrl combinations are handled before plain letters. Tests: `tests/test_hotkeys.gd` (Tab, M, Backspace) and `tests/test_movement_input.gd` (Backspace during a preview, Enter and Shift+Enter, Ctrl+S).
