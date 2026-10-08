@@ -43,6 +43,7 @@ func test_construction_costs_gold_and_completes_on_time():
 
 func test_two_turn_construction_takes_two_end_turns():
  var s = GameState.from_data()
+ s.stock["house_aurek"] = {"food":100000,"wood":100000,"stone":100000,"starving":0}
  var main = s.settlements[GS].buildings[0].chain
  assert_eq(int(Buildings.level_data(main,3).turns),2)
  assert_true(Construction.start(s,GS,0,main).ok)
@@ -54,6 +55,7 @@ func test_two_turn_construction_takes_two_end_turns():
 func test_level_caps_are_enforced():
  var s = GameState.from_data()
  s.treasury.house_aurek = 1000000
+ s.stock["house_aurek"] = {"food":100000,"wood":100000,"stone":100000,"starving":0}
  # Goldspire is level 2: its level-2 mine cannot go to level 3 until the main building does.
  var mine_slot = 1
  assert_eq(s.settlements[GS].buildings[mine_slot].chain,"mine")
@@ -78,6 +80,7 @@ func test_level_caps_are_enforced():
 func test_main_upgrade_raises_level_slots_capacity_and_visual_stage():
  var s = GameState.from_data()
  s.treasury.house_aurek = 1000000
+ s.stock["house_aurek"] = {"food":100000,"wood":100000,"stone":100000,"starving":0}
  var main = s.settlements[GS].buildings[0].chain
  var slots_before = s.settlements[GS].buildings.size()
  var cap_before = Economy.capacity(s,GS)
@@ -111,6 +114,7 @@ func test_cancel_refunds_in_full_this_turn_and_partially_later():
  assert_true(Construction.in_progress(s,GS).is_empty())
  # A two-turn build cancelled after one End Turn refunds the later ratio.
  s.treasury.house_aurek = 1000000
+ s.stock["house_aurek"] = {"food":100000,"wood":100000,"stone":100000,"starving":0}
  var main = s.settlements[GS].buildings[0].chain
  var cost = int(Buildings.level_data(main,3).cost)
  Construction.start(s,GS,0,main)
@@ -125,6 +129,7 @@ func test_cancel_refunds_in_full_this_turn_and_partially_later():
 func test_completions_are_logged_to_events_and_chronicle():
  var data = UiData.new()
  data.state.treasury.house_aurek = 1000000
+ data.state.stock["house_aurek"] = {"food":100000,"wood":100000,"stone":100000,"starving":0}
  assert_true(data.start_construction(GS,empty_slot(data.state,GS),"market").ok)
  data.end_turn()
  var events = data.events("buildings")
@@ -138,6 +143,7 @@ func test_completions_are_logged_to_events_and_chronicle():
 func test_event_messages_show_only_the_players_buildings():
  var data = UiData.new()
  data.state.treasury.house_lannet = 100000
+ data.state.stock["house_lannet"] = {"food":100000,"wood":100000,"stone":100000,"starving":0}
  for i in 3: data.end_turn()
  var ai_built = 0
  for e in data.state.chronicle:
@@ -181,7 +187,9 @@ func test_ui_browser_builds_upgrades_and_cancels():
 func test_ports_require_a_coastal_settlement():
  var s = GameState.from_data()
  s.treasury.house_verrin = 100000
+ s.stock["house_verrin"] = {"food":100000,"wood":100000,"stone":100000,"starving":0}
  s.treasury.house_aurek = 100000
+ s.stock["house_aurek"] = {"food":100000,"wood":100000,"stone":100000,"starving":0}
  assert_false(s.settlements.willowmere.coastal)
  assert_true(s.settlements.greyhaven.coastal and s.settlements[GS].coastal)
  # Willowmere (level 1) may have no empty slot; give it one at level 2 to test the coast rule alone.
@@ -207,6 +215,7 @@ func test_ports_require_a_coastal_settlement():
 func test_every_slot_builds_at_the_same_time():
  var s = GameState.from_data()
  s.treasury.house_aurek = 100000
+ s.stock["house_aurek"] = {"food":100000,"wood":100000,"stone":100000,"starving":0}
  Construction.set_level(s,GS,3) # every slot open
  var data = UiData.new(s)
  var started = 0

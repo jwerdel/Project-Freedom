@@ -1193,6 +1193,15 @@ func refresh_army_overlays():
   if show and id == selected_army_id(): movement_overlay.show_path("order:"+id,path.points,path.turns,{"action":"enter" if path.get("settlement","") != "" else "move"})
   elif show and faint_on: movement_overlay.show_path("order:"+id,path.points,path.turns,{"style":"faint"})
   else: movement_overlay.clear("order:"+id)
+ # Trade routes (Part B, war-and-realm §7.3): a gold line from capital to capital per trade agreement.
+ var routes = ui_data.trade_routes()
+ var keep = {}
+ for r in routes:
+  var k = "trade:%s|%s" % [r.a,r.b]
+  keep[k] = true
+  if not movement_overlay.has_content(k): movement_overlay.show_path(k,[r.from,r.to],[0,0],{"style":"trade"})
+ for k in movement_overlay.kinds():
+  if str(k).begins_with("trade:") and not keep.has(k): movement_overlay.clear(k)
  if army_selected() and not walks.has(selected_army_id()):
   var area = ui_data.reachable_area(selected_army_id())
   movement_overlay.show_reachable(area.centers,area.cell)
@@ -1256,6 +1265,7 @@ func preview_move(p: Vector2) -> String:
  return _preview_full(p)
 
 var preview_refine := Vector2.INF # the coarse preview's target, refined on the next frame
+var winter_shown := 0.0 # the map's winter whitening as drawn (eases to UiData.season().snow)
 var preview_action := ""          # the action of the previewed move (cursor and end marker)
 
 func _refine_preview():
@@ -1668,6 +1678,10 @@ func _unhandled_input(event):
    if event.shift_pressed: end_turn(true)
    else: end_turn_pressed()
   if event.keycode == KEY_H: jump_to_notification()
+  # M: the market (Part B).
+  if event.keycode == KEY_M:
+   if ui.market_visible(): ui.close_market()
+   else: ui.open_market()
   # Debug keys (Settings: on by default for now; listed in README).
   if Settings.debug_keys():
    if event.keycode == KEY_F8: toggle_pause()
@@ -1749,6 +1763,10 @@ func _zoom_look():
  environment.fog_density = lerpf(float(haze.haze_max),float(haze.haze_max)*0.3,hz)
  environment.fog_aerial_perspective = lerpf(float(haze.aerial_perspective),0.12,hz)
  if map_view != null: map_view.set_zoom_look(distance,hz)
+ # Winter whitens the map gradually (Part B): ease toward the season's snow.
+ if map_view != null and ui_data != null:
+  winter_shown = move_toward(winter_shown,float(ui_data.season().snow),0.01) # about two seconds to full snow
+  map_view.set_winter(winter_shown)
 
 func _process(delta):
  if preparing: return
@@ -1831,6 +1849,7 @@ func _process(delta):
  if rmb_held and not Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT): rmb_held = false
  if "--ledger" in OS.get_cmdline_user_args(): ui.show_hover(ui._ledger_text(),Vector2(560,70))
  elif "--treasury-tip" in OS.get_cmdline_user_args(): ui.show_hover(ui.resource_groups.treasury.tooltip_text,Vector2(560,70))
+ elif "--food-tip" in OS.get_cmdline_user_args(): ui.show_hover(ui.resource_groups.food.tooltip_text,Vector2(620,70))
  elif previewing:
   var at = forced_preview if forced_preview != null else move_target(mouse)
   var text = preview_move(at)
@@ -2464,6 +2483,7 @@ func _jump_to(item: Dictionary):
    if army_figures.has(item.id): pan_to(army_figures[item.id].position+Vector3(0,2.2,0))
    ui.open_character(item.id,"skills")
   "diplomacy": ui.open_diplomacy(item.id)
+  "market": ui.open_market()
   "reply":
    var rep = ui_data.reply_by_id(int(item.id))
    if not rep.is_empty(): ui.show_alert(ui_data.reply_view(rep))
@@ -2702,6 +2722,43 @@ func _realm_capture_flags():
    var rf = arg.get_slice("=",1)
    var rep = D.add_reply(s,rf,"offer",false,"We do not trade with those who court our rivals",{"give":[{"kind":"trade"}],"take":[{"kind":"gold","amount":500}]})
    ui.show_alert(ui_data.reply_view(rep))
+  # Part B captures (2026-10-07):
+  # --winter: the campaign starts in deep winter (the season's second turn).
+  if arg == "--winter":
+   var sch = [{"kind":"winter","start":-1,"length":4,"forecast":2}]
+   for e in s.seasons.schedule:
+    if int(e.start)+int(e.length)>3: sch.append({"kind":e.kind,"start":maxi(3,int(e.start)),"length":int(e.length)-maxi(0,3-int(e.start)),"forecast":int(e.get("forecast",2))})
+   s.seasons.schedule = sch
+   winter_shown = 1.0
+  # --forecast-demo: the "Winter is coming" pop-up.
+  if arg == "--forecast-demo":
+   var Sea = load("res://core/seasons.gd")
+   ui.show_alert({"kind":"season","title":"Winter is coming","text":"%s warn: Winter is coming in 3 years and it will be long." % Sea.seers(str(ui_data.faction(me).get("culture",""))).capitalize()})
+  # --supply-demo: your first army deep in an enemy's land, at war, its supply running low.
+  if arg == "--supply-demo":
+   var lead = s.armies_of(me)[0]
+   var foe = "house_dunmoor"
+   if not load("res://core/battles.gd").at_war(s,me,foe): s.wars.append(load("res://core/battles.gd").war_key(me,foe))
+   var fs = WorldMap.settlement_position(s.settlements_of(foe)[0])
+   var mine = Movement.position(s,lead)
+   var spot = fs.lerp(mine,0.22)
+   s.army_state[lead].position = [spot.x,spot.y]
+   s.army_state[lead].garrison = ""
+   s.army_state[lead].supply = 38.0
+   place_commander()
+   select_army(lead)
+   focus_at(ground(spot),160.0)
+   distance = desired_distance
+   if map_view != null: map_view.update(target)
+  if arg == "--market": ui.open_market()
+  # --trade-demo=<faction>: a trade agreement with them (its route is drawn).
+  if arg.begins_with("--trade-demo="):
+   var tf = arg.get_slice("=",1)
+   var Dp = load("res://core/diplomacy.gd")
+   Dp.open_embassy(s,me,tf)
+   Dp.sign_treaty(s,me,tf,"trade")
+   refresh_army_overlays()
+   print("CAPTURE trade routes %d" % ui_data.trade_routes().size())
   # --no-pending: nothing pending on the End Turn button (every kind visited).
   if arg == "--no-pending":
    for w in ui_data.WARNINGS: warn_skipped.append(w[0])

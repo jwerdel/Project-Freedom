@@ -12,7 +12,7 @@ const SaveCodec = preload("res://core/save_codec.gd")
 const GameState = preload("res://core/game_state.gd")
 const WorldMap = preload("res://core/world_map.gd")
 const MapRegistry = preload("res://core/map_registry.gd")
-const SCHEMA = 7
+const SCHEMA = 8
 const OLDEST = 1 # oldest schema a migration chain still reaches
 const DIR = "user://saves"
 const AUTOSAVES = 3
@@ -22,7 +22,7 @@ const BACKDROP = Vector2i(960,600)
 # Migration hook: migrations()[n] turns a schema-n save dictionary into schema n+1. Add one each
 # time SCHEMA rises (and keep OLDEST at the first version still convertible).
 static func migrations() -> Dictionary:
- return {1:_v1_to_v2,2:_v2_to_v3,3:_v3_to_v4,4:_v4_to_v5,5:_v5_to_v6,6:_v6_to_v7}
+ return {1:_v1_to_v2,2:_v2_to_v3,3:_v3_to_v4,4:_v4_to_v5,5:_v5_to_v6,6:_v6_to_v7,7:_v7_to_v8}
 
 # Schema 2 (campaign AI block): pending AI attacks on the player and the camera view are saved.
 # A schema-1 save has neither: no pending attacks, and the default camera.
@@ -59,6 +59,12 @@ static func _v5_to_v6(d: Dictionary) -> Dictionary:
 
 # Schema 7 (parallel construction, 2026-10-07): a settlement's single "construction" becomes its list
 # "constructions" (one per slot).
+# Schema 8 (resources, supply, markets and seasons, Part B 2026-10-07): faction stockpiles, army supply and
+# the campaign's seasons. An older save gets fresh stockpiles and seasons (GameState.from_dict seeds them
+# when absent, as at campaign start); armies without supply start full.
+static func _v7_to_v8(d: Dictionary) -> Dictionary:
+ return d
+
 static func _v6_to_v7(d: Dictionary) -> Dictionary:
  if d.get("state") is Dictionary and d.state.get("settlements") is Dictionary:
   for sid in d.state.settlements:

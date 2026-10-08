@@ -32,6 +32,10 @@ const Vassals = preload("res://core/vassals.gd")
 const Hosts = preload("res://core/hosts.gd")
 const Titles = preload("res://core/titles.gd")
 const AiRealm = preload("res://core/ai_realm.gd")
+const Resources = preload("res://core/resources.gd")
+const Supply = preload("res://core/supply.gd")
+const Seasons = preload("res://core/seasons.gd")
+const Markets = preload("res://core/markets.gd")
 
 # Returns a report: {year (the year that ended), ledgers, growth, completed, moves (army id ->
 # points walked), recruited, replenished, sieges, entries, ai (Ai.take_turns report)}.
@@ -141,18 +145,27 @@ static func _begin_stage(k: int,state,ctx: Dictionary):
   4:
    var ids = state.settlements.keys()
    ids.sort()
-   for id in ids: state.settlements[id].population = maxf(0.0,state.settlements[id].population+ctx.growth[id].delta)
+   for id in ids:
+    # A starving realm does not grow (core/resources.gd; it shrinks from the second hungry turn).
+    var delta = float(ctx.growth[id].delta)
+    if Resources.starving(state,str(state.settlements[id].owner)): delta = minf(delta,0.0)
+    state.settlements[id].population = maxf(0.0,state.settlements[id].population+delta)
+   # 4b. Food, wood and stone: production in, consumption out; famine (Part B).
+   ctx.resources = Resources.end_turn(state)
   5: ctx.moves = Movement.end_turn(state) # 5. Armies: a new year's movement allowance; multi-turn orders keep walking.
   6:
    # 6-7. Recruits join their armies; armies regain men (free at home, paid in foreign lands).
    ctx.recruited = Armies.advance_queues(state)
    ctx.replenished = Armies.replenish(state)
-  7: ctx.sieges = Battles.end_turn(state) # 8. Sieges advance (starvation, surrender); wounded generals heal.
+  7:
+   ctx.sieges = Battles.end_turn(state) # 8. Sieges advance (starvation, surrender); wounded generals heal.
+   ctx.supply = Supply.end_turn(state) # 8b. Army supply drains and refills; raiders plunder (Part B).
   8: ctx.land = Land.end_turn(state,ctx.completed) # 8b. The land turns toward its owners' cultures (core/land.gd).
   9:
    # 9. Calendar and event log.
    state.year += 1
    state.turn += 1
+   ctx.seasons = Seasons.end_turn(state) # 9a. Forecasts and the change of seasons (Part B).
    state.last_ledgers = ctx.ledgers
    var rng = RandomNumberGenerator.new()
    rng.seed = hash([state.seed,ctx.ended])
@@ -182,6 +195,14 @@ static func _finish(state,ctx: Dictionary,ai: Dictionary) -> Dictionary:
    e.with = str(a.with)
    state.chronicle.append(e)
    entries.append(e)
+ # 10c. Markets (Part B): AI factions cover shortages and stockpile food before winter.
+ ai.market = []
+ if ai.get("ran",true):
+  for f in state.factions():
+   if f == state.player_faction or state.settlements_of(f).is_empty(): continue
+   ai.market.append_array(Markets.ai_turn(state,f))
+ # Part B news for the player: famine, the seasons, supply and plunder.
+ entries.append_array(_economy_news(state,ctx))
  # 11. The loss condition: grace periods start, count down, end (survived or destroyed).
  var realm = Realm.check_survival(state)
  # 12. Skill points (placeholder skills, no effects yet).
@@ -189,7 +210,7 @@ static func _finish(state,ctx: Dictionary,ai: Dictionary) -> Dictionary:
  var realm_entries = Realm.entries(state,state.year,ctx.debt+realm)
  state.chronicle.append_array(realm_entries)
  entries.append_array(realm_entries)
- return {"year":ctx.ended,"ledgers":ctx.ledgers,"growth":ctx.growth,"completed":ctx.completed,"moves":ctx.moves,"recruited":ctx.recruited,"replenished":ctx.replenished,"sieges":ctx.sieges,"land":ctx.land,"entries":entries,"ai":ai,"debt":ctx.debt,"realm":realm,"court":ctx.realm}
+ return {"year":ctx.ended,"ledgers":ctx.ledgers,"growth":ctx.growth,"completed":ctx.completed,"moves":ctx.moves,"recruited":ctx.recruited,"replenished":ctx.replenished,"sieges":ctx.sieges,"land":ctx.land,"entries":entries,"ai":ai,"debt":ctx.debt,"realm":realm,"court":ctx.realm,"resources":ctx.get("resources",[]),"supply":ctx.get("supply",[]),"seasons":ctx.get("seasons",[])}
 
 # 9b. The realm's yearly processing; notable events for the player go to the chronicle ("court").
 static func realm_year(state,ctx: Dictionary) -> Dictionary:
@@ -209,4 +230,30 @@ static func realm_year(state,ctx: Dictionary) -> Dictionary:
   if r.from == me: news.append(Chronicle.entry(year,"court","Your envoy arrives","Your envoy reached %s: %s." % [WorldMap.faction(r.to).name,"they accept" if r.ok else ("they refuse (%s)" % r.reason if r.reason != "" else "they refuse")],me))
  state.chronicle.append_array(news)
  ctx.entries.append_array(news)
+ return out
+
+# Part B events for the player's chronicle and Event Messages: famine, forecasts and the change of
+# seasons (everyone's news), supply running out and plunder (the player's armies or land).
+static func _economy_news(state,ctx: Dictionary) -> Array:
+ var me = state.player_faction
+ var year = int(ctx.ended)
+ var WorldMap = load("res://core/world_map.gd")
+ var out = []
+ for e in ctx.get("resources",[]):
+  if e.faction == me: out.append(Chronicle.entry(year,"court","Famine" if e.kind == "famine" else "The famine ends",e.text,me))
+ var culture = str(WorldMap.faction(me).get("culture","")) if me != "" else ""
+ for e in ctx.get("seasons",[]):
+  var title = {"forecast":"Winter is coming","winter":"Winter","summer":"Summer"}.get(e.kind,"")
+  var text = str(e.text)
+  if e.kind == "forecast": text = "%s warn: %s" % [Seasons.seers(culture).capitalize(),text]
+  var c = Chronicle.entry(year,"court",title+(": a long winter" if e.long and e.kind != "summer" else ""),text,me)
+  c.season = e.kind
+  out.append(c)
+ for e in ctx.get("supply",[]):
+  if e.kind == "starving" and e.faction == me and state.army_state.has(e.army): out.append(Chronicle.entry(year,"war","No supply","%s lost %d men: its supply is gone." % [state.army_state[e.army].display_name,int(e.men)],me))
+  if e.kind == "plunder" and (e.faction == me or e.victim == me):
+   var p = Chronicle.entry(year,"war","Plunder" if e.faction == me else "Raiders in your land","%s took %d gold from %s." % [WorldMap.faction(e.faction).name,int(e.gold),WorldMap.region(e.region).get("name",e.region)],e.faction)
+   p.with = e.victim
+   out.append(p)
+ state.chronicle.append_array(out)
  return out

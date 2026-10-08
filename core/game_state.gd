@@ -44,6 +44,8 @@ var titles = {}      # title id -> {faction, character, since}
 var musters = {}     # faction -> the banners called (core/hosts.gd)
 var hosts = {}       # leader army id -> {faction, members}
 var absorptions = [] # fallen houses awaiting the player's choice: [{fallen, settlement, turn}]
+var stock = {}   # faction -> {food, wood, stone, starving} (core/resources.gd; save schema 8)
+var seasons = {} # the campaign's seasons {schedule, announced} (core/seasons.gd; save schema 8)
 
 # A new campaign with a random campaign seed (stored in the state; every later random draw is
 # seeded from it, so a campaign replays exactly from its seed).
@@ -103,8 +105,14 @@ static func from_data(path := START,campaign_seed := 0) -> RefCounted:
  var Characters = load("res://core/characters.gd")
  for id in s.army_state: Characters.auto_allocate(s,id)
  init_realm(s)
+ init_economy(s)
  s.chronicle = load("res://core/chronicle.gd").opening_entries()
  return s
+
+# Stockpiles and seasons (Part B) at campaign start, and for saves made before them.
+static func init_economy(s):
+ load("res://core/seasons.gd").init(s)
+ load("res://core/resources.gd").init(s)
 
 # Courts, reputation and diplomacy at campaign start (and for saves made before them).
 static func init_realm(s):
@@ -146,7 +154,7 @@ func armies_of(faction: String) -> Array:
 func to_dict() -> Dictionary:
  return {"map_id":map_id,"map_version":map_version,"seed":seed,"year":year,"turn":turn,"player_faction":player_faction,"treasury":treasury.duplicate(true),"settlements":settlements.duplicate(true),"armies":armies.duplicate(),"army_state":army_state.duplicate(true),"road_level":road_level,"wars":wars.duplicate(),"battles":battles,"chronicle":chronicle.duplicate(true),"last_ledgers":last_ledgers.duplicate(true),"last_summary":last_summary.duplicate(true),"pending_battles":pending_battles.duplicate(true),"grace":grace.duplicate(),"destroyed":destroyed.duplicate(),"land":land.duplicate(true),
   "characters":characters.duplicate(true),"courts":courts.duplicate(true),"next_character":next_character,"reputation":reputation.duplicate(true),"diplomacy":diplomacy.duplicate(true),
-  "vassals":vassals.duplicate(true),"tributes":tributes.duplicate(true),"titles":titles.duplicate(true),"musters":musters.duplicate(true),"hosts":hosts.duplicate(true),"absorptions":absorptions.duplicate(true)}
+  "vassals":vassals.duplicate(true),"tributes":tributes.duplicate(true),"titles":titles.duplicate(true),"musters":musters.duplicate(true),"hosts":hosts.duplicate(true),"absorptions":absorptions.duplicate(true),"stock":stock.duplicate(true),"seasons":seasons.duplicate(true)}
 
 # The inverse of to_dict (a loaded save).
 static func from_dict(d: Dictionary) -> RefCounted:
@@ -186,6 +194,11 @@ static func from_dict(d: Dictionary) -> RefCounted:
   s.hosts = d.get("hosts",{}).duplicate(true)
   s.absorptions = d.get("absorptions",[]).duplicate(true)
  else: init_realm(s)
+ # Stockpiles and seasons (save schema 8); saves from before them start them fresh.
+ if d.has("stock") and d.has("seasons"):
+  s.stock = d.stock.duplicate(true)
+  s.seasons = d.seasons.duplicate(true)
+ else: init_economy(s)
  return s
 
 # A hash of the full state in its saved form: values, int/float types and dictionary order.

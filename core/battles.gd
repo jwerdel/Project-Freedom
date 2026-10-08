@@ -416,6 +416,7 @@ static func occupy(state,sid: String,faction: String,army_id: String):
   var p = WorldMap.settlement_position(sid)
   state.army_state[army_id].position = [p.x,p.y]
   state.army_state[army_id].garrison = sid
+  load("res://core/supply.gd").on_capture(state,army_id) # a captured settlement feeds its captors
 
 # Defender's withdrawal before battle: a casualty share, then a retreat (field battles only).
 static func withdraw(state,pb: Dictionary) -> Dictionary:
@@ -439,6 +440,11 @@ static func endurance(state,sid: String) -> int:
  for b in st.buildings:
   if b.get("chain","") == "farm": farm = int(b.level)
  var e = int(s.endurance_base)+int(st.resources.get("food",0))+farm+(1 if float(st.population)>float(s.population_bonus_over) else 0)
+ # The owner's food stockpile holds out longer (war-and-realm §2.8, Part B): a turn per per_turn food.
+ if state.get("stock") != null and not state.stock.is_empty():
+  var R = load("res://core/resources.gd")
+  var sc = R.data().siege
+  e += mini(int(sc.extra),int(R.amount(state,str(st.owner),"food")/int(sc.per_turn)))
  return mini(e,int(s.max_endurance))
 
 static func besiege(state,army_id: String,sid: String) -> Dictionary:

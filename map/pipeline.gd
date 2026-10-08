@@ -315,6 +315,12 @@ static func build(map_id: String,bakes := true,progress := Callable()) -> Dictio
    out.settlement = {"name":m.get("name",out.name),"type":m.get("type","city"),"level":int(m.get("level",1)),"coastal":bool(m.get("port",false)),"position":[snappedf(p.x,0.1),snappedf(p.y,0.1)]}
    for k2 in ["landmark","path"]: if m.has(k2): out.settlement[k2] = m[k2]
   else: out.settlement = null
+  # The region's climate (gameplay, Part B seasons: dry lands get a dry season instead of snow): the
+  # last sketch climate shape containing its settlement or, without one, its first polygon point.
+  var probe = Vector2(sites[id].x,sites[id].y) if sites.has(id) else (Vector2(poly[0][0],poly[0][1]) if not poly.is_empty() else Vector2.INF)
+  if probe.is_finite():
+   for ce in L.get("climates",[]):
+    if ce.get("points",PackedVector2Array()).size()>2 and Geometry2D.is_point_in_polygon(probe,ce.points): out.climate = str(ce.data.get("climate",""))
   regions[id] = out
  if not bakes:
   MapBake.write_render_cache(map_id,cell,origin,cols,rows,h,colors,rivers,climate,ccols,crows)

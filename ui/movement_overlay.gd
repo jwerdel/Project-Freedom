@@ -16,6 +16,7 @@ const PATH_SHADER = preload("res://ui/move_path.gdshader")
 const THIS_TURN = Color("4fe03a")
 const LATER = Color("ffb020")
 const BLOCKED = Color("e8402c")
+const TRADE = Color("f0c64a")
 const LIFT = 0.3
 
 var height: Callable # (x, z) -> ground height
@@ -23,6 +24,7 @@ var _layers = {}     # kind -> Node3D
 var _markers = {}    # kind -> [{"at": Vector3, "node": Control}]
 var _full_mat: ShaderMaterial
 var _faint_mat: ShaderMaterial
+var _trade_mat: ShaderMaterial
 var _reach_mat: StandardMaterial3D
 var _edge_mat: StandardMaterial3D
 var _canvas: CanvasLayer
@@ -37,6 +39,10 @@ func setup(height_fn: Callable):
  _faint_mat.set_shader_parameter("chevrons",0.0)
  _faint_mat.set_shader_parameter("opacity",0.45)
  _faint_mat.render_priority = 9
+ # Trade routes (Part B): a steady gold band, narrower than an order, no chevrons.
+ _trade_mat = _faint_mat.duplicate()
+ _trade_mat.set_shader_parameter("opacity",0.8)
+ _trade_mat.render_priority = 8
  _reach_mat = StandardMaterial3D.new()
  _reach_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
  _reach_mat.vertex_color_use_as_albedo = true
@@ -58,6 +64,7 @@ func set_view(camera: Camera3D,distance: float):
  _full_mat.set_shader_parameter("half_width",hw)
  _full_mat.set_shader_parameter("spacing",maxf(2.5,hw*5.0))
  _faint_mat.set_shader_parameter("half_width",hw*0.45)
+ _trade_mat.set_shader_parameter("half_width",hw*0.6)
  for kind in _markers:
   for m in _markers[kind]:
    var n: Control = m.node
@@ -100,7 +107,8 @@ func _ground(p: Vector2,lift := LIFT) -> Vector3:
 func show_path(kind: String,points: Array,turns: Array,opts := {}):
  var layer = _layer(kind)
  if points.size()<2: return
- var faint = opts.get("style","full") == "faint"
+ var faint = opts.get("style","full") in ["faint","trade"]
+ var trade = opts.get("style","full") == "trade" # a trade route (Part B): gold, no markers
  var blocked = bool(opts.get("blocked",false))
  var st = SurfaceTool.new()
  st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -108,7 +116,7 @@ func show_path(kind: String,points: Array,turns: Array,opts := {}):
  for i in range(1,points.size()):
   var a: Vector2 = points[i-1]
   var b: Vector2 = points[i]
-  var col = BLOCKED if blocked else (THIS_TURN if int(turns[i]) == 0 else LATER)
+  var col = TRADE if trade else (BLOCKED if blocked else (THIS_TURN if int(turns[i]) == 0 else LATER))
   var seg = a.distance_to(b)
   if seg<0.0001: continue
   var side = (b-a).orthogonal().normalized()
@@ -131,7 +139,7 @@ func show_path(kind: String,points: Array,turns: Array,opts := {}):
   along += seg
  var mesh = MeshInstance3D.new()
  mesh.mesh = st.commit()
- mesh.material_override = _faint_mat if faint else _full_mat
+ mesh.material_override = _trade_mat if trade else (_faint_mat if faint else _full_mat)
  mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
  mesh.extra_cull_margin = 64.0
  layer.add_child(mesh)

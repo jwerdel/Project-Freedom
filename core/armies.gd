@@ -189,6 +189,9 @@ static func can_recruit(state,army_id: String,unit_id: String,mode := "local") -
  elif int(state.treasury.get(a.faction,0))<cost: reasons.append("Not enough gold (%d needed)" % cost)
  if sid != "" and float(s.population)-int(u.size)<float(data().recruitment.min_population):
   reasons.append("Too few people in %s (keeps at least %d)" % [WorldMap.region(sid).settlement.name,int(data().recruitment.min_population)])
+ # Food or wood for some units (Part B, data/resources.json unit_costs).
+ var Res = load("res://core/resources.gd")
+ reasons.append_array(Res.shortfall(state,a.faction,Res.unit_cost(unit_id)))
  return {"ok":reasons.is_empty(),"reasons":reasons,"settlement":sid}
 
 # Recruitment panel entries for a mode: every recruitable unit type with cost, turns (including the
@@ -202,7 +205,7 @@ static func options(state,army_id: String,mode := "local") -> Array:
   var check = can_recruit(state,army_id,id,mode)
   out.append({"unit":id,"name":u.display_name,"cost":mode_cost(id,mode),"turns":mode_turns(id,mode)+extra,"overflow":extra>0,"mode":mode,
    "upkeep":int(round(float(u.placeholder_stats.upkeep)*float(Economy.data().upkeep.army_upkeep_multiplier))),"men":int(u.size),
-   "available":check.ok,"reasons":check.reasons,"settlement":check.settlement})
+   "available":check.ok,"reasons":check.reasons,"settlement":check.settlement,"materials":load("res://core/resources.gd").unit_cost(id)})
  return out
 
 # One card per unit (owner spec 2026-10-07: no duplicate cards): the best source for each, local when
@@ -232,8 +235,11 @@ static func recruit(state,army_id: String,unit_id: String,mode := "local") -> Di
  var extra = overflow_turns(a.queue.size(),capacity(state,army_id))
  var turns = mode_turns(unit_id,mode)+extra
  state.treasury[a.faction] -= cost
+ var Res = load("res://core/resources.gd")
+ var mats = Res.unit_cost(unit_id)
+ Res.pay(state,a.faction,mats)
  state.settlements[check.settlement].population = float(state.settlements[check.settlement].population)-int(u.size)
- a.queue.append({"unit":unit_id,"settlement":check.settlement,"turns_left":turns,"turns_total":turns,"cost":cost,"men":int(u.size),"mode":mode,"extra":extra})
+ a.queue.append({"unit":unit_id,"settlement":check.settlement,"turns_left":turns,"turns_total":turns,"cost":cost,"materials":mats,"men":int(u.size),"mode":mode,"extra":extra})
  check.kind = queue_kind(a.queue[-1])
  check.turns = turns
  return check
@@ -251,6 +257,7 @@ static func cancel_recruit(state,army_id: String,index: int) -> Dictionary:
  var q = a.queue[index]
  a.queue.remove_at(index)
  state.treasury[a.faction] += int(q.cost)
+ load("res://core/resources.gd").refund(state,a.faction,q.get("materials",{}))
  state.settlements[q.settlement].population = float(state.settlements[q.settlement].population)+int(q.men)
  var cap = capacity(state,army_id)
  for i in a.queue.size():

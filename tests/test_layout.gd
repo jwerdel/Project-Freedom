@@ -33,7 +33,8 @@ func test_top_bar_has_tw_buttons_in_order_with_missing_systems_greyed():
   assert_true(ui.top_buttons[k].disabled,k+" is greyed")
   assert_string_contains(ui.top_buttons[k].tooltip_text,"Coming later")
  for k in ["menu","camera","tactical","events","lords","provinces","factions","summary"]: assert_false(ui.top_buttons[k].disabled,k+" works")
- assert_not_null(ui.find_child("FactionResource0",true,false))
+ # Part B: the food, wood and stone stockpiles, the season and the market replace the mock resource slots.
+ for n in ["Res_food","Res_wood","Res_stone","Season","MarketButton"]: assert_not_null(ui.find_child(n,true,false),n)
  assert_string_contains(ui.effects_icon.tooltip_text,"Faction effects")
 
 func test_toggles_and_menu_signal():
@@ -137,7 +138,7 @@ func test_army_panel_has_lord_left_and_info_right():
  assert_true(ui.lord_box.visible)
  assert_not_null(ui.lord_box.find_child("LordCard",true,false))
  assert_not_null(ui.lord_box.find_child("MovementBar",true,false))
- assert_not_null(ui.info_box.find_child("Stance",true,false))
+ assert_not_null(ui.info_box.find_child("SupplyBar",true,false),"supply replaces the greyed stance slot")
  var info = data.army_info(HOST)
  assert_eq(info.upkeep,data.army(HOST).upkeep)
  assert_between(info.replenish_pct,0,100)

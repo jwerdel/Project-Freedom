@@ -61,23 +61,36 @@
         {"name": "Grand Exchange", "cost": 2200, "turns": 2, "upkeep": 55, "effects": {"income": 260, "tax_pct": 0.30}}]},
     "farm": {"name": "Farms", "category": "economic", "visual": "building.farm", "settlement_types": ["village", "town", "castle"],
       "levels": [
-        {"name": "Wheat Fields", "cost": 300, "turns": 1, "upkeep": 10, "effects": {"income": 10, "income_per_endowment": {"food": 5}, "growth": 0.004}},
-        {"name": "Granaries", "cost": 700, "turns": 1, "upkeep": 15, "effects": {"income": 20, "income_per_endowment": {"food": 8}, "growth": 0.007}},
-        {"name": "Estates", "cost": 1400, "turns": 2, "upkeep": 25, "effects": {"income": 35, "income_per_endowment": {"food": 12}, "growth": 0.010}}]},
+        {"name": "Wheat Fields", "cost": 300, "turns": 1, "upkeep": 10, "effects": {"income": 10, "income_per_endowment": {"food": 5}, "growth": 0.004, "produces": {"food": 30}}},
+        {"name": "Granaries", "cost": 700, "turns": 1, "upkeep": 15, "effects": {"income": 20, "income_per_endowment": {"food": 8}, "growth": 0.007, "produces": {"food": 50}}},
+        {"name": "Estates", "cost": 1400, "turns": 2, "upkeep": 25, "effects": {"income": 35, "income_per_endowment": {"food": 12}, "growth": 0.010, "produces": {"food": 80}}}]},
     "mine": {"name": "Mines", "category": "economic", "visual": "building.mine", "settlement_types": ["city", "town", "village", "castle", "fortress"], "requires": {"hills": true},
       "levels": [
-        {"name": "Quarry and Pits", "cost": 450, "turns": 1, "upkeep": 25, "effects": {"income": 40, "income_per_endowment": {"minerals": 15, "stone": 5}}},
-        {"name": "Deep Mines", "cost": 1000, "turns": 2, "upkeep": 40, "effects": {"income": 80, "income_per_endowment": {"minerals": 25, "stone": 8}}},
-        {"name": "Great Mine Works", "cost": 2000, "turns": 2, "upkeep": 60, "effects": {"income": 130, "income_per_endowment": {"minerals": 40, "stone": 12}}}]},
+        {"name": "Quarry and Pits", "cost": 450, "turns": 1, "upkeep": 25, "effects": {"income": 40, "income_per_endowment": {"minerals": 15, "stone": 5}, "produces": {"stone": 10}}},
+        {"name": "Deep Mines", "cost": 1000, "turns": 2, "upkeep": 40, "effects": {"income": 80, "income_per_endowment": {"minerals": 25, "stone": 8}, "produces": {"stone": 18}}},
+        {"name": "Great Mine Works", "cost": 2000, "turns": 2, "upkeep": 60, "effects": {"income": 130, "income_per_endowment": {"minerals": 40, "stone": 12}, "produces": {"stone": 28}}}]},
     "port": {"name": "Port", "category": "economic", "visual": "building.port", "settlement_types": ["city", "town", "village"], "requires": {"coastal": true},
       "levels": [
-        {"name": "Fishing Wharf", "cost": 600, "turns": 1, "upkeep": 20, "effects": {"income": 60, "growth": 0.002}},
-        {"name": "Harbour", "cost": 1300, "turns": 2, "upkeep": 30, "effects": {"income": 120, "growth": 0.003}},
-        {"name": "Merchant Harbour", "cost": 2500, "turns": 2, "upkeep": 45, "effects": {"income": 220, "growth": 0.004}}]},
+        {"name": "Fishing Wharf", "cost": 600, "turns": 1, "upkeep": 20, "effects": {"income": 60, "growth": 0.002, "produces": {"food": 15}}},
+        {"name": "Harbour", "cost": 1300, "turns": 2, "upkeep": 30, "effects": {"income": 120, "growth": 0.003, "produces": {"food": 25}}},
+        {"name": "Merchant Harbour", "cost": 2500, "turns": 2, "upkeep": 45, "effects": {"income": 220, "growth": 0.004, "produces": {"food": 35}}}]},
     "fishing": {"name": "Fishing Camp", "category": "economic", "visual": "building.port", "settlement_types": ["city", "town", "village"], "requires": {"water": true}, "_note": "Fishing on the sea, a lake or a river (owner spec 2026-10-07: port and fishing buildings only where there is water). PLACEHOLDER numbers.",
       "levels": [
-        {"name": "Fishing Camp", "cost": 250, "turns": 1, "upkeep": 8, "effects": {"income": 20, "growth": 0.002}},
-        {"name": "Fishery", "cost": 600, "turns": 1, "upkeep": 12, "effects": {"income": 45, "growth": 0.003}}]},
+        {"name": "Fishing Camp", "cost": 250, "turns": 1, "upkeep": 8, "effects": {"income": 20, "growth": 0.002, "produces": {"food": 25}}},
+        {"name": "Fishery", "cost": 600, "turns": 1, "upkeep": 12, "effects": {"income": 45, "growth": 0.003, "produces": {"food": 45}}}]},
+    "lumber": {"name": "Lumber Camp", "category": "economic", "visual": "building.farm", "settlement_types": ["city", "town", "village", "castle"], "requires": {"forest": true}, "_note": "Wood (owner spec 2026-10-07, Part B: lumber towns and forests make wood). PLACEHOLDER numbers.",
+      "levels": [
+        {"name": "Lumber Camp", "cost": 300, "turns": 1, "upkeep": 10, "effects": {"income": 10, "produces": {"wood": 35}}},
+        {"name": "Sawmill", "cost": 700, "turns": 1, "upkeep": 15, "effects": {"income": 20, "produces": {"wood": 60}}},
+        {"name": "Timber Yards", "cost": 1400, "turns": 2, "upkeep": 25, "effects": {"income": 30, "produces": {"wood": 90}}}]},
+    "quarry": {"name": "Quarry", "category": "economic", "visual": "building.mine", "settlement_types": ["city", "town", "village", "castle", "fortress"], "requires": {"hills": true}, "_note": "Stone (quarries and mountain regions). PLACEHOLDER numbers.",
+      "levels": [
+        {"name": "Quarry", "cost": 350, "turns": 1, "upkeep": 12, "effects": {"income": 10, "produces": {"stone": 30}}},
+        {"name": "Stoneworks", "cost": 800, "turns": 2, "upkeep": 20, "effects": {"income": 20, "produces": {"stone": 55}}}]},
+    "pasture": {"name": "Pastures", "category": "economic", "visual": "building.farm", "settlement_types": ["village", "town", "castle", "fortress"], "_note": "Food from herds (farms, fishing and pastures make food). PLACEHOLDER numbers.",
+      "levels": [
+        {"name": "Pastures", "cost": 300, "turns": 1, "upkeep": 10, "effects": {"income": 10, "growth": 0.001, "produces": {"food": 22}}},
+        {"name": "Herds", "cost": 700, "turns": 1, "upkeep": 15, "effects": {"income": 20, "growth": 0.002, "produces": {"food": 40}}}]},
     "houses": {"name": "Housing", "category": "economic", "visual": "building.houses", "settlement_types": ["city", "town", "village"],
       "levels": [
         {"name": "Houses", "cost": 350, "turns": 1, "upkeep": 10, "effects": {"capacity": 1000, "growth": 0.002}},

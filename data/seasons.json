@@ -1,0 +1,22 @@
+{
+  "_note": "Seasons (war-and-realm §9; owner spec 2026-10-07, Part B). PLACEHOLDER numbers. core/seasons.gd generates one campaign's seasons from its seed: summers last summer[0]-summer[1] turns, winters winter[0]-winter[1] (a long winter of 3 turns is rare: long_winter_chance); forecasts come forecast[0]-forecast[1] turns ahead from the culture's seers.",
+  "summer": [3, 9],
+  "winter": [1, 2],
+  "long_winter": 3,
+  "long_winter_chance": 0.15,
+  "forecast": [2, 4],
+  "schedule_turns": 400,
+  "effects": {
+    "_note": "Summer: food x summer_food. Winter: food x by latitude, from north_food at the map's north edge to south_food at its south edge (north_band: the share of the map counted as north, where it is coldest); dry climates (desert, redrock, jungle, steppe) get a dry season instead: food x dry_food, no snow. Supply in enemy land drains x winter_supply. Snow slows movement: an army in the north band or on hills, passes or mountains refills only winter_move of its movement points. The map whitens progressively: snow_ramp turns to full cover.",
+    "summer_food": 1.15,
+    "north_food": 0.4,
+    "south_food": 0.95,
+    "north_band": 0.45,
+    "dry_food": 0.85,
+    "dry_climates": ["desert", "redrock", "jungle", "steppe"],
+    "winter_supply": 1.5,
+    "winter_move": 0.7,
+    "snow_ramp": 2
+  },
+  "seers": {"_note": "Who forecasts the winter, by culture (the event names them).", "medieval": "the maesters", "roman": "the augurs", "greek": "the oracle", "dwarf": "the runekeepers", "orc": "the shamans", "dark_elf": "the witch-seers", "elf": "the star-watchers", "desert": "the priests of the sun", "ratmen": "the seers", "beastmen": "the bray-shamans", "lizardmen": "the star-priests"}
+}

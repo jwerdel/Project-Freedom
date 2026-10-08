@@ -122,6 +122,7 @@ static func effect_lines(chain_id: String,level: int) -> Array:
  var e = level_data(chain_id,level).effects
  var out = []
  if e.get("income",0): out.append("+%d gold per turn" % int(e.income))
+ for r in e.get("produces",{}): out.append("+%d %s per turn" % [int(e.produces[r]),r])
  for r in e.get("income_per_endowment",{}): out.append("+%d gold per %s endowment point" % [int(e.income_per_endowment[r]),r])
  if e.get("income_pct",0): out.append("+%d%% settlement income" % int(round(e.income_pct*100)))
  if e.get("tax_pct",0): out.append("+%d%% tax from population" % int(round(e.tax_pct*100)))
@@ -173,3 +174,19 @@ static func site_reason(state,id: String,chain_id: String) -> String:
  for k in [["coastal","Requires a coast"],["water","Requires the sea, a lake or a river"],["hills","Requires hills or mountains"],["forest","Requires woodland"]]:
   if bool(req.get(k[0],false)) and not bool(geo.get(k[0],false)): return k[1]
  return ""
+
+# What a building level produces each turn: {food, wood, stone} (data "produces"; owner spec Part B).
+static func produces(chain_id: String,level: int) -> Dictionary:
+ if level<1: return {}
+ return level_data(chain_id,level).effects.get("produces",{})
+
+# Wood and stone for a building level (data/resources.json building_costs: shares of its gold cost
+# by category; walls and fortifications mostly stone).
+static func material_cost(chain_id: String,level: int) -> Dictionary:
+ var R = JSON.parse_string(FileAccess.get_file_as_string("res://data/resources.json")) if _rcost == null else _rcost
+ _rcost = R
+ var cat = "main" if is_main(chain_id) else str(chain(chain_id).get("category","economic"))
+ var share = R.building_costs.get(cat,{"wood":0.1,"stone":0.1})
+ var gold = float(level_data(chain_id,level).cost)
+ return {"wood":int(round(gold*float(share.wood))),"stone":int(round(gold*float(share.stone)))}
+static var _rcost = null

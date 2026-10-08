@@ -14,6 +14,7 @@ const Armies = preload("res://core/armies.gd")
 const Battles = preload("res://core/battles.gd")
 const Ai = preload("res://core/ai.gd")
 const WorldMap = preload("res://core/world_map.gd")
+const Resources = preload("res://core/resources.gd")
 
 func _initialize():
  # Every faction is AI-run here, the player's too: its orders walk at End Turn.
@@ -43,6 +44,7 @@ func _initialize():
   var tr = {}
   for k in r.treaties: tr[k] = r.treaties[k]
   print("REALM %d | realm actions %s | treaties at the end %s | vassals at the end %d (max %d) | betrayers %d | characters %d | marriages %d" % [sd,str(r.realm),str(tr),r.vassals_end,r.vassals_max,r.betrayals,r.characters,r.marriages])
+  print("PARTB %d | famines %d | hungry turns %s | food deficit samples (every 5th turn) %s | min food %s | AI market trades %s for %d gold | winters %d (long %d), forecasts %d | plunder %d gold | supply losses %d men" % [sd,r.famines,str(r.hungry),str(r.short),str(r.low_food),str(r.trades),r.trade_gold,r.winters,r.long_winters,r.forecasts,r.plunder,r.supply_men])
   print("SEED %d | wars %d | battles %d | sieges %d | captures %d | withdrawals %d | landless %d, survived %d, destroyed %s | deserted %d | min treasury %s | eliminated %s | treasury %s | armies %s | settlements %s | stuck %s | idle %s | ai ms avg %.1f max %.1f | end turn ms avg %.1f max %.1f" % [sd,r.wars,r.battles,r.sieges,r.captures,r.withdrawals,r.graces,r.survived,str(r.destroyed),r.deserted,str(r.min_treasury),str(r.eliminated),str(r.treasury),str(r.armies),str(r.owned),str(r.stuck),str(r.idle),_avg(r.ms),r.ms.max(),_avg(r.turn_ms),r.turn_ms.max()])
  var a = run(seeds[0],turns,false)
  var b = run(seeds[0],turns,false)
@@ -61,7 +63,8 @@ func run(sd: int,turns: int,verbose: bool) -> Dictionary:
  var opts = {"factions":s.factions(),"resolve_player":true}
  var start_factions = s.factions().filter(func(f): return not s.settlements_of(f).is_empty())
  var out = {"wars":0,"battles":0,"sieges":0,"captures":0,"withdrawals":0,"ms":[],"eliminated":[],"stuck":[],"idle":[],"graces":0,"survived":0,"deserted":0,"min_treasury":{},"turn_ms":[],
-  "realm":{},"peace":0,"marriages":0,"vassals_max":0,"banners":0,"betrayals":0}
+  "realm":{},"peace":0,"marriages":0,"vassals_max":0,"banners":0,"betrayals":0,
+  "famines":0,"hungry":{},"short":{},"trades":{},"trade_gold":0,"winters":0,"long_winters":0,"forecasts":0,"plunder":0,"supply_men":0,"low_food":{}}
  var last_pos = {}
  var still = {}
  var last_act = {}
@@ -91,6 +94,25 @@ func run(sd: int,turns: int,verbose: bool) -> Dictionary:
   for ev in rep.realm:
    if ev.kind == "landless": out.graces += 1
    if ev.kind == "survived": out.survived += 1
+  # Part B: famines, hungry turns, deficits, market trades, winters, plunder and supply losses.
+  for ev in rep.get("resources",[]):
+   if ev.kind == "famine": out.famines += 1
+  for ev in rep.get("seasons",[]):
+   if ev.kind == "winter":
+    out.winters += 1
+    if ev.long: out.long_winters += 1
+   if ev.kind == "forecast": out.forecasts += 1
+  for ev in rep.get("supply",[]):
+   if ev.kind == "plunder": out.plunder += int(ev.gold)
+   if ev.kind == "starving": out.supply_men += int(ev.men)
+  for tr in rep.ai.get("market",[]):
+   out.trades[tr.kind] = int(out.trades.get(tr.kind,0))+1
+   out.trade_gold += int(tr.gold)
+  for f in s.factions():
+   if s.settlements_of(f).is_empty(): continue
+   if Resources.starving(s,f): out.hungry[f] = int(out.hungry.get(f,0))+1
+   if t%5 == 0 and int(Resources.ledger(s,f).food.net)<0: out.short[f] = int(out.short.get(f,0))+1
+   out.low_food[f] = mini(int(out.low_food.get(f,1<<30)),Resources.amount(s,f,"food"))
   for ev in rep.debt:
    if ev.kind == "desertion": out.deserted += int(ev.men)
   for f in s.factions(): out.min_treasury[f] = mini(int(out.min_treasury.get(f,1<<30)),int(s.treasury[f]))

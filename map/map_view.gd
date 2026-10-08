@@ -175,6 +175,12 @@ func set_zoom_look(camera_distance: float,high_zoom: float):
  material.set_shader_parameter("border_scale",maxf(1.0,camera_distance/90.0))
  material.set_shader_parameter("wash",high_zoom)
 
+# Winter on the map (Part B): 0 summer .. 1 deep winter; the north whitens first (terrain shader).
+func set_winter(amount: float,north_band := 0.45):
+ if material == null: return
+ material.set_shader_parameter("winter_snow",clampf(amount,0.0,1.0))
+ material.set_shader_parameter("north_band",north_band)
+
 # Settlements rebuild on the next update when their spec changed (levels, buildings, owners).
 func refresh_settlements():
  _last_focus = Vector3(INF,0,INF)

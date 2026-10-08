@@ -1655,3 +1655,130 @@ TW:WH3 references studied first: `docs/reference/tw/lothern_lords.png`, `terrain
 - the births soft cap.
 
 The self-test passes.
+
+## Part B: resources, markets and seasons (2026-10-07)
+
+War-and-realm §2.7, §2.8, §7 and §9. Every number is a placeholder in `data/resources.json` and `data/seasons.json`. UI rules are in `docs/tw-ui-parity.md` §19.
+
+**B1 Resources** (`core/resources.gd`):
+- Food, wood and stone are stockpiles per faction (`GameState.stock`); gold stays the treasury.
+- The top bar shows each with its change per turn; the tooltip breaks it down by settlement and by what people and armies eat.
+- **Production:**
+  - a settlement's land: its `provinces.json` endowment (food, wood, stone, and minerals for stone);
+  - its people's subsistence farming;
+  - its buildings' new `produces`: farms, fishing and ports and the new Pasture make food; the new Lumber Camp (forest only) makes wood; the new Quarry (hills only) and mines make stone.
+  - Food is then multiplied by the season and the land's climate yield.
+- **Costs:**
+  - Buildings cost wood and stone as a share of their gold cost by category (walls mostly stone), refunded like gold on cancel.
+  - Siege units cost wood; cavalry, flyers and monsters cost food.
+- **Upkeep:** 5 food per 1,000 people and 1 per unit.
+- **Deficits:** a deficit first empties the stockpile. The turn after the granaries empty, growth stops. From the turn after that, settlements lose 3% of their people a turn and field armies 5% of their men.
+- Food warnings reach the End Turn button while food will run out within 3 turns.
+- **No faction starts short:** start stocks cover 6 turns of eating, and every faction on both maps starts with a food surplus (tested).
+
+**B2 Supply** (`core/supply.gd`):
+- One bar per army (0–100) on the army panel, with next turn's change and the reason.
+- **Friendly or allied land:** +40 a turn, paid from the food stockpile; with no food, no refill.
+- **Neutral land:** -4. **Enemy land:** -14, ×1.5 in winter.
+- **Raiding stance** (army panel checkbox; the AI uses it for raiders and hungry armies): +6 in enemy land, and plunders 12 gold per unit from the land's owner, at half movement.
+- Capturing a settlement fills the bar. An empty bar costs 6% of the men a turn.
+- **Sieges:** the owner's food stock adds a turn of endurance per 250 food, at most +2, under the existing cap of 8.
+
+**B3 Markets** (`core/markets.gd`; top-bar scales button or M):
+- Buy and sell food, wood and stone in lots of 50, 100 or 250.
+- **Price** = base × scarcity × biome × season:
+  - scarcity runs from 1.5 (under 2 turns of need) to 0.75 (over 10);
+  - biome: wood dear in desert and steppe, food dear in the snowy north;
+  - season: food ×1.5 in winter, ×1.25 in a dry season.
+- Selling pays 55% of the buy price.
+- **The AI:** covers a food shortage within 3 turns, stockpiles food for a forecast winter, and buys wood and stone it lacks. It spends at most 35% of its treasury a turn.
+
+**B4 Trade routes:**
+- Each trade agreement is drawn on the map as a gold band from capital to capital (yours only).
+- Income stays the abstract trade income, and routes continue in war with tariffs (Part 4 diplomacy).
+- Raids and blockades are hooks only (`UiData.trade_routes` marks `war`).
+
+**B5 Seasons** (`core/seasons.gd`):
+- **Schedule:** generated per campaign seed and saved. Summers last 3–9 turns and winters 1–2; a long winter of 3 turns has a 15% chance.
+- **Forecast:** 2–4 turns ahead, an event from the culture's seers ("Winter is coming in 3 years").
+- **Top bar:** sun or snowflake with the turns until the change; the tooltip names the next season.
+- **Food:**
+  - summer ×1.15;
+  - winter ×0.4 in the far north, rising to ×0.95 at the southern edge of the northern band (45% of the map);
+  - desert and jungle get a dry season (×0.85) instead of snow.
+- **Movement:** winter cuts movement to 70% in the north and on hills, passes and mountains.
+- **Map:** the terrain whitens over two turns (shader `winter_snow`, strongest in the north) and thaws again.
+- **The AI:**
+  - stockpiles food before a forecast winter;
+  - northern realms cut aggression to 30% in winter unless strong, meaning at least 1.5× the average realm's units.
+- **Not done:** the path planner's turn numbers ignore winter slowing, as they already ignore the foreign-land movement factor. A winter march can take a turn longer than drawn.
+
+**B6 Save:** schema 8 (the migration from 7 is a no-op: stocks, supply and seasons initialise on load).
+
+**Top bar:** with the new groups the top centre overflowed at 1440×900, and the season and market button were hidden under the right-hand buttons. Following `lothern_lords.png`, the top centre now shows only the faction emblem (the name is its tooltip), as TW:WH3 does.
+
+**Soak** (Varos, seeds 11/22/33/44 × 50 turns, debug):
+
+| | Part A | Part B |
+|---|---|---|
+| Captures | 11–22 (+2–7 ceded) | 15–20 |
+| Destroyed / vassals at the end | 2–3 / 2–6 | 0–4 / 6–10 |
+| Marriages | 157–173 | 160–170 |
+| Famines (food at zero) | – | 0 in every seed |
+| Factions with a food deficit in a sampled turn | – | 6–9 of 42 (northern houses in winter: Kells, Varn, Merrow, Long Lakes) |
+| Lowest food stock of any faction | – | 250 (House Kells); most never fall below their start |
+| AI market trades | – | 120–151 per seed (wood 104–132, stone 16–33, food 0), 29–34k gold |
+| Winters (long) / forecasts | – | 6–8 (0–2) / 5–8 |
+| Plunder by raiding armies | – | 7.0–8.8k gold |
+| Men lost to empty supply | – | 2.1–3.9k |
+| End Turn debug, average / worst | 822–863 ms / 1.33 s | 1.07–1.27 s / 1.82 s |
+| Deterministic | yes | yes |
+
+**Findings:**
+- **Food is too generous at these placeholder values.** No faction ran out of food in 200 faction-campaigns, so the AI never needed to buy any:
+  - Summer surpluses cover the winter deficits.
+  - Subsistence farming (4.5 per 1,000 people, ×1.15 in summer) outgrows what people eat (5), so growth alone never starves a realm.
+
+  Knobs: `land.subsistence`, `effects.north_food` and `consumption.per_1000`. Tuning them is left for the playtest.
+- **Grimhollow** still ends near zero gold (treasury 34–460). Plunder exists (7–9k gold per seed across all raiders), but Grimhollow was idle in two seeds.
+
+**Budgets:**
+- **Release, Varos, 20 turns:**
+  - End Turn 579 ms on average, 694 ms worst (budget 10 s);
+  - sliced End Turn 605 ms, longest chunk 152 ms;
+  - save 5.5 ms on the main thread.
+- **Path planning (release, budget 5 ms), p95 / worst:**
+  - 60 m: 0.29 / 0.32 ms;
+  - 150 m: 0.70 / 0.97 ms;
+  - 400 m: 2.99 / 4.04 ms;
+  - 1,000 m: 1.54 / 2.06 ms.
+- **GPU** (1440×900, debug):
+
+| View | GPU ms | Draw calls | Triangles |
+|---|---|---|---|
+| Highest zoom (Varn), summer | 5.03 | 1,261 | 0.25 M |
+| Highest zoom (Varn), winter | 5.06 | 1,261 | 0.25 M |
+
+**Captures** (`captures/`):
+
+| What | File |
+|---|---|
+| Top bar with resources and the food tooltip | `b_food_tip` |
+| Market | `b_market` |
+| Army supply bar in enemy land (raiding stance) | `b_supply` |
+| Winter in the north | `b_winter` |
+| The same view in summer | `b_summer` |
+| Forecast event | `b_forecast` |
+| Trade route (Varn and Kells) | `b_trade` |
+
+**Tests:** 386 GUT tests pass. New in `tests/test_resources.gd` and `tests/test_seasons.gd`:
+- production and upkeep math; deficits (growth stops, then shrinking and attrition, then recovery);
+- wood and stone construction costs with refunds; unit costs;
+- market prices by scarcity and season; buying and selling; the AI buying before winter;
+- supply drain (faster in winter), raiding and plunder, refill from food, captures;
+- siege endurance with food; the save round trip;
+- season generation, rarity of long winters, forecasts, food by latitude and the dry season;
+- the winter movement penalty; the map whitening;
+- no faction starting short (both maps).
+
+The self-test passes.

@@ -76,6 +76,7 @@
     "emergency_reserve_share": 0.25,
     "composition": {"spear": 0.3, "infantry": 0.25, "missile": 0.25, "cavalry": 0.1, "levy": 0.1}
   },
+  "winter": {"_note": "Part B (war-and-realm §9): in winter, realms whose capital lies in the northern band scale their aggression by north_aggression, unless strong: their armies count at least strong_ratio x the average realm's units.", "north_aggression": 0.3, "strong_ratio": 1.5},
   "grace": {
     "_note": "A landless faction in its grace period (core/realm.gd) puts everything into retaking a settlement: boldness x boldness (attacks at worse odds), aggression at least 1, war declared on the owner of its best reachable settlement target without a roll, only settlements targeted, and no siege that would outlast its grace.",
     "boldness": 1.5

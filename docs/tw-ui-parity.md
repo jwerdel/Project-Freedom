@@ -407,3 +407,15 @@ Reference screenshots in `docs/reference/tw/` (`lothern_lords.png`, `terrain_1.p
 | Offer builder | Items already active between you are not offered; they show as Active with Cancel (locked while protected); items in the offer leave Add Item on both sides; "No more items available" when none remain | |
 | Replies | Every envoy and proposal returns an answer: a reply pop-up with the ruler's portrait, their words (by attitude) and the outcome; it feeds the End Turn button; envoys on the road are listed with turns to arrival | |
 | Turn summary | Event Messages: Turn Summary (your settlements, your armies and battles, diplomacy, your court, threats near your borders; each row jumps to its subject), Your Wars and Battles, Court and Realm, and World (this turn only, collapsed by default) | |
+
+## 19. Resources, markets and seasons (owner spec, 2026-10-07, Part B)
+
+| Item | Ours | Notes |
+|---|---|---|
+| Top centre | Faction emblem (name and realm in its tooltip), treasury, income, population, then food, wood and stone, each as stock (change per turn); the season icon (sun, or snowflake in winter and the dry season) with the turns until it changes; the market button; faction effects | Follows `lothern_lords.png`: TW:WH3 shows the emblem and resources only, no faction name. The name was dropped because the bar overflowed at 1440×900 |
+| Resource tooltips | Stock and change per turn, then a line per settlement that produces it and what your people and armies eat | TW: the treasury tooltip ledger |
+| Market | A window (top-bar scales button, M, Esc closes): each resource with stock, buy and sell price per unit, and lots of 50/100/250 to buy or sell; the header explains the prices; the End Turn food warning opens it | Not in TW:WH3 (no market screen); styled like our other windows |
+| Supply | Army panel, info column: a supply bar (green, amber under 60, red under 30) with next turn's change; the tooltip gives the reason and how to refill; a "Raiding stance" checkbox for your armies | Replaces the greyed Stance slot. TW: the stance buttons on the army panel; raiding works like TW's raid stance (lives off the land, slower) |
+| End Turn | Food: "Food will run out" while food runs out within 3 turns (or "Your people are starving"); Supply: "Army low on supply" | Through the same End Turn notification as Part A (§18) |
+| Seasons | The forecast and the change of season arrive as pop-ups ("Winter is coming", "Winter has come", "The thaw"); the terrain whitens over two winter turns, most in the north, and thaws in summer | TW has no seasons; built from the war-and-realm spec |
+| Trade routes | Each of your trade agreements is a steady gold band from capital to capital, under army orders and without chevrons or markers | TW:WH3 draws trade routes on the map only for sea trade; ours are land lines from the spec |

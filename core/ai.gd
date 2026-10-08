@@ -254,6 +254,20 @@ static func _faction_begin(state,f: String) -> Dictionary:
   p.landless = left
   p.boldness = float(p.boldness)*float(data().grace.boldness)
   p.aggression = maxf(float(p.aggression),1.0)
+ # Winter (Part B, war-and-realm §9): northern realms avoid deep winter campaigns unless strong.
+ var Seasons = load("res://core/seasons.gd")
+ if state.get("seasons") != null and not state.seasons.is_empty() and Seasons.is_winter(state) and left<0:
+  var cap = Armies.capital(state,f)
+  if cap != "" and Seasons.latitude(WorldMap.settlement_position(cap).y)<float(Seasons.data().effects.north_band) and float(p.get("range",1.0))<=1.0 and not _winter_strong(state,f):
+   p = p.duplicate()
+   p.aggression = float(p.aggression)*float(data().get("winter",{}).get("north_aggression",0.3))
+ # Raiders and hungry armies in enemy land forage (the raiding stance, core/supply.gd).
+ if state.get("stock") != null and not state.stock.is_empty():
+  var Supply = load("res://core/supply.gd")
+  for id in Armies.armies_of(state,f):
+   if state.army_state[id].units.is_empty(): continue
+   var land = Supply.land_of(state,id)
+   Supply.set_raid(state,id,land.kind == "enemy" and (float(p.get("range",1.0))>1.0 or Supply.supply(state,id)<35.0))
  return {"rng":rng,"p":p,"look":{}}
 
 static func _faction_step(k: int,state,f: String,c: Dictionary,report: Dictionary,opts: Dictionary,controlled: Array):
@@ -416,6 +430,10 @@ static func min_net(state,f: String) -> int:
 
 static func _build(state,f: String,p: Dictionary,look: Dictionary,report: Dictionary):
  var e = data().economy
+ # Part B: buildings that make what the faction lacks (food short, wood or stone low) come first.
+ var Res = load("res://core/resources.gd")
+ var Bld = load("res://core/buildings.gd")
+ var rl = Res.ledger(state,f)
  for n in int(e.max_builds_per_turn):
   var surplus = int(state.treasury.get(f,0))-reserve(state,f,p)
   var net = int(Economy.faction_ledger(state,f).net)
@@ -440,6 +458,9 @@ static func _build(state,f: String,p: Dictionary,look: Dictionary,report: Dictio
      if o.category in ["main","economic"]: wgt *= float(p.economy)
      if o.category in ["defense","military"]: wgt *= float(p.defense)
      if wgt<=0.0: continue
+     var prod = Bld.produces(o.chain,int(o.level))
+     for k in prod:
+      if (k == "food" and int(rl.food.net)<10) or (k != "food" and Res.amount(state,f,k)<150): wgt *= 2.5
      var key = [-wgt,o.cost,sid,o.chain]
      if best.is_empty() or key<best.key: best = {"key":key,"id":sid,"slot":i,"chain":o.chain}
   if best.is_empty(): return
@@ -863,3 +884,19 @@ static func _record(report: Dictionary,id: String,walked: Array):
  if walked.size()<2: return
  if not report.moves.has(id): report.moves[id] = walked.duplicate()
  else: report.moves[id].append_array(walked.slice(1))
+
+# Strong enough to campaign through a northern winter (data/ai.json "winter"): at least strong_ratio x
+# the average realm's units in the field.
+static func _winter_strong(state,f: String) -> bool:
+ var mine = 0
+ var total = 0
+ var realms = 0
+ for g in state.factions():
+  var n = 0
+  for id in Armies.armies_of(state,g): n += state.army_state[id].units.size()
+  if n == 0: continue
+  realms += 1
+  total += n
+  if g == f: mine = n
+ if realms == 0: return false
+ return float(mine)>=float(total)/float(realms)*float(data().get("winter",{}).get("strong_ratio",1.5))

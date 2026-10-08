@@ -93,6 +93,26 @@ static func draw(c: CanvasItem,kind: String,r: Rect2,color: Color):
   "sun":
    c.draw_circle(p.call(0.5,0.5),s*0.22,color)
    for i in 12: c.draw_line(p.call(0.5,0.5)+Vector2.from_angle(i*PI/6.0)*s*0.28,p.call(0.5,0.5)+Vector2.from_angle(i*PI/6.0)*s*0.44,color,w)
+  "snow":
+   # A snowflake: three crossing strokes with small barbs (winter, Part B).
+   for i in 3:
+    var d = Vector2.from_angle(i*PI/3.0+PI*0.5)*s*0.42
+    c.draw_line(p.call(0.5,0.5)-d,p.call(0.5,0.5)+d,color,w)
+    for sg in [-1.0,1.0]:
+     var tip = p.call(0.5,0.5)+d*sg*0.7
+     var side = d.orthogonal().normalized()*s*0.1
+     c.draw_line(tip,tip+d*sg*0.25+side,color,w*0.8)
+     c.draw_line(tip,tip+d*sg*0.25-side,color,w*0.8)
+  "scales":
+   # Market scales (Part B).
+   var top = p.call(0.5,0.18)
+   c.draw_line(top,p.call(0.5,0.85),color,w)
+   c.draw_line(p.call(0.18,0.32),p.call(0.82,0.32),color,w)
+   c.draw_line(p.call(0.3,0.88),p.call(0.7,0.88),color,w)
+   for x in [0.18,0.82]:
+    c.draw_line(p.call(x,0.32),p.call(x-0.1,0.58),color,w*0.7)
+    c.draw_line(p.call(x,0.32),p.call(x+0.1,0.58),color,w*0.7)
+    c.draw_arc(p.call(x,0.58),s*0.11,0,PI,8,color,w)
   "moon":
    c.draw_circle(p.call(0.5,0.5),s*0.36,color)
    c.draw_circle(p.call(0.64,0.4),s*0.3,dark if dark.a>0 else Color(0,0,0,0))

@@ -31,6 +31,10 @@ uniform sampler2D roads : filter_linear, repeat_disable;        // R8 road cells
 // Climate looks (map/pipeline.gd CLIMATE_LOOK, blurred): R snow cover, G frost, B dryness, A wetness.
 uniform sampler2D climate : filter_linear, repeat_disable;
 uniform bool has_climate = false;
+// Winter (Part B, core/seasons.gd): 0 in summer, rising to 1 as the winter deepens; snow spreads from the
+// north edge (north_band of the map) and dry lands get a dry season instead.
+uniform float winter_snow = 0.0;
+uniform float north_band = 0.45;
 uniform vec2 climate_scale = vec2(1.0); // grid uv -> climate uv (its texels cover a few cells each)
 uniform vec2 origin;      // world x/z of the grid's corner
 uniform vec2 world_size;  // metres covered by the textures
@@ -249,6 +253,13 @@ void fragment() {
 	float beach = (1.0 - smoothstep(0.4, 1.6, h - sea_level)) * (1.0 - wm);
 
 	vec4 cl = has_climate ? texture(climate, uv * climate_scale) : vec4(0.0);
+	if (winter_snow > 0.001) {
+		float lat = clamp(uv.y, 0.0, 1.0);
+		float wn = winter_snow * (1.0 - smoothstep(north_band * 0.7, north_band * 1.9, lat)) * (1.0 - clamp(cl.b * 1.4, 0.0, 1.0));
+		cl.r = max(cl.r, wn * 0.95);
+		cl.g = max(cl.g, wn);
+		cl.b = clamp(cl.b * (1.0 + winter_snow * 0.6), 0.0, 1.0);
+	}
 	vec3 cols[2];
 	cols[1] = vec3(0.0);
 	// The second culture only where the land is converting (most regions are not).
@@ -270,7 +281,7 @@ void fragment() {
 		ground = mix(ground, layer(SNOW, cu), w_snow);
 		// Climate: frost greys and cools the ground; snow lies on open land, thinning on slopes and in
 		// hollows in noisy drifts; wet land darkens.
-		if (has_climate) {
+		if (has_climate || winter_snow > 0.001) {
 			float lum = dot(ground, vec3(0.333));
 			ground = mix(ground, mix(vec3(lum), vec3(0.80, 0.87, 0.93), 0.4), cl.g * 0.45);
 			float cover = smoothstep(0.22, 0.72, cl.r + (n2 - 0.5) * 0.45 + (n1 - 0.5) * 0.25 + max(cavity, 0.0) * 0.25 - max(slope - 0.55, 0.0) * 0.9) * (1.0 - wf * 0.55);

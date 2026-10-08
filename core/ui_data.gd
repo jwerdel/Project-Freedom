@@ -109,6 +109,11 @@ func _after_turn(report: Dictionary,before: Dictionary) -> Dictionary:
  # chronicle line repeated every turn, 2026-10-07). The summary is built before the feed is told of
  # the new entries, so the Event Messages show it at once.
  report.alerts = alerts_since(before)
+ # Part B: the forecast, a long winter and famine as pop-ups.
+ for e in report.get("seasons",[]):
+  if e.kind == "forecast" or (e.kind == "winter" and e.long): report.alerts.append({"kind":"season","title":"Winter is coming" if e.kind == "forecast" else "The long winter","text":"%s warn: %s" % [load("res://core/seasons.gd").seers(str(faction(player_faction_id()).get("culture",""))).capitalize(),e.text] if e.kind == "forecast" else e.text})
+ for e in report.get("resources",[]):
+  if e.faction == player_faction_id() and e.kind == "famine": report.alerts.append({"kind":"famine","title":"Famine","text":e.text+" Buy food at the market or build farms."})
  state.last_summary = _build_summary(report)
  for e in report.entries: event_added.emit(e)
  # Standing orders walked first, then the AI phase: one path per army for the map to replay.
@@ -1169,6 +1174,7 @@ func attack_preview(army_id: String,point: Vector2) -> Dictionary:
 # [kind, label, short text on the End Turn button, icon] in priority order (owner spec 2026-10-07: the
 # button itself shows the top item).
 const WARNINGS = [["choices","A choice awaits","A choice awaits you","chronicle"],["diplomacy","Diplomatic replies","Envoys await your answer","diplomacy"],
+ ["food","Food running short","Food will run out","wheat"],["supply","Armies low on supply","Army low on supply","armies"],
  ["funds","Low funds","Treasury will run dry","coin"],["skill_points","Unspent skill points","Lord has skill points","star"],
  ["settlement_upgrade","Settlement can be upgraded","Settlement can be upgraded","spire"],["construction","Idle construction slots","Idle building slot","hammer"],
  ["orders","Orders waiting","Army order waiting","horn"],["army_moves","Lords with movement left","Lord has not moved","armies"],["recruit","Army can recruit","Army can recruit","sword"]]
@@ -1188,6 +1194,18 @@ func end_turn_warnings(enabled := {}) -> Array:
    "diplomacy":
     for rep in unseen_replies(): items.append({"type":"reply","id":str(rep.id),"name":"%s answers your envoy" % faction(rep.from).name})
     for p in proposals(): items.append({"type":"diplomacy","id":str(p.get("from","")),"name":str(p.get("text","An offer"))})
+   "food":
+    # Before anything bad happens (Part B): the granaries empty within warn_turns, or already empty.
+    var R = load("res://core/resources.gd")
+    var left = R.food_turns_left(state,f)
+    if R.starving(state,f): items.append({"type":"market","id":"food","name":"Your people are starving"})
+    elif left>=0 and left<=int(R.data().deficit.warn_turns): items.append({"type":"market","id":"food","name":"Food for %d more turn%s" % [left,"" if left == 1 else "s"]})
+   "supply":
+    var Sp = load("res://core/supply.gd")
+    for id in Armies.armies_of(state,f):
+     if state.army_state[id].units.is_empty(): continue
+     var o = Sp.outlook(state,id)
+     if Sp.supply(state,id)+float(o.delta)<35.0 and float(o.delta)<0.0: items.append({"type":"army","id":id,"name":"%s: supply %d" % [state.army_state[id].display_name,int(Sp.supply(state,id))]})
    "orders":
     for id in waiting_orders(): items.append({"type":"army","id":id,"name":state.army_state[id].display_name})
    "funds":
@@ -1603,3 +1621,75 @@ func UiKit_format(n: int) -> String:
   out = ","+s.substr(s.length()-3)+out
   s = s.substr(0,s.length()-3)
  return s+out
+
+# --- Resources, markets, supply and seasons (Part B, 2026-10-07) ------------------------------------
+
+# The top bar's stockpiles: {food, wood, stone: {amount, net, lines [{label, amount}]}, starving,
+# food_turns (turns of food left at this rate, -1 never)}.
+func stockpiles() -> Dictionary:
+ var R = load("res://core/resources.gd")
+ var f = player_faction_id()
+ var l = R.ledger(state,f)
+ var out = {"starving":R.starving(state,f),"food_turns":R.food_turns_left(state,f)}
+ for k in R.KINDS: out[k] = {"amount":R.amount(state,f,k),"net":int(l[k].net),"lines":l[k].lines}
+ return out
+
+# The season: {kind (summer, winter), turns_left, long, forecast (turns to the next winter once
+# announced, else -1), next_length, snow (0-1 map whitening), dry (the player's land has a dry season)}.
+func season() -> Dictionary:
+ var S = load("res://core/seasons.gd")
+ var s = S.at(state)
+ var nw = S.next_winter(state)
+ var announced = not nw.is_empty() and int(nw.start) in state.seasons.get("announced",[])
+ var cap = Armies.capital(state,player_faction_id())
+ return {"kind":s.kind,"turns_left":int(s.turns_left),"long":bool(s.long),"forecast":int(nw.start)-int(state.turn) if announced else -1,
+  "next_length":int(nw.get("length",0)),"snow":S.snow_amount(state),"dry":cap != "" and S.dry_land(cap)}
+
+# The market screen: per resource {kind, stock, net, buy (price per unit), sell, parts}; lots to trade.
+func market() -> Dictionary:
+ var M = load("res://core/markets.gd")
+ var R = load("res://core/resources.gd")
+ var f = player_faction_id()
+ var rows = []
+ var l = R.ledger(state,f)
+ for k in R.KINDS:
+  var p = M.price(state,f,k)
+  rows.append({"kind":k,"stock":R.amount(state,f,k),"net":int(l[k].net),"buy":float(p.price),"sell":float(p.price)*float(M.cfg().sell_share),"parts":p})
+ return {"rows":rows,"lots":M.cfg().lots,"treasury":int(state.treasury[f])}
+
+func market_buy(kind: String,qty: int) -> Dictionary:
+ var r = load("res://core/markets.gd").buy(state,player_faction_id(),kind,qty)
+ if r.ok: changed.emit()
+ return r
+
+func market_sell(kind: String,qty: int) -> Dictionary:
+ var r = load("res://core/markets.gd").sell(state,player_faction_id(),kind,qty)
+ if r.ok: changed.emit()
+ return r
+
+# An army's supply: {supply (0-100), delta (next End Turn), reason, raiding, land}.
+func army_supply(army_id: String) -> Dictionary:
+ var Sp = load("res://core/supply.gd")
+ var o = Sp.outlook(state,army_id)
+ return {"supply":Sp.supply(state,army_id),"delta":float(o.delta),"reason":o.reason,"food":int(o.food),"raiding":Sp.raiding(state,army_id),"land":Sp.land_of(state,army_id).kind}
+
+func set_raiding(army_id: String,on: bool):
+ if state.army_state[army_id].faction != player_faction_id(): return
+ load("res://core/supply.gd").set_raid(state,army_id,on)
+ changed.emit()
+
+# Trade routes to draw on the map: [{a, b, from (capital point), to, war}] for every trade agreement
+# of yours (and the world's when all is true).
+func trade_routes(all := false) -> Array:
+ var D = load("res://core/diplomacy.gd")
+ var out = []
+ var me = player_faction_id()
+ for k in D.d(state).agreements:
+  if not D.d(state).agreements[k].has("trade"): continue
+  var p = k.split("|")
+  if not all and not me in p: continue
+  var ca = Armies.capital(state,p[0])
+  var cb = Armies.capital(state,p[1])
+  if ca == "" or cb == "": continue
+  out.append({"a":p[0],"b":p[1],"from":WorldMap.settlement_position(ca),"to":WorldMap.settlement_position(cb),"war":Battles.at_war(state,p[0],p[1])})
+ return out

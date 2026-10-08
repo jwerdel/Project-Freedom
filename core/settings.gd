@@ -11,7 +11,7 @@ const DEFAULTS = {"resolution":[1440,900],"fullscreen":false,"ui_scale":1.0,"deb
  "warn_funds":true,"warn_settlement_upgrade":true,"warn_construction":true,"warn_army_moves":true,
  "warn_skill_points":true,"warn_recruit":true,"edge_pan":true,
  "continue_orders":false,"show_orders":true,
- "warn_choices":true,"warn_diplomacy":true,"warn_orders":true}
+ "warn_choices":true,"warn_diplomacy":true,"warn_orders":true,"warn_food":true,"warn_supply":true}
 
 static var _current = null
 
@@ -86,7 +86,7 @@ static func apply(tree: SceneTree):
 # Which End Turn warnings show (TW:WH3's notification settings), keyed like UiData.WARNINGS.
 static func end_turn_warnings() -> Dictionary:
  var out = {}
- for k in ["choices","diplomacy","funds","settlement_upgrade","construction","orders","army_moves","skill_points","recruit"]: out[k] = bool(get_value("warn_"+k))
+ for k in ["choices","diplomacy","food","supply","funds","settlement_upgrade","construction","orders","army_moves","skill_points","recruit"]: out[k] = bool(get_value("warn_"+k))
  return out
 
 # Forget the loaded values so the next read comes from the file again (tests, external edits).

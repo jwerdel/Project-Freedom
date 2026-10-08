@@ -158,14 +158,15 @@ func _build_resources():
  var bar = _framed()
  bar.name = "TopCentre"
  var row = HBoxContainer.new()
- row.add_theme_constant_override("separation",14)
+ row.add_theme_constant_override("separation",10)
  row.alignment = BoxContainer.ALIGNMENT_CENTER
  bar.add_child(row)
- row.add_child(Widgets.Emblem.new(data.player_faction(),26))
- var name_label = UiKit.header(data.player_faction().name,17)
- name_label.tooltip_text = "%s\n%s" % [data.player_faction().name,data.player_faction().realm]
- name_label.mouse_filter = Control.MOUSE_FILTER_PASS
- row.add_child(name_label)
+ # TW:WH3 shows only the faction emblem here (docs/reference/tw/lothern_lords.png); the name is its tooltip.
+ var emblem = Widgets.Emblem.new(data.player_faction(),26)
+ emblem.name = "FactionEmblem"
+ emblem.tooltip_text = "%s\n%s" % [data.player_faction().name,data.player_faction().realm]
+ emblem.mouse_filter = Control.MOUSE_FILTER_STOP
+ row.add_child(emblem)
  for item in [["treasury","coin","Treasury"],["income","income","Income per turn"],["population","population","Population"]]:
   var group = HBoxContainer.new()
   group.add_theme_constant_override("separation",5)
@@ -184,13 +185,35 @@ func _build_resources():
  debt_tag.mouse_filter = Control.MOUSE_FILTER_PASS
  debt_tag.visible = false
  resource_groups.treasury.add_child(debt_tag)
- # Faction-specific resources (TW: they differ by race): slots stand ready, greyed.
- for i in 2:
-  var slot = Widgets.Icon.new("objectives",Color(0.45,0.42,0.38),20)
-  slot.name = "FactionResource%d" % i
-  slot.tooltip_text = "Faction resource"+COMING
-  slot.mouse_filter = Control.MOUSE_FILTER_STOP
-  row.add_child(slot)
+ # Stockpiles (Part B, war-and-realm §7.1): food, wood and stone with their change per turn; the
+ # tooltip breaks it down. Then the season and the market.
+ for item in [["food","wheat","Food"],["wood","tree","Wood"],["stone","mountain","Stone"]]:
+  var group = HBoxContainer.new()
+  group.name = "Res_"+item[0]
+  group.add_theme_constant_override("separation",4)
+  group.mouse_filter = Control.MOUSE_FILTER_PASS
+  resource_groups[item[0]] = group
+  group.add_child(Widgets.Icon.new(item[1],{"food":Color("e3c25a"),"wood":Color("9bbf6a"),"stone":Color("c9c3b6")}[item[0]],20))
+  var value = UiKit.label("",16,UiKit.TEXT,UiKit.FONT_BOLD)
+  group.add_child(value)
+  resource_labels[item[0]] = value
+  row.add_child(group)
+ var sea = HBoxContainer.new()
+ sea.name = "Season"
+ sea.add_theme_constant_override("separation",4)
+ sea.mouse_filter = Control.MOUSE_FILTER_PASS
+ season_icon = Widgets.Icon.new("sun",Color("f2cf6a"),20)
+ sea.add_child(season_icon)
+ var sl = UiKit.label("",15,UiKit.TEXT,UiKit.FONT_BOLD)
+ sea.add_child(sl)
+ resource_labels.season = sl
+ resource_groups.season = sea
+ row.add_child(sea)
+ var mk = _round("scales","Market (M)
+Buy and sell food, wood and stone for gold.",30)
+ mk.name = "MarketButton"
+ mk.pressed.connect(func(): open_market())
+ row.add_child(mk)
  # Landless (grace period): a red countdown tag, hidden otherwise.
  grace_tag = UiKit.label("",15,Color("ffe3c8"),UiKit.FONT_BOLD)
  grace_tag.name = "GraceTag"
@@ -618,14 +641,38 @@ func _show_army_info(army_id: String,a: Dictionary):
  var rep = _stat_row("income","Replenish","%d%%" % d.replenish_pct,"Share of each unit's missing men regained per turn.\nFull rate in your own territory, low (and paid in gold) elsewhere (data/recruitment.json).")
  info_box.add_child(rep)
  info_box.add_child(_small({"own":"In your territory","foreign":"In %s territory" % d.region_owner,"unclaimed":"In unclaimed land"}[d.territory]))
- var stance = HBoxContainer.new()
- stance.name = "Stance"
- stance.add_theme_constant_override("separation",6)
- stance.tooltip_text = "Stances (march, ambush, raid, encamp)"+COMING
- stance.mouse_filter = Control.MOUSE_FILTER_STOP
- stance.add_child(UiKit.label("Stance",14,Color(UiKit.TEXT_DIM,0.6)))
- for i in 3: stance.add_child(Widgets.Icon.new("armies",Color(0.45,0.42,0.38),18))
- info_box.add_child(stance)
+ # Supply (Part B, war-and-realm §2.7): the bar, where it goes next turn, and the raiding stance.
+ var sp = data.army_supply(army_id)
+ var srow = HBoxContainer.new()
+ srow.name = "Supply"
+ srow.add_theme_constant_override("separation",6)
+ srow.mouse_filter = Control.MOUSE_FILTER_STOP
+ srow.add_child(UiKit.label("Supply",14,UiKit.TEXT_DIM))
+ var bar = ProgressBar.new()
+ bar.name = "SupplyBar"
+ bar.show_percentage = false
+ bar.max_value = 100
+ bar.value = float(sp.supply)
+ bar.custom_minimum_size = Vector2(90,12)
+ bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+ bar.modulate = Color("6fbf4f") if float(sp.supply)>=60 else (Color("e3b53c") if float(sp.supply)>=30 else Color("d9473a"))
+ srow.add_child(bar)
+ srow.add_child(UiKit.label("%d %s" % [int(sp.supply),"(%s)" % UiKit.signed(int(round(float(sp.delta)))) if absf(float(sp.delta))>=0.5 else ""],14,UiKit.TEXT))
+ srow.tooltip_text = "Supply %d / 100. Next turn: %s %s.
+Full in your and allied land (refilling eats food from your stockpile), draining abroad and faster in enemy land in winter. Empty: the army loses men every turn.
+Refill: capture a settlement, return to friendly land, or raid." % [int(sp.supply),UiKit.signed(int(round(float(sp.delta)))),sp.reason]
+ info_box.add_child(srow)
+ if a.player_owned:
+  var raid = CheckBox.new()
+  raid.name = "RaidStance"
+  raid.text = "Raiding stance"
+  raid.focus_mode = Control.FOCUS_NONE
+  raid.button_pressed = bool(sp.raiding)
+  raid.tooltip_text = "In enemy land: live off the land (supply rises instead of draining) and plunder gold from its owner, at half the movement."
+  raid.toggled.connect(func(on):
+   data.set_raiding(army_id,on)
+   _show_army_info(army_id,data.army(army_id)))
+  info_box.add_child(raid)
 
 # location: province name where the army stands (for tooltips).
 func show_army(army_id: String,location: String):
@@ -980,7 +1027,7 @@ func _option_tile(sid: String,o: Dictionary) -> Control:
  name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
  v.add_child(name_label)
  v.add_child(UiKit.label("%s · level %d · %s" % [o.chain_name,o.level,o.category],12,UiKit.TEXT_DIM))
- v.add_child(UiKit.label("%s gold · %d turn%s · upkeep %d" % [UiKit.format_int(o.cost),o.turns,"" if o.turns == 1 else "s",o.upkeep],13,UiKit.TEXT))
+ v.add_child(UiKit.label("%s gold%s · %d turn%s · upkeep %d" % [UiKit.format_int(o.cost),_materials_text(o.get("materials",{})),o.turns,"" if o.turns == 1 else "s",o.upkeep],13,UiKit.TEXT))
  for e in o.effects:
   var l = UiKit.label(e,12,Color("9fe08a"))
   l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1120,7 +1167,7 @@ func _recruitment_drawer(army_id: String) -> Control:
   card.set_card_scale(0.8)
   if not o.available: card.modulate = Color(0.45,0.45,0.45)
   col.add_child(card)
-  var cost = UiKit.label("%s gold" % UiKit.format_int(o.cost),12,UiKit.TEXT if o.available else UiKit.TEXT_DIM)
+  var cost = UiKit.label("%s gold%s" % [UiKit.format_int(o.cost),_materials_text(o.get("materials",{}),true)],12,UiKit.TEXT if o.available else UiKit.TEXT_DIM)
   cost.name = "Cost"
   cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
   col.add_child(cost)
@@ -1662,6 +1709,7 @@ func refresh():
  resource_labels.income.text = UiKit.signed(r.income)
  resource_labels.population.text = UiKit.format_int(r.population)
  resource_labels.year.text = "Year %d · Turn %d" % [r.year,r.turn]
+ _refresh_stockpiles()
  resource_groups.treasury.tooltip_text = _ledger_text()
  if r.in_debt:
   resource_groups.treasury.tooltip_text = ("IN DEBT
@@ -2149,6 +2197,9 @@ func close_top_panel() -> bool:
  if alert_visible():
   _next_alert()
   return true
+ if market_visible():
+  close_market()
+  return true
  if court_visible():
   if not court_screen.close_popup(): close_court()
   return true
@@ -2535,3 +2586,118 @@ func _summary_rows(groups: Array):
    v.add_child(b)
   m.add_child(v)
   event_box.add_child(m)
+
+# --- Stockpiles, the season and the market (Part B, 2026-10-07) ------------------------------------
+var season_icon: Control
+
+func _refresh_stockpiles():
+ if not resource_labels.has("food"): return
+ var st = data.stockpiles()
+ for k in ["food","wood","stone"]:
+  var v = st[k]
+  resource_labels[k].text = "%s (%s)" % [UiKit.format_int(v.amount),UiKit.signed(v.net)]
+  var warn = k == "food" and (st.starving or (int(st.food_turns)>=0 and int(st.food_turns)<=3))
+  resource_labels[k].add_theme_color_override("font_color",Color("ff7a6a") if warn else UiKit.TEXT)
+  var lines = ["%s: %s in store, %s a turn" % [k.capitalize(),UiKit.format_int(v.amount),UiKit.signed(v.net)]]
+  for l in v.lines.slice(0,10): lines.append("  %s  %s" % [UiKit.signed(int(l.amount)),l.label])
+  if k == "food":
+   if st.starving: lines.append("STARVING: no growth; settlements shrink and field armies bleed. Buy food at the market or build farms.")
+   elif int(st.food_turns)>=0: lines.append("At this rate the granaries are empty in %d turn%s." % [int(st.food_turns),"" if int(st.food_turns) == 1 else "s"])
+  lines.append({"food":"Made by land, farms, fishing and pastures; eaten by your people and armies; armies' supply refills from it.","wood":"Made by forests and lumber camps; buildings and siege works use it.","stone":"Made by hills, quarries and mines; buildings and walls use it."}[k])
+  resource_groups[k].tooltip_text = "\n".join(lines)
+ var s = data.season()
+ var winter = s.kind == "winter"
+ season_icon.kind = "snow" if winter else "sun"
+ season_icon.color = Color("cfe6ff") if winter else Color("f2cf6a")
+ season_icon.queue_redraw()
+ resource_labels.season.text = str(int(s.turns_left)+1)
+ var tip = ["%s: %d more turn%s." % ["A long winter" if s.long else ("The dry season" if winter and s.dry else s.kind.capitalize()),int(s.turns_left)+1,"" if int(s.turns_left) == 0 else "s"]]
+ if int(s.forecast)>0: tip.append("Your seers foresee winter in %d turn%s (%d year%s of it)." % [int(s.forecast),"" if int(s.forecast) == 1 else "s",int(s.next_length),"" if int(s.next_length) == 1 else "s"])
+ tip.append("Summer: more food. Winter: less food (worst in the north), armies in enemy land lose supply faster, snow slows movement in the north and in the mountains.")
+ resource_groups.season.tooltip_text = "\n".join(tip)
+
+var market_window: Control
+func market_visible() -> bool:
+ return market_window != null and is_instance_valid(market_window) and market_window.visible
+
+func close_market():
+ if market_visible(): market_window.queue_free()
+ market_window = null
+
+# The market (war-and-realm §7.2): buy or sell food, wood and stone for gold at today's prices.
+func open_market():
+ close_market()
+ market_window = _framed()
+ market_window.name = "MarketWindow"
+ _anchor(market_window,0.5,0.5,0.5,0.5,Rect2(-300,-190,300,190))
+ add_child(market_window)
+ _fill_market()
+
+func _fill_market():
+ if not market_visible(): return
+ _clear(market_window)
+ var m = data.market()
+ var v = VBoxContainer.new()
+ v.add_theme_constant_override("separation",8)
+ market_window.add_child(v)
+ var head = HBoxContainer.new()
+ var t = UiKit.header("Market",20)
+ t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ head.add_child(t)
+ head.add_child(UiKit.label("Treasury %s gold" % UiKit.format_int(m.treasury),15,UiKit.TEXT_DIM))
+ var close = Button.new()
+ close.text = "Close"
+ close.focus_mode = Control.FOCUS_NONE
+ close.pressed.connect(close_market)
+ head.add_child(close)
+ v.add_child(head)
+ v.add_child(UiKit.divider(colors.trim))
+ v.add_child(UiKit.label("Prices follow your stock (scarce is dear), your land (wood is dear in the desert, food in the snowy north) and the season (food is dear in winter).",14,UiKit.TEXT_DIM))
+ for r in m.rows:
+  var row = HBoxContainer.new()
+  row.name = "Market_"+r.kind
+  row.add_theme_constant_override("separation",8)
+  var nm = UiKit.label(r.kind.capitalize(),16,Color("f1d79a"),UiKit.FONT_BOLD)
+  nm.custom_minimum_size.x = 64
+  row.add_child(nm)
+  var info = UiKit.label("%s (%s)  ·  buy %.1f  ·  sell %.1f" % [UiKit.format_int(r.stock),UiKit.signed(r.net),r.buy,r.sell],14,UiKit.TEXT)
+  info.custom_minimum_size.x = 250
+  info.tooltip_text = "Base %.1f x scarcity %.2f x land %.2f x season %.2f" % [r.parts.base,r.parts.scarcity,r.parts.biome,r.parts.season]
+  info.mouse_filter = Control.MOUSE_FILTER_PASS
+  row.add_child(info)
+  for q in m.lots:
+   var b = Button.new()
+   b.name = "Buy_%s_%d" % [r.kind,int(q)]
+   b.text = "+%d" % int(q)
+   b.focus_mode = Control.FOCUS_NONE
+   b.tooltip_text = "Buy %d %s for %d gold" % [int(q),r.kind,int(ceil(r.buy*q))]
+   b.disabled = int(ceil(r.buy*q))>int(m.treasury)
+   var kind = r.kind
+   var qty = int(q)
+   b.pressed.connect(func():
+    var res = data.market_buy(kind,qty)
+    toast("Bought %d %s for %d gold." % [qty,kind,int(res.gold)] if res.ok else str(res.reason))
+    _fill_market())
+   row.add_child(b)
+  for q in m.lots:
+   var b = Button.new()
+   b.name = "Sell_%s_%d" % [r.kind,int(q)]
+   b.text = "-%d" % int(q)
+   b.focus_mode = Control.FOCUS_NONE
+   b.tooltip_text = "Sell %d %s for %d gold" % [int(q),r.kind,int(floor(r.sell*q))]
+   b.disabled = int(r.stock)<int(q)
+   var kind2 = r.kind
+   var qty2 = int(q)
+   b.pressed.connect(func():
+    var res = data.market_sell(kind2,qty2)
+    toast("Sold %d %s for %d gold." % [qty2,kind2,int(res.gold)] if res.ok else str(res.reason))
+    _fill_market())
+   row.add_child(b)
+  v.add_child(row)
+
+# " · 60 wood · 20 stone" for a cost's materials (Part B); short form " +60w" on small cards.
+func _materials_text(m: Dictionary,short := false) -> String:
+ var out = ""
+ for k in ["food","wood","stone"]:
+  if int(m.get(k,0))>0: out += (" +%d%s" % [int(m[k]),k.substr(0,1)]) if short else (" · %d %s" % [int(m[k]),k])
+ return out

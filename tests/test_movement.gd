@@ -113,6 +113,8 @@ func test_long_orders_continue_on_end_turn_and_points_refill():
  # Settings "Continue multi-turn orders automatically" on (off by default: tests/test_order_hold.gd).
  Movement.continue_player_orders = true
  var s = GameState.from_data()
+ # Summer throughout: winter snow slows marches (core/seasons.gd; tests/test_seasons.gd).
+ s.seasons = {"schedule":[{"kind":"summer","start":0,"length":1000}],"announced":[]}
  var target = Vector2(-250,-332)
  var r = Movement.order(s,ARMY,target)
  assert_true(r.ok)

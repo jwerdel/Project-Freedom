@@ -14,6 +14,7 @@ extends RefCounted
 # OPEN (constitution): converting a city to a fortress or back is confirmed but deferred, not built.
 
 const Buildings = preload("res://core/buildings.gd")
+const Resources = preload("res://core/resources.gd")
 const CATEGORY_ORDER = ["economic","civic","military","defense"]
 
 static func rules() -> Dictionary:
@@ -72,7 +73,7 @@ static func _option(state,id: String,slot: int,chain_id: String,level: int) -> D
  var check = can_build(state,id,slot,chain_id)
  return {"chain":chain_id,"level":level,"name":Buildings.building_name(id,chain_id,level),"chain_name":Buildings.chain(chain_id).name,
   "category":Buildings.chain(chain_id).category,"cost":int(l.cost),"turns":int(l.turns),"upkeep":int(l.upkeep),
-  "effects":Buildings.effect_lines(chain_id,level),"available":check.ok,"reasons":check.reasons}
+  "effects":Buildings.effect_lines(chain_id,level),"available":check.ok,"reasons":check.reasons,"materials":Resources.building_cost(chain_id,level)}
 
 # Whether chain_id can be built (or upgraded) in this slot now, and why not.
 static func can_build(state,id: String,slot: int,chain_id: String) -> Dictionary:
@@ -104,6 +105,8 @@ static func can_build(state,id: String,slot: int,chain_id: String) -> Dictionary
  var cost = int(Buildings.level_data(chain_id,level).cost)
  if int(state.treasury.get(s.owner,0))<0: reasons.append("In debt: no construction until the treasury is out of debt")
  elif int(state.treasury.get(s.owner,0))<cost: reasons.append("Not enough gold (%d needed)" % cost)
+ # Wood and stone (Part B, data/resources.json building_costs).
+ reasons.append_array(Resources.shortfall(state,s.owner,Resources.building_cost(chain_id,level)))
  return {"ok":reasons.is_empty(),"reasons":reasons,"level":level}
 
 # Pay and start construction. Returns {ok, reasons}.
@@ -113,7 +116,9 @@ static func start(state,id: String,slot: int,chain_id: String) -> Dictionary:
  var s = state.settlements[id]
  var l = Buildings.level_data(chain_id,check.level)
  state.treasury[s.owner] -= int(l.cost)
- jobs(state,id).append({"slot":slot,"chain":chain_id,"level":check.level,"turns_left":int(l.turns),"turns_total":int(l.turns),"cost":int(l.cost),"started_turn":state.turn})
+ var mats = Resources.building_cost(chain_id,check.level)
+ Resources.pay(state,s.owner,mats)
+ jobs(state,id).append({"slot":slot,"chain":chain_id,"level":check.level,"turns_left":int(l.turns),"turns_total":int(l.turns),"cost":int(l.cost),"materials":mats,"started_turn":state.turn})
  return check
 
 # The refund for cancelling the construction in a slot (-1: the first one).
@@ -129,6 +134,8 @@ static func cancel(state,id: String,slot := -1) -> int:
  if c.is_empty(): return 0
  var refund = refund_amount(state,id,int(c.slot))
  state.treasury[state.settlements[id].owner] += refund
+ var ratio = float(rules().cancel_refund_same_turn) if int(c.started_turn) == state.turn else float(rules().cancel_refund_later)
+ Resources.refund(state,state.settlements[id].owner,c.get("materials",{}),ratio)
  jobs(state,id).erase(c)
  return refund
 

@@ -676,6 +676,9 @@ static func end_turn(state) -> Dictionary:
   var me = state.army_state[id]
   # Fast in own and allied land, slow abroad (war-and-realm §2.6; core/hosts.gd move_factor).
   me.points = float(me.max_points)*(Hosts.move_factor(state,id) if Hosts != null else 1.0)
+  # Part B: snow slows armies in the north and on high ground in winter; raiders crawl.
+  if state.get("seasons") != null and not state.seasons.is_empty():
+   me.points = float(me.points)*load("res://core/seasons.gd").move_factor(state,position(state,id))*load("res://core/supply.gd").move_factor(state,id)
   if not me.order.is_empty() and not holds_orders(state,str(me.faction)): moves[id] = advance(state,id)
  return moves
 

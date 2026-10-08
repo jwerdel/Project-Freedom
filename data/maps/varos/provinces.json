@@ -831,7 +831,8 @@
           1730.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "taiga"
     },
     "ashford": {
       "name": "Ashford",
@@ -986,7 +987,8 @@
           1682.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "ash"
     },
     "ashlands_rift": {
       "name": "The Rift",
@@ -1135,7 +1137,8 @@
           1562.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "ash"
     },
     "ashlands_s": {
       "name": "The Ashlands (south)",
@@ -1236,7 +1239,8 @@
           4262.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "ash"
     },
     "ashwick": {
       "name": "Ashwick",
@@ -1360,7 +1364,8 @@
           4646.4,
           1983.9
         ]
-      }
+      },
+      "climate": "taiga"
     },
     "blackpine_hold": {
       "name": "Blackpine Hold",
@@ -1426,7 +1431,8 @@
           5280.0,
           1838.7
         ]
-      }
+      },
+      "climate": "taiga"
     },
     "bracke_hall": {
       "name": "Bracke Hall",
@@ -1652,7 +1658,8 @@
           740.5,
           3677.6
         ]
-      }
+      },
+      "climate": "tundra"
     },
     "burning_isle": {
       "name": "The Burning Isle",
@@ -1741,7 +1748,8 @@
           4550.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "tundra"
     },
     "caeloth": {
       "name": "Caeloth",
@@ -2011,7 +2019,8 @@
           9122.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "desert"
     },
     "chain_isle_c": {
       "name": "Island chain",
@@ -2084,7 +2093,8 @@
           9734.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "desert"
     },
     "coldbarrow": {
       "name": "Coldbarrow",
@@ -2150,7 +2160,8 @@
           4294.4,
           2371.0
         ]
-      }
+      },
+      "climate": "taiga"
     },
     "corvinium": {
       "name": "Corvinium",
@@ -2348,7 +2359,8 @@
           1943.0,
           4161.3
         ]
-      }
+      },
+      "climate": "mediterranean"
     },
     "drakhaven": {
       "name": "Drakhaven",
@@ -2438,7 +2450,8 @@
           732.2,
           5303.2
         ]
-      }
+      },
+      "climate": "tundra"
     },
     "dunmoor_keep": {
       "name": "Dunmoor Keep",
@@ -2492,7 +2505,8 @@
           1689.6,
           2129.0
         ]
-      }
+      },
+      "climate": "taiga"
     },
     "elaia": {
       "name": "Elaia",
@@ -2562,7 +2576,8 @@
           3210.2,
           3967.7
         ]
-      }
+      },
+      "climate": "mediterranean"
     },
     "elkford": {
       "name": "Elkford",
@@ -2648,7 +2663,8 @@
           5491.2,
           2274.2
         ]
-      }
+      },
+      "climate": "taiga"
     },
     "elven_aelthas": {
       "name": "Elven Coast (Aelthas)",
@@ -2693,7 +2709,8 @@
           2882.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "white"
     },
     "elven_lysar": {
       "name": "Elven Coast (Lysar)",
@@ -2762,7 +2779,8 @@
           2198.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "white"
     },
     "elven_north": {
       "name": "Elven Coast (north)",
@@ -2863,7 +2881,8 @@
           746.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "white"
     },
     "elven_therin": {
       "name": "Elven Coast (Therin)",
@@ -2924,7 +2943,8 @@
           5006.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "white"
     },
     "emberdeep": {
       "name": "Emberdeep",
@@ -2986,7 +3006,8 @@
           3801.6,
           6261.5
         ]
-      }
+      },
+      "climate": "redrock"
     },
     "fennick": {
       "name": "Fennick",
@@ -3218,7 +3239,8 @@
           2816.0,
           2274.2
         ]
-      }
+      },
+      "climate": "snow"
     },
     "frostwaste_e": {
       "name": "The Frostwaste (east)",
@@ -3315,7 +3337,8 @@
           494.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "snow"
     },
     "frostwaste_glacier": {
       "name": "The Glacier",
@@ -3416,7 +3439,8 @@
           674.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "snow"
     },
     "frostwaste_w": {
       "name": "The Frostwaste (west)",
@@ -3501,7 +3525,8 @@
           542.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "snow"
     },
     "ghurmak_reach": {
       "name": "Ghurmak's reach",
@@ -3594,7 +3619,8 @@
           878.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "snow"
     },
     "gnawing_coast": {
       "name": "The Gnawing Coast",
@@ -3663,7 +3689,8 @@
           6866.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "jungle"
     },
     "goldspire_rock": {
       "name": "Goldspire Rock",
@@ -3729,7 +3756,8 @@
           2399.0,
           3899.7
         ]
-      }
+      },
+      "climate": "mediterranean"
     },
     "greymere": {
       "name": "Greymere",
@@ -3795,7 +3823,8 @@
           1760.0,
           2883.9
         ]
-      }
+      },
+      "climate": "taiga"
     },
     "grimhollow": {
       "name": "Grimhollow",
@@ -3869,7 +3898,8 @@
           3308.8,
           1141.9
         ]
-      }
+      },
+      "climate": "snow"
     },
     "gulf_isle_a": {
       "name": "Gulf isle",
@@ -3950,7 +3980,8 @@
           3458.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "white"
     },
     "gulf_isle_b": {
       "name": "Gulf isle",
@@ -4023,7 +4054,8 @@
           4106.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "white"
     },
     "gulf_isle_c": {
       "name": "Gulf isle",
@@ -4096,7 +4128,8 @@
           4622.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "white"
     },
     "gulf_isle_d": {
       "name": "Gulf isle",
@@ -4157,7 +4190,8 @@
           3230.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "white"
     },
     "harrow_crossing": {
       "name": "Harrow Crossing",
@@ -4343,7 +4377,8 @@
           3449.6,
           2496.8
         ]
-      }
+      },
+      "climate": "taiga"
     },
     "highbloom": {
       "name": "Highbloom",
@@ -4512,7 +4547,8 @@
           3794.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "steppe"
     },
     "horned_ne": {
       "name": "Horned Sea (north-east)",
@@ -4577,7 +4613,8 @@
           1790.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "steppe"
     },
     "horned_nw": {
       "name": "Horned Sea (north-west)",
@@ -4638,7 +4675,8 @@
           1334.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "steppe"
     },
     "horned_s": {
       "name": "Horned Sea (south)",
@@ -4699,7 +4737,8 @@
           4850.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "steppe"
     },
     "horned_se": {
       "name": "Horned Sea (south-east)",
@@ -4756,7 +4795,8 @@
           5186.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "steppe"
     },
     "horned_w": {
       "name": "Horned Sea (west)",
@@ -4805,7 +4845,8 @@
           2846.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "steppe"
     },
     "hornstone": {
       "name": "Hornstone",
@@ -4862,7 +4903,8 @@
           3134.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "steppe"
     },
     "jungle_heart": {
       "name": "The Jungle Heart",
@@ -4983,7 +5025,8 @@
           8618.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "jungle"
     },
     "kallipolis": {
       "name": "Kallipolis",
@@ -5041,7 +5084,8 @@
           2745.6,
           4645.2
         ]
-      }
+      },
+      "climate": "mediterranean"
     },
     "karak_durn": {
       "name": "Karak Durn",
@@ -5169,7 +5213,8 @@
           4012.8,
           2080.6
         ]
-      }
+      },
+      "climate": "taiga"
     },
     "kyme": {
       "name": "Kyme",
@@ -5231,7 +5276,8 @@
           2365.4,
           5080.6
         ]
-      }
+      },
+      "climate": "mediterranean"
     },
     "lakewick": {
       "name": "Lakewick",
@@ -5293,7 +5339,8 @@
           2886.4,
           2854.8
         ]
-      }
+      },
+      "climate": "taiga"
     },
     "lucentia": {
       "name": "Lucentia",
@@ -5421,7 +5468,8 @@
           2562.6,
           5496.8
         ]
-      }
+      },
+      "climate": "mediterranean"
     },
     "merrowmere": {
       "name": "Merrowmere",
@@ -5561,7 +5609,8 @@
           1196.8,
           2371.0
         ]
-      }
+      },
+      "climate": "taiga"
     },
     "mor_skerry": {
       "name": "Mor-Skerry",
@@ -5675,7 +5724,8 @@
           535.0,
           4500.0
         ]
-      }
+      },
+      "climate": "tundra"
     },
     "myrtos": {
       "name": "Myrtos",
@@ -5753,7 +5803,8 @@
           3182.1,
           4306.5
         ]
-      }
+      },
+      "climate": "mediterranean"
     },
     "oldstone_citadel": {
       "name": "Oldstone Citadel",
@@ -5807,7 +5858,8 @@
           2364.6,
           5854.8
         ]
-      }
+      },
+      "climate": "mediterranean"
     },
     "orchardium": {
       "name": "Orchardium",
@@ -5927,7 +5979,8 @@
           3590.4,
           2951.6
         ]
-      }
+      },
+      "climate": "taiga"
     },
     "pilgrims_ford": {
       "name": "Pilgrim's Ford",
@@ -6244,7 +6297,8 @@
           5237.8,
           6464.8
         ]
-      }
+      },
+      "climate": "redrock"
     },
     "rimefang": {
       "name": "Rimefang",
@@ -6314,7 +6368,8 @@
           2252.8,
           1238.7
         ]
-      }
+      },
+      "climate": "snow"
     },
     "rimeguard": {
       "name": "Rimeguard",
@@ -6438,7 +6493,8 @@
           2182.4,
           2758.1
         ]
-      }
+      },
+      "climate": "taiga"
     },
     "sabellum": {
       "name": "Sabellum",
@@ -6549,7 +6605,8 @@
           9770.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "desert"
     },
     "sahren_east": {
       "name": "Sahren (east)",
@@ -6598,7 +6655,8 @@
           8978.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "desert"
     },
     "sahren_isle_a": {
       "name": "Sahren isle",
@@ -6663,7 +6721,8 @@
           10862.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "desert"
     },
     "sahren_isle_b": {
       "name": "Sahren isle",
@@ -6736,7 +6795,8 @@
           10466.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "desert"
     },
     "sahren_north": {
       "name": "Sahren (north)",
@@ -6789,7 +6849,8 @@
           8546.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "desert"
     },
     "sahren_oasis": {
       "name": "The Oasis River",
@@ -6838,7 +6899,8 @@
           8978.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "desert"
     },
     "sahren_south": {
       "name": "Sahren (south)",
@@ -6915,7 +6977,8 @@
           10778.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "desert"
     },
     "sahren_west": {
       "name": "Sahren (west)",
@@ -7000,7 +7063,8 @@
           8798.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "desert"
     },
     "septimium": {
       "name": "Septimium",
@@ -7143,7 +7207,8 @@
           7790.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "jungle"
     },
     "silverfall": {
       "name": "Silverfall",
@@ -7201,7 +7266,8 @@
           2647.0,
           3435.5
         ]
-      }
+      },
+      "climate": "mediterranean"
     },
     "skulkmire": {
       "name": "The Skulkmire",
@@ -7263,7 +7329,8 @@
           6054.4,
           4838.7
         ]
-      }
+      },
+      "climate": "swamp"
     },
     "skullcairn": {
       "name": "Skullcairn",
@@ -7333,7 +7400,8 @@
           4294.4,
           1045.2
         ]
-      }
+      },
+      "climate": "snow"
     },
     "skyreach": {
       "name": "Skyreach",
@@ -7521,7 +7589,8 @@
           1478.4,
           1141.9
         ]
-      }
+      },
+      "climate": "snow"
     },
     "sothmire_cape": {
       "name": "Sothmire (south-east)",
@@ -7594,7 +7663,8 @@
           9518.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "jungle"
     },
     "sothmire_east": {
       "name": "Sothmire (east)",
@@ -7691,7 +7761,8 @@
           7454.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "jungle"
     },
     "sothmire_south": {
       "name": "Sothmire (south)",
@@ -7768,7 +7839,8 @@
           10970.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "jungle"
     },
     "sothmire_west": {
       "name": "Sothmire (south-west)",
@@ -7845,7 +7917,8 @@
           9854.0
         ]
       ],
-      "settlement": null
+      "settlement": null,
+      "climate": "jungle"
     },
     "stillwater": {
       "name": "Stillwater",
@@ -8248,7 +8321,8 @@
           7361.2,
           3449.6
         ]
-      }
+      },
+      "climate": "white"
     },
     "theros": {
       "name": "Theros",
@@ -8310,7 +8384,8 @@
           2421.8,
           4374.2
         ]
-      }
+      },
+      "climate": "mediterranean"
     },
     "tullanum": {
       "name": "Tullanum",
@@ -8528,7 +8603,8 @@
           1379.8,
           5825.8
         ]
-      }
+      },
+      "climate": "tundra"
     },
     "varrenum": {
       "name": "Varrenum",
@@ -8698,7 +8774,8 @@
           2816.0,
           1819.4
         ]
-      }
+      },
+      "climate": "taiga"
     }
   }
 }
