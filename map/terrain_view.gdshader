@@ -50,6 +50,12 @@ uniform int class_settlement = 4;
 uniform int class_mountain = 5;
 uniform int class_water = 6;
 
+// God-game look test (god/empire.gd): the map drawn scaled around the character-scale area. map_from_world
+// maps world space back to map metres (identity in the campaign); hole (x0, z0, x1, z1 in map metres,
+// unused while x1 <= x0) leaves out the ground where the character-scale terrain is drawn.
+uniform mat4 map_from_world = mat4(1.0);
+uniform vec4 hole = vec4(0.0);
+
 varying vec2 world_xz;
 varying float world_h;
 
@@ -125,7 +131,7 @@ float forest_weight(vec2 xz) {
 }
 
 void vertex() {
-	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	vec3 w = (map_from_world * (MODEL_MATRIX * vec4(VERTEX, 1.0))).xyz;
 	world_xz = w.xz;
 	VERTEX.y = h_at(w.xz);
 	world_h = VERTEX.y;
@@ -133,7 +139,7 @@ void vertex() {
 	float hx = h_at(w.xz + vec2(e, 0.0)) - h_at(w.xz - vec2(e, 0.0));
 	float hz = h_at(w.xz + vec2(0.0, e)) - h_at(w.xz - vec2(0.0, e));
 	NORMAL = normalize(vec3(-hx, 2.0 * e, -hz));
-	float far = smoothstep(canopy_fade_begin, canopy_fade_end, distance(w, CAMERA_POSITION_WORLD));
+	float far = smoothstep(canopy_fade_begin, canopy_fade_end, distance(w, (map_from_world * vec4(CAMERA_POSITION_WORLD, 1.0)).xyz));
 	if (far > 0.0) {
 		float fw = forest_weight(w.xz);
 		VERTEX.y += canopy_height * fw * far * (0.7 + 0.6 * vnoise(w.xz * 0.11));
@@ -186,6 +192,7 @@ int class_at(ivec2 c) {
 }
 
 void fragment() {
+	if (hole.z > hole.x && world_xz.x > hole.x && world_xz.x < hole.z && world_xz.y > hole.y && world_xz.y < hole.w) discard;
 	vec2 uv = (world_xz - origin) / world_size;
 	vec2 g = uv * grid_size - 0.5;
 	ivec2 c = ivec2(floor(g));

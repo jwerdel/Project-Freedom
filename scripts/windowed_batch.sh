@@ -15,7 +15,7 @@ for run in "$@"; do
   runtime/Godot.exe --path . "${WIN[@]}" -s "${parts[@]}" 2>&1 | grep -E "CAPTURE|GPU|BENCH|SCRIPT ERROR|SELF_TEST|Passing Tests|Failing Tests|All tests passed"
  elif [[ "$run" == SCENE:* ]]; then
   read -r -a parts <<< "${run#SCENE:}"
-  runtime/Godot.exe --path . "${WIN[@]}" "${parts[0]}" -- "${parts[@]:1}" 2>&1 | grep -E "CAPTURE|GPU|SCRIPT ERROR"
+  runtime/Godot.exe --path . "${WIN[@]}" "${parts[0]}" -- "${parts[@]:1}" 2>&1 | grep -E "CAPTURE|GPU|SCRIPT ERROR|GODTEST"
  else
   read -r -a parts <<< "$run"
   runtime/Godot.exe --path . "${WIN[@]}" -- "${parts[@]}" 2>&1 | grep -E "CAPTURE|GPU_MS|SCRIPT ERROR|SELF_TEST"
