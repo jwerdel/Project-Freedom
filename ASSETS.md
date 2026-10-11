@@ -15,9 +15,40 @@ License: CC0 1.0, https://polyhaven.com/license . Artist credits are on each ass
 | `coast_sand_01_Diffuse.jpg`, `coast_sand_01_nor_gl.jpg` | https://polyhaven.com/a/coast_sand_01 | CC0 |
 | `roof_slates_02_Diffuse.jpg`, `roof_slates_02_nor_gl.jpg` | https://polyhaven.com/a/roof_slates_02 | CC0 |
 | `plastered_stone_wall_Diffuse.jpg`, `plastered_stone_wall_nor_gl.jpg` | https://polyhaven.com/a/plastered_stone_wall | CC0 |
-| `fir_optimized.glb`, `fir_optimized_fir_sapling_*.jpg` | https://polyhaven.com/a/fir_sapling | CC0. Simplified for real-time use with glTF Transform / meshoptimizer; textures are also embedded in the .glb. **Kept in the repo but unused since 2026-09-30**: replaced in the forest by the Quaternius low-poly trees (about 14,300 triangles per fir made trees ~89% of GPU time). `visuals/nature/fir.tscn` still wraps it but is not in the manifest; to bring it back, point `nature.tree` at that scene. |
+| `fir_optimized.glb`, `fir_optimized_fir_sapling_*.jpg` | https://polyhaven.com/a/fir_sapling | CC0. Simplified for real-time use with glTF Transform / meshoptimizer; textures are also embedded in the .glb. Unused by the campaign since 2026-09-30 (replaced there by the Quaternius low-poly trees: about 14,300 triangles per fir made trees ~89% of GPU time; `visuals/nature/fir.tscn` still wraps it but is not in the manifest). **Used again by the god-game look test** (branch `god-pivot`, `god/foliage.gd`) as young firs at their natural size. |
+
+### God-game look test (branch `god-pivot`): `assets/god/`
+
+CC0 1.0 (https://polyhaven.com/license). Artist credits are on each asset page. Textures: the 2K (diffuse, OpenGL normal) and 1K AO-rough-metal JPGs, unmodified, in `assets/god/materials/<name>/<name>_{diff,nor_gl,arm}.jpg` (the door, shutter and bark sets at 1K); imported VRAM-compressed with mipmaps. Models: the 1K glTF downloads, unmodified, in `assets/god/models/<name>/`. Used only by `god/` (the look test).
+
+| Asset | Source | Used for |
+|---|---|---|
+| `snow_02` | https://polyhaven.com/a/snow_02 | Ground snow; snow on roofs, ledges and rubble |
+| `forest_ground_04` | https://polyhaven.com/a/forest_ground_04 | Frozen ground under the snow |
+| `brown_mud_02` | https://polyhaven.com/a/brown_mud_02 | Road mud, field soil |
+| `rocky_terrain_02` | https://polyhaven.com/a/rocky_terrain_02 | Rock on slopes, rubble mounds |
+| `cobblestone_floor_08` | https://polyhaven.com/a/cobblestone_floor_08 | Market square and castle court paving |
+| `castle_wall_slates` | https://polyhaven.com/a/castle_wall_slates | Castle walls, towers, quoins and sills |
+| `rustic_stone_wall` | https://polyhaven.com/a/rustic_stone_wall | House ground floors |
+| `white_plaster_rough_01` | https://polyhaven.com/a/white_plaster_rough_01 | House plaster; market awnings (tinted) |
+| `rough_wood` | https://polyhaven.com/a/rough_wood | Timber frames, beams, posts, trim |
+| `medieval_wood` | https://polyhaven.com/a/medieval_wood | Plank walls (barns, sheds) |
+| `roof_slates_02` | https://polyhaven.com/a/roof_slates_02 | Slate roofs |
+| `thatch_roof_angled` | https://polyhaven.com/a/thatch_roof_angled | Thatched roofs; the Hearthtree's crown (tinted red) |
+| `wood_shutter` | https://polyhaven.com/a/wood_shutter | Window shutters |
+| `rough_pine_door` | https://polyhaven.com/a/rough_pine_door | Doors |
+| `pine_bark` | https://polyhaven.com/a/pine_bark | Fir trunks; the Hearthtree's bark |
+| `rock_moss_set_01`, `rock_moss_set_02` (models) | https://polyhaven.com/a/rock_moss_set_01, https://polyhaven.com/a/rock_moss_set_02 | Boulders on slopes and in the forest |
+| `wine_barrel_01` (model) | https://polyhaven.com/a/wine_barrel_01 | Barrels by the houses and in the market |
+| `wooden_crate_02` (model) | https://polyhaven.com/a/wooden_crate_02 | Crates by the houses and in the market |
+| `wooden_bucket_01` (model) | https://polyhaven.com/a/wooden_bucket_01 | Buckets by doors; the bucket villagers carry |
+| `tree_stump_01` (model) | https://polyhaven.com/a/tree_stump_01 | Stumps at the forest edge |
 
 ## Original to this project
+
+### Edric Varn (owner-supplied; used by the god-game look test)
+
+`assets/characters/edric_varn/{walking,flying,punching,falling_idle,falling_to_landing,wh}.fbx`: copied unmodified (renamed to snake case) from the owner's `art_source/lords/edric_varn/anims/`, used on the owner's instruction by `god/god_model.gd`. Each file carries the same rigged mesh (25 bones, Mixamo skeleton, no texture) and one Mixamo animation clip (Adobe Mixamo, free for use in projects under Adobe's terms; not CC0). **Owner to confirm:** Adobe's terms restrict redistributing Mixamo files on their own, so keeping the raw `.fbx` files in a public repository may need a second look. The mesh's origin is the owner's; the source files in `art_source/` stay out of git.
 
 Architecture, ships, wagons, the terrain heightfield, layout, UI, and shaders were built procedurally for this prototype (`main.gd`, `visuals/`, `*.gdshader`). No Total War, Warhammer, Lord of the Rings, or Game of Thrones assets are included.
 
