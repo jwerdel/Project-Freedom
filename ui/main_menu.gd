@@ -13,6 +13,7 @@ const Session = preload("res://core/session.gd")
 const Settings = preload("res://core/settings.gd")
 const LoadScreen = preload("res://ui/load_screen.gd")
 const SettingsPanel = preload("res://ui/settings_panel.gd")
+const GOD_TEST = "res://god/god_test.tscn" # the god-game look test (branch god-pivot)
 const CAMPAIGN_FLAGS = ["--capture","--self-test","--bake-movement-grid","--campaign"]
 const CREDITS = "Icons by Lorc, Delapouite and contributors, game-icons.net (CC BY 3.0) · 3D models by Quaternius and Kenney (CC0) · Textures: Poly Haven (CC0) · Fonts: SIL OFL · Full list: ASSETS.md"
 
@@ -117,6 +118,8 @@ func _build():
  nci.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
  v.add_child(nci)
  _button(v,"Load",_show_load)
+ var gt = _button(v,"God Test",func(): get_tree().change_scene_to_file(GOD_TEST))
+ gt.tooltip_text = "The god-game look test (docs/pivot/god-game.md): Frosthold at character scale, flight and one-punch destruction."
  _button(v,"Settings",_show_settings)
  _button(v,"Quit",func():
   SaveSystem.wait_for_images()
